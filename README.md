@@ -5,9 +5,9 @@ Huawei, Cisco IOS, Cisco NX-OS, Cisco IOS-XR, Juniper, as well as devices config
 
 annet has a number of modes (subcommands):
 
-- ```annet gen`` - generates the entire config for the specified devices or specified parts of it
-- ```annet diff`` - first does gen and then builds diff with current config version
-- ```annet patch`` - first does diff and then generates a list of commands to apply diff on the device
+- ```annet gen``` - generates the entire config for the specified devices or specified parts of it
+- ```annet diff``` - first does gen and then builds diff with current config version
+- ```annet patch``` - first does diff and then generates a list of commands to apply diff on the device
 
 Usage help can be obtained by calling ```annet -h``` or for a specific command, such as ```annet gen -h```.
 
