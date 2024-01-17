@@ -1,0 +1,18 @@
+connection:
+  default:
+    login: ~
+    passwords: ~
+    enable_ssh_conf: false
+    no_nocauth: false
+    ssh_forward_agent: ~
+    tunnel: ~
+generators:
+  default:
+    - annet_generators.example
+
+context:
+  default:
+    connection: default
+    generators: default
+
+selected_context: default
