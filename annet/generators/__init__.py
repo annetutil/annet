@@ -184,6 +184,7 @@ class RunGeneratorResult:
     ) -> Dict[str, Tuple[Any, Optional[str]]]:
         # TODO: safe
         files: Dict[str, Tuple[Any, Optional[str]]] = {}
+        reload_prios: Dict[str, int] = {}
         for generator_result in self.json_fragment_results.values():
             filepath = generator_result.path
             if filepath not in files:
@@ -194,8 +195,12 @@ class RunGeneratorResult:
             previous_config: Dict[str, Any] = files[filepath][0]
             new_fragment = generator_result.config
             new_config = jsontools.apply_json_fragment(previous_config, new_fragment, generator_result.acl)
-            reload_cmd = generator_result.reload
-            files[generator_result.path] = (new_config, reload_cmd)
+            if filepath in reload_prios and reload_prios[filepath] > generator_result.reload_prio:
+                _, reload_cmd = files[filepath]
+            else:
+                reload_cmd = generator_result.reload
+                reload_prios[filepath] = generator_result.reload_prio
+            files[filepath] = (new_config, reload_cmd)
         return files
 
     def perf_mesures(self) -> Dict[str, Dict[str, int]]:
@@ -509,6 +514,7 @@ def _run_json_fragment_generator(
             reload=reload_cmds,
             perf=pm.last_result,
             is_safe=gen.is_safe(device),
+            reload_prio=gen.reload_prio,
         )
     return None
 
@@ -898,6 +904,10 @@ class JSONFragment(TreeGenerator):
         self.storage = storage
         self._json_config: Dict[str, Any] = {}
         self._config_pointer: List[str] = []
+
+        # if two generators edit same file, commands from generator with greater `reload_prio` will be used
+        if not hasattr(self, "reload_prio"):
+            self.reload_prio = 100
 
     def path(self, device: Device) -> Optional[str]:
         raise NotImplementedError("Required PATH for JSON_FRAGMENT generator")
