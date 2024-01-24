@@ -21,7 +21,7 @@ def parse_hw_model(hw_model):
 def _prepare_db() -> Dict[str, Any]:
     try:
         from library.python import resource
-        raw = json.loads(resource.find("resfs/file/netdev/devdb/data/devdb.json").decode("utf-8"))
+        raw = json.loads(resource.resfs_read("contrib/python/annet/annet/annlib/netdev/devdb/data/devdb.json").decode("utf-8"))
     except ImportError:
         with open(path.join(path.dirname(__file__), "data", "devdb.json"), "r") as f:
             raw = json.load(f)
