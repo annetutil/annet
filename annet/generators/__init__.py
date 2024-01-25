@@ -801,7 +801,7 @@ class Entire(BaseGenerator):
     def get_reload_cmds(self, device) -> str:
         ret = self.reload(device) or ""
         path = self.path(device)
-        if path and device.hw.PC and device.hw.soft.startswith(("Cumulus", "SwitchDev")):
+        if path and device.hw.PC and device.hw.soft.startswith(("Cumulus", "SwitchDev", "SONiC")):
             parts = []
             if ret:
                 parts.append(ret)
