@@ -704,7 +704,9 @@ def _old_new_get_config_files(ctx: OldNewDeviceContext, device: Device) -> Devic
             return old_files
         if ctx.config == "running":
             old_files_running = ctx.downloaded_files.get(device)
-            if old_files_running and old_files_running.is_empty():
+            if not old_files_running:
+                return old_files
+            if old_files_running.is_empty():
                 exc = (ctx.failed_files.get(device) or
                        Exception("I can't get device files and I don't know why"))
                 get_logger(host=device.hostname).error(str(exc))
