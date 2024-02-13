@@ -1,0 +1,15 @@
+- vendor: Huawei
+  diff: |
+    interface 10GE1/0/30
+      + mpls ldp transport-address interface
+      + mpls
+      + mpls ldp
+  patch: |
+    system-view
+    interface 10GE1/0/30
+      mpls
+      mpls ldp
+      mpls ldp transport-address interface
+      quit
+    q
+    save

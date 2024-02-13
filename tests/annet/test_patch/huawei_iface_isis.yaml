@@ -1,0 +1,63 @@
+vendor: Huawei
+before: |
+  interface 100GE5/0/31:1
+    undo portswitch
+    mtu 9000
+    ip address 10.1.160.247 255.255.255.254
+    ospf cost 1000
+    ospf network-type p2p
+    ospf suppress-reachability
+    isis enable 1
+    isis circuit-type p2p
+    isis cost 1000
+    isis timer lsp-throttle 10
+    isis small-hello
+    isis suppress-reachability
+    mpls
+    mpls ldp
+    qos queue 3 wred WRED_CS3
+    qos queue 4 wred WRED_CS4
+    qos wfq 0 to 7
+    qos queue 0 wfq weight 23
+    qos queue 1 wfq weight 2
+    qos queue 2 wfq weight 2
+    qos queue 3 wfq weight 23
+    qos queue 4 wfq weight 23
+    qos queue 5 wfq weight 23
+    qos queue 6 wfq weight 3
+    device transceiver 40GBASE-FIBER
+
+after: |
+  interface 100GE5/0/31:1
+    undo portswitch
+    mtu 9000
+    ip address 10.1.160.247 255.255.255.254
+    ospf cost 1000
+    ospf network-type p2p
+    ospf suppress-reachability
+    mpls
+    mpls ldp
+    qos queue 3 wred WRED_CS3
+    qos queue 4 wred WRED_CS4
+    qos wfq 0 to 7
+    qos queue 0 wfq weight 23
+    qos queue 1 wfq weight 2
+    qos queue 2 wfq weight 2
+    qos queue 3 wfq weight 23
+    qos queue 4 wfq weight 23
+    qos queue 5 wfq weight 23
+    qos queue 6 wfq weight 3
+    device transceiver 40GBASE-FIBER
+
+patch: |
+  system-view
+  interface 100GE5/0/31:1
+    undo isis circuit-type
+    undo isis cost
+    undo isis timer lsp-throttle
+    undo isis small-hello
+    undo isis suppress-reachability
+    undo isis enable
+    quit
+  q
+  save

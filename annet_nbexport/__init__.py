@@ -4,7 +4,7 @@ import operator
 import os
 import os.path
 import pathlib
-from typing import List
+from typing import List, Optional
 
 from annet.storage import Device, Storage, Query, StorageOpts, StorageProvider
 from annet.annlib.netdev.views.hardware import HardwareView
@@ -125,7 +125,7 @@ class NetboxDTO:
 
 
 class AnnetNbExportStorage(Storage):
-    def __init__(self, opts: "Optional[StorageOpts]" = None):
+    def __init__(self, opts: Optional[StorageOpts] = None):
         self._dump_dir = os.path.join(os.path.dirname(__file__))
 
     def __enter__(self):
@@ -146,7 +146,7 @@ class AnnetNbExportStorage(Storage):
 
     def make_devices(
         self,
-        query: "inventory.Query",
+        query,
         preload_neighbors=False,
         use_mesh=None,
         preload_extra_fields=False,
@@ -158,7 +158,7 @@ class AnnetNbExportStorage(Storage):
                 ret.append(DeviceNb(self, NetboxDTO(**device_data), region=file_path.parent.name))
         return ret
 
-    def get_device(self, obj_id, preload_neighbors=False, use_mesh=None, **kwargs) -> "DeviceView":
+    def get_device(self, obj_id, preload_neighbors=False, use_mesh=None, **kwargs) -> Device:
         for file_path, device_data in _read_dump(self._dump_dir):
             if device_data["name"] == obj_id:
                 return DeviceNb(self, NetboxDTO(**device_data), region=file_path.parent.name)
@@ -168,7 +168,7 @@ class AnnetNbExportStorage(Storage):
 
 
 def _read_dump(dump_dir):
-    for (dirpath, _dirnames, filenames) in  os.walk(dump_dir):
+    for (dirpath, _dirnames, filenames) in os.walk(dump_dir):
         for filename in filenames:
             if filename != "devices.csv":
                 continue

@@ -1,0 +1,110 @@
+- vendor: Huawei
+  diff: |
+    qos group PRJ_GRP_EXAMPLE3
+      + group-member interface 40GE1/0/1:1
+  patch: |
+    system-view
+    qos group PRJ_GRP_EXAMPLE3
+      group-member interface 40GE1/0/1:1
+      quit
+    q
+    save
+- vendor: Huawei
+  diff: |
+    qos group PRJ_GRP_EXAMPLE3
+      - group-member interface 40GE1/0/1:1
+  patch: |
+    system-view
+    qos group PRJ_GRP_EXAMPLE3
+      undo group-member interface 40GE1/0/1:1
+      quit
+    q
+    save
+- vendor: Huawei
+  diff: |
+    - qos group PRJ_GRP_EXAMPLE3
+      - group-member interface 40GE1/0/1:1
+  patch: |
+    system-view
+    qos group PRJ_GRP_EXAMPLE3
+      undo group-member interface 40GE1/0/1:1
+      quit
+    undo qos group PRJ_GRP_EXAMPLE3
+    q
+    save
+- vendor: Huawei
+  diff: |
+    qos group PRJ_GRP_EXAMPLE3
+      + group-member interface 40GE1/0/1:1
+    qos group PRJ_GRP_EXAMPLE5
+      - group-member interface 40GE1/0/1:1
+  patch: |
+    system-view
+    qos group PRJ_GRP_EXAMPLE5
+      undo group-member interface 40GE1/0/1:1
+      quit
+    qos group PRJ_GRP_EXAMPLE3
+      group-member interface 40GE1/0/1:1
+      quit
+    q
+    save
+- vendor: Huawei
+  diff: |
+    - qos group PRJ_GRP_EXAMPLE3
+    - qos group PRJ_GRP_EXAMPLE5
+  patch: |
+    system-view
+    undo qos group PRJ_GRP_EXAMPLE3
+    undo qos group PRJ_GRP_EXAMPLE5
+    q
+    save
+- vendor: Huawei
+  diff: |
+    + qos group PRJ_GRP_EXAMPLE3
+      + group-member interface 40GE1/0/1:1
+    qos group PRJ_GRP_EXAMPLE5
+      - group-member interface 40GE1/0/1:1
+  patch: |
+    system-view
+    qos group PRJ_GRP_EXAMPLE5
+      undo group-member interface 40GE1/0/1:1
+      quit
+    qos group PRJ_GRP_EXAMPLE3
+      group-member interface 40GE1/0/1:1
+      quit
+    q
+    save
+- vendor: Huawei
+  diff: |
+    + qos group PRJ_GRP_EXAMPLE3
+      + group-member interface 40GE1/0/1:1
+    - qos group PRJ_GRP_EXAMPLE5
+      - group-member interface 40GE1/0/1:1
+  patch: |
+    system-view
+    qos group PRJ_GRP_EXAMPLE5
+      undo group-member interface 40GE1/0/1:1
+      quit
+    qos group PRJ_GRP_EXAMPLE3
+      group-member interface 40GE1/0/1:1
+      quit
+    undo qos group PRJ_GRP_EXAMPLE5
+    q
+    save
+- vendor: Huawei
+  diff: |
+    + qos group PRJ_GRP_EXAMPLE5
+      + group-member interface 40GE1/0/1:1
+    - qos group PRJ_GRP_EXAMPLE3
+      - group-member interface 40GE1/0/1:1
+  patch: |
+    system-view
+    qos group PRJ_GRP_EXAMPLE3
+      undo group-member interface 40GE1/0/1:1
+      quit
+    qos group PRJ_GRP_EXAMPLE5
+      group-member interface 40GE1/0/1:1
+      quit
+    undo qos group PRJ_GRP_EXAMPLE3
+    q
+    save

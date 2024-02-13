@@ -1,0 +1,33 @@
+- vendor: juniper
+  before: |-
+    interfaces {
+        lo0 {
+            unit 0 {
+                description "loopbacks";
+            }
+        }
+        et-0/0/0 {
+            unit 0 {
+                description "old description";
+            }
+        }
+    }
+  after: |-
+    interfaces {
+        lo0 {
+            unit 0 {
+                description loopbacks;
+            }
+        }
+        et-0/0/0 {
+            unit 0 {
+                description "new description";
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete interfaces et-0/0/0 unit 0 description "old description"
+    set interfaces et-0/0/0 unit 0 description "new description"
+    commit
+    exit

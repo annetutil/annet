@@ -1,0 +1,26 @@
+- vendor: Huawei
+  diff: '+ vlan batch 2 to 611 613 to 621 623 to 664 666 to 699 800 to 810 1300 to
+    1326 1329 to 1369 1371 to 1599 1601 1603 to 1604 1606 1613 1640 1643 to 1644 1648
+    1651 to 1653 1657 1661 1664 to 1665 1676 2000
+
+    '
+  patch: |
+    system-view
+    vlan batch 2 to 611 613 to 621 623 to 664 666 to 699 800 to 810 1300 to 1326 1329 to 1369 1371 to 1599 1601 1603 to 1604
+    vlan batch 1606 1613 1640 1643 to 1644 1648 1651 to 1653 1657 1661 1664 to 1665 1676
+    vlan batch 2000
+    q
+    save
+- vendor: Huawei
+  diff: '- vlan batch 2 to 611 613 to 621 623 to 664 666 to 699 800 to 810 1300 to
+    1326 1329 to 1369 1371 to 1599 1601 1603 to 1604 1606 1613 1640 1643 to 1644 1648
+    1651 to 1653 1657 1661 1664 to 1665 1676 2000
+
+    '
+  patch: |
+    system-view
+    undo vlan batch 2 to 611 613 to 621 623 to 664 666 to 699 800 to 810 1300 to 1326 1329 to 1369 1371 to 1599 1601 1603 to 1604
+    undo vlan batch 1606 1613 1640 1643 to 1644 1648 1651 to 1653 1657 1661 1664 to 1665 1676
+    undo vlan batch 2000
+    q
+    save

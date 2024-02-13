@@ -1,0 +1,117 @@
+vendor: Huawei
+before: ""
+after: |
+  interface Vlanif688
+    ipv6 enable
+    ipv6 nd ra prefix 2001:db8:c33:3c00::/57 2400 1200 no-autoconfig
+    ipv6 address 2001:db8:c33:3c00::1/57
+    ipv6 address fe80::1 link-local
+    ipv6 nd ra min-interval 10
+    ipv6 nd ra max-interval 14
+    ipv6 nd ra halt disable
+    ipv6 mtu 9000
+    damping time 20
+    statistics enable
+    mtu 9000
+  interface Vlanif700
+    ipv6 enable
+    ipv6 nd ra prefix 2001:db8:fc34:78::/64 2400 1200 no-autoconfig
+    ipv6 address 2001:db8:fc34:78::1/64
+    ipv6 address fe80::1 link-local
+    ipv6 nd ra min-interval 10
+    ipv6 nd ra max-interval 14
+    ipv6 nd ra halt disable
+    ipv6 nd ra router-lifetime 0
+    ipv6 mtu 9000
+    damping time 20
+    statistics enable
+    mtu 9000
+  interface Vlanif788
+    ipv6 enable
+    ipv6 nd ra prefix 2001:db8:fc33:3c00::/57 2400 1200 no-autoconfig
+    ipv6 address 2001:db8:fc33:3c00::1/57
+    ipv6 address fe80::1 link-local
+    ipv6 nd ra min-interval 10
+    ipv6 nd ra max-interval 14
+    ipv6 nd ra halt disable
+    ipv6 nd ra router-lifetime 0
+    ipv6 mtu 9000
+    damping time 20
+    statistics enable
+    mtu 9000
+  ip route-static 0.0.0.0 0.0.0.0 172.24.231.254
+  route-policy IMPORT_DIRECT permit node 3330
+    if-match interface Vlanif333
+    apply community 64496:3099
+  route-policy IMPORT_DIRECT permit node 6880
+    if-match interface Vlanif688
+    apply community 64496:3099
+  route-policy IMPORT_DIRECT permit node 7000
+    if-match interface Vlanif700
+    apply community 64496:3098
+  route-policy IMPORT_DIRECT permit node 7880
+    if-match interface Vlanif788
+    apply community 64496:3098
+
+patch: |
+  system-view
+  interface Vlanif688
+    ipv6 enable
+    ipv6 nd ra prefix 2001:db8:c33:3c00::/57 2400 1200 no-autoconfig
+    ipv6 mtu 9000
+    ipv6 nd ra max-interval 14
+    ipv6 nd ra min-interval 10
+    ipv6 address 2001:db8:c33:3c00::1/57
+    ipv6 address fe80::1 link-local
+    ipv6 nd ra halt disable
+    damping time 20
+    mtu 9000
+    statistics enable
+    quit
+  interface Vlanif700
+    ipv6 enable
+    ipv6 nd ra prefix 2001:db8:fc34:78::/64 2400 1200 no-autoconfig
+    ipv6 mtu 9000
+    ipv6 nd ra max-interval 14
+    ipv6 nd ra min-interval 10
+    ipv6 nd ra router-lifetime 0
+    ipv6 address 2001:db8:fc34:78::1/64
+    ipv6 address fe80::1 link-local
+    ipv6 nd ra halt disable
+    damping time 20
+    mtu 9000
+    statistics enable
+    quit
+  interface Vlanif788
+    ipv6 enable
+    ipv6 nd ra prefix 2001:db8:fc33:3c00::/57 2400 1200 no-autoconfig
+    ipv6 mtu 9000
+    ipv6 nd ra max-interval 14
+    ipv6 nd ra min-interval 10
+    ipv6 nd ra router-lifetime 0
+    ipv6 address 2001:db8:fc33:3c00::1/57
+    ipv6 address fe80::1 link-local
+    ipv6 nd ra halt disable
+    damping time 20
+    mtu 9000
+    statistics enable
+    quit
+  ip route-static 0.0.0.0 0.0.0.0 172.24.231.254
+  route-policy IMPORT_DIRECT permit node 3330
+    apply community 64496:3099
+    if-match interface Vlanif333
+    quit
+  route-policy IMPORT_DIRECT permit node 6880
+    apply community 64496:3099
+    if-match interface Vlanif688
+    quit
+  route-policy IMPORT_DIRECT permit node 7000
+    apply community 64496:3098
+    if-match interface Vlanif700
+    quit
+  route-policy IMPORT_DIRECT permit node 7880
+    apply community 64496:3098
+    if-match interface Vlanif788
+    quit
+  q
+  save

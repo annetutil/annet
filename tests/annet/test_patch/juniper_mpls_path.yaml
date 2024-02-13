@@ -1,0 +1,43 @@
+- vendor: juniper
+  before: |
+    protocols {
+        mpls {
+            path stdp2_via_dc21e2 {
+                10.9.136.239 strict;
+                10.10.213.92 strict;
+                10.9.136.129 strict;
+                10.10.213.32 strict;
+                10.5.234.2 strict;
+                10.1.172.40 strict;
+            }
+        }
+    }
+  after: |-
+    protocols {
+        mpls {
+            path stdp2_via_dc21e2 {
+                10.1.172.40 strict;
+                10.9.136.239 strict;
+                10.10.213.92 strict;
+                10.9.136.129 strict;
+                10.10.213.32 strict;
+                10.5.234.2 strict;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete protocols mpls path stdp2_via_dc21e2 10.1.172.40
+    delete protocols mpls path stdp2_via_dc21e2 10.9.136.239
+    delete protocols mpls path stdp2_via_dc21e2 10.10.213.92
+    delete protocols mpls path stdp2_via_dc21e2 10.9.136.129
+    delete protocols mpls path stdp2_via_dc21e2 10.10.213.32
+    delete protocols mpls path stdp2_via_dc21e2 10.5.234.2
+    set protocols mpls path stdp2_via_dc21e2 10.1.172.40 strict
+    set protocols mpls path stdp2_via_dc21e2 10.9.136.239 strict
+    set protocols mpls path stdp2_via_dc21e2 10.10.213.92 strict
+    set protocols mpls path stdp2_via_dc21e2 10.9.136.129 strict
+    set protocols mpls path stdp2_via_dc21e2 10.10.213.32 strict
+    set protocols mpls path stdp2_via_dc21e2 10.5.234.2 strict
+    commit
+    exit

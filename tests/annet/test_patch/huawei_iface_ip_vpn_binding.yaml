@@ -1,0 +1,103 @@
+- vendor: Huawei CE
+  before: |
+    interface MEth0/0/0
+      ip address 1.2.3.4/5
+      ipv6 address 2001:db8::1/64
+      ipv6 address fe80::1 link-local
+  after: |
+    interface MEth0/0/0
+      ip binding vpn-instance MGMT
+      ip address 1.2.3.4/5
+      ipv6 address 2001:db8::1/64
+      ipv6 address fe80::1 link-local
+  patch: |
+    system-view
+    interface MEth0/0/0
+      ip binding vpn-instance MGMT
+      ipv6 address 2001:db8::1/64
+      ipv6 address fe80::1 link-local
+      ip address 1.2.3.4/5
+      quit
+    commit
+    q
+    save
+- vendor: Huawei CE
+  before: |
+    interface MEth0/0/0
+      ip binding vpn-instance MGMT
+      ip address 1.2.3.4/5
+      ipv6 address 2001:db8::1/64
+      ipv6 address fe80::1 link-local
+  after: |
+    interface MEth0/0/0
+      ip address 1.2.3.4/5
+      ipv6 address 2001:db8::1/64
+      ipv6 address fe80::1 link-local
+  patch: |
+    system-view
+    interface MEth0/0/0
+      undo ip binding vpn-instance MGMT
+      ipv6 address 2001:db8::1/64
+      ipv6 address fe80::1 link-local
+      ip address 1.2.3.4/5
+      quit
+    commit
+    q
+    save
+- vendor: Huawei CE
+  before: |
+    interface MEth0/0/0
+      ip binding vpn-instance MGMT1
+      ip address 1.2.3.4/5
+      ipv6 address 2001:db8::1/64
+      ipv6 address fe80::1 link-local
+  after: |
+    interface MEth0/0/0
+      ip binding vpn-instance MGMT2
+      ip address 1.2.3.4/5
+      ipv6 address 2001:db8::1/64
+      ipv6 address fe80::1 link-local
+  patch: |
+    system-view
+    interface MEth0/0/0
+      undo ip binding vpn-instance MGMT1
+      ip binding vpn-instance MGMT2
+      ipv6 address 2001:db8::1/64
+      ipv6 address fe80::1 link-local
+      ip address 1.2.3.4/5
+      quit
+    commit
+    q
+    save
+- vendor: Huawei CE
+  before: |
+    interface MEth0/0/0
+      ip binding vpn-instance MGMT
+      ipv6 address 2001:db8::1/64
+  after: |
+    interface MEth0/0/0
+      ipv6 address 2001:db8::2/64
+  patch: |
+    system-view
+    interface MEth0/0/0
+      undo ip binding vpn-instance MGMT
+      ipv6 address 2001:db8::2/64
+      quit
+    commit
+    q
+    save
+- vendor: Huawei CE
+  before: |
+    interface MEth0/0/0
+      ipv6 address 2001:db8::1/64
+  after: |
+    interface MEth0/0/0
+      ip binding vpn-instance MGMT
+  patch: |
+    system-view
+    interface MEth0/0/0
+      ip binding vpn-instance MGMT
+      quit
+    commit
+    q
+    save

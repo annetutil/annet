@@ -761,7 +761,7 @@ def _json_fragment_diff(
 
 def guess_hw(config_text: str):
     """Пытаемся угадать вендора и hw на основе
-    текста конфига и annushka/rulebook/texts/*.rul"""
+    текста конфига и annet/rulebook/texts/*.rul"""
     scores = {}
     hw_provider = hardware_connector.get()
     for vendor in VENDOR_REVERSES:

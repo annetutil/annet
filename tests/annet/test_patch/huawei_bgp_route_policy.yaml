@@ -1,0 +1,19 @@
+vendor: Huawei
+diff: |
+  - route-policy REMOVED_POLICY permit node 10
+
+  bgp 64203.10
+    group STOR6 external
+    peer STOR6 as-number 65401
+    peer fe80::ea1:d2 as-number 65401
+    peer fe80::ea1:d2 connect-interface Eth-Trunk101.3666
+    peer fe80::ea1:d2 group STOR6
+    - peer fe80::ea1:d2 route-policy REMOVED_POLICY export
+patch: |
+  system-view
+  bgp 64203.10
+    undo peer fe80::ea1:d2 route-policy REMOVED_POLICY export
+    quit
+  undo route-policy REMOVED_POLICY node 10
+  q
+  save

@@ -1,0 +1,47 @@
+- vendor: Nexus
+  before: |
+    interface port-channel101
+      description dc1-1x8 po55
+      mtu 9000
+      ipv6 traffic-filter RETRANSMIT_RX_dc1-1x8 in
+      service-policy type qos input CLASSIFIER
+      no ip redirects
+      ipv6 link-local fe80::55:c8
+      ipv6 nd ra-lifetime 0
+      ipv6 nd suppress-ra
+      no ipv6 redirects
+
+    interface Ethernet1/9/1
+      description dc1-1x8 e5/8/1
+      mtu 9000
+      channel-group 101 mode active
+      no shutdown
+  after: |
+    interface Ethernet1/9/1
+      no shutdown
+      no ipv6 redirects
+      no ip redirects
+      ipv6 link-local fe80::55:c8
+      ipv6 traffic-filter RETRANSMIT_RX_dc1-1x8 in
+      ipv6 nd suppress-ra
+      ipv6 nd ra-lifetime 0
+      description dc1-1x8 e5/8/1
+      mtu 9000
+      service-policy type qos input CLASSIFIER
+  patch: |
+    conf t
+    no interface port-channel101
+    interface Ethernet1/9/1
+      no channel-group
+      no ip redirects
+      ipv6 link-local fe80::55:c8
+      no ipv6 redirects
+      ipv6 traffic-filter RETRANSMIT_RX_dc1-1x8 in
+      ipv6 nd suppress-ra
+      ipv6 nd ra-lifetime 0
+      mtu 9000
+      no shutdown
+      service-policy type qos input CLASSIFIER
+      exit
+    exit
+    copy running-config startup-config

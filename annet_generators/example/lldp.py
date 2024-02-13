@@ -46,6 +46,7 @@ class Lldp(PartialGenerator):
                 interface all
             """
 
+
 def get_generators(store: Storage) -> List[BaseGenerator]:
     return [
         Lldp(store),

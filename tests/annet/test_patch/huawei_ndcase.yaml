@@ -1,0 +1,23 @@
+- vendor: Huawei
+  before: |
+    interface Vlanif333
+      ipv6 nd ra Min-interval 10
+      ipv6 nd ra Max-interval 14
+  after: |
+    interface Vlanif333
+      ipv6 nd ra min-interval 10
+      ipv6 nd ra max-interval 14
+  
+  patch: ""
+
+- vendor: Huawei
+  before: |
+    interface Vlanif333
+      ipv6 nd ra min-interval 10
+      ipv6 nd ra max-interval 14
+  after: |
+    interface Vlanif333
+      ipv6 nd ra Min-interval 10
+      ipv6 nd ra Max-interval 14
+
+  patch: ""

@@ -1,0 +1,239 @@
+- vendor: juniper
+  before: |-
+    forwarding-options {
+        inactive: traceoptions
+        inactive: port-mirroring {
+            input {
+                rate 1;
+                run-length 1;
+            }
+            family inet {
+                output {
+                    interface xe-2/1/0.0 {
+                        next-hop 172.30.1.2;
+                    }
+                    no-filter-check;
+                }
+            }
+        }
+    }
+  after: |-
+    forwarding-options {
+        port-mirroring {
+            input {
+                rate 1;
+                run-length 1;
+            }
+            family inet {
+                output {
+                    interface xe-2/1/0.0 {
+                        next-hop 172.30.1.3;
+                    }
+                    no-filter-check;
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete forwarding-options traceoptions
+    delete forwarding-options port-mirroring family inet output interface xe-2/1/0.0 next-hop 172.30.1.2
+    set forwarding-options port-mirroring family inet output interface xe-2/1/0.0 next-hop 172.30.1.3
+    activate forwarding-options port-mirroring
+    commit
+    exit
+
+- vendor: juniper
+  before: |
+    interfaces {
+        inactive: et-0/0/26 {
+            description "dc0-e1 100ge7/0/20";
+            mtu 9216;
+        }
+    }
+  after: ''
+  patch: |
+    configure exclusive
+    delete interfaces
+    commit
+    exit
+
+- vendor: juniper
+  before: ''
+  after: |
+    interfaces {
+        inactive: et-0/0/26 {
+            description "dc0-e1 100ge7/0/20";
+            mtu 9216;
+        }
+    }
+  patch: |
+    configure exclusive
+    deactivate interfaces et-0/0/26
+    commit
+    exit
+
+- vendor: juniper
+  before: |
+    protocols {
+        bgp {
+            group TOR {
+                inactive: neighbor 2001:db86:d1 {
+                    peer-as 65000.5016;
+                    local-interface et-0/0/14.0;
+            }
+        }
+    }
+  after: |
+    protocols {
+        bgp {
+            group TOR {
+                family inet6 {
+                    unicast;
+                }
+                inactive: neighbor 2001:db86:d1 {
+                    peer-as 65000.5016;
+                    local-interface et-0/0/14.0;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    set protocols bgp group TOR family inet6 unicast
+    commit
+    exit
+
+- vendor: juniper
+  before: |
+    protocols {
+        bgp {
+            group TOR {
+                family inet6 {
+                    unicast;
+                }
+                neighbor 2001:db86:d1 {
+                    peer-as 65000.5016;
+                    local-interface et-0/0/14.0;
+            }
+        }
+    }
+  after: |
+    protocols {
+        bgp {
+            group TOR {
+                family inet6 {
+                    unicast;
+                }
+                inactive: neighbor 2001:db86:d1 {
+                    peer-as 65000.5016;
+                    local-interface et-0/0/14.0;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    deactivate protocols bgp group TOR neighbor 2001:db86:d1
+    commit
+    exit
+
+- vendor: juniper
+  before: |
+    protocols {
+        bgp {
+            group TOR {
+                family inet6 {
+                    unicast;
+                }
+                inactive: neighbor 2001:db86:d1 {
+                    peer-as 65000.5016;
+                    local-interface et-0/0/14.0;
+            }
+        }
+    }
+  after: |
+    protocols {
+        bgp {
+            group TOR {
+                family inet6 {
+                    unicast;
+                }
+                neighbor 2001:db86:d1 {
+                    peer-as 65000.5016;
+                    local-interface et-0/0/14.0;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    activate protocols bgp group TOR neighbor 2001:db86:d1
+    commit
+    exit
+
+- vendor: juniper
+  before: |
+    protocols {
+        bgp {
+            group TOR {
+                family inet6 {
+                    unicast;
+                }
+                inactive: neighbor 2001:db86:d1 {
+                    peer-as 65000.5016;
+                    local-interface et-0/0/11.0;
+            }
+        }
+    }
+  after: |
+    protocols {
+        bgp {
+            group TOR {
+                family inet6 {
+                    unicast;
+                }
+                inactive: neighbor 2001:db86:d1 {
+                    peer-as 65000.5016;
+                    local-interface et-0/0/22.0;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete protocols bgp group TOR neighbor 2001:db86:d1 local-interface et-0/0/11.0
+    set protocols bgp group TOR neighbor 2001:db86:d1 local-interface et-0/0/22.0
+    commit
+    exit
+
+- vendor: juniper
+  before: |
+    protocols {
+        bgp {
+            group TOR {
+                family inet6 {
+                    unicast;
+                }
+                neighbor 2001:db86:d1 {
+                    peer-as 65000.5016;
+                    local-interface et-0/0/11.0;
+            }
+        }
+    }
+  after: |
+    protocols {
+        bgp {
+            group TOR {
+                family inet6 {
+                    unicast;
+                }
+                inactive: neighbor 2001:db86:d1 {
+                    peer-as 65000.5016;
+                    local-interface et-0/0/22.0;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete protocols bgp group TOR neighbor 2001:db86:d1 local-interface et-0/0/11.0
+    set protocols bgp group TOR neighbor 2001:db86:d1 local-interface et-0/0/22.0
+    deactivate protocols bgp group TOR neighbor 2001:db86:d1
+    commit
+    exit

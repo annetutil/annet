@@ -1,0 +1,16 @@
+vendor: Huawei
+before: "route-policy TOR_EXPORT_S1 deny node 10\n  if-match community-filter DONT_ANNOUNCE_COMMUNITY\
+  \ \n#\nroute-policy TOR_EXPORT_S1 deny node 20\n  if-match community-filter MARKED_COMMUNITY\
+  \ \n#\nroute-policy TOR_EXPORT_S1 permit node 30\n"
+after: "route-policy TOR_EXPORT_S1 deny node 10\n  if-match community-filter DONT_ANNOUNCE_COMMUNITY\
+  \ \n#\nroute-policy TOR_EXPORT_S1 permit node 20\n"
+patch: |
+  system-view
+  route-policy TOR_EXPORT_S1 deny node 20
+    undo if-match community-filter MARKED_COMMUNITY
+    quit
+  route-policy TOR_EXPORT_S1 permit node 20
+    quit
+  undo route-policy TOR_EXPORT_S1 node 30
+  q
+  save

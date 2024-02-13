@@ -1,0 +1,32 @@
+# подкоманды объявления aaa-схем всегда просто перезаписываются новым набором
+- vendor: huawei
+  diff: |
+    aaa
+      authentication-scheme tacacs
+        - authentication-mode local none
+        + authentication-mode hwtacacs local
+
+      authorization-scheme tacacs
+        - authorization-mode local none
+        + authorization-mode hwtacacs local
+
+      accounting-scheme tacacs
+        - accounting-mode none
+        + accounting-mode hwtacacs
+
+  patch: |
+    system-view
+    aaa
+      authentication-scheme tacacs
+        authentication-mode hwtacacs local
+        quit
+      authorization-scheme tacacs
+        authorization-mode hwtacacs local
+        quit
+      accounting-scheme tacacs
+        accounting-mode hwtacacs
+        quit
+      quit
+    q
+    save
+

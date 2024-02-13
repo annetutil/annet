@@ -1,0 +1,63 @@
+- vendor: juniper
+  before: |-
+    routing-instances {
+        some-instance {
+            protocols {
+                bgp {
+                    group some-group {
+                        peer-as 65530;
+                    }                           
+                }
+            }
+        }
+    }
+  after: |-
+    routing-instances {
+        some-instance {
+            protocols {
+                bgp {
+                    group some-group {
+                        peer-as 65530;
+                        local-as 65500 no-prepend-global-as;
+                    }                           
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    set routing-instances some-instance protocols bgp group some-group local-as 65500 no-prepend-global-as
+    commit
+    exit
+
+- vendor: juniper
+  before: |-
+    routing-instances {
+        some-instance {
+            protocols {
+                bgp {
+                    group some-group {
+                        peer-as 65530;
+                        local-as 65500 no-prepend-global-as;
+                    }                           
+                }
+            }
+        }
+    }
+  after: |-
+    routing-instances {
+        some-instance {
+            protocols {
+                bgp {
+                    group some-group {
+                        peer-as 65530;
+                    }                           
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-instances some-instance protocols bgp group some-group local-as
+    commit
+    exit

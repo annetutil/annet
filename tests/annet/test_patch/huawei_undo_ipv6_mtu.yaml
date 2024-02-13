@@ -1,0 +1,14 @@
+- vendor: huawei
+  before: |
+    interface Vlanif3001
+      ipv6 mtu 9000
+  after: 'interface Vlanif3001
+
+    '
+  patch: |
+    system-view
+    interface Vlanif3001
+      undo ipv6 mtu
+      quit
+    q
+    save
