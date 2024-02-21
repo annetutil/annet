@@ -17,7 +17,7 @@ def requirements() -> str:
 if __name__ == "__main__":
     setuptools.setup(
         name="annet",
-        version="0.4",
+        version=os.getenv("VERSION") or "0.0",
         description="annet",
         license="MIT",
         url="https://github.com/annetutil/annet",
