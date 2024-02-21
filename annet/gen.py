@@ -90,8 +90,8 @@ class OldNewDeviceContext:
     storage: Storage
     downloaded_files: Dict[Device, DeviceDownloadedFiles]
     failed_files: Dict[Device, Exception]
-    running: Dict[str, Dict[str, str]]
-    failed_running: Dict[str, Exception]
+    running: Dict[Device, Dict[str, str]]
+    failed_running: Dict[Device, Exception]
     no_new: bool
     stdin: Optional[Dict[str, Optional[str]]]
     add_annotations: bool
@@ -692,13 +692,14 @@ def _old_new_get_config_cli(ctx: OldNewDeviceContext, device: Device) -> str:
 @tracing.function
 def _old_new_get_config_files(ctx: OldNewDeviceContext, device: Device) -> DeviceDownloadedFiles:
     old_files = DeviceDownloadedFiles()
-    if device in ctx.failed_packages:
-        exc = (
-            ctx.failed_packages.get(device) or
-            Exception("I can't get device packages and I don't know why")
-        )
-        get_logger(host=device.hostname).error(str(exc))
-        raise exc
+
+    for attr in ('failed_files', 'failed_running', 'failed_packages'):
+        if device in getattr(ctx, attr):
+            exc = getattr(ctx, attr).get(device)
+            exc = exc or Exception(f"I can't get device {attr[len('failed_'):]} and I don't know why")
+            get_logger(host=device.hostname).error(str(exc))
+            raise exc
+
     if ctx.do_files_download:
         if ctx.config == "empty":
             return old_files
@@ -706,11 +707,6 @@ def _old_new_get_config_files(ctx: OldNewDeviceContext, device: Device) -> Devic
             old_files_running = ctx.downloaded_files.get(device)
             if not old_files_running:
                 return old_files
-            if old_files_running.is_empty():
-                exc = (ctx.failed_files.get(device) or
-                       Exception("I can't get device files and I don't know why"))
-                get_logger(host=device.hostname).error(str(exc))
-                raise exc
             old_files = old_files_running
         elif os.path.exists(ctx.config):
             # try to find config in subdirectory: <ctx.config>/<device_name>.cfg/
@@ -739,7 +735,7 @@ def _old_resolve_gens(args: GenOptions, storage: Storage, devices: List[Device])
 
 
 @tracing.function
-def _old_resolve_running(config: str, devices: List[Device]) -> Tuple[Dict[int, str], Dict[int, Exception]]:
+def _old_resolve_running(config: str, devices: List[Device]) -> Tuple[Dict[Device, str], Dict[Device, Exception]]:
     running, failed_running = {}, {}
     if config == "running":
         global live_configs  # pylint: disable=global-statement
