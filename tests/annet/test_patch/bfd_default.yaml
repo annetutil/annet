@@ -1,0 +1,18 @@
+- vendor: Huawei
+  diff: '- ipv6 route-static default-bfd min-tx-interval 250 min-rx-interval 250
+
+    '
+  patch: |
+    system-view
+    undo ipv6 route-static default-bfd
+    q
+    save
+- vendor: Huawei
+  diff: |
+    - ipv6 route-static default-bfd min-tx-interval 250 min-rx-interval 250
+    + ipv6 route-static default-bfd min-tx-interval 250 min-rx-interval 3
+  patch: |
+    system-view
+    ipv6 route-static default-bfd min-tx-interval 250 min-rx-interval 3
+    q
+    save

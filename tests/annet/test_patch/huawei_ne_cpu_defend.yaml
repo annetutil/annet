@@ -1,0 +1,22 @@
+- vendor: huawei
+  before: |
+    cpu-defend policy 30
+      car bgp cir 513
+    slot 1
+      cpu-defend-policy 30
+  after: |
+    cpu-defend policy 1
+      car bgp cir 513
+    slot 1
+      cpu-defend-policy 1
+  patch: |
+    system-view
+    cpu-defend policy 1
+      car bgp cir 513
+      quit
+    slot 1
+      cpu-defend-policy 1
+      quit
+    undo cpu-defend policy 30
+    q
+    save

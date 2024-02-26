@@ -1,0 +1,39 @@
+- vendor: Huawei
+  diff: |
+    interface 100GE0/1/39
+      - port-queue af3 wfq weight 30 outbound
+      + port-queue af3 wfq weight 30 port-wred WRED outbound
+  patch: |
+    system-view
+    interface 100GE0/1/39
+      undo port-queue af3 wfq outbound
+      port-queue af3 wfq weight 30 port-wred WRED outbound
+      quit
+    q
+    save
+- vendor: Huawei
+  diff: |
+    interface 100GE0/1/39
+      - port-queue ef wfq weight 3 outbound
+      + port-queue ef wfq weight 3 port-wred WRED outbound
+  patch: |
+    system-view
+    interface 100GE0/1/39
+      undo port-queue ef wfq outbound
+      port-queue ef wfq weight 3 port-wred WRED outbound
+      quit
+    q
+    save
+- vendor: Huawei
+  diff: |
+    interface 100GE0/1/39
+      - port-queue ef wfq weight 3 outbound
+      + port-queue ef wfq weight 5 outbound
+  patch: |
+    system-view
+    interface 100GE0/1/39
+      undo port-queue ef wfq outbound
+      port-queue ef wfq weight 5 outbound
+      quit
+    q
+    save

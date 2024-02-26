@@ -1,0 +1,19 @@
+- vendor: Arista
+  diff: |
+    ipv6 access-list RETRANSMIT_RX_lab-dc1-1s2
+      + 60 permit ipv6 any any dscp 9
+      + 70 permit ipv6 any any dscp 17
+      + 80 permit ipv6 any any dscp 25
+      - 90 permit ipv6 any any dscp 25
+      + 90 permit ipv6 any any dscp 33
+  patch: |
+    conf s
+    ipv6 access-list RETRANSMIT_RX_lab-dc1-1s2
+      no 90
+      60 permit ipv6 any any dscp 9
+      90 permit ipv6 any any dscp 33
+      70 permit ipv6 any any dscp 17
+      80 permit ipv6 any any dscp 25
+      exit
+    commit
+    write memory

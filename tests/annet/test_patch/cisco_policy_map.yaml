@@ -1,0 +1,104 @@
+- vendor: Cisco
+  before: |
+    policy-map type qos MARK-INBOUND
+      class FB_default
+        set qos-group 1
+        set dscp 8
+      class SYN_RETRANSMIT_ANY
+        set qos-group 3
+        set dscp 25
+      class BB-CS3
+        set qos-group 3
+        set dscp 24
+      class BB-CS4
+        set qos-group 4
+        set dscp 32
+      class BB_default
+        set qos-group 0
+        set dscp 24
+      class class-default
+  after: |
+    policy-map type qos MARK-INBOUND
+      class FB-CS2
+        set qos-group 2
+        set dscp 16
+      class FB_default
+        set qos-group 1
+        set dscp 8
+      class SYN_RETRANSMIT_ANY
+        set qos-group 3
+        set dscp 25
+      class BB-CS3
+        set qos-group 3
+        set dscp 24
+      class BB-CS4
+        set qos-group 4
+        set dscp 32
+      class BB_default
+        set qos-group 0
+        set dscp 24
+      class class-default
+  patch: |
+    conf t
+    policy-map type qos MARK-INBOUND
+      no class FB_default
+      no class SYN_RETRANSMIT_ANY
+      no class BB-CS3
+      no class BB-CS4
+      no class BB_default
+      no class class-default
+      class FB-CS2
+        set qos-group 2
+        set dscp 16
+        exit
+      class FB_default
+        set qos-group 1
+        set dscp 8
+        exit
+      class SYN_RETRANSMIT_ANY
+        set qos-group 3
+        set dscp 25
+        exit
+      class BB-CS3
+        set qos-group 3
+        set dscp 24
+        exit
+      class BB-CS4
+        set qos-group 4
+        set dscp 32
+        exit
+      class BB_default
+        set qos-group 0
+        set dscp 24
+        exit
+      class class-default
+        exit
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: Cisco
+  before: |
+    policy-map type qos stat
+      class cs2
+        set qos-group 2
+    policy-map type qos MARK-LOW-PRIORITY
+      class ANY
+        set qos-group 2
+    policy-map type qos MARK-MED-PRIORITY
+      class ANY
+        set qos-group 3
+    policy-map type qos MARK-HIGH-PRIORITY
+      class ANY
+        set qos-group 4
+  after: |
+    policy-map type qos stat
+      class cs2
+        set qos-group 2
+  patch: |
+    conf t
+    no policy-map type qos MARK-LOW-PRIORITY
+    no policy-map type qos MARK-MED-PRIORITY
+    no policy-map type qos MARK-HIGH-PRIORITY
+    exit
+    copy running-config startup-config

@@ -1,0 +1,29 @@
+- vendor: Huawei
+  diff: |
+    - ip route-static 0.0.0.0 0.0.0.0 172.24.207.254
+    + ip route-static vpn-instance MEth0/0/0 0.0.0.0 0.0.0.0 172.24.207.254
+    interface MEth0/0/0
+      + ip address 172.24.206.189 255.255.252.0
+      + ip binding vpn-instance MEth0/0/0
+    - bgp 65001
+      - peer fe80::c1:d1 as-number 64496
+      - peer fe80::c1:d1 connect-interface 100GE1/0/1.3000
+    + bgp 64496
+      + peer fe80::c1:d1 as-number 64496
+      + peer fe80::c1:d1 connect-interface 100GE1/0/1.3000
+  patch: |
+    system-view
+    undo bgp
+    commit
+    undo ip route-static 0.0.0.0 0.0.0.0 172.24.207.254
+    interface MEth0/0/0
+      ip binding vpn-instance MEth0/0/0
+      ip address 172.24.206.189 255.255.252.0
+      quit
+    ip route-static vpn-instance MEth0/0/0 0.0.0.0 0.0.0.0 172.24.207.254
+    bgp 64496
+      peer fe80::c1:d1 as-number 64496
+      peer fe80::c1:d1 connect-interface 100GE1/0/1.3000
+      quit
+    q
+    save

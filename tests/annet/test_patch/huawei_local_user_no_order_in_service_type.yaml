@@ -1,0 +1,40 @@
+# У хуавей порядок аргументов в данном месте меняется в зависимости от версии софта
+# при этом команда принимается в любом виде, меняется отображение в конфиге
+
+- vendor: huawei
+  diff: |
+    aaa
+      - local-user user4 service-type telnet terminal ssh ftp
+      + local-user user4 service-type ftp terminal telnet ssh
+
+  patch: |
+
+- vendor: huawei
+  diff: |
+    aaa
+      - local-user user5 service-type telnet terminal ssh ftp
+      + local-user user5 service-type telnet terminal ssh ftp http
+
+  patch: |
+    system-view
+    aaa
+      local-user user5 service-type telnet terminal ssh ftp http
+      quit
+    q
+    save
+
+- vendor: huawei
+  diff: |
+    aaa
+      - local-user user4 service-type telnet terminal ssh ftp
+      + local-user user4 service-type ftp terminal telnet ssh
+      - local-user user5 service-type telnet terminal ssh ftp
+      + local-user user5 service-type telnet terminal ssh ftp http
+
+  patch: |
+    system-view
+    aaa
+      local-user user5 service-type telnet terminal ssh ftp http
+      quit
+    q
+    save

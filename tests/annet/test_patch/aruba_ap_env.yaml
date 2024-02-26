@@ -1,0 +1,315 @@
+- vendor: Aruba
+  before: ""
+  after: |
+    name:publab-w10
+  patch: |
+    hostname publab-w10
+    write memory
+
+- vendor: Aruba
+  diff: |
+    - name:publab-w10
+    + name:other-w01
+  patch: |
+    hostname other-w01
+    write memory
+
+
+- vendor: Aruba
+  diff: |
+    + ipaddr:172.17.17.203
+    + netmask:255.255.255.192
+    + gatewayip:172.17.17.254
+    + dnsip:172.17.17.254
+    + domainname:example.com
+  patch: |
+    ip-address 172.17.17.203 255.255.255.192 172.17.17.254 172.17.17.254 example.com
+    write memory
+
+- vendor: Aruba
+  before: |
+    ipaddr:172.17.17.203
+    netmask:255.255.255.192
+    gatewayip:172.17.17.254
+    dnsip:172.17.17.254
+    domainname:example.com
+  after: |
+    ipaddr:172.17.17.203
+    netmask:255.255.255.192
+    gatewayip:172.17.17.254
+    dnsip:10.8.8.8
+    domainname:example.net
+  patch: |
+    ip-address 172.17.17.203 255.255.255.192 172.17.17.254 10.8.8.8 example.net
+    write memory
+
+
+- vendor: Aruba
+  diff: |
+    - usb-port-disable:1
+  patch: |
+    no usb-port-disable
+    write memory
+
+- vendor: Aruba
+  diff: |
+    + usb-port-disable:1
+  patch: |
+    usb-port-disable
+    write memory
+
+
+- vendor: Aruba
+  diff: |
+    - standalone_mode:1
+  patch: |
+    swarm-mode cluster
+    write memory
+
+- vendor: Aruba
+  diff: |
+    + standalone_mode:1
+  patch: |
+    swarm-mode standalone
+    write memory
+
+
+- vendor: Aruba
+  diff: |
+    - iap_master:1
+  patch: |
+    no iap-master
+    write memory
+
+- vendor: Aruba
+  diff: |
+    + iap_master:1
+  patch: |
+    iap-master
+    write memory
+
+- vendor: Aruba
+  diff: |
+    - iap_conductor:1
+  patch: |
+    no iap-conductor
+    write memory
+
+- vendor: Aruba
+  diff: |
+    + iap_conductor:1
+  patch: |
+    iap-conductor
+    write memory
+
+
+- vendor: Aruba
+  diff: |
+    + iap_zone:PUBLAB,MobCert,Guests
+  patch: |
+    zone PUBLAB,MobCert,Guests
+    write memory
+
+
+- vendor: Aruba
+  diff: |
+    - iap_zone:PUBLAB,MobCert,Guests
+    + iap_zone:SOMELAB,MobCert,Guests
+  patch: |
+    zone SOMELAB,MobCert,Guests
+    write memory
+
+
+- vendor: Aruba
+  diff: |
+    + dot11a_radio:disable
+  patch: |
+    dot11a-radio-disable
+    write memory
+
+- vendor: Aruba
+  diff: |
+    - dot11a_radio:disable
+  patch: |
+    no dot11a-radio-disable
+    write memory
+
+- vendor: Aruba
+  diff: |
+    + dot11g_radio:disable
+  patch: |
+    dot11g-radio-disable
+    write memory
+
+- vendor: Aruba
+  diff: |
+    - dot11g_radio:disable
+  patch: |
+    no dot11g-radio-disable
+    write memory
+
+
+- vendor: Aruba
+  diff: |
+    + installation_type:indoor
+  patch: |
+    ap-installation indoor
+    write memory
+
+- vendor: Aruba
+  diff: |
+    - installation_type:indoor
+    + installation_type:outdoor
+  patch: |
+    ap-installation outdoor
+    write memory
+
+- vendor: Aruba
+  diff: |
+    - installation_type:outdoor
+  patch: |
+    ap-installation default
+    write memory
+
+
+- vendor: Aruba
+  diff: |
+    + wifi0_arm_channel:132
+    + wifi0_arm_power_10x:16.0
+  patch: |
+    a-channel 132 16.0
+    write memory
+
+- vendor: Aruba
+  diff: |
+    wifi0_arm_channel:132
+    - wifi0_arm_power_10x:16.0
+    + wifi0_arm_power_10x:20.0
+  patch: |
+    a-channel 132 20.0
+    write memory
+
+- vendor: Aruba
+  diff: |
+    wifi0_arm_channel:132
+    - wifi0_arm_power_10x:16.0
+    + wifi0_arm_power_10x:20.0
+  patch: |
+    a-channel 132 20.0
+    write memory
+
+- vendor: Aruba
+  diff: |
+    - wifi0_arm_channel:132
+    - wifi0_arm_power_10x:16.0
+  patch: |
+    a-channel 0 0
+    write memory
+
+- vendor: Aruba
+  diff: |
+    + wifi1_arm_channel:11
+    + wifi1_arm_power_10x:16.0
+  patch: |
+    g-channel 11 16.0
+    write memory
+
+- vendor: Aruba
+  diff: |
+    wifi1_arm_channel:11
+    - wifi1_arm_power_10x:16.0
+    + wifi1_arm_power_10x:20.0
+  patch: |
+    g-channel 11 20.0
+    write memory
+
+- vendor: Aruba
+  diff: |
+    wifi1_arm_channel:11
+    - wifi1_arm_power_10x:16.0
+    + wifi1_arm_power_10x:20.0
+  patch: |
+    g-channel 11 20.0
+    write memory
+
+- vendor: Aruba
+  diff: |
+    - wifi1_arm_channel:11
+    - wifi1_arm_power_10x:16.0
+  patch: |
+    g-channel 0 0
+    write memory
+
+
+- vendor: Aruba
+  diff: |
+    + a_ant_gain_10x:5.5
+  patch: |
+    a-external-antenna 5.5
+    write memory
+
+- vendor: Aruba
+  diff: |
+    - a_ant_gain_10x:5.5
+    + a_ant_gain_10x:4.5
+  patch: |
+    a-external-antenna 4.5
+    write memory
+
+- vendor: Aruba
+  diff: |
+    - a_ant_gain_10x:5.5
+  patch: |
+    a-external-antenna 0
+    write memory
+
+- vendor: Aruba
+  diff: |
+    + g_ant_gain_10x:5.5
+  patch: |
+    g-external-antenna 5.5
+    write memory
+
+- vendor: Aruba
+  diff: |
+    - g_ant_gain_10x:5.5
+    + g_ant_gain_10x:4.5
+  patch: |
+    g-external-antenna 4.5
+    write memory
+
+- vendor: Aruba
+  diff: |
+    - g_ant_gain_10x:5.5
+  patch: |
+    g-external-antenna 0
+    write memory
+
+
+- vendor: Aruba
+  diff: |
+    +a_ant_pol:1
+  patch: |
+    a-ant-pol 1
+    write memory
+
+- vendor: Aruba
+  diff: |
+    -a_ant_pol:1
+  patch: |
+    a-ant-pol 0
+    write memory
+
+- vendor: Aruba
+  diff: |
+    +g_ant_pol:1
+  patch: |
+    g-ant-pol 1
+    write memory
+
+- vendor: Aruba
+  diff: |
+    -g_ant_pol:1
+  patch: |
+    g-ant-pol 0
+    write memory

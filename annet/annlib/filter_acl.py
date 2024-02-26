@@ -116,7 +116,7 @@ def get_op(line: str) -> typing.Tuple[str, str, str]:
             break
     if opidx >= 0:
         op = line[opidx]
-        indent = line[:opidx] + line[opidx+1:rowstart]
+        indent = line[:opidx] + line[opidx + 1:rowstart]
     if op != " ":
         indent = indent + " "
     return op, indent, line[rowstart:]

@@ -1,0 +1,41 @@
+- vendor: juniper
+  acl: |
+    protocols
+      bgp
+        group TOR
+          neighbor
+            ~
+  input: |
+    protocols {
+        bgp {
+            group TOR {
+                type external;
+                inactive: neighbor fe80::1:b1 {
+                    local-interface ae1.0;
+                    peer-as 65000.65000;
+                }
+                neighbor fe80::1:b2 {
+                    local-interface ae2.0;
+                    peer-as 65000.65000;
+                }
+            }
+            group S2 {
+                type external;
+            }
+        }
+    }
+  output: |
+    protocols {
+        bgp {
+            group TOR {
+                inactive: neighbor fe80::1:b1 {
+                    local-interface ae1.0;
+                    peer-as 65000.65000;
+                }
+                neighbor fe80::1:b2 {
+                    local-interface ae2.0;
+                    peer-as 65000.65000;
+                }
+            }
+        }
+    }

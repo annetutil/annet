@@ -1,0 +1,31 @@
+- vendor: Arista
+  diff: '+ ip load-sharing trident fields ipv6 destination-port source-ip ingress-interface
+    destination-ip source-port
+
+    '
+  patch: |
+    conf s
+    ip load-sharing trident fields ipv6 destination-port source-ip ingress-interface destination-ip source-port
+    commit
+    write memory
+
+- vendor: Arista
+  diff: |
+    - ip load-sharing trident fields ipv6 destination-port source-ip ingress-interface
+    + ip load-sharing trident fields ipv6 destination-port source-ip ingress-interface destination-ip source-port
+  patch: |
+    conf s
+    ip load-sharing trident fields ipv6 destination-port source-ip ingress-interface destination-ip source-port
+    commit
+    write memory
+
+- vendor: Arista
+  diff: '- ip load-sharing trident fields ipv6 destination-port source-ip ingress-interface
+    destination-ip source-port
+
+    '
+  patch: |
+    conf s
+    default ip load-sharing trident fields ipv6
+    commit
+    write memory

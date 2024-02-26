@@ -2,17 +2,22 @@
 
 
 import abc
+import itertools
 import re
 from collections import namedtuple
 from contextlib import contextmanager
-from typing import Dict, List, Optional, Type
+from typing import Dict, List, Optional, Type, Any, OrderedDict
 
 from contextlog import get_logger
 
 from annet import text_term_format
+from annet.annlib.command import Command, Question, CommandList
+from annet.annlib.netdev.views.hardware import HardwareView
+from annet.annlib.rbparser.deploying import MakeMessageMatcher, Answer
 from annet.cli_args import DeployOptions
 from annet.connectors import Connector
 from annet.output import TextArgs
+from annet.rulebook import get_rulebook, deploying
 from annet.storage import Device
 
 
@@ -439,3 +444,93 @@ def init_colors():
         None: curses.color_pair(8),
         "cyan_blue": curses.color_pair(9),
     }
+
+
+class RulebookQuestionHandler:
+    def __init__(self, dialogs):
+        self._dialogs = dialogs
+
+    def __call__(self, dev: Connector, cmd: Command, match_content: bytes):
+        content = match_content.strip()
+        content = content.decode()
+        for matcher, answer in self._dialogs.items():
+            if matcher(content):
+                return Command(answer.text)
+
+        get_logger().info("no answer in rulebook. dialogs=%s match_content=%s", self._dialogs, match_content)
+        return None
+
+
+def rb_question_to_question(q: MakeMessageMatcher, a: Answer) -> Question:  # TODO: drop MakeMessageMatcher
+    if not a.send_nl:
+        raise Exception("not supported false send_nl")
+    text: str = q._text  # pylint: disable=protected-access
+    is_regexp = False
+    if text.startswith("/") and text.endswith("/"):
+        is_regexp = True
+        text = text[1:-1]
+    res = Question(question=text, answer=a.text, is_regexp=is_regexp)
+    return res
+
+
+def make_cmd_params(rule: Dict[str, Any]) -> Dict[str, Any]:
+    if rule:
+        qa_handler = RulebookQuestionHandler(rule["attrs"]["dialogs"])
+        qa_list: List[Question] = []
+        for matcher, answer in qa_handler._dialogs.items():  # pylint: disable=protected-access
+            qa_list.append(rb_question_to_question(matcher, answer))
+        return {
+            "questions": qa_list,
+            "timeout": rule["attrs"]["timeout"],
+        }
+    return {
+        "timeout": 30,
+    }
+
+
+def make_apply_commands(rule, hw, do_commit, do_finalize):
+    apply_logic = rule["attrs"]["apply_logic"]
+    before, after = apply_logic(hw, do_commit=do_commit, do_finalize=do_finalize)
+    return before, after
+
+
+def fill_cmd_params(rules: OrderedDict, cmd: Command):
+    rule = deploying.match_deploy_rule(rules, (cmd.cmd,), {})
+    if rule:
+        cmd_params = make_cmd_params(rule)
+        cmd.questions = cmd_params.get("questions", None)
+        cmd.timeout = cmd_params["timeout"]
+
+
+def apply_deploy_rulebook(hw: HardwareView, cmd_paths, do_finalize=True, do_commit=True):
+    rules = get_rulebook(hw)["deploying"]
+    cmds_with_apply = []
+    for cmd_path, context in cmd_paths.items():
+        rule = deploying.match_deploy_rule(rules, cmd_path, context)
+        cmd_params = make_cmd_params(rule)
+        before, after = make_apply_commands(rule, hw, do_commit, do_finalize)
+
+        cmd = Command(cmd_path[-1], **cmd_params)
+        # XXX более чистый способ передавать-мета инфу о команде
+        cmd.level = len(cmd_path) - 1
+        cmds_with_apply.append((cmd, before, after))
+
+    def _key(item):
+        _cmd, before, after = item
+        return (tuple(cmd.cmd for cmd in before), tuple(cmd.cmd for cmd in after))
+
+    cmdlist = CommandList()
+    for _k, cmd_before_after in itertools.groupby(cmds_with_apply, key=_key):
+        cmd_before_after = list(cmd_before_after)
+        _, before, after = cmd_before_after[0]
+        for c in before:
+            c.level = 0
+            fill_cmd_params(rules, c)
+            cmdlist.add_cmd(c)
+        for cmd, _before, _after in cmd_before_after:
+            cmdlist.add_cmd(cmd)
+        for c in after:
+            c.level = 0
+            fill_cmd_params(rules, c)
+            cmdlist.add_cmd(c)
+    return cmdlist

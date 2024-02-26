@@ -1,0 +1,15 @@
+- vendor: huawei
+  before: 'ssh server ip-block disable
+
+    '
+  after: |
+    ssh server ip-block disable
+    bfd
+    lldp enable
+  patch: |
+    system-view
+    bfd
+      quit
+    lldp enable
+    q
+    save

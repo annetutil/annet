@@ -1,0 +1,60 @@
+vendor: Huawei
+diff: |
+  -vlan batch 542 999 1999
+  -vlan batch 1542
+  +vlan batch 542 to 599 635 999
+  +vlan batch 1542 2542 to 2599 2635 2999
+  +vlan 542
+    +description nalivka
+
+  interface if1
+    - port default vlan 542
+    + port link-type trunk
+    + undo port trunk allow-pass vlan 1
+    + port trunk allow-pass vlan 635 700 to 799
+
+  interface if2
+    port link-type trunk
+    port trunk pvid vlan 604
+    undo port trunk allow-pass vlan 1
+    - port trunk allow-pass vlan 604 761
+    + port trunk allow-pass vlan 604 to 605 761
+
+  interface if3
+    - port link-type trunk
+    - port trunk pvid vlan 604
+    - undo port trunk allow-pass vlan 1
+    - port trunk allow-pass vlan 604 to 605 761
+    + eth-trunk 0
+
+  stp region-configuration
+    instance 1 vlan 1 2 3 to 4
+    - instance 2 vlan 1 2 3 to 4
+patch: |
+  system-view
+  vlan batch 543 to 599 635 2542 to 2599 2635 2999
+  vlan 542
+    description nalivka
+    quit
+  interface if1
+    undo port default vlan
+    port link-type trunk
+    port trunk allow-pass vlan 635 700 to 799
+    undo port trunk allow-pass vlan 1
+    quit
+  interface if2
+    port trunk allow-pass vlan 605
+    quit
+  interface if3
+    undo port trunk allow-pass vlan all
+    port trunk allow-pass vlan 1
+    undo port trunk pvid vlan
+    undo port link-type
+    eth-trunk 0
+    quit
+  undo vlan batch 1999
+  stp region-configuration
+    undo instance 2
+    quit
+  q
+  save

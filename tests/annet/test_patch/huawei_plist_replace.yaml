@@ -1,0 +1,132 @@
+# Тестируем сложную логику патчинга префикс-листов для хуавей
+# в случае если префикс-лист целиком заменяется
+# хуавей предполагает что сначала должны быть удалены все референсы
+# хотя префикс-лист никуда никто удалять не собирается
+# обойти эту проблему помогает специальное стаб-правило 99999999
+
+# Изменяем целиком ipv6 префикс-лист
+- vendor: Huawei
+  before: |
+    ip ipv6-prefix PFXS_SPECIALv6 index 10 permit 2001:db8:: 64
+    ip ipv6-prefix PFXS_SPECIALv6 index 20 permit 2002:: 16
+  after: |
+    ip ipv6-prefix PFXS_SPECIALv6 index 10 permit 2002:: 16
+    ip ipv6-prefix PFXS_SPECIALv6 index 20 permit 2001:db8:: 64
+  patch: |
+    system-view
+    ip ipv6-prefix PFXS_SPECIALv6 index 99999999 deny :: 128
+    undo ip ipv6-prefix PFXS_SPECIALv6 index 10
+    undo ip ipv6-prefix PFXS_SPECIALv6 index 20
+    ip ipv6-prefix PFXS_SPECIALv6 index 10 permit 2002:: 16
+    ip ipv6-prefix PFXS_SPECIALv6 index 20 permit 2001:db8:: 64
+    undo ip ipv6-prefix PFXS_SPECIALv6 index 99999999
+    q
+    save
+
+# Изменяем целиком ipv6 префикс-лист c референсом в роут-мапе
+# проверяем что стаб-правило удаляется в самую последнюю очередь
+- vendor: Huawei
+  before: |
+    ip ipv6-prefix PFXS_SPECIALv6 index 10 permit 2001:db8:: 64
+    ip ipv6-prefix PFXS_SPECIALv6 index 20 permit 2002:: 16
+    route-policy TEST deny node 10
+      if-match ipv6 address prefix-list PFXS_SPECIALv6
+    bgp 1234
+      peer fe80::fe group EDGE
+      peer EDGE route-policy TEST import
+  after: |
+    bgp 1234
+      peer fe80::fe group EDGE
+  patch: |
+    system-view
+    ip ipv6-prefix PFXS_SPECIALv6 index 99999999 deny :: 128
+    undo ip ipv6-prefix PFXS_SPECIALv6 index 10
+    undo ip ipv6-prefix PFXS_SPECIALv6 index 20
+    bgp 1234
+      undo peer EDGE route-policy TEST import
+      quit
+    undo route-policy TEST node 10
+    undo ip ipv6-prefix PFXS_SPECIALv6 index 99999999
+    q
+    save
+
+# Изменяем целиком ipv4 префикс-лист
+- vendor: Huawei
+  before: |
+    ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 5 permit 172.16.0.0 16 greater-equal 32 less-equal 32
+    ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 10 permit 10.4.141.80 28 greater-equal 32 less-equal 32
+  after: |
+    ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 5 permit 10.4.141.80 28 greater-equal 32 less-equal 32
+    ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 10 permit 172.16.0.0 16 greater-equal 32 less-equal 32
+  patch: |
+    system-view
+    ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 99999999 deny 0.0.0.0 32
+    undo ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 5
+    undo ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 10
+    ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 5 permit 10.4.141.80 28 greater-equal 32 less-equal 32
+    ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 10 permit 172.16.0.0 16 greater-equal 32 less-equal 32
+    undo ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 99999999
+    q
+    save
+
+
+# Изменяются не все правила то нам не нужны стабы поскольку
+# хуавей не будет считать такой префикс-лист удаляемым
+- vendor: Huawei
+  before: |
+    ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 5 permit 10.4.141.80 28 greater-equal 32 less-equal 32
+    ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 10 permit 172.16.0.0 16 greater-equal 32 less-equal 32
+  after: |
+    ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 5 permit 10.4.141.80 28 greater-equal 32 less-equal 32
+    ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 15 permit 172.16.0.0 16 greater-equal 32 less-equal 32
+  patch: |
+    system-view
+    undo ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 10
+    ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 15 permit 172.16.0.0 16 greater-equal 32 less-equal 32
+    q
+    save
+
+
+# Меняем сразу два префикс-листа один целиком второй нет
+- vendor: Huawei
+  before: |
+    ip ipv6-prefix PFXS_SPECIALv6 index 10 permit 2001:db8:: 64
+    ip ipv6-prefix PFXS_SPECIALv6 index 20 permit 2002:: 16
+    ip ipv6-prefix DEFAULT_SORT_OF index 10 permit AAAA::2 128
+  after: |
+    ip ipv6-prefix PFXS_SPECIALv6 index 10 permit 2001:db8:: 64
+    ip ipv6-prefix PFXS_SPECIALv6 index 20 permit 2001:: 16
+    ip ipv6-prefix DEFAULT_SORT_OF index 10 permit BBBB::2 128
+  patch: |
+    system-view
+    ip ipv6-prefix DEFAULT_SORT_OF index 99999999 deny :: 128
+    undo ip ipv6-prefix PFXS_SPECIALv6 index 20
+    undo ip ipv6-prefix DEFAULT_SORT_OF index 10
+    ip ipv6-prefix PFXS_SPECIALv6 index 20 permit 2001:: 16
+    ip ipv6-prefix DEFAULT_SORT_OF index 10 permit BBBB::2 128
+    undo ip ipv6-prefix DEFAULT_SORT_OF index 99999999
+    q
+    save
+
+
+- vendor: Huawei
+  before: |
+    ip ip-prefix PRFX_VNF_LO index 5 permit 172.16.1.0 24 greater-equal 32 less-equal 32
+    ip ip-prefix PRFX_VNF_LO index 10 permit 172.16.3.0 24 greater-equal 32 less-equal 32
+    ip ip-prefix PRFX_VNF_LO index 20 permit 10.4.141.80 28 greater-equal 32 less-equal 32
+  after: |
+    ip ip-prefix PRFX_VNF_LO index 5 permit 10.4.141.80 28 greater-equal 32 less-equal 32
+    ip ip-prefix PRFX_VNF_LO index 10 permit 172.16.1.0 24 greater-equal 32 less-equal 32
+    ip ip-prefix PRFX_VNF_LO index 15 permit 172.16.3.0 24 greater-equal 32 less-equal 32
+  patch: |
+    system-view
+    ip ip-prefix PRFX_VNF_LO index 99999999 deny 0.0.0.0 32
+    undo ip ip-prefix PRFX_VNF_LO index 5
+    undo ip ip-prefix PRFX_VNF_LO index 10
+    undo ip ip-prefix PRFX_VNF_LO index 20
+    ip ip-prefix PRFX_VNF_LO index 5 permit 10.4.141.80 28 greater-equal 32 less-equal 32
+    ip ip-prefix PRFX_VNF_LO index 10 permit 172.16.1.0 24 greater-equal 32 less-equal 32
+    ip ip-prefix PRFX_VNF_LO index 15 permit 172.16.3.0 24 greater-equal 32 less-equal 32
+    undo ip ip-prefix PRFX_VNF_LO index 99999999
+    q
+    save

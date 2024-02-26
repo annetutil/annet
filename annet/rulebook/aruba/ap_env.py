@@ -4,15 +4,15 @@ from annet.annlib.types import Op
 
 
 try:
-    from annet.executor import CommandList
+    from annet.executor import CommandList, Command
 except ImportError:
-    from noc.annushka.annet.executor import CommandList
+    from noc.annushka.annet.executor import CommandList, Command
 
 
 def apply(hw, do_commit, do_finalize, **_):
     before, after = CommandList(), CommandList()
     if do_commit:
-        after.add_cmd("write memory")
+        after.add_cmd(Command("write memory"))
     return (before, after)
 
 

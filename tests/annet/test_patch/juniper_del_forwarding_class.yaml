@@ -1,0 +1,38 @@
+- vendor: juniper
+  diff: |
+    class-of-service
+      forwarding-classes
+        + class CLASS_0 queue-num 0
+        + class CLASS_1 queue-num 1
+        + class CLASS_2 queue-num 2
+        + class CLASS_3 queue-num 3
+        + class CLASS_4 queue-num 4
+        + class CLASS_5 queue-num 5
+        + class CLASS_6 queue-num 6
+        + class CLASS_7 queue-num 7
+        - class CS1 queue-num 0 priority low
+        - class CS2 queue-num 1 priority low
+        - class CS3 queue-num 2 priority high
+        - class CS4 queue-num 4 priority low
+        - class CS5 queue-num 5 priority low
+        - class CS6 queue-num 3 priority high
+        - class EF queue-num 1 priority low
+  patch: |
+    configure exclusive
+    delete class-of-service forwarding-classes class CS1
+    delete class-of-service forwarding-classes class CS2
+    delete class-of-service forwarding-classes class CS3
+    delete class-of-service forwarding-classes class CS4
+    delete class-of-service forwarding-classes class CS5
+    delete class-of-service forwarding-classes class CS6
+    delete class-of-service forwarding-classes class EF
+    set class-of-service forwarding-classes class CLASS_0 queue-num 0
+    set class-of-service forwarding-classes class CLASS_1 queue-num 1
+    set class-of-service forwarding-classes class CLASS_2 queue-num 2
+    set class-of-service forwarding-classes class CLASS_3 queue-num 3
+    set class-of-service forwarding-classes class CLASS_4 queue-num 4
+    set class-of-service forwarding-classes class CLASS_5 queue-num 5
+    set class-of-service forwarding-classes class CLASS_6 queue-num 6
+    set class-of-service forwarding-classes class CLASS_7 queue-num 7
+    commit
+    exit

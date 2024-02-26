@@ -1,0 +1,14 @@
+vendor: Cisco
+diff: |
+  interface Ethernet1/1
+    description some-description
+
+  -interface Ethernet1/2
+    -description some-description
+patch: |
+  conf t
+  interface Ethernet1/2
+    no description
+    exit
+  exit
+  copy running-config startup-config

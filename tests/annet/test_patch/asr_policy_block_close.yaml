@@ -1,0 +1,254 @@
+- vendor: asr
+  before: |
+    community-set SAME_COMMUNITY
+      64496:1134
+    community-set CHANGED_COMMUNITY
+      64496:1111
+  after: |
+    community-set SAME_COMMUNITY
+      64496:1134
+    community-set CHANGED_COMMUNITY
+      64496:1019
+    community-set NEW_COMMUNITY
+      64496:3082
+  patch: |
+    configure exclusive
+    community-set CHANGED_COMMUNITY
+      64496:1019
+      end-set
+    community-set NEW_COMMUNITY
+      64496:3082
+      end-set
+    commit
+    exit
+
+- vendor: asr
+  before: |
+    prefix-set PFXSv6-EXAMPLE
+      2001:db8f::d000::/44,
+      2001:db8::/32
+    prefix-set PFXS-EXAMPLE-OY
+      10.7.123.0/22
+  after: |
+    prefix-set PFXSv6-EXAMPLE
+      2001:db8f::d000::/44,
+      2001:db8::/29,
+      2001:db8::/32
+    prefix-set PFXS-EXAMPLE-OY
+      10.10.132.0/22
+    prefix-set block-bad-masks
+      0.0.0.0/0 ge 25
+  patch: |
+    configure exclusive
+    prefix-set PFXSv6-EXAMPLE
+      2001:db8f::d000::/44,
+      2001:db8::/29,
+      2001:db8::/32
+      end-set
+    prefix-set PFXS-EXAMPLE-OY
+      10.10.132.0/22
+      end-set
+    prefix-set block-bad-masks
+      0.0.0.0/0 ge 25
+      end-set
+    commit
+    exit
+
+- vendor: asr
+  before: |
+    as-path-set block-very-long-paths
+      length ge 666
+  after: |
+    as-path-set block-very-long-paths
+      length ge 100
+    community-set PRGS_COM_RKUB
+      64496:1001
+    community-set PRGS_COM_PORT_INDEX_170
+      64496:10170
+  patch: |
+    configure exclusive
+    as-path-set block-very-long-paths
+      length ge 100
+      end-set
+    community-set PRGS_COM_RKUB
+      64496:1001
+      end-set
+    community-set PRGS_COM_PORT_INDEX_170
+      64496:10170
+      end-set
+    commit
+    exit
+
+- vendor: asr
+  before: |
+    route-policy MEDADD1
+      set med +1
+    route-policy SET_LO_PARAMS
+      set med 10000
+      set community LO_COMMUNITY
+    route-policy import-UPLINKS
+      if destination in DEFAULT then
+        done
+      drop
+  after: |
+    route-policy MEDADD1
+      set med +2
+    route-policy SET_BACKUP
+      set local-preference 90
+    route-policy SET_LO_PARAMS
+      set med 10000
+      set community LO_COMMUNITY
+    route-policy import-UPLINKS
+      if destination in BLABLA then
+        done
+      drop
+  patch: |
+    configure exclusive
+    route-policy MEDADD1
+      set med +2
+      end-policy
+    route-policy SET_BACKUP
+      set local-preference 90
+      end-policy
+    route-policy import-UPLINKS
+      if destination in BLABLA then
+        done
+        endif
+      drop
+      end-policy
+    commit
+    exit
+
+- vendor: asr
+  before: |
+    route-policy SLBRR_IMPORT_ROUTES
+      if community matches-any REFLECTED_ROUTE_COMMUNITY then
+        drop
+      endif
+      if as-path length ge 50 then
+        drop
+      endif
+      if (destination in PFXS_EXAMPLE_PRIVATENETS4-ORLONGER or destination in PFXS_EXAMPLE_SUPERNETS-ORLONGER) and community matches-any FW_COMMUNITY then
+        done
+      endif
+      if destination in PFXS_EXAMPLE_SUPERNETSv6-ORLONGER and community matches-any FW_COMMUNITY then
+        done
+      endif
+      if destination in PFXS_SPECIALv6 and community matches-any FW_COMMUNITY then
+        done
+      endif
+      if med eq 0 then
+        drop
+      endif
+      if destination in DEFAULT_ROUTE_0-_31 then
+        drop
+      endif
+      if destination in DEFAULT_ROUTEv6_0-_127 then
+        drop
+      endif
+      if destination in PFXS_EXAMPLE_SUPERNETS-ORLONGER and community matches-any SLB_COMMUNITY and as-path in 65401_64999 then
+        done
+      endif
+      if destination in PFXS_EXAMPLE_SUPERNETSv6-ORLONGER and community matches-any SLB_COMMUNITY and as-path in 65401_64999 then
+        done
+      endif
+      if (destination in PFXS_EXAMPLE_PRIVATENETS4-ORLONGER or destination in PFXS_EXAMPLE_SUPERNETS-ORLONGER) and community matches-any LO_COMMUNITY then
+        done
+      endif
+      if destination in PFXS_EXAMPLE_SUPERNETSv6-ORLONGER and community matches-any LO_COMMUNITY then
+        done
+      endif
+    end-policy
+  after: |
+    route-policy SLBRR_IMPORT_ROUTES
+      if community matches-any REFLECTED_ROUTE_COMMUNITY then
+        drop
+        endif
+      if as-path length ge 50 then
+        drop
+        endif
+      if (destination in PFXS_EXAMPLE_SUPERNETS-ORLONGER or destination in PFXS_EXAMPLE_PRIVATENETS4-ORLONGER) and community matches-any FW_COMMUNITY then
+        done
+        endif
+      if destination in PFXS_EXAMPLE_SUPERNETSv6-ORLONGER and community matches-any FW_COMMUNITY then
+        done
+        endif
+      if destination in PFXS_SPECIALv6 and community matches-any FW_COMMUNITY then
+        done
+        endif
+      if med eq 0 then
+        drop
+        endif
+      if destination in DEFAULT_ROUTE_0-_31 then
+        drop
+        endif
+      if destination in DEFAULT_ROUTEv6_0-_127 then
+        drop
+        endif
+      if destination in PFXS_EXAMPLE_SUPERNETS-ORLONGER and community matches-any SLB_COMMUNITY and as-path in 65401_64999 then
+        done
+        endif
+      if destination in PFXS_EXAMPLE_SUPERNETSv6-ORLONGER and community matches-any SLB_COMMUNITY and as-path in 65401_64999 then
+        done
+        endif
+      if destination in PFXS_NAT_VIPS then
+        done
+        endif
+      if destination in PFXS_NAT_VIPSv6 then
+        done
+        endif
+      if (destination in PFXS_EXAMPLE_SUPERNETS-ORLONGER or destination in PFXS_EXAMPLE_PRIVATENETS4-ORLONGER) and community matches-any LO_COMMUNITY then
+        done
+        endif
+      if destination in PFXS_EXAMPLE_SUPERNETSv6-ORLONGER and community matches-any LO_COMMUNITY then
+        done
+        endif
+      end-policy
+  patch: |
+    configure exclusive
+    route-policy SLBRR_IMPORT_ROUTES
+      if community matches-any REFLECTED_ROUTE_COMMUNITY then
+        drop
+        endif
+      if as-path length ge 50 then
+        drop
+        endif
+      if (destination in PFXS_EXAMPLE_SUPERNETS-ORLONGER or destination in PFXS_EXAMPLE_PRIVATENETS4-ORLONGER) and community matches-any FW_COMMUNITY then
+        done
+        endif
+      if destination in PFXS_EXAMPLE_SUPERNETSv6-ORLONGER and community matches-any FW_COMMUNITY then
+        done
+        endif
+      if destination in PFXS_SPECIALv6 and community matches-any FW_COMMUNITY then
+        done
+        endif
+      if med eq 0 then
+        drop
+        endif
+      if destination in DEFAULT_ROUTE_0-_31 then
+        drop
+        endif
+      if destination in DEFAULT_ROUTEv6_0-_127 then
+        drop
+        endif
+      if destination in PFXS_EXAMPLE_SUPERNETS-ORLONGER and community matches-any SLB_COMMUNITY and as-path in 65401_64999 then
+        done
+        endif
+      if destination in PFXS_EXAMPLE_SUPERNETSv6-ORLONGER and community matches-any SLB_COMMUNITY and as-path in 65401_64999 then
+        done
+        endif
+      if destination in PFXS_NAT_VIPS then
+        done
+        endif
+      if destination in PFXS_NAT_VIPSv6 then
+        done
+        endif
+      if (destination in PFXS_EXAMPLE_SUPERNETS-ORLONGER or destination in PFXS_EXAMPLE_PRIVATENETS4-ORLONGER) and community matches-any LO_COMMUNITY then
+        done
+        endif
+      if destination in PFXS_EXAMPLE_SUPERNETSv6-ORLONGER and community matches-any LO_COMMUNITY then
+        done
+        endif
+      end-policy
+    commit
+    exit

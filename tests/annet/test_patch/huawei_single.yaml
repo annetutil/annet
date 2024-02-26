@@ -1,0 +1,62 @@
+- vendor: huawei
+  before: |
+    vlan batch 542 999 1999
+
+    interface if1
+      port default vlan 542
+
+    interface if2
+      port link-type trunk
+      port trunk pvid vlan 604
+      undo port trunk allow-pass vlan 1
+      port trunk allow-pass vlan 604 761
+
+    interface if3
+      port link-type trunk
+      port trunk pvid vlan 604
+      undo port trunk allow-pass vlan 1
+      port trunk allow-pass vlan 604 to 605 761
+  after: |
+    vlan batch 542 to 599 635 999
+
+    vlan 542
+      description nalivka
+
+    interface if1
+      port link-type trunk
+      undo port trunk allow-pass vlan 1
+      port trunk allow-pass vlan 635 700 to 799
+
+    interface if2
+      port link-type trunk
+      port trunk pvid vlan 604
+      undo port trunk allow-pass vlan 1
+      port trunk allow-pass vlan 604 to 605 761
+
+    interface if3
+      eth-trunk 0
+  patch: |
+    system-view
+    vlan batch 543 to 599 635
+    vlan 542
+      description nalivka
+      quit
+    interface if1
+      undo port default vlan
+      port link-type trunk
+      port trunk allow-pass vlan 635 700 to 799
+      undo port trunk allow-pass vlan 1
+      quit
+    interface if2
+      port trunk allow-pass vlan 605
+      quit
+    interface if3
+      undo port trunk allow-pass vlan all
+      port trunk allow-pass vlan 1
+      undo port trunk pvid vlan
+      undo port link-type
+      eth-trunk 0
+      quit
+    undo vlan batch 1999
+    q
+    save

@@ -1,0 +1,33 @@
+- vendor: Huawei
+  before: |
+    segment-routing
+     segment-list dc232z2_to_labdc132z1
+      index 2 sid label 173321
+     sr-te policy dc232z2_to_labdc132z1_color_10 endpoint 10.255.0.67 color 10
+      candidate-path preference 100
+       segment-list dc232z2_to_labdc132z1
+  after: |
+    segment-routing
+     segment-list dc232z2_to_labdc132z1_via_m9p2_
+      index 1 sid label 160992
+      index 2 sid label 173321
+     sr-te policy dc232z2_to_labdc132z1_color_10 endpoint 10.255.0.67 color 10
+      candidate-path preference 100
+       segment-list dc232z2_to_labdc132z1_via_m9p2_
+  patch: |
+    system-view
+    segment-routing
+      segment-list dc232z2_to_labdc132z1_via_m9p2_
+        index 1 sid label 160992
+        index 2 sid label 173321
+        quit
+      sr-te policy dc232z2_to_labdc132z1_color_10 endpoint 10.255.0.67 color 10
+        candidate-path preference 100
+          segment-list dc232z2_to_labdc132z1_via_m9p2_
+          undo segment-list dc232z2_to_labdc132z1
+          quit
+        quit
+      undo segment-list dc232z2_to_labdc132z1
+      quit
+    q
+    save

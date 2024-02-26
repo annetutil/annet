@@ -1,0 +1,17 @@
+- vendor: huawei
+  before: |
+    bgp 64496
+     group REMOVED_GROUP external
+     peer 10.1.1.1 as-number 1
+     peer 10.1.1.1 description some description for 10.1.1.1
+  after: |
+    bgp 64496
+      peer 10.1.1.1 as-number 1
+  patch: |
+    system-view
+    bgp 64496
+      undo peer 10.1.1.1 description
+      undo group REMOVED_GROUP
+      quit
+    q
+    save
