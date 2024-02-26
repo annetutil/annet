@@ -693,7 +693,7 @@ def _old_new_get_config_cli(ctx: OldNewDeviceContext, device: Device) -> str:
 def _old_new_get_config_files(ctx: OldNewDeviceContext, device: Device) -> DeviceDownloadedFiles:
     old_files = DeviceDownloadedFiles()
 
-    for attr in ('failed_files', 'failed_running', 'failed_packages'):
+    for attr in ("failed_files", "failed_running", "failed_packages"):
         if device in getattr(ctx, attr):
             exc = getattr(ctx, attr).get(device)
             exc = exc or Exception(f"I can't get device {attr[len('failed_'):]} and I don't know why")
