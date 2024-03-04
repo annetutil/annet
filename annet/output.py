@@ -133,7 +133,9 @@ class OutputDriverBasic(OutputDriver):
         ret = []
         fqdns = {}
         if args:
-            with storage_connector.get().storage()(args) as storage:
+            connector = storage_connector.get()
+            storage_opts = connector.opts().from_cli_opts(args)
+            with connector.storage()(storage_opts) as storage:
                 fqdns = storage.resolve_fdnds_by_query(args.query)
         for (assignment, exc) in fail.items():
             label = assignment

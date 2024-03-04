@@ -425,7 +425,9 @@ def worker(device_id, args: ShowGenOptions, stdin, loader: "Loader", filterer: F
     if span:
         span.set_attribute("device.id", device_id)
 
-    with storage_connector.get().storage()(args) as storage:
+    connector = storage_connector.get()
+    storage_opts = connector.opts().from_cli_opts(args)
+    with connector.storage()(storage_opts) as storage:
         for res in old_new(
             args,
             storage,
@@ -465,7 +467,9 @@ def worker(device_id, args: ShowGenOptions, stdin, loader: "Loader", filterer: F
 
 
 def old_new_worker(device_id, args: DeployOptions, config, stdin, loader: "Loader", filterer: Filterer):
-    with storage_connector.get().storage()(args) as storage:
+    connector = storage_connector.get()
+    storage_opts = connector.opts().from_cli_opts(args)
+    with connector.storage()(storage_opts) as storage:
         yield from old_new(
             args,
             storage,

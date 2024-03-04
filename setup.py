@@ -40,7 +40,7 @@ if __name__ == "__main__":
               "annet_nbexport = annet_nbexport.main:main",
           ],
           "annet.connectors": [
-            "storage = annet_nbexport:AnnetNbExportProvder",
+            "storage = annet.adapters.netbox.provider:NetboxProvider",
           ],
         },
         python_requires=">=3.8",

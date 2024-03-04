@@ -188,7 +188,9 @@ def _print_pre_as_diff(pre, show_rules, indent, file=None, _level=0):
 def log_host_progress_cb(pool: Parallel, task_result: TaskResult):
     progress_logger = get_logger("progress")
     args = cast(cli_args.QueryOptions, pool.args[0])
-    with storage_connector.get().storage()(args) as storage:
+    connector = storage_connector.get()
+    storage_opts = connector.opts().from_cli_opts(args)
+    with connector.storage()(storage_opts) as storage:
         hosts = storage.resolve_fdnds_by_query(args.query)
     perc = int(pool.tasks_done / len(hosts) * 100)
     fqdn = hosts[task_result.device_id]
@@ -210,7 +212,9 @@ def log_host_progress_cb(pool: Parallel, task_result: TaskResult):
 # =====
 def gen(args: cli_args.ShowGenOptions):
     """ Сгенерировать конфиг для устройств """
-    with storage_connector.get().storage()(args) as storage:
+    connector = storage_connector.get()
+    storage_opts = connector.opts().from_cli_opts(args)
+    with connector.storage()(storage_opts) as storage:
         loader = ann_gen.Loader(storage, args)
         stdin = args.stdin(storage=storage, filter_acl=args.filter_acl, config=None)
 
@@ -243,7 +247,9 @@ def _diff_files(old_files, new_files, context=3):
 def patch(args: cli_args.ShowPatchOptions):
     """ Сгенерировать патч для устройств """
     global live_configs  # pylint: disable=global-statement
-    with storage_connector.get().storage()(args) as storage:
+    connector = storage_connector.get()
+    storage_opts = connector.opts().from_cli_opts(args)
+    with connector.storage()(storage_opts) as storage:
         loader = ann_gen.Loader(storage, args)
         if args.config == "running":
             fetcher = annet.deploy.fetcher_connector.get()
@@ -286,7 +292,9 @@ def _patch_worker(device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann
 # =====
 def res_diff_patch(device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann_gen.Loader, filterer: filtering.Filterer) -> Iterable[
     Tuple[OldNewResult, Dict, Dict]]:
-    with storage_connector.get().storage()(args) as storage:
+    connector = storage_connector.get()
+    storage_opts = connector.opts().from_cli_opts(args)
+    with connector.storage()(storage_opts) as storage:
         for res in ann_gen.old_new(
             args,
             storage,
@@ -314,7 +322,9 @@ def res_diff_patch(device_id, args: cli_args.ShowPatchOptions, stdin, loader: an
 
 def diff(args: cli_args.DiffOptions, loader: ann_gen.Loader, filterer: filtering.Filterer) -> Mapping[Device, Union[Diff, PCDiff]]:
     ret = {}
-    with storage_connector.get().storage()(args) as storage:
+    connector = storage_connector.get()
+    storage_opts = connector.opts().from_cli_opts(args)
+    with connector.storage()(storage_opts) as storage:
         for res in ann_gen.old_new(
             args,
             storage,
@@ -625,7 +635,9 @@ def deploy(args: cli_args.DeployOptions) -> ExitCode:
     """ Сгенерировать конфиг для устройств и задеплоить его """
     ret: ExitCode = 0
     deployer = Deployer(args)
-    with storage_connector.get().storage()(args) as storage:
+    connector = storage_connector.get()
+    storage_opts = connector.opts().from_cli_opts(args)
+    with connector.storage()(storage_opts) as storage:
         global live_configs  # pylint: disable=global-statement
         loader = ann_gen.Loader(storage, args)
         filterer = filtering.filterer_connector.get()
