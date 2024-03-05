@@ -1,22 +1,22 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, Any
 
-from annet.annlib.netdev.views.hardware import HardwareView
-from .common_models import Entity, DeviceType, DeviceIp, IpAddress, Label
+from annet.adapters.netbox.common_models import (
+    Entity, Label, DeviceType, DeviceIp,
+)
 
 
 @dataclass
 class Interface(Entity):
     device: Entity
     enabled: bool
-    display: str = ""
-    ip_addresses: List[IpAddress] = field(default_factory=list)
+    display: str = ""  # added in 3.x
 
 
 @dataclass
 class Device(Entity):
-    display: str
+    display: str  # renamed in 3.x from display_name
     device_type: DeviceType
     device_role: Entity
     tenant: Optional[Entity]
@@ -35,17 +35,3 @@ class Device(Entity):
     custom_fields: dict[str, Any]
     created: datetime
     last_updated: datetime
-
-    fqdn: str
-    hostname: str
-    hw: Optional[HardwareView]
-    breed: str
-
-    interfaces: List[Interface]
-
-    # compat
-    def __hash__(self):
-        return hash(self.id)
-
-    def is_pc(self):
-        return self.device_type.manufacturer.name == "Mellanox"

@@ -1,6 +1,6 @@
 from annet.storage import StorageProvider
 from .query import NetboxQuery
-from .storage import NetboxStorage, NetboxStorageOpts
+from .v37.storage import NetboxStorage, NetboxStorageOpts
 
 
 class NetboxProvider(StorageProvider):

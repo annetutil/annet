@@ -9,7 +9,8 @@ from dataclass_rest import get
 from dataclass_rest.client_protocol import FactoryProtocol
 from dataclass_rest.http.requests import RequestsClient
 
-from .models import Device, Interface, IpAddress
+from annet.adapters.netbox.common_models import IpAddress
+from .models import Device, Interface
 
 Model = TypeVar("Model")
 
