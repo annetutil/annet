@@ -8,6 +8,7 @@ from adaptix import Retort, loader, Chain
 from dataclass_rest import get
 from dataclass_rest.client_protocol import FactoryProtocol
 from dataclass_rest.http.requests import RequestsClient
+from requests import Session
 
 from annet.adapters.netbox.common_models import IpAddress
 from .models import Device, Interface
@@ -55,6 +56,13 @@ def fix_display(data):
 
 
 class Netbox(RequestsClient):
+    def __init__(self, url: str, token: str):
+        url = url.rstrip("/") + "/api/"
+        session = Session()
+        if token:
+            session.headers["Authorization"] = f"Token {token}"
+        super().__init__(url, session)
+
     def _init_response_body_factory(self) -> FactoryProtocol:
         return Retort(recipe=[
             loader(Device, fix_display, Chain.FIRST),

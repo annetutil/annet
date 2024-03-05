@@ -13,6 +13,15 @@ Usage help can be obtained by calling ```annet -h``` or for a specific command, 
 
 ## Overview
 
+## Configuration
+
+Provide `NETBOX_URL` and `NETBOX_TOKEN` environment variable to setup data source.
+
+```shell
+export NETBOX_URL="https://demo.netbox.dev"
+export NETBOX_TOKEN="1234567890abcdef01234567890abcdef0123456"
+```
+
 ### annet gen
 
 The annet_generators directory contains many files called generators.
