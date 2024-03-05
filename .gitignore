@@ -1,1 +1,6 @@
-annet.egg-info
+/annet.egg-info
+__pycache__
+/.coverage
+/.idea/
+/.tox-logs/
+/coverage.xml

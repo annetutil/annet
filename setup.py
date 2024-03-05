@@ -37,7 +37,6 @@ if __name__ == "__main__":
         entry_points={
           "console_scripts": [
               "annet = annet.annet:main",
-              "annet_nbexport = annet_nbexport.main:main",
           ],
           "annet.connectors": [
             "storage = annet.adapters.netbox.provider:NetboxProvider",
