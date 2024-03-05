@@ -1,5 +1,5 @@
-import operator
 import os
+from logging import getLogger
 from typing import Optional, List
 
 import urllib3
@@ -11,10 +11,13 @@ from annet.adapters.netbox.models import (
     Device as DeviceExt,
     Interface as InterfaceExt,
 )
+from annet.adapters.netbox.query import NetboxQuery
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.storage import Storage
 from .client import Netbox
 from .models import Device, Interface
+
+logger = getLogger(__name__)
 
 
 class NetboxStorageOpts:
@@ -73,7 +76,6 @@ class NetboxStorage(Storage):
             preload_extra_fields=False,
             **kwargs,
     ) -> list[DeviceExt]:
-        # TODO pass query to netbox
         device_ids = {
             device.id: extend_device(
                 device=device,
@@ -83,8 +85,10 @@ class NetboxStorage(Storage):
                 hw=get_hw(device),
                 fqdn=device.name,
             )
-            for device in self.netbox.all_devices().results
-            if _match_query(query, device)
+            for device in self.netbox.all_devices(
+                name__ic=query.globs,
+            ).results
+            if is_supported(device) and _match_query(query, device)
         }
         if device_ids:
             interfaces = self._load_interfaces(list(device_ids))
@@ -122,24 +126,9 @@ class NetboxStorage(Storage):
         pass
 
 
-def _match_query(query, device_data) -> bool:
+def _match_query(query: NetboxQuery, device_data: Device) -> bool:
     for subquery in query.globs:
-        matches = []
-        for field_filter in subquery.split("@"):
-            if "=" in field_filter:
-                field, value = field_filter.split("=")
-                field = field.strip()
-                value = value.strip()
-                op = operator.eq
-            else:
-                field = "name"
-                value = field_filter.strip()
-                op = operator.contains
-            if op(getattr(device_data, field, None), value):
-                matches.append(True)
-            else:
-                matches.append(False)
-        if all(matches):
+        if subquery.strip() in device_data.name:
             return True
     return False
 
@@ -176,6 +165,16 @@ def get_breed(device: Device):
     elif manufacturer == "Arista":
         return "eos4"
     raise ValueError(f"unsupported manufacturer {manufacturer}")
+
+
+def is_supported(device: Device) -> bool:
+    manufacturer = device.device_type.manufacturer.name
+    if manufacturer not in (
+        "Huawei", "Mellanox", "Juniper", "Cisco", "Adva", "Arista",
+    ):
+        logger.warning("Unsupported manufacturer `%s`", manufacturer)
+        return False
+    return True
 
 
 def _vendor_to_hw(vendor):

@@ -39,7 +39,6 @@ def collect(func: Func) -> Func:
             kwargs["offset"] += limit
             results.extend(page.results)
             has_next = bool(page.next)
-            print(func.name, kwargs["offset"])
         return PagingResponse(
             None, None,
             count=len(results),
@@ -88,6 +87,7 @@ class Netbox(RequestsClient):
     def devices(
             self,
             name: Optional[List[str]] = None,
+            name__ic: Optional[List[str]] = None,
             tag: Optional[List[str]] = None,
             limit: int = 20,
             offset: int = 0,
