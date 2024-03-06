@@ -5,6 +5,9 @@ from adaptix import P
 from adaptix.conversion import impl_converter, link
 
 from annet.adapters.netbox import models
+from annet.adapters.netbox.common.manufacturer import (
+    is_supported, get_hw, get_breed,
+)
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
 from annet.adapters.netbox.common_models import IpAddress
 from annet.adapters.netbox.query import NetboxQuery
@@ -67,13 +70,20 @@ class NetboxStorageV37(Storage):
             device.id: extend_device(
                 device=device,
                 interfaces=[],
-                breed=get_breed(device),
-                hw=get_hw(device),
+                breed=get_breed(
+                    device.device_type.manufacturer.name,
+                    device.device_type.model,
+                ),
+                hw=get_hw(
+                    device.device_type.manufacturer.name,
+                    device.device_type.model,
+                ),
             )
             for device in self.netbox.all_devices(
                 name__ic=query.globs,
             ).results
-            if is_supported(device) and _match_query(query, device)
+            if is_supported(device.device_type.manufacturer.name)
+            if _match_query(query, device)
         }
         if device_ids:
             interfaces = self._load_interfaces(list(device_ids))
@@ -102,8 +112,14 @@ class NetboxStorageV37(Storage):
         return extend_device(
             device=device,
             interfaces=self._load_interfaces([device.id]),
-            breed=get_breed(device),
-            hw=get_hw(device),
+            breed=get_breed(
+                device.device_type.manufacturer.name,
+                device.device_type.model,
+            ),
+            hw=get_hw(
+                device.device_type.manufacturer.name,
+                device.device_type.model,
+            ),
         )
 
     def flush_perf(self):
@@ -115,67 +131,3 @@ def _match_query(query: NetboxQuery, device_data: api_models.Device) -> bool:
         if subquery.strip() in device_data.name:
             return True
     return False
-
-
-def get_hw(device: api_models.Device):
-    manufacturer = device.device_type.manufacturer.name
-    model_name = device.device_type.model
-    # by some reason Netbox calls Mellanox SN as MSN, so we fix them here
-    if manufacturer == "Mellanox" and model_name.startswith("MSN"):
-        model_name = model_name.replace("MSN", "SN", 1)
-    hw = _vendor_to_hw(manufacturer + " " + model_name)
-    if not hw:
-        raise ValueError(f"unsupported manufacturer {manufacturer}")
-    return hw
-
-
-def get_breed(device: api_models.Device):
-    manufacturer = device.device_type.manufacturer.name
-    model_name = device.device_type.model
-    if manufacturer == "Huawei" and model_name.startswith("CE"):
-        return "vrp85"
-    elif manufacturer == "Huawei" and model_name.startswith("NE"):
-        return "vrp85"
-    elif manufacturer == "Huawei":
-        return "vrp55"
-    elif manufacturer == "Mellanox":
-        return "cuml2"
-    elif manufacturer == "Juniper":
-        return "jun10"
-    elif manufacturer == "Cisco":
-        return "ios12"
-    elif manufacturer == "Adva":
-        return "adva8"
-    elif manufacturer == "Arista":
-        return "eos4"
-    raise ValueError(f"unsupported manufacturer {manufacturer}")
-
-
-def is_supported(device: api_models.Device) -> bool:
-    manufacturer = device.device_type.manufacturer.name
-    if manufacturer not in (
-            "Huawei", "Mellanox", "Juniper", "Cisco", "Adva", "Arista",
-    ):
-        logger.warning("Unsupported manufacturer `%s`", manufacturer)
-        return False
-    return True
-
-
-def _vendor_to_hw(vendor):
-    hw = HardwareView(
-        {
-            "cisco": "Cisco",
-            "catalyst": "Cisco Catalyst",
-            "nexus": "Cisco Nexus",
-            "huawei": "Huawei",
-            "juniper": "Juniper",
-            "arista": "Arista",
-            "pc": "PC",
-            "nokia": "Nokia",
-            "aruba": "Aruba",
-            "routeros": "RouterOS",
-            "ribbon": "Ribbon",
-        }.get(vendor.lower(), vendor),
-        None,
-    )
-    return hw
