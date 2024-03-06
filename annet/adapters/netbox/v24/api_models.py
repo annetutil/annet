@@ -2,8 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, Any
 
-from annet.adapters.netbox.common_models import (
-    Entity, DeviceType, )
+from annet.adapters.netbox.common_models import Entity, DeviceType
 
 
 @dataclass
@@ -21,7 +20,7 @@ class DeviceIp:
 
 @dataclass
 class Device(Entity):
-    display_name: str  # renamed in 3.x to display
+    display_name: str
     device_type: DeviceType
     device_role: Entity
     tenant: Optional[Entity]

@@ -1,4 +1,3 @@
-import os
 from logging import getLogger
 from typing import Optional, List
 
@@ -6,23 +5,11 @@ from annet.adapters.netbox import models, common_models
 from annet.adapters.netbox.query import NetboxQuery
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.storage import Storage
-from . import models as api_models
-from .client import Netbox
+from . import api_models
+from .client import NetboxV24
+from ..common.storage_opts import NetboxStorageOpts
 
 logger = getLogger(__name__)
-
-
-class NetboxStorageOpts:
-    def __init__(self, url: str, token: str):
-        self.url = url
-        self.token = token
-
-    @classmethod
-    def from_cli_opts(cls, cli_opts):
-        return cls(
-            url=os.getenv("NETBOX_URL", "http://localhost"),
-            token=os.getenv("NETBOX_TOKEN", "").strip(),
-        )
 
 
 def extend_device_ip(
@@ -109,9 +96,9 @@ def extend_ip(ip: api_models.IpAddress) -> models.IpAddress:
     )
 
 
-class NetboxStorage(Storage):
+class NetboxStorageV24(Storage):
     def __init__(self, opts: Optional[NetboxStorageOpts] = None):
-        self.netbox = Netbox(
+        self.netbox = NetboxV24(
             url=opts.url,
             token=opts.token,
         )

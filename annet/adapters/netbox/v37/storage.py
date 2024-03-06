@@ -1,60 +1,44 @@
-import os
 from logging import getLogger
 from typing import Optional, List
 
 from adaptix import P
 from adaptix.conversion import impl_converter, link
 
+from annet.adapters.netbox import models
+from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
 from annet.adapters.netbox.common_models import IpAddress
-from annet.adapters.netbox.models import (
-    Device as DeviceExt,
-    Interface as InterfaceExt,
-)
 from annet.adapters.netbox.query import NetboxQuery
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.storage import Storage
-from .client import Netbox
-from .models import Device, Interface
+from . import api_models
+from .client import NetboxV37
 
 logger = getLogger(__name__)
 
 
-class NetboxStorageOpts:
-    def __init__(self, url: str, token: str):
-        self.url = url
-        self.token = token
-
-    @classmethod
-    def from_cli_opts(cls, cli_opts):
-        return cls(
-            url=os.getenv("NETBOX_URL", "http://localhost"),
-            token=os.getenv("NETBOX_TOKEN", "").strip(),
-        )
-
-
 @impl_converter(recipe=[
-    link(P[Device].name, P[DeviceExt].hostname),
-    link(P[Device].name, P[DeviceExt].fqdn),
+    link(P[api_models.Device].name, P[models.Device].hostname),
+    link(P[api_models.Device].name, P[models.Device].fqdn),
 ])
 def extend_device(
-        device: Device,
-        interfaces: List[InterfaceExt],
+        device: api_models.Device,
+        interfaces: List[models.Interface],
         hw: Optional[HardwareView],
         breed: str,
-) -> DeviceExt:
+) -> models.Device:
     ...
 
 
 @impl_converter
 def extend_interface(
-        interface: Interface, ip_addresses: List[IpAddress],
-) -> InterfaceExt:
+        interface: api_models.Interface, ip_addresses: List[IpAddress],
+) -> models.Interface:
     ...
 
 
-class NetboxStorage(Storage):
+class NetboxStorageV37(Storage):
     def __init__(self, opts: Optional[NetboxStorageOpts] = None):
-        self.netbox = Netbox(
+        self.netbox = NetboxV37(
             url=opts.url,
             token=opts.token,
         )
@@ -78,7 +62,7 @@ class NetboxStorage(Storage):
             use_mesh=None,
             preload_extra_fields=False,
             **kwargs,
-    ) -> list[DeviceExt]:
+    ) -> List[models.Device]:
         device_ids = {
             device.id: extend_device(
                 device=device,
@@ -97,7 +81,8 @@ class NetboxStorage(Storage):
                 device_ids[interface.device.id].interfaces.append(interface)
         return list(device_ids.values())
 
-    def _load_interfaces(self, device_ids: List[int]) -> List[InterfaceExt]:
+    def _load_interfaces(self, device_ids: List[int]) -> List[
+        models.Interface]:
         interfaces = self.netbox.all_interfaces(device_id=device_ids)
         extended_ifaces = {
             interface.id: extend_interface(interface, [])
@@ -112,7 +97,7 @@ class NetboxStorage(Storage):
     def get_device(
             self, obj_id, preload_neighbors=False, use_mesh=None,
             **kwargs,
-    ) -> DeviceExt:
+    ) -> models.Device:
         device = self.netbox.get_device(obj_id)
         return extend_device(
             device=device,
@@ -125,14 +110,14 @@ class NetboxStorage(Storage):
         pass
 
 
-def _match_query(query: NetboxQuery, device_data: Device) -> bool:
+def _match_query(query: NetboxQuery, device_data: api_models.Device) -> bool:
     for subquery in query.globs:
         if subquery.strip() in device_data.name:
             return True
     return False
 
 
-def get_hw(device: Device):
+def get_hw(device: api_models.Device):
     manufacturer = device.device_type.manufacturer.name
     model_name = device.device_type.model
     # by some reason Netbox calls Mellanox SN as MSN, so we fix them here
@@ -144,7 +129,7 @@ def get_hw(device: Device):
     return hw
 
 
-def get_breed(device: Device):
+def get_breed(device: api_models.Device):
     manufacturer = device.device_type.manufacturer.name
     model_name = device.device_type.model
     if manufacturer == "Huawei" and model_name.startswith("CE"):
@@ -166,10 +151,10 @@ def get_breed(device: Device):
     raise ValueError(f"unsupported manufacturer {manufacturer}")
 
 
-def is_supported(device: Device) -> bool:
+def is_supported(device: api_models.Device) -> bool:
     manufacturer = device.device_type.manufacturer.name
     if manufacturer not in (
-        "Huawei", "Mellanox", "Juniper", "Cisco", "Adva", "Arista",
+            "Huawei", "Mellanox", "Juniper", "Cisco", "Adva", "Arista",
     ):
         logger.warning("Unsupported manufacturer `%s`", manufacturer)
         return False

@@ -1,10 +1,11 @@
 from dataclass_rest.exceptions import ClientError
 
 from annet.storage import StorageProvider, Storage
+from .common.status_client import NetboxStatusClient
+from .common.storage_opts import NetboxStorageOpts
 from .query import NetboxQuery
-from .status_client import NetboxStatusClient
-from .v24.storage import NetboxStorage, NetboxStorageOpts
-from .v37.storage import NetboxStorage as NetboxStorageV27
+from .v24.storage import NetboxStorageV24
+from .v37.storage import NetboxStorageV37
 
 
 def storage_factory(opts: NetboxStorageOpts) -> Storage:
@@ -14,10 +15,10 @@ def storage_factory(opts: NetboxStorageOpts) -> Storage:
     except ClientError as e:
         if e.status_code == 404:
             # old version do not support status reqeust
-            return NetboxStorage(opts)
+            return NetboxStorageV24(opts)
         raise
     if status.netbox_version.startswith("3."):
-        return NetboxStorageV27(opts)
+        return NetboxStorageV37(opts)
     else:
         raise ValueError(f"Unsupported version: {status.netbox_version}")
 

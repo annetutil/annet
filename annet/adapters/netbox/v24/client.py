@@ -1,71 +1,19 @@
-from dataclasses import dataclass
 from datetime import datetime
-from functools import wraps
-from typing import Generic, TypeVar, List, Optional, Callable
+from typing import List, Optional
 
 import dateutil.parser
-from adaptix import Retort, loader, Chain
+from adaptix import Retort, loader
 from dataclass_rest import get
-from dataclass_rest.client_protocol import FactoryProtocol
-from dataclass_rest.http.requests import RequestsClient
-from requests import Session
 
-from .models import Device, Interface, IpAddress
-
-Model = TypeVar("Model")
+from annet.adapters.netbox.common.client import (
+    BaseNetboxClient, collect, PagingResponse,
+)
+from .api_models import Device, Interface, IpAddress
 
 
-@dataclass
-class PagingResponse(Generic[Model]):
-    next: Optional[str]
-    previous: Optional[str]
-    count: int
-    results: List[Model]
-
-
-Func = TypeVar("Func", bound=Callable)
-
-
-def collect(func: Func) -> Func:
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        kwargs.setdefault("offset", 0)
-        limit = kwargs.setdefault("limit", 100)
-        results = []
-        method = func.__get__(self, self.__class__)
-        has_next = True
-        while has_next:
-            page = method(*args, **kwargs)
-            kwargs["offset"] += limit
-            results.extend(page.results)
-            has_next = bool(page.next)
-        return PagingResponse(
-            None, None,
-            count=len(results),
-            results=results,
-        )
-
-    return wrapper
-
-
-def fix_display(data):
-    if "display_name" in data and "display" not in data:
-        data["display"] = data["display_name"]
-    return data
-
-
-class Netbox(RequestsClient):
-    def __init__(self, url: str, token: str):
-        url = url.rstrip("/") + "/api/"
-        session = Session()
-        session.verify = False
-        if token:
-            session.headers["Authorization"] = f"Token {token}"
-        super().__init__(url, session)
-
-    def _init_response_body_factory(self) -> FactoryProtocol:
+class NetboxV24(BaseNetboxClient):
+    def _init_response_body_factory(self) -> Retort:
         return Retort(recipe=[
-            loader(Device, fix_display, Chain.FIRST),
             loader(datetime, dateutil.parser.parse)
         ])
 
