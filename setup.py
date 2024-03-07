@@ -26,8 +26,6 @@ if __name__ == "__main__":
             "annet.*",
             "annet_generators",
             "annet_generators.*",
-            "annet_nbexport",
-            "annet_nbexport.*"
         ]),
         package_data={
             "annet": ["configs/*"],
