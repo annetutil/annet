@@ -4,12 +4,11 @@ from typing import Optional, List
 from adaptix import P
 from adaptix.conversion import impl_converter, link
 
-from annet.adapters.netbox import models
+from annet.adapters.netbox.common import models
 from annet.adapters.netbox.common.manufacturer import (
     is_supported, get_hw, get_breed,
 )
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
-from annet.adapters.netbox.common_models import IpAddress
 from annet.adapters.netbox.query import NetboxQuery
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.storage import Storage
@@ -20,21 +19,21 @@ logger = getLogger(__name__)
 
 
 @impl_converter(recipe=[
-    link(P[api_models.Device].name, P[models.Device].hostname),
-    link(P[api_models.Device].name, P[models.Device].fqdn),
+    link(P[api_models.Device].name, P[models.NetboxDevice].hostname),
+    link(P[api_models.Device].name, P[models.NetboxDevice].fqdn),
 ])
 def extend_device(
         device: api_models.Device,
         interfaces: List[models.Interface],
         hw: Optional[HardwareView],
         breed: str,
-) -> models.Device:
+) -> models.NetboxDevice:
     ...
 
 
 @impl_converter
 def extend_interface(
-        interface: api_models.Interface, ip_addresses: List[IpAddress],
+        interface: api_models.Interface, ip_addresses: List[models.IpAddress],
 ) -> models.Interface:
     ...
 
@@ -65,7 +64,7 @@ class NetboxStorageV37(Storage):
             use_mesh=None,
             preload_extra_fields=False,
             **kwargs,
-    ) -> List[models.Device]:
+    ) -> List[models.NetboxDevice]:
         device_ids = {
             device.id: extend_device(
                 device=device,
@@ -107,7 +106,7 @@ class NetboxStorageV37(Storage):
     def get_device(
             self, obj_id, preload_neighbors=False, use_mesh=None,
             **kwargs,
-    ) -> models.Device:
+    ) -> models.NetboxDevice:
         device = self.netbox.get_device(obj_id)
         return extend_device(
             device=device,

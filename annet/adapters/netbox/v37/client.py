@@ -9,7 +9,7 @@ from dataclass_rest.client_protocol import FactoryProtocol
 from annet.adapters.netbox.common.client import (
     BaseNetboxClient, collect, PagingResponse,
 )
-from annet.adapters.netbox.common_models import IpAddress
+from annet.adapters.netbox.common.models import IpAddress
 from .api_models import Device, Interface
 
 

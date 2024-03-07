@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, Any
 
-from annet.adapters.netbox.common_models import Entity, DeviceType
+from annet.adapters.netbox.common.models import Entity, DeviceType
 
 
 @dataclass

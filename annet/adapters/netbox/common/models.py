@@ -3,7 +3,52 @@ from datetime import datetime
 from typing import List, Optional, Any
 
 from annet.annlib.netdev.views.hardware import HardwareView
-from .common_models import Entity, DeviceType, DeviceIp, IpAddress, Label
+
+
+@dataclass
+class Entity:
+    id: int
+    name: str
+
+
+@dataclass
+class Label:
+    value: str
+    label: str
+
+
+@dataclass
+class IpFamily:
+    value: int
+    label: str
+
+
+@dataclass
+class DeviceType:
+    id: int
+    manufacturer: Entity
+    model: str
+
+
+@dataclass
+class DeviceIp:
+    id: int
+    display: str
+    address: str
+    family: int
+
+
+@dataclass
+class IpAddress:
+    id: int
+    assigned_object_id: int
+    display: str
+    family: IpFamily
+    address: str
+    status: Label
+    tags: List[Entity]
+    created: datetime
+    last_updated: datetime
 
 
 @dataclass
@@ -15,7 +60,7 @@ class Interface(Entity):
 
 
 @dataclass
-class Device(Entity):
+class NetboxDevice(Entity):
     display: str
     device_type: DeviceType
     device_role: Entity

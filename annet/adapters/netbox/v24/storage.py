@@ -1,7 +1,7 @@
 from logging import getLogger
 from typing import Optional, List
 
-from annet.adapters.netbox import models, common_models
+from annet.adapters.netbox.common import models
 from annet.adapters.netbox.common.manufacturer import (
     is_supported, get_hw, get_breed,
 )
@@ -38,11 +38,11 @@ def extend_label(
     )
 
 
-def extend_device(device: api_models.Device) -> models.Device:
+def extend_device(device: api_models.Device) -> models.NetboxDevice:
     manufacturer = device.device_type.manufacturer.name
     model = device.device_type.model
 
-    return models.Device(
+    return models.NetboxDevice(
         id=device.id,
         name=device.name,
         display=device.display_name,
@@ -89,7 +89,7 @@ def extend_ip(ip: api_models.IpAddress) -> models.IpAddress:
         id=ip.id,
         assigned_object_id=ip.interface.id,
         display=ip.address,
-        family=common_models.IpFamily(
+        family=models.IpFamily(
             value=ip.family,
             label=str(ip.family),
         ),
@@ -127,7 +127,7 @@ class NetboxStorageV24(Storage):
             use_mesh=None,
             preload_extra_fields=False,
             **kwargs,
-    ) -> list[models.Device]:
+    ) -> list[models.NetboxDevice]:
         device_ids = {
             device.id: extend_device(device)
             for device in self.netbox.all_devices(
@@ -160,7 +160,7 @@ class NetboxStorageV24(Storage):
     def get_device(
             self, obj_id, preload_neighbors=False, use_mesh=None,
             **kwargs,
-    ) -> models.Device:
+    ) -> models.NetboxDevice:
         device = self.netbox.get_device(obj_id)
         res = extend_device(device=device)
         res.interfaces = self._load_interfaces([device.id])
