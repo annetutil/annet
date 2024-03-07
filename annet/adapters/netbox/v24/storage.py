@@ -5,8 +5,8 @@ from annet.adapters.netbox.common import models
 from annet.adapters.netbox.common.manufacturer import (
     is_supported, get_hw, get_breed,
 )
+from annet.adapters.netbox.common.query import NetboxQuery
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
-from annet.adapters.netbox.query import NetboxQuery
 from annet.storage import Storage
 from . import api_models
 from .client import NetboxV24
@@ -130,17 +130,25 @@ class NetboxStorageV24(Storage):
     ) -> list[models.NetboxDevice]:
         device_ids = {
             device.id: extend_device(device)
+            for device in self._load_devices(query)
+        }
+        if not device_ids:
+            return []
+
+        interfaces = self._load_interfaces(list(device_ids))
+        for interface in interfaces:
+            device_ids[interface.device.id].interfaces.append(interface)
+        return list(device_ids.values())
+
+    def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
+        return [
+            device
             for device in self.netbox.all_devices(
                 name__ic=query.globs,
             ).results
             if is_supported(device.device_type.manufacturer.name)
             if _match_query(query, device)
-        }
-        if device_ids:
-            interfaces = self._load_interfaces(list(device_ids))
-            for interface in interfaces:
-                device_ids[interface.device.id].interfaces.append(interface)
-        return list(device_ids.values())
+        ]
 
     def _load_interfaces(self, device_ids: List[int]) -> List[
         models.Interface]:

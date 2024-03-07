@@ -3,7 +3,7 @@ from dataclass_rest.exceptions import ClientError
 from annet.storage import StorageProvider, Storage
 from .common.status_client import NetboxStatusClient
 from .common.storage_opts import NetboxStorageOpts
-from .query import NetboxQuery
+from .common.query import NetboxQuery
 from .v24.storage import NetboxStorageV24
 from .v37.storage import NetboxStorageV37
 
