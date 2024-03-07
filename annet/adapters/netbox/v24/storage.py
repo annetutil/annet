@@ -114,15 +114,19 @@ class NetboxStorageV24(Storage):
     def __exit__(self, _, __, ___):
         pass
 
-    def resolve_object_ids_by_query(self, query):
-        return []
+    def resolve_object_ids_by_query(self, query: NetboxQuery):
+        return [
+            d.id for d in self._load_devices(query)
+        ]
 
-    def resolve_fdnds_by_query(self, query):
-        return []
+    def resolve_fdnds_by_query(self, query: NetboxQuery):
+        return [
+            d.name for d in self._load_devices(query)
+        ]
 
     def make_devices(
             self,
-            query,
+            query: NetboxQuery,
             preload_neighbors=False,
             use_mesh=None,
             preload_extra_fields=False,
