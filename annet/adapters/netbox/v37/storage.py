@@ -98,8 +98,8 @@ class NetboxStorageV37(Storage):
             for device in self.netbox.all_devices(
                 name__ic=query.globs,
             ).results
-            if is_supported(device.device_type.manufacturer.name)
             if _match_query(query, device)
+            if is_supported(device.device_type.manufacturer.name)
         ]
 
     def _load_interfaces(self, device_ids: List[int]) -> List[

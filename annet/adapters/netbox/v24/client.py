@@ -43,8 +43,7 @@ class NetboxV24(BaseNetboxClient):
     def devices(
             self,
             name: Optional[List[str]] = None,
-            name__ic: Optional[List[str]] = None,
-            tag: Optional[List[str]] = None,
+            tag: Optional[str] = None,
             limit: int = 20,
             offset: int = 0,
     ) -> PagingResponse[Device]:
