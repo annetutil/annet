@@ -216,7 +216,7 @@ def gen(args: cli_args.ShowGenOptions):
     storage_opts = connector.opts().from_cli_opts(args)
     with connector.storage()(storage_opts) as storage:
         loader = ann_gen.Loader(storage, args)
-        stdin = args.stdin(storage=storage, filter_acl=args.filter_acl, config=None)
+        stdin = args.stdin(filter_acl=args.filter_acl, config=None)
 
     filterer = filtering.filterer_connector.get()
     pool = Parallel(ann_gen.worker, args, stdin, loader, filterer).tune_args(args)
@@ -254,7 +254,7 @@ def patch(args: cli_args.ShowPatchOptions):
         if args.config == "running":
             fetcher = annet.deploy.fetcher_connector.get()
             live_configs = fetcher.fetch(loader.devices, processes=args.parallel)
-        stdin = args.stdin(storage=storage, filter_acl=args.filter_acl, config=args.config)
+        stdin = args.stdin(filter_acl=args.filter_acl, config=args.config)
 
     filterer = filtering.filterer_connector.get()
     pool = Parallel(_patch_worker, args, stdin, loader, filterer).tune_args(args)
@@ -290,72 +290,65 @@ def _patch_worker(device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann
 
 
 # =====
-def res_diff_patch(device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann_gen.Loader, filterer: filtering.Filterer) -> Iterable[
-    Tuple[OldNewResult, Dict, Dict]]:
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        for res in ann_gen.old_new(
-            args,
-            storage,
-            config=args.config,
-            loader=loader,
-            filterer=filterer,
-            stdin=stdin,
-            device_ids=[device_id],
-            no_new=args.clear,
-            do_files_download=True,
-        ):
-            old = res.get_old(args.acl_safe)
-            new = res.get_new(args.acl_safe)
-            new_json_fragment_files = res.get_new_file_fragments(args.acl_safe)
+def res_diff_patch(
+        device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann_gen.Loader, filterer: filtering.Filterer,
+) -> Iterable[Tuple[OldNewResult, Dict, Dict]]:
+    for res in ann_gen.old_new(
+        args,
+        config=args.config,
+        loader=loader,
+        filterer=filterer,
+        stdin=stdin,
+        device_ids=[device_id],
+        no_new=args.clear,
+        do_files_download=True,
+    ):
+        old = res.get_old(args.acl_safe)
+        new = res.get_new(args.acl_safe)
+        new_json_fragment_files = res.get_new_file_fragments(args.acl_safe)
 
-            device = res.device
-            acl_rules = res.get_acl_rules(args.acl_safe)
-            if res.old_json_fragment_files or new_json_fragment_files:
-                yield res, None, None
-            elif old is not None:
-                (diff_tree, patch_tree) = _diff_and_patch(device, old, new, acl_rules, res.filter_acl_rules,
-                                                          args.add_comments)
-                yield res, diff_tree, patch_tree
+        device = res.device
+        acl_rules = res.get_acl_rules(args.acl_safe)
+        if res.old_json_fragment_files or new_json_fragment_files:
+            yield res, None, None
+        elif old is not None:
+            (diff_tree, patch_tree) = _diff_and_patch(device, old, new, acl_rules, res.filter_acl_rules,
+                                                      args.add_comments)
+            yield res, diff_tree, patch_tree
 
 
 def diff(args: cli_args.DiffOptions, loader: ann_gen.Loader, filterer: filtering.Filterer) -> Mapping[Device, Union[Diff, PCDiff]]:
     ret = {}
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        for res in ann_gen.old_new(
-            args,
-            storage,
-            config=args.config,
-            loader=loader,
-            no_new=args.clear,
-            do_files_download=True,
-            device_ids=loader.device_ids,
-            filterer=filterer,
-        ):
-            old = res.get_old(args.acl_safe)
-            new = res.get_new(args.acl_safe)
-            device = res.device
-            acl_rules = res.get_acl_rules(args.acl_safe)
-            new_files = res.get_new_files(args.acl_safe)
-            new_json_fragment_files = res.get_new_file_fragments()
-            if res.old_files or new_files:
-                ret[device] = PCDiff(
-                    hostname=device.hostname,
-                    diff_files=list(_pc_diff(device.hostname, res.old_files, new_files)),
-                )
-            elif res.old_json_fragment_files or new_json_fragment_files:
-                ret[device] = PCDiff(
-                    hostname=device.hostname,
-                    diff_files=list(_json_fragment_diff(device.hostname, res.old_json_fragment_files, new_json_fragment_files)),
-                )
-            elif old is not None:
-                rb = rulebook.get_rulebook(device.hw)
-                diff_tree = patching.make_diff(old, new, rb, [acl_rules, res.filter_acl_rules])
-                diff_tree = patching.strip_unchanged(diff_tree)
-                ret[device] = diff_tree
+    for res in ann_gen.old_new(
+        args,
+        config=args.config,
+        loader=loader,
+        no_new=args.clear,
+        do_files_download=True,
+        device_ids=loader.device_ids,
+        filterer=filterer,
+    ):
+        old = res.get_old(args.acl_safe)
+        new = res.get_new(args.acl_safe)
+        device = res.device
+        acl_rules = res.get_acl_rules(args.acl_safe)
+        new_files = res.get_new_files(args.acl_safe)
+        new_json_fragment_files = res.get_new_file_fragments()
+        if res.old_files or new_files:
+            ret[device] = PCDiff(
+                hostname=device.hostname,
+                diff_files=list(_pc_diff(device.hostname, res.old_files, new_files)),
+            )
+        elif res.old_json_fragment_files or new_json_fragment_files:
+            ret[device] = PCDiff(
+                hostname=device.hostname,
+                diff_files=list(_json_fragment_diff(device.hostname, res.old_json_fragment_files, new_json_fragment_files)),
+            )
+        elif old is not None:
+            rb = rulebook.get_rulebook(device.hw)
+            diff_tree = patching.make_diff(old, new, rb, [acl_rules, res.filter_acl_rules])
+            diff_tree = patching.strip_unchanged(diff_tree)
+            ret[device] = diff_tree
     return ret
 
 
