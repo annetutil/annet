@@ -218,12 +218,12 @@ def gen(args: cli_args.ShowGenOptions):
         loader = ann_gen.Loader(storage, args)
         stdin = args.stdin(filter_acl=args.filter_acl, config=None)
 
-    filterer = filtering.filterer_connector.get()
-    pool = Parallel(ann_gen.worker, args, stdin, loader, filterer).tune_args(args)
-    if args.show_hosts_progress:
-        pool.add_callback(log_host_progress_cb)
+        filterer = filtering.filterer_connector.get()
+        pool = Parallel(ann_gen.worker, args, stdin, loader, filterer).tune_args(args)
+        if args.show_hosts_progress:
+            pool.add_callback(log_host_progress_cb)
 
-    return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
+        return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
 
 
 # =====
@@ -256,11 +256,11 @@ def patch(args: cli_args.ShowPatchOptions):
             live_configs = fetcher.fetch(loader.devices, processes=args.parallel)
         stdin = args.stdin(filter_acl=args.filter_acl, config=args.config)
 
-    filterer = filtering.filterer_connector.get()
-    pool = Parallel(_patch_worker, args, stdin, loader, filterer).tune_args(args)
-    if args.show_hosts_progress:
-        pool.add_callback(log_host_progress_cb)
-    return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
+        filterer = filtering.filterer_connector.get()
+        pool = Parallel(_patch_worker, args, stdin, loader, filterer).tune_args(args)
+        if args.show_hosts_progress:
+            pool.add_callback(log_host_progress_cb)
+        return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
 
 
 def _patch_worker(device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann_gen.Loader, filterer: filtering.Filterer):
@@ -637,9 +637,9 @@ def deploy(args: cli_args.DeployOptions) -> ExitCode:
         fetcher = annet.deploy.fetcher_connector.get()
         deploy_driver = annet.deploy.driver_connector.get()
         live_configs = fetcher.fetch(devices=loader.devices, processes=args.parallel)
-        pool = ann_gen.OldNewParallel(storage, args, loader, filterer)
+        pool = ann_gen.OldNewParallel(args, loader, filterer)
 
-        for res in pool.generated_configs(loader.device_ids):
+        for res in pool.generated_configs(loader.devices):
             # Меняем exit code если хоть один device ловил exception
             if res.err is not None:
                 ret |= 2 ** 3

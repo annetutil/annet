@@ -479,8 +479,7 @@ def old_new_worker(device_id, args: DeployOptions, config, stdin, loader: "Loade
 
 
 class OldNewParallel(Parallel):
-    def __init__(self, storage: Storage, args: DeployOptions, loader: "Loader", filterer: Filterer):
-        self.storage = storage
+    def __init__(self, args: DeployOptions, loader: "Loader", filterer: Filterer):
         stdin = args.stdin(filter_acl=args.filter_acl, config=args.config)
         super().__init__(
             old_new_worker,
@@ -492,20 +491,19 @@ class OldNewParallel(Parallel):
         )
         self.tune_args(args)
 
-    def generated_configs(self, device_ids: List[int]) -> Generator[OldNewResult, None, None]:
-        skipped = set(device_ids)
+    def generated_configs(self, devices: List[Device]) -> Generator[OldNewResult, None, None]:
+        devices_by_id = {device.id: device for device in devices}
+        device_ids = list(devices_by_id)
 
         for task_result in self.irun(device_ids):
             if task_result.exc is not None:
-                device = self.storage.get_device(task_result.device_id, use_mesh=False, preload_neighbors=False)
+                device = devices_by_id.pop(task_result.device_id)
                 yield OldNewResult(device=device, err=task_result.exc)
-                skipped.discard(task_result.device_id)
             elif task_result.result is not None:
                 yield from task_result.result
-                skipped.discard(task_result.device_id)
+                devices_by_id.pop(task_result.device_id)
 
-        for device_id in skipped:
-            device = self.storage.get_device(device_id, use_mesh=False, preload_neighbors=False)
+        for device in devices_by_id.values():
             yield OldNewResult(device=device, err=Exception(f"No config returned for {device.hostname}"))
 
 
