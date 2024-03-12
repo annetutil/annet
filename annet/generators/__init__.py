@@ -73,12 +73,10 @@ class GeneratorPerfMesurer:
     def __init__(
         self,
         gen: Union["PartialGenerator", "Entire"],
-        storage: Storage,
         run_args: Optional[GeneratorPartialRunArgs] = None,
         trace_min_duration: tracing.MinDurationT = None
     ):
         self._gen = gen
-        self._storage = storage
         self._run_args = run_args
 
         self._start_time: float = 0.0
@@ -90,8 +88,6 @@ class GeneratorPerfMesurer:
 
     def start(self) -> None:
         self.last_result = None
-
-        self._storage.flush_perf()
 
         self._span_ctx = tracing_connector.get().start_as_current_span(
             "gen:call",
@@ -109,7 +105,6 @@ class GeneratorPerfMesurer:
 
     def finish(self, exc_type=None, exc_val=None, exc_tb=None) -> GeneratorPerf:
         total = time.monotonic() - self._start_time
-        rt = self._storage.flush_perf()
         self._span_ctx.__exit__(exc_type, exc_val, exc_tb)
 
         meta = {}
@@ -122,7 +117,7 @@ class GeneratorPerfMesurer:
                 }
             }
 
-        self.last_result = GeneratorPerf(total=total, rt=rt, meta=meta)
+        self.last_result = GeneratorPerf(total=total, rt=total, meta=meta)
         return self.last_result
 
     def __enter__(self):
@@ -253,6 +248,7 @@ class Generators:
 
     partial: List[PartialGenerator] = dataclasses.field(default_factory=list)
     entire: List[Entire] = dataclasses.field(default_factory=list)
+    ref: List[RefGenerator] = dataclasses.field(default_factory=list)
     json_fragment: List[JSONFragment] = dataclasses.field(default_factory=list)
 
 
@@ -261,35 +257,46 @@ def build_generators(storage, gens: GenSelectOptions, device: Optional[Device] =
     if gens.generators_context is not None:
         os.environ["ANN_GENERATORS_CONTEXT"] = gens.generators_context
     all_generators = _get_generators(get_context()["generators"], storage, device)
+    ref_generators = _get_ref_generators(get_context()["generators"], storage, device)
     validate_genselect(gens, all_generators)
     classes = list(select_generators(gens, all_generators))
     partial = [obj for obj in classes if obj.TYPE == "PARTIAL"]
     entire = [obj for obj in classes if obj.TYPE == "ENTIRE"]
     entire = list(sorted(entire, key=lambda x: x.prio, reverse=True))
     json_fragment = [obj for obj in classes if obj.TYPE == "JSON_FRAGMENT"]
-    return Generators(partial=partial, entire=entire, json_fragment=json_fragment)
+    return Generators(
+        partial=partial,
+        entire=entire,
+        json_fragment=json_fragment,
+        ref=ref_generators,
+    )
 
 
 @tracing.function
-def run_partial_initial(device, storage):
+def run_partial_initial(device):
     from .common.initial import InitialConfig
 
     tracing_connector.get().set_device_attributes(tracing_connector.get().get_current_span(), device)
 
-    run_args = GeneratorPartialRunArgs(device, storage)
-    return run_partial_generators([InitialConfig()], run_args)
+    run_args = GeneratorPartialRunArgs(device)
+    return run_partial_generators([InitialConfig()], [], run_args)
 
 
 @tracing.function
-def run_partial_generators(gens: List["PartialGenerator"], run_args: GeneratorPartialRunArgs):
+def run_partial_generators(
+        gens: List["PartialGenerator"],
+        ref_gens: List["RefGenerator"],
+        run_args: GeneratorPartialRunArgs,
+):
     logger = get_logger(host=run_args.device.hostname)
     tracing_connector.get().set_device_attributes(tracing_connector.get().get_current_span(), run_args.device)
 
     ret = RunGeneratorResult()
     if run_args.generators_context is not None:
         os.environ["ANN_GENERATORS_CONTEXT"] = run_args.generators_context
-    for gen in _get_ref_generators(get_context()["generators"], run_args.storage):
-        ret.ref_matcher.add(gen.ref(run_args.device), gen.__class__)
+
+    for gen in ref_gens:
+        ret.ref_matcher.add(gen.ref(run_args.device), gen)
 
     logger.debug("Generating selected PARTIALs ...")
 
@@ -306,9 +313,9 @@ def run_partial_generators(gens: List["PartialGenerator"], run_args: GeneratorPa
         config = result.safe_config if run_args.use_acl_safe else result.config
 
         ref_match = ret.ref_matcher.match(config)
-        for gen_cls, groups in ref_match:
-            gens.append(gen_cls(run_args.storage, groups))
-            ret.ref_track.add(gen.__class__, gen_cls)
+        for ref_gen, groups in ref_match:
+            gens.append(ref_gen.with_groups(groups))
+            ret.ref_track.add(gen.__class__, ref_gen.__class__)
 
         ret.ref_track.config(gen.__class__, config)
         ret.add_partial(result)
@@ -334,7 +341,7 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
             "generators_context": str(run_args.generators_context),
         })
 
-    with GeneratorPerfMesurer(gen, run_args.storage, run_args=run_args) as pm:
+    with GeneratorPerfMesurer(gen,run_args=run_args) as pm:
         if not run_args.no_new:
             if gen.get_user_runner(device):
                 logger.info("Generating PARTIAL ...")
@@ -422,7 +429,6 @@ def check_entire_generators_required_packages(gens, device_packages: FrozenSet[s
 def run_file_generators(
         gens: Iterable[Union["JSONFragment", "Entire"]],
         device: "Device",
-        storage: Storage,
 ) -> RunGeneratorResult:
     """Run generators that generate files or file parts."""
     ret = RunGeneratorResult()
@@ -438,7 +444,7 @@ def run_file_generators(
         else:
             raise RuntimeError(f"Unknown generator class type: cls={gen.__class__} TYPE={gen.__class__.TYPE}")
         try:
-            result = run_generator_fn(gen, device, storage)
+            result = run_generator_fn(gen, device)
         except NotSupportedDevice:
             logger.info("generator %s is not supported for this device", gen)
             continue
@@ -449,7 +455,7 @@ def run_file_generators(
 
 
 @tracing.function(min_duration="0.5")
-def _run_entire_generator(gen: "Entire", device: "Device", storage: Storage) -> Optional[GeneratorResult]:
+def _run_entire_generator(gen: "Entire", device: "Device") -> Optional[GeneratorResult]:
     span = tracing_connector.get().get_current_span()
     if span:
         tracing_connector.get().set_device_attributes(span, device)
@@ -460,7 +466,7 @@ def _run_entire_generator(gen: "Entire", device: "Device", storage: Storage) -> 
     if path:
         logger.info("Generating ENTIRE ...")
 
-        with GeneratorPerfMesurer(gen, storage, trace_min_duration="0.5") as pm:
+        with GeneratorPerfMesurer(gen, trace_min_duration="0.5") as pm:
             output = gen(device)
 
         reload_cmds = gen.get_reload_cmds(device)
@@ -486,7 +492,6 @@ def _make_generator_ctx(gen):
 def _run_json_fragment_generator(
         gen: "JSONFragment",
         device: "Device",
-        storage: Storage,
 ) -> Optional[GeneratorResult]:
     logger = get_logger(generator=_make_generator_ctx(gen))
     path = gen.path(device)
@@ -500,7 +505,7 @@ def _run_json_fragment_generator(
     if path:
         logger.info("Generating JSON_FRAGMENT ...")
 
-        with GeneratorPerfMesurer(gen, storage) as pm:
+        with GeneratorPerfMesurer(gen) as pm:
             config = gen(device)
 
         reload_cmds = gen.get_reload_cmds(device)
@@ -550,7 +555,7 @@ def _get_generators(module_paths: Union[List[str], dict], storage, device=None):
     return res_generators
 
 
-def _get_ref_generators(module_paths: List[str], storage):
+def _get_ref_generators(module_paths: List[str], storage, device):
     if isinstance(module_paths, dict):
         module_paths = module_paths.get("default")
     res_generators = []
@@ -778,6 +783,9 @@ class RefGenerator(PartialGenerator):
         if hasattr(self, "ref_" + device.hw.vendor):
             return getattr(self, "ref_" + device.hw.vendor)(device)
         return ""
+
+    def with_groups(self, groups):
+        return type(self)(self.storage, groups)
 
 
 class Entire(BaseGenerator):

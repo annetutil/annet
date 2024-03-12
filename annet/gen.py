@@ -39,6 +39,7 @@ from annet.generators import (
     JSONFragment,
     NotSupportedDevice,
     PartialGenerator,
+    RefGenerator,
 )
 from annet.lib import merge_dicts, percentile
 from annet.output import output_driver_connector
@@ -61,6 +62,9 @@ class DeviceGenerators:
 
     # map device fqdn to found partial generators
     partial: Dict[str, List[PartialGenerator]] = dataclasses.field(default_factory=dict)
+
+    # ref generators
+    ref: Dict[str, List[RefGenerator]] = dataclasses.field(default_factory=dict)
 
     # map device fqdn to found entire generators
     entire: Dict[str, List[Entire]] = dataclasses.field(default_factory=dict)
@@ -87,7 +91,6 @@ class DeviceGenerators:
 class OldNewDeviceContext:
     config: str
     args: GenOptions
-    storage: Storage
     downloaded_files: Dict[Device, DeviceDownloadedFiles]
     failed_files: Dict[Device, Exception]
     running: Dict[Device, Dict[str, str]]
@@ -143,21 +146,24 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
                 splitter=tabparser.make_formatter(device.hw).split,
             )
         if not old:
-            res = generators.run_partial_initial(device, ctx.storage)
+            res = generators.run_partial_initial(device)
             old = res.config_tree()
             perf = res.perf_mesures()
             if ctx.args.profile and ctx.do_print_perf:
                 _print_perf("INITIAL", perf)
         run_args = generators.GeneratorPartialRunArgs(
             device=device,
-            storage=ctx.storage,
             use_acl=not ctx.args.no_acl,
             use_acl_safe=ctx.args.acl_safe,
             annotate=ctx.add_annotations,
             generators_context=ctx.args.generators_context,
             no_new=ctx.no_new,
         )
-        res = generators.run_partial_generators(ctx.gens.partial[device.fqdn], run_args)
+        res = generators.run_partial_generators(
+            ctx.gens.partial[device.fqdn],
+            ctx.gens.ref[device.fqdn],
+            run_args,
+        )
         partial_results = res.partial_results
         perf = res.perf_mesures()
         if ctx.no_new:
@@ -227,7 +233,6 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
         res = generators.run_file_generators(
             ctx.gens.file_gens(device.fqdn),
             device,
-            ctx.storage,
         )
 
         entire_results = res.entire_results
@@ -347,7 +352,6 @@ def old_new(
     ctx = OldNewDeviceContext(
         config=config,
         args=args,
-        storage=storage,
         downloaded_files=split_downloaded_files_multi_device(downloaded_files, gens, devices),
         failed_files=failed_files,
         running=running,
@@ -387,7 +391,6 @@ def old_raw(args: GenOptions, storage, config, stdin=None,
     ctx = OldNewDeviceContext(
         config=config,
         args=args,
-        storage=storage,
         downloaded_files=split_downloaded_files_multi_device(downloaded_files, device_gens, devices),
         failed_files=failed_files,
         running=running,
@@ -735,6 +738,7 @@ def _old_resolve_gens(args: GenOptions, storage: Storage, devices: List[Device])
         per_device_gens.partial[device.fqdn] = gens.partial
         per_device_gens.entire[device.fqdn] = gens.entire
         per_device_gens.json_fragment[device.fqdn] = gens.json_fragment
+        per_device_gens.ref[device.fqdn] = gens.ref
     return per_device_gens
 
 
@@ -812,10 +816,6 @@ class Loader:
         devices = []
         for device_id in device_ids:
             device = self._devices_map[device_id]
-
-            # can not use self._storage here, we can be in another process
-            device.storage = storage
-
             devices.append(device)
         return devices
 
