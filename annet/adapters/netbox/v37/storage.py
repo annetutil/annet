@@ -27,11 +27,14 @@ def extend_device_base(
         interfaces: List[models.Interface],
         hw: Optional[HardwareView],
         breed: str,
+        neighbours_ids: List[int],
 ) -> models.NetboxDevice:
     ...
 
 
-def extend_device(device: api_models.Device) -> models.NetboxDevice:
+def extend_device(
+        device: api_models.Device,
+) -> models.NetboxDevice:
     return extend_device_base(
         device=device,
         interfaces=[],
@@ -43,6 +46,7 @@ def extend_device(device: api_models.Device) -> models.NetboxDevice:
             device.device_type.manufacturer.name,
             device.device_type.model,
         ),
+        neighbours_ids=[],
     )
 
 
@@ -85,7 +89,7 @@ class NetboxStorageV37(Storage):
             **kwargs,
     ) -> List[models.NetboxDevice]:
         device_ids = {
-            device.id: extend_device(device)
+            device.id: extend_device(device=device)
             for device in self._load_devices(query)
         }
         if not device_ids:
@@ -124,9 +128,9 @@ class NetboxStorageV37(Storage):
             **kwargs,
     ) -> models.NetboxDevice:
         device = self.netbox.get_device(obj_id)
-        res = extend_device(device)
+        res = extend_device(device=device)
         res.interfaces = self._load_interfaces([device.id])
-        return device
+        return res
 
     def flush_perf(self):
         pass

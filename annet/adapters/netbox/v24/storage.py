@@ -38,7 +38,9 @@ def extend_label(
     )
 
 
-def extend_device(device: api_models.Device) -> models.NetboxDevice:
+def extend_device(
+        device: api_models.Device,
+) -> models.NetboxDevice:
     manufacturer = device.device_type.manufacturer.name
     model = device.device_type.model
 
@@ -70,6 +72,7 @@ def extend_device(device: api_models.Device) -> models.NetboxDevice:
         hw=get_hw(manufacturer, model),
         breed=get_breed(manufacturer, model),
         interfaces=[],
+        neighbours_ids=[],
     )
 
 
@@ -133,7 +136,7 @@ class NetboxStorageV24(Storage):
             **kwargs,
     ) -> list[models.NetboxDevice]:
         device_ids = {
-            device.id: extend_device(device)
+            device.id: extend_device(device=device)
             for device in self._load_devices(query)
         }
         if not device_ids:

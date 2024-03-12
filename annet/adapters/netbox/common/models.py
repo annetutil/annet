@@ -61,6 +61,8 @@ class Interface(Entity):
 
 @dataclass
 class NetboxDevice(Entity):
+    neighbours_ids: List[int]
+
     display: str
     device_type: DeviceType
     device_role: Entity
