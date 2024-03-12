@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import List, Optional, Any
 
 from annet.annlib.netdev.views.hardware import HardwareView
+from annet.storage import Storage
 
 
 @dataclass
@@ -61,6 +62,7 @@ class Interface(Entity):
 
 @dataclass
 class NetboxDevice(Entity):
+    storage: Storage
     neighbours_ids: List[int]
 
     display: str
