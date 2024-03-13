@@ -28,7 +28,7 @@ class NetboxV37(BaseNetboxClient):
     ) -> PagingResponse[Interface]:
         pass
 
-    all_interfaces = collect(interfaces)
+    all_interfaces = collect(interfaces, field="device_id")
 
     @get("ipam/ip-addresses")
     def ip_addresses(
@@ -39,7 +39,7 @@ class NetboxV37(BaseNetboxClient):
     ) -> PagingResponse[IpAddress]:
         pass
 
-    all_ip_addresses = collect(ip_addresses)
+    all_ip_addresses = collect(ip_addresses, field="interface_id")
 
     @get("dcim/devices")
     def devices(
