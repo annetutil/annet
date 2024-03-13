@@ -19,7 +19,7 @@ class PagingResponse(Generic[Model]):
 Func = TypeVar("Func", bound=Callable)
 
 
-def collect(func: Func) -> Func:
+def _collect(func: Func) -> Func:
     @wraps(func)
     def wrapper(self, *args, **kwargs):
         kwargs.setdefault("offset", 0)
@@ -32,6 +32,31 @@ def collect(func: Func) -> Func:
             kwargs["offset"] += limit
             results.extend(page.results)
             has_next = bool(page.next)
+        return PagingResponse(
+            None, None,
+            count=len(results),
+            results=results,
+        )
+
+    return wrapper
+
+
+def collect(func: Func, field: str = "") -> Func:
+    if not field:
+        return _collect(func)
+
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        value = kwargs.get(field)
+        if not value:
+            return _collect(func)(*args, **kwargs)
+
+        method = func.__get__(self, self.__class__)
+        results = []
+        for offset in range(0, len(value), 100):
+            kwargs[field] = value[offset:offset + 100]
+            page = method(*args, **kwargs)
+            results.extend(page.results)
         return PagingResponse(
             None, None,
             count=len(results),
