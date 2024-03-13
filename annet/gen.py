@@ -668,6 +668,8 @@ def _old_new_get_config_cli(ctx: OldNewDeviceContext, device: Device) -> str:
             raise exc
     elif ctx.config == "-":
         text = ctx.stdin["config"]
+        if ctx.device_count > 1:
+            raise ValueError("stdin config can not be used with multiple devices")
     else:
         if os.path.isdir(ctx.config):
             filename = _existing_cfg_file_name(ctx.config, device)

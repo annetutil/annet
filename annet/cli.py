@@ -40,7 +40,7 @@ def show_current(args: cli_args.QueryOptions, config, arg_out: cli_args.FileOutO
             cli_args.GenOptions(args, no_acl=True),
             storage,
             config,
-            stdin=args.stdin(storage=storage, config=config),
+            stdin=args.stdin(config=config),
             do_files_download=True,
             use_mesh=False,
         ):
