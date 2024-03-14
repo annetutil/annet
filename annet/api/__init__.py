@@ -22,6 +22,7 @@ from typing import (
 )
 
 import colorama
+import annet.lib
 from annet.annlib import jsontools
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.rbparser.platform import VENDOR_REVERSES
@@ -317,7 +318,12 @@ def res_diff_patch(
             yield res, diff_tree, patch_tree
 
 
-def diff(args: cli_args.DiffOptions, loader: ann_gen.Loader, filterer: filtering.Filterer) -> Mapping[Device, Union[Diff, PCDiff]]:
+def diff(
+        args: cli_args.DiffOptions,
+        loader: ann_gen.Loader,
+        device_ids: List[int],
+        filterer: filtering.Filterer,
+) -> Mapping[Device, Union[Diff, PCDiff]]:
     ret = {}
     for res in ann_gen.old_new(
         args,
@@ -325,7 +331,7 @@ def diff(args: cli_args.DiffOptions, loader: ann_gen.Loader, filterer: filtering
         loader=loader,
         no_new=args.clear,
         do_files_download=True,
-        device_ids=loader.device_ids,
+        device_ids=device_ids,
         filterer=filterer,
     ):
         old = res.get_old(args.acl_safe)
@@ -586,24 +592,23 @@ class Deployer:
             ans = ask.loop()
         return ans
 
-    def check_diff(self, result: annet.deploy.DeployResult, storage: Storage):
+    def check_diff(self, result: annet.deploy.DeployResult, loader: ann_gen.Loader):
         global live_configs  # pylint: disable=global-statement
-        success_hosts = [
-            host.split(".", 1)[0] for (host, hres) in result.results.items()
+        success_device_ids = []
+        for host, hres in result.results.items():
+            device = self.fqdn_to_device[host]
             if (not isinstance(hres, Exception) and
                 host not in self.empty_diff_hostnames and
-                not self.fqdn_to_device[host].is_pc())
-        ]
+                device.is_pc()
+            ):
+                success_device_ids.append(device.id)
         diff_args = self.args.copy_from(
             self.args,
             config="running",
-            query=success_hosts,
         )
         if diff_args.query:
             live_configs = None
-            loader = ann_gen.Loader(storage, diff_args, no_empty_warning=True)
-
-            diffs = diff(diff_args, loader, self._filterer)
+            diffs = diff(diff_args, loader, success_device_ids, self._filterer)
             non_pc_diffs = {dev: diff for dev, diff in diffs.items() if not isinstance(diff, PCDiff)}
             devices_to_diff = ann_diff.collapse_diffs(non_pc_diffs)
             devices_to_diff.update({(dev,): diff for dev, diff in diffs.items() if isinstance(diff, PCDiff)})
@@ -663,7 +668,7 @@ def deploy(args: cli_args.DeployOptions) -> ExitCode:
                 annet.lib.do_async(deploy_driver.bulk_deploy(rollback_cmds, args))
 
         if not args.no_check_diff and not rolled_back:
-            deployer.check_diff(result, storage)
+            deployer.check_diff(result, loader)
 
         if deployer.failed_configs:
             result.add_results(deployer.failed_configs)

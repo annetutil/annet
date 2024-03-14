@@ -87,9 +87,10 @@ def diff(args: cli_args.ShowDiffOptions):
     with connector.storage()(storage_opts) as storage:
         filterer = filtering.filterer_connector.get()
         loader = Loader(storage, args)
+        device_ids = loader.device_ids
         output_driver_connector.get().write_output(
             args,
-            gen_sort_diff(api.diff(args, loader, filterer), args),
+            gen_sort_diff(api.diff(args, loader, device_ids, filterer), args),
             len(loader.device_ids)
         )
 
