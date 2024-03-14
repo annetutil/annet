@@ -18,7 +18,6 @@ from typing import (
     Set,
     Tuple,
     Union,
-    cast,
 )
 
 import colorama
@@ -29,12 +28,13 @@ from annet.annlib.rbparser.platform import VENDOR_REVERSES
 from annet.annlib.types import GeneratorType
 from contextlog import get_logger
 
-import annet.deploy
+from annet.deploy import Fetcher, DeployDriver
 from annet import cli_args
 from annet import diff as ann_diff
 from annet import filtering
 from annet import gen as ann_gen
 from annet import patching, rulebook, tabparser, tracing
+from annet.filtering import Filterer
 from annet.hardware import hardware_connector
 from annet.output import (
     LABEL_NEW_PREFIX,
@@ -44,7 +44,7 @@ from annet.output import (
 )
 from annet.parallel import Parallel, TaskResult
 from annet.reference import RefTracker
-from annet.storage import Device, Storage, storage_connector
+from annet.storage import Device
 from annet.types import Diff, ExitCode, OldNewResult, Op, PCDiff, PCDiffFile
 
 
@@ -211,20 +211,16 @@ class PoolProgressLogger:
 
 
 # =====
-def gen(args: cli_args.ShowGenOptions):
+def gen(args: cli_args.ShowGenOptions, loader: ann_gen.Loader):
     """ Сгенерировать конфиг для устройств """
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        loader = ann_gen.Loader(storage, args)
-        stdin = args.stdin(filter_acl=args.filter_acl, config=None)
+    stdin = args.stdin(filter_acl=args.filter_acl, config=None)
 
-        filterer = filtering.filterer_connector.get()
-        pool = Parallel(ann_gen.worker, args, stdin, loader, filterer).tune_args(args)
-        if args.show_hosts_progress:
-            pool.add_callback(PoolProgressLogger(loader.device_fqdns))
+    filterer = filtering.filterer_connector.get()
+    pool = Parallel(ann_gen.worker, args, stdin, loader, filterer).tune_args(args)
+    if args.show_hosts_progress:
+        pool.add_callback(PoolProgressLogger(loader.device_fqdns))
 
-        return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
+    return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
 
 
 # =====
@@ -245,23 +241,19 @@ def _diff_files(old_files, new_files, context=3):
     return ret
 
 
-def patch(args: cli_args.ShowPatchOptions):
+def patch(args: cli_args.ShowPatchOptions, loader: ann_gen.Loader):
     """ Сгенерировать патч для устройств """
     global live_configs  # pylint: disable=global-statement
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        loader = ann_gen.Loader(storage, args)
-        if args.config == "running":
-            fetcher = annet.deploy.fetcher_connector.get()
-            live_configs = fetcher.fetch(loader.devices, processes=args.parallel)
-        stdin = args.stdin(filter_acl=args.filter_acl, config=args.config)
+    if args.config == "running":
+        fetcher = annet.deploy.fetcher_connector.get()
+        live_configs = fetcher.fetch(loader.devices, processes=args.parallel)
+    stdin = args.stdin(filter_acl=args.filter_acl, config=args.config)
 
-        filterer = filtering.filterer_connector.get()
-        pool = Parallel(_patch_worker, args, stdin, loader, filterer).tune_args(args)
-        if args.show_hosts_progress:
-            pool.add_callback(PoolProgressLogger(loader.device_fqdns))
-        return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
+    filterer = filtering.filterer_connector.get()
+    pool = Parallel(_patch_worker, args, stdin, loader, filterer).tune_args(args)
+    if args.show_hosts_progress:
+        pool.add_callback(PoolProgressLogger(loader.device_fqdns))
+    return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
 
 
 def _patch_worker(device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann_gen.Loader, filterer: filtering.Filterer):
@@ -629,57 +621,56 @@ class Deployer:
                     _print_pre_as_diff(patching.make_pre(diff_obj), diff_args.show_rules, diff_args.indent)
 
 
-def deploy(args: cli_args.DeployOptions) -> ExitCode:
+def deploy(
+    args: cli_args.DeployOptions,
+    loader: ann_gen.Loader,
+    deployer: Deployer,
+    filterer: Filterer,
+    fetcher: Fetcher,
+    deploy_driver: DeployDriver,
+) -> ExitCode:
     """ Сгенерировать конфиг для устройств и задеплоить его """
     ret: ExitCode = 0
-    deployer = Deployer(args)
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        global live_configs  # pylint: disable=global-statement
-        loader = ann_gen.Loader(storage, args)
-        filterer = filtering.filterer_connector.get()
-        fetcher = annet.deploy.fetcher_connector.get()
-        deploy_driver = annet.deploy.driver_connector.get()
-        live_configs = fetcher.fetch(devices=loader.devices, processes=args.parallel)
-        pool = ann_gen.OldNewParallel(args, loader, filterer)
+    global live_configs  # pylint: disable=global-statement
+    live_configs = fetcher.fetch(devices=loader.devices, processes=args.parallel)
+    pool = ann_gen.OldNewParallel(args, loader, filterer)
 
-        for res in pool.generated_configs(loader.devices):
-            # Меняем exit code если хоть один device ловил exception
-            if res.err is not None:
-                ret |= 2 ** 3
-            job = DeployerJob.from_device(res.device, args)
-            deployer.parse_result(job, res)
+    for res in pool.generated_configs(loader.devices):
+        # Меняем exit code если хоть один device ловил exception
+        if res.err is not None:
+            ret |= 2 ** 3
+        job = DeployerJob.from_device(res.device, args)
+        deployer.parse_result(job, res)
 
-        deploy_cmds = deployer.deploy_cmds
-        result = annet.deploy.DeployResult(hostnames=[], results={}, durations={}, original_states={})
-        if deploy_cmds:
-            ans = deployer.ask_deploy()
-            if ans != "y":
-                return 2 ** 2
-            result = annet.lib.do_async(deploy_driver.bulk_deploy(deploy_cmds, args))
+    deploy_cmds = deployer.deploy_cmds
+    result = annet.deploy.DeployResult(hostnames=[], results={}, durations={}, original_states={})
+    if deploy_cmds:
+        ans = deployer.ask_deploy()
+        if ans != "y":
+            return 2 ** 2
+        result = annet.lib.do_async(deploy_driver.bulk_deploy(deploy_cmds, args))
 
-        rolled_back = False
-        rollback_cmds = {deployer.fqdn_to_device[x]: cc for x, cc in result.original_states.items() if cc}
-        if args.rollback and rollback_cmds:
-            ans = deployer.ask_rollback()
-            if rollback_cmds and ans == "y":
-                rolled_back = True
-                annet.lib.do_async(deploy_driver.bulk_deploy(rollback_cmds, args))
+    rolled_back = False
+    rollback_cmds = {deployer.fqdn_to_device[x]: cc for x, cc in result.original_states.items() if cc}
+    if args.rollback and rollback_cmds:
+        ans = deployer.ask_rollback()
+        if rollback_cmds and ans == "y":
+            rolled_back = True
+            annet.lib.do_async(deploy_driver.bulk_deploy(rollback_cmds, args))
 
-        if not args.no_check_diff and not rolled_back:
-            deployer.check_diff(result, loader)
+    if not args.no_check_diff and not rolled_back:
+        deployer.check_diff(result, loader)
 
-        if deployer.failed_configs:
-            result.add_results(deployer.failed_configs)
-            ret |= 2 ** 1
+    if deployer.failed_configs:
+        result.add_results(deployer.failed_configs)
+        ret |= 2 ** 1
 
-        annet.deploy.show_bulk_report(result.hostnames, result.results, result.durations, log_dir=None)
-        for host_result in result.results.values():
-            if isinstance(host_result, Exception):
-                ret |= 2 ** 0
-                break
-        return ret
+    annet.deploy.show_bulk_report(result.hostnames, result.results, result.durations, log_dir=None)
+    for host_result in result.results.values():
+        if isinstance(host_result, Exception):
+            ret |= 2 ** 0
+            break
+    return ret
 
 
 def file_diff(args: cli_args.FileDiffOptions):

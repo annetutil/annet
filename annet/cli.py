@@ -10,8 +10,9 @@ import yaml
 from contextlog import get_logger
 from valkit.python import valid_logging_level
 
+from annet.deploy import driver_connector, fetcher_connector
 from annet import api, cli_args, filtering
-from annet.api import collapse_texts
+from annet.api import collapse_texts, Deployer
 from annet.argparse import ArgParser, subcommand
 from annet.diff import gen_sort_diff
 from annet.gen import Loader, old_raw
@@ -66,17 +67,23 @@ def show_current(args: cli_args.QueryOptions, config, arg_out: cli_args.FileOutO
 @subcommand(cli_args.ShowGenOptions)
 def gen(args: cli_args.ShowGenOptions):
     """ Сгенерировать конфиг для устройств """
-    (success, fail) = api.gen(args)
-    out = [item for items in success.values() for item in items]
-    output_driver = output_driver_connector.get()
-    if args.dest is None:
-        text_mapping = {item[0]: item[1] for item in out}
-        out = [(",".join(key), value, False) for key, value in collapse_texts(text_mapping).items()]
-    out.extend(output_driver.format_fails(fail, args))
-    total = len(success) + len(fail)
-    if not total:
-        get_logger().error("No devices found for %s", args.query)
-    output_driver.write_output(args, out, total)
+
+    connector = storage_connector.get()
+    storage_opts = connector.opts().from_cli_opts(args)
+    with connector.storage()(storage_opts) as storage:
+        loader = Loader(storage, args)
+        (success, fail) = api.gen(args, loader)
+
+        out = [item for items in success.values() for item in items]
+        output_driver = output_driver_connector.get()
+        if args.dest is None:
+            text_mapping = {item[0]: item[1] for item in out}
+            out = [(",".join(key), value, False) for key, value in collapse_texts(text_mapping).items()]
+        out.extend(output_driver.format_fails(fail, args))
+        total = len(success) + len(fail)
+        if not total:
+            get_logger().error("No devices found for %s", args.query)
+        output_driver.write_output(args, out, total)
 
 
 @subcommand(cli_args.ShowDiffOptions)
@@ -98,20 +105,39 @@ def diff(args: cli_args.ShowDiffOptions):
 @subcommand(cli_args.ShowPatchOptions)
 def patch(args: cli_args.ShowPatchOptions):
     """ Сгенерировать конфиг для устройств и сформировать патч """
-    (success, fail) = api.patch(args)
-    out = [item for items in success.values() for item in items]
-    output_driver = output_driver_connector.get()
-    out.extend(output_driver.format_fails(fail, args))
-    total = len(success) + len(fail)
-    if not total:
-        get_logger().error("No devices found for %s", args.query)
-    output_driver.write_output(args, out, total)
+    connector = storage_connector.get()
+    storage_opts = connector.opts().from_cli_opts(args)
+    with connector.storage()(storage_opts) as storage:
+        loader = Loader(storage, args)
+        (success, fail) = api.patch(args, loader)
+
+        out = [item for items in success.values() for item in items]
+        output_driver = output_driver_connector.get()
+        out.extend(output_driver.format_fails(fail, args))
+        total = len(success) + len(fail)
+        if not total:
+            get_logger().error("No devices found for %s", args.query)
+        output_driver.write_output(args, out, total)
 
 
 @subcommand(cli_args.DeployOptions)
 def deploy(args: cli_args.DeployOptions):
     """ Сгенерировать конфиг для устройств и задеплоить его """
-    return api.deploy(args)
+
+    deployer = Deployer(args)
+    filterer = filtering.filterer_connector.get()
+    fetcher = fetcher_connector.get()
+    deploy_driver = driver_connector.get()
+
+    connector = storage_connector.get()
+    storage_opts = connector.opts().from_cli_opts(args)
+    with connector.storage()(storage_opts) as storage:
+        loader = Loader(storage, args)
+        return api.deploy(
+            args=args, loader=loader, deployer=deployer,
+            deploy_driver=deploy_driver, filterer=filterer,
+            fetcher=fetcher,
+        )
 
 
 @subcommand(cli_args.FileDiffOptions)
