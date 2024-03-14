@@ -186,28 +186,28 @@ def _print_pre_as_diff(pre, show_rules, indent, file=None, _level=0):
                         rule_printed = False
 
 
-def log_host_progress_cb(pool: Parallel, task_result: TaskResult):
-    progress_logger = get_logger("progress")
-    args = cast(cli_args.QueryOptions, pool.args[0])
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        hosts = storage.resolve_fdnds_by_query(args.query)
-    perc = int(pool.tasks_done / len(hosts) * 100)
-    fqdn = hosts[task_result.device_id]
-    elapsed_time = "%dsec" % int(time.monotonic() - task_result.extra["start_time"])
-    if task_result.extra.get("regression", False):
-        status = task_result.extra["status"]
-        status_color = task_result.extra["status_color"]
-        message = task_result.extra["message"]
-    else:
-        status = "OK" if task_result.exc is None else "FAIL"
-        status_color = colorama.Fore.GREEN if status == "OK" else colorama.Fore.RED
-        message = "" if status == "OK" else str(task_result.exc)
-    progress_logger.info(message,
-                         perc=perc, fqdn=fqdn, status=status, status_color=status_color,
-                         worker=task_result.worker_name, task_time=elapsed_time)
-    return task_result
+class PoolProgressLogger:
+    def __init__(self, device_fqdns: Dict[int, str]):
+        self.device_fqdns = device_fqdns
+
+    def __call__(self, pool: Parallel, task_result: TaskResult):
+        progress_logger = get_logger("progress")
+        perc = int(pool.tasks_done / len(self.device_fqdns) * 100)
+
+        fqdn = self.device_fqdns[task_result.device_id]
+        elapsed_time = "%dsec" % int(time.monotonic() - task_result.extra["start_time"])
+        if task_result.extra.get("regression", False):
+            status = task_result.extra["status"]
+            status_color = task_result.extra["status_color"]
+            message = task_result.extra["message"]
+        else:
+            status = "OK" if task_result.exc is None else "FAIL"
+            status_color = colorama.Fore.GREEN if status == "OK" else colorama.Fore.RED
+            message = "" if status == "OK" else str(task_result.exc)
+        progress_logger.info(message,
+                             perc=perc, fqdn=fqdn, status=status, status_color=status_color,
+                             worker=task_result.worker_name, task_time=elapsed_time)
+        return task_result
 
 
 # =====
@@ -222,7 +222,7 @@ def gen(args: cli_args.ShowGenOptions):
         filterer = filtering.filterer_connector.get()
         pool = Parallel(ann_gen.worker, args, stdin, loader, filterer).tune_args(args)
         if args.show_hosts_progress:
-            pool.add_callback(log_host_progress_cb)
+            pool.add_callback(PoolProgressLogger(loader.device_fqdns))
 
         return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
 
@@ -260,7 +260,7 @@ def patch(args: cli_args.ShowPatchOptions):
         filterer = filtering.filterer_connector.get()
         pool = Parallel(_patch_worker, args, stdin, loader, filterer).tune_args(args)
         if args.show_hosts_progress:
-            pool.add_callback(log_host_progress_cb)
+            pool.add_callback(PoolProgressLogger(loader.device_fqdns))
         return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
 
 
