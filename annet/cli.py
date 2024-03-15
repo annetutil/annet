@@ -4,7 +4,7 @@ import os
 import platform
 import subprocess
 import shutil
-from typing import Generator, Tuple
+from typing import Generator, Tuple, Iterable
 
 import yaml
 from contextlog import get_logger
@@ -17,7 +17,7 @@ from annet.argparse import ArgParser, subcommand
 from annet.diff import gen_sort_diff
 from annet.gen import Loader, old_raw
 from annet.lib import get_context_path, repair_context_file
-from annet.output import output_driver_connector
+from annet.output import output_driver_connector, OutputDriver
 from annet.storage import Storage, storage_connector
 
 
@@ -32,36 +32,52 @@ def list_subcommands():
     return globals().copy()
 
 
+def _gen_current_items(
+        config,
+        stdin,
+        loader: Loader,
+        output_driver: OutputDriver,
+        gen_args: cli_args.GenOptions,
+) -> Iterable[Tuple[str, str, bool]]:
+    for device, result in old_raw(
+        args=gen_args,
+        loader=loader,
+        config=config,
+        stdin=stdin,
+        do_files_download=True,
+        use_mesh=False,
+    ):
+        if device.hw.vendor != "pc":
+            destname = output_driver.cfg_file_names(device)[0]
+            yield (destname, result, False)
+        else:
+            for entire_path, entire_data in sorted(result.items(), key=operator.itemgetter(0)):
+                if entire_data is None:
+                    entire_data = ""
+                destname = output_driver.entire_config_dest_path(device, entire_path)
+                yield (destname, entire_data, False)
+
+
 @subcommand(cli_args.QueryOptions, cli_args.opt_config, cli_args.FileOutOptions)
 def show_current(args: cli_args.QueryOptions, config, arg_out: cli_args.FileOutOptions) -> None:
     """ Показать текущий конфиг устройств """
-
-    def _gen_items(storage: Storage) -> Generator[Tuple[str, str, bool], None, None]:
-        for device, result in old_raw(
-            cli_args.GenOptions(args, no_acl=True),
-            storage,
-            config,
-            stdin=args.stdin(config=config),
-            do_files_download=True,
-            use_mesh=False,
-        ):
-            output_driver = output_driver_connector.get()
-            destname = output_driver.cfg_file_names(device)[0]
-            if device.hw.vendor != "pc":
-                yield (destname, result, False)
-            else:
-                for entire_path, entire_data in sorted(result.items(), key=operator.itemgetter(0)):
-                    if entire_data is None:
-                        entire_data = ""
-                    yield (output_driver.entire_config_dest_path(device, entire_path), entire_data, False)
-
+    gen_args = cli_args.GenOptions(args, no_acl=True)
+    output_driver = output_driver_connector.get()
     connector = storage_connector.get()
     storage_opts = connector.opts().from_cli_opts(args)
     with connector.storage()(storage_opts) as storage:
-        ids = storage.resolve_object_ids_by_query(args.query)
-        if not ids:
+        loader = Loader(storage, gen_args)
+        if not loader.devices:
             get_logger().error("No devices found for %s", args.query)
-        output_driver_connector.get().write_output(arg_out, _gen_items(storage), len(ids))
+
+        items = _gen_current_items(
+            loader=loader,
+            output_driver=output_driver,
+            gen_args=gen_args,
+            stdin=args.stdin(config=config),
+            config=config,
+        )
+        output_driver.write_output(arg_out, items, len(loader.devices))
 
 
 @subcommand(cli_args.ShowGenOptions)

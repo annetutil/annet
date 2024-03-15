@@ -379,25 +379,24 @@ def old_new(
 
 @tracing.function
 def old_raw(
-        args: GenOptions, storage, config, stdin=None,
+        args: GenOptions, loader: Loader, config, stdin=None,
         do_files_download=False, use_mesh=True,
 ) -> Iterable[Tuple[Device, Union[str, Dict[str, str]]]]:
-    devices = storage.make_devices(args.query, preload_neighbors=True, use_mesh=use_mesh)
-    device_gens = _old_resolve_gens(args, storage, devices)
-    running, failed_running = _old_resolve_running(config, devices)
-    downloaded_files, failed_files = _old_resolve_files(config, devices, device_gens, do_files_download)
+    device_gens = loader.resolve_gens(loader.devices)
+    running, failed_running = _old_resolve_running(config, loader.devices)
+    downloaded_files, failed_files = _old_resolve_files(config, loader.devices, device_gens, do_files_download)
     if stdin is None:
         stdin = args.stdin(filter_acl=args.filter_acl, config=config)
     ctx = OldNewDeviceContext(
         config=config,
         args=args,
-        downloaded_files=split_downloaded_files_multi_device(downloaded_files, device_gens, devices),
+        downloaded_files=split_downloaded_files_multi_device(downloaded_files, device_gens, loader.devices),
         failed_files=failed_files,
         running=running,
         failed_running=failed_running,
         stdin=stdin,
         do_files_download=do_files_download,
-        device_count=len(devices),
+        device_count=len(loader.devices),
         no_new=True,
         add_annotations=False,
         add_implicit=False,
@@ -406,7 +405,7 @@ def old_raw(
         failed_packages={},
         do_print_perf=True,
     )
-    for device in devices:
+    for device in loader.devices:
         if not device.is_pc():
             config = _old_new_get_config_cli(ctx, device)
             config = scrub_config(config, device.breed)
