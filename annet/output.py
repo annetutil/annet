@@ -41,7 +41,7 @@ class OutputDriver(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def format_fails(self, fail, args: Optional[QueryOptions] = None) -> Tuple[str, str]:
+    def format_fails(self, fail, fqdns: Optional[dict[int, str]] = None) -> Tuple[str, str]:
         pass
 
     @abc.abstractmethod
@@ -129,14 +129,9 @@ class OutputDriverBasic(OutputDriver):
                 with open(dest, "w") as file:
                     writer.write(file)
 
-    def format_fails(self, fail, args: Optional[QueryOptions] = None):
+    def format_fails(self, fail, fqdns: Optional[dict[int, str]] = None):
         ret = []
-        fqdns = {}
-        if args:
-            connector = storage_connector.get()
-            storage_opts = connector.opts().from_cli_opts(args)
-            with connector.storage()(storage_opts) as storage:
-                fqdns = storage.resolve_fdnds_by_query(args.query)
+        fqdns = fqdns or {}
         for (assignment, exc) in fail.items():
             label = assignment
             if assignment in fqdns:

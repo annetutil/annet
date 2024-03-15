@@ -79,7 +79,8 @@ def gen(args: cli_args.ShowGenOptions):
         if args.dest is None:
             text_mapping = {item[0]: item[1] for item in out}
             out = [(",".join(key), value, False) for key, value in collapse_texts(text_mapping).items()]
-        out.extend(output_driver.format_fails(fail, args))
+
+        out.extend(output_driver.format_fails(fail, loader.device_fqdns))
         total = len(success) + len(fail)
         if not total:
             get_logger().error("No devices found for %s", args.query)
@@ -113,7 +114,7 @@ def patch(args: cli_args.ShowPatchOptions):
 
         out = [item for items in success.values() for item in items]
         output_driver = output_driver_connector.get()
-        out.extend(output_driver.format_fails(fail, args))
+        out.extend(output_driver.format_fails(fail, loader.device_fqdns))
         total = len(success) + len(fail)
         if not total:
             get_logger().error("No devices found for %s", args.query)
