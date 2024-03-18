@@ -115,7 +115,7 @@ def run_partial_initial(device):
     tracing_connector.get().set_device_attributes(tracing_connector.get().get_current_span(), device)
 
     run_args = GeneratorPartialRunArgs(device)
-    return run_partial_generators([InitialConfig()], [], run_args)
+    return run_partial_generators([InitialConfig(storage=device.storage)], [], run_args)
 
 
 @tracing.function
