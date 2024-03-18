@@ -66,7 +66,7 @@ def show_current(args: cli_args.QueryOptions, config, arg_out: cli_args.FileOutO
     connector = storage_connector.get()
     storage_opts = connector.opts().from_cli_opts(args)
     with connector.storage()(storage_opts) as storage:
-        loader = Loader(storage, gen_args)
+        loader = Loader(storage, args=gen_args)
         if not loader.devices:
             get_logger().error("No devices found for %s", args.query)
 
@@ -87,7 +87,7 @@ def gen(args: cli_args.ShowGenOptions):
     connector = storage_connector.get()
     storage_opts = connector.opts().from_cli_opts(args)
     with connector.storage()(storage_opts) as storage:
-        loader = Loader(storage, args)
+        loader = Loader(storage, args=args)
         (success, fail) = api.gen(args, loader)
 
         out = [item for items in success.values() for item in items]
@@ -125,7 +125,7 @@ def patch(args: cli_args.ShowPatchOptions):
     connector = storage_connector.get()
     storage_opts = connector.opts().from_cli_opts(args)
     with connector.storage()(storage_opts) as storage:
-        loader = Loader(storage, args)
+        loader = Loader(storage, args=args)
         (success, fail) = api.patch(args, loader)
 
         out = [item for items in success.values() for item in items]
@@ -149,7 +149,7 @@ def deploy(args: cli_args.DeployOptions):
     connector = storage_connector.get()
     storage_opts = connector.opts().from_cli_opts(args)
     with connector.storage()(storage_opts) as storage:
-        loader = Loader(storage, args)
+        loader = Loader(storage, args=args)
         return api.deploy(
             args=args, loader=loader, deployer=deployer,
             deploy_driver=deploy_driver, filterer=filterer,

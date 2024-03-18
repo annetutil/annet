@@ -13,6 +13,7 @@ from annet.lib import (
     flatten,
 )
 from .base import TreeGenerator, _filter_str
+from .exceptions import NotSupportedDevice
 
 
 class PartialGenerator(TreeGenerator):
@@ -60,6 +61,8 @@ class PartialGenerator(TreeGenerator):
         return {cls.__name__, *cls.TAGS}
 
     def __call__(self, device, annotate=False):
+        if not self.storage.is_device_supported(device):
+            raise NotSupportedDevice("Device has a different storage")
         self._indents = []
         self._rows = []
         self._running_gen = self.run(device)

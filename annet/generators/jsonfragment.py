@@ -12,6 +12,7 @@ from typing import (
 
 from annet.storage import Device, Storage
 from .base import TreeGenerator, _filter_str
+from .exceptions import NotSupportedDevice
 
 
 class JSONFragment(TreeGenerator):
@@ -80,6 +81,8 @@ class JSONFragment(TreeGenerator):
             self._config_pointer.pop()
 
     def __call__(self, device: Device, annotate: bool = False):
+        if not self.storage.is_device_supported(device):
+            raise NotSupportedDevice("Device has a different storage")
         for cfg_fragment in self.run(device):
             self._set_or_replace_dict(self._config_pointer, cfg_fragment)
         return self._json_config

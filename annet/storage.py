@@ -65,6 +65,9 @@ class Storage(abc.ABC):
     def flush_perf(self):
         pass
 
+    def is_device_supported(self, device):
+        return device.storage == self
+
 
 class StorageOpts(abc.ABC):
     @classmethod

@@ -86,6 +86,12 @@ class DeviceGenerators:
             self.json_fragment.get(device_fqdn, []),
         )
 
+    def update(self, other: "DeviceGenerators") -> None:
+        self.partial.update(other.partial)
+        self.ref.update(other.ref)
+        self.entire.update(other.entire)
+        self.json_fragment.update(other.json_fragment)
+
 
 @dataclasses.dataclass
 class OldNewDeviceContext:
@@ -765,37 +771,47 @@ def _old_resolve_files(config: str,
 
 
 class Loader:
-    def __init__(self, storage: Storage, args: GenOptions, no_empty_warning: bool = False) -> None:
+    def __init__(
+            self, *storages: Storage,
+            args: GenOptions,
+            no_empty_warning: bool = False,
+    ) -> None:
         self._args = args
-        self._storage = storage
+        self._storages = storages
         self._no_empty_warning = no_empty_warning
-        self._devices_map: Optional[Dict[int, Device]] = None
-        self._gens: Optional[DeviceGenerators] = None
+        self._devices_map: Dict[int, Device] = {}
+        self._gens: DeviceGenerators = DeviceGenerators()
+        self._counter = itertools.count()
 
         self._preload()
 
     def _preload(self) -> None:
         with tracing_connector.get().start_as_current_span("Resolve devices"):
-            devices = self._storage.make_devices(
-                self._args.query,
-                preload_neighbors=True,
-                use_mesh=not self._args.no_mesh,
-                preload_extra_fields=True,
-            )
+            for storage in self._storages:
+                devices = storage.make_devices(
+                    self._args.query,
+                    preload_neighbors=True,
+                    use_mesh=not self._args.no_mesh,
+                    preload_extra_fields=True,
+                )
+                for device in devices:
+                    self._devices_map[next(self._counter)] = device
+                self._gens.update(_old_resolve_gens(self._args, storage, devices))
         if not devices and not self._no_empty_warning:
             get_logger().error("No devices found for %s", self._args.query)
             return
 
-        self._devices_map = {d.id: d for d in devices}
-        self._gens = _old_resolve_gens(self._args, self._storage, devices)
 
     @property
     def device_fqdns(self):
-        return {d.id: d.fqdn for d in self._devices_map.values()} if self._devices_map else {}
+        return {
+            device_id: d.fqdn
+            for device_id, d in self._devices_map.items()
+        }
 
     @property
     def device_ids(self):
-        return list(self.device_fqdns)
+        return list(self._devices_map)
 
     @property
     def devices(self) -> List[Device]:

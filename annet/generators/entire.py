@@ -18,6 +18,7 @@ from annet.lib import (
     mako_render,
 )
 from .base import BaseGenerator, _filter_str
+from .exceptions import NotSupportedDevice
 
 
 class Entire(BaseGenerator):
@@ -76,6 +77,8 @@ class Entire(BaseGenerator):
         return {cls.__name__, *cls.TAGS}
 
     def __call__(self, device):
+        if not self.storage.is_device_supported(device):
+            raise NotSupportedDevice("Device has a different storage")
         self.__device = device
         parts = []
         run_res = self.run(device)
