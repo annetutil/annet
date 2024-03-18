@@ -131,20 +131,30 @@ def _pool_worker(pool, index, task_queue, done_queue):
                 if device_id:
                     span.set_attribute("device.id", device_id)
 
-                _logger.warning("Worker-%d start invoke %s", index, device_id)
-                task_result.result = invoke_retry(
-                    pool.func,
-                    pool.net_retry,
-                    task.payload,
-                    *pool.args,
-                    **pool.kwargs
-                )
-                _logger.warning("Worker-%d finish invoke %s", index, device_id)
+                name = "invoke"
+                invoke_span_ctx = tracing_connector.get().start_as_linked_span(name, tracer_name=__name__)
+                capture_output_ctx = capture_output(cap_stdout, cap_stderr)
 
-                # Check if the result is picklable and throw an exception if not.
-                # Otherwise the exception will be thrown inside the multiprocessing
-                # code and we won't be able to handle it.
-                pickle.dumps(task_result.result)
+                with invoke_span_ctx as invoke_span, capture_output_ctx as _:
+                    invoke_span.set_attribute("func", pool.func.__name__)
+                    invoke_span.set_attribute("worker.id", worker_id)
+                    if device_id:
+                        invoke_span.set_attribute("device.id", device_id)
+
+                    _logger.warning("Worker-%d start invoke %s", index, device_id)
+                    task_result.result = invoke_retry(
+                        pool.func,
+                        pool.net_retry,
+                        task.payload,
+                        *pool.args,
+                        **pool.kwargs
+                    )
+                    _logger.warning("Worker-%d finish invoke %s", index, device_id)
+
+                    # Check if the result is picklable and throw an exception if not.
+                    # Otherwise the exception will be thrown inside the multiprocessing
+                    # code and we won't be able to handle it.
+                    pickle.dumps(task_result.result)
         except KeyboardInterrupt:  # pylint: disable=try-except-raise
             raise
         except Exception as exc:
