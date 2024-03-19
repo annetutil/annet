@@ -2,7 +2,7 @@ import abc
 import os
 import posixpath
 import sys
-from typing import List, Optional, Tuple, Type
+from typing import List, Optional, Tuple, Type, Dict
 
 import colorama
 from annet.annlib.output import (  # pylint: disable=unused-import
@@ -41,7 +41,7 @@ class OutputDriver(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def format_fails(self, fail, fqdns: Optional[dict[int, str]] = None) -> Tuple[str, str]:
+    def format_fails(self, fail, fqdns: Optional[Dict[int, str]] = None) -> Tuple[str, str]:
         pass
 
     @abc.abstractmethod
@@ -129,7 +129,7 @@ class OutputDriverBasic(OutputDriver):
                 with open(dest, "w") as file:
                     writer.write(file)
 
-    def format_fails(self, fail, fqdns: Optional[dict[int, str]] = None):
+    def format_fails(self, fail, fqdns: Optional[Dict[int, str]] = None):
         ret = []
         fqdns = fqdns or {}
         for (assignment, exc) in fail.items():
