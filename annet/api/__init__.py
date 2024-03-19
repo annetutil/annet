@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import time
+import warnings
 from collections import OrderedDict as odict
 from itertools import groupby
 from operator import itemgetter
@@ -17,7 +18,7 @@ from typing import (
     Optional,
     Set,
     Tuple,
-    Union,
+    Union, cast,
 )
 
 import colorama
@@ -44,7 +45,7 @@ from annet.output import (
 )
 from annet.parallel import Parallel, TaskResult
 from annet.reference import RefTracker
-from annet.storage import Device
+from annet.storage import Device, storage_connector
 from annet.types import Diff, ExitCode, OldNewResult, Op, PCDiff, PCDiffFile
 
 
@@ -208,6 +209,21 @@ class PoolProgressLogger:
                              perc=perc, fqdn=fqdn, status=status, status_color=status_color,
                              worker=task_result.worker_name, task_time=elapsed_time)
         return task_result
+
+
+def log_host_progress_cb(pool: Parallel, task_result: TaskResult):
+    warnings.warn(
+        "log_host_progress_cb is deprecated, use PoolProgressLogger",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    args = cast(cli_args.QueryOptions, pool.args[0])
+    connector = storage_connector.get()
+    storage_opts = connector.opts().from_cli_opts(args)
+    with connector.storage()(storage_opts) as storage:
+        hosts = storage.resolve_fdnds_by_query(args.query)
+    fqdn = hosts[task_result.device_id]
+    PoolProgressLogger(device_fqdns=fqdn)(pool, task_result)
 
 
 # =====
