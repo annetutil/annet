@@ -6,8 +6,11 @@ class RefGenerator(PartialGenerator):
         super().__init__(storage)
         self.groups = groups
 
+    def _is_device_supported(self, device):
+        return True
+
     def ref(self, device):
-        if not self.storage.is_device_supported(device):
+        if not self._is_device_supported(device):
             return ""
         if hasattr(self, "ref_" + device.hw.vendor):
             return getattr(self, "ref_" + device.hw.vendor)(device)

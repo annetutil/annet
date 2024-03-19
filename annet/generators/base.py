@@ -3,7 +3,7 @@ from __future__ import annotations
 import abc
 import contextlib
 import textwrap
-from typing import Union
+from typing import Union, List
 
 from annet import tabparser, tracing
 from annet.tracing import tracing_connector
@@ -52,10 +52,9 @@ def _split_and_strip(text):
 # =====
 class BaseGenerator:
     TYPE: str
-    TAGS: list[str]
+    TAGS: List[str]
 
-    def supports_vendor(self,
-                        vendor: str) -> bool:  # pylint: disable=unused-argument
+    def supports_vendor(self, vendor: str) -> bool:  # pylint: disable=unused-argument
         return True
 
 

@@ -76,9 +76,13 @@ class Entire(BaseGenerator):
     def get_aliases(cls) -> Set[str]:
         return {cls.__name__, *cls.TAGS}
 
+    def _is_device_supported(self, device):
+        return True
+
     def __call__(self, device):
-        if not self.storage.is_device_supported(device):
-            raise NotSupportedDevice("Device has a different storage")
+        if not self._is_device_supported(device):
+            raise NotSupportedDevice("Device is not supported")
+
         self.__device = device
         parts = []
         run_res = self.run(device)

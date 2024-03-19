@@ -80,9 +80,13 @@ class JSONFragment(TreeGenerator):
         finally:
             self._config_pointer.pop()
 
+    def _is_device_supported(self, device):
+        return True
+
     def __call__(self, device: Device, annotate: bool = False):
-        if not self.storage.is_device_supported(device):
-            raise NotSupportedDevice("Device has a different storage")
+        if not self._is_device_supported(device):
+            raise NotSupportedDevice("Device is not supported")
+
         for cfg_fragment in self.run(device):
             self._set_or_replace_dict(self._config_pointer, cfg_fragment)
         return self._json_config
