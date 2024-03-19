@@ -363,13 +363,6 @@ class QueryOptionsBase(CacheOptions):
             query_type = storage_connector.get().query()
             self.query = query_type.new(self.query, hosts_range=self.hosts_range)
 
-    def validate_stdin(self, arg, val, **kwargs):
-        if "storage" in kwargs and arg == "config":
-            storage = kwargs["storage"]
-            if len(storage.resolve_object_ids_by_query(self.query)) > 1:
-                raise ValueError("stdin config can not be used with multiple devices")
-        super().validate_stdin(arg, val, **kwargs)
-
 
 class QueryOptions(QueryOptionsBase):
     query = opt_query

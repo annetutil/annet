@@ -39,6 +39,7 @@ from annet.generators import (
     JSONFragment,
     NotSupportedDevice,
     PartialGenerator,
+    RefGenerator,
 )
 from annet.lib import merge_dicts, percentile
 from annet.output import output_driver_connector
@@ -61,6 +62,9 @@ class DeviceGenerators:
 
     # map device fqdn to found partial generators
     partial: Dict[str, List[PartialGenerator]] = dataclasses.field(default_factory=dict)
+
+    # ref generators
+    ref: Dict[str, List[RefGenerator]] = dataclasses.field(default_factory=dict)
 
     # map device fqdn to found entire generators
     entire: Dict[str, List[Entire]] = dataclasses.field(default_factory=dict)
@@ -87,7 +91,6 @@ class DeviceGenerators:
 class OldNewDeviceContext:
     config: str
     args: GenOptions
-    storage: Storage
     downloaded_files: Dict[Device, DeviceDownloadedFiles]
     failed_files: Dict[Device, Exception]
     running: Dict[Device, Dict[str, str]]
@@ -143,21 +146,24 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
                 splitter=tabparser.make_formatter(device.hw).split,
             )
         if not old:
-            res = generators.run_partial_initial(device, ctx.storage)
+            res = generators.run_partial_initial(device)
             old = res.config_tree()
             perf = res.perf_mesures()
             if ctx.args.profile and ctx.do_print_perf:
                 _print_perf("INITIAL", perf)
         run_args = generators.GeneratorPartialRunArgs(
             device=device,
-            storage=ctx.storage,
             use_acl=not ctx.args.no_acl,
             use_acl_safe=ctx.args.acl_safe,
             annotate=ctx.add_annotations,
             generators_context=ctx.args.generators_context,
             no_new=ctx.no_new,
         )
-        res = generators.run_partial_generators(ctx.gens.partial[device.fqdn], run_args)
+        res = generators.run_partial_generators(
+            ctx.gens.partial[device.fqdn],
+            ctx.gens.ref[device.fqdn],
+            run_args,
+        )
         partial_results = res.partial_results
         perf = res.perf_mesures()
         if ctx.no_new:
@@ -227,7 +233,6 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
         res = generators.run_file_generators(
             ctx.gens.file_gens(device.fqdn),
             device,
-            ctx.storage,
         )
 
         entire_results = res.entire_results
@@ -317,7 +322,6 @@ def split_downloaded_files_multi_device(
 @tracing.function
 def old_new(
     args: GenOptions,
-    storage: Storage,
     config: str,
     loader: "Loader",
     filterer: Filterer,
@@ -329,13 +333,13 @@ def old_new(
     do_files_download=False,
     do_print_perf=True,
 ):
-    devices = loader.resolve_devices(storage, device_ids)
-    gens = loader.resolve_gens(storage, devices)
+    devices = loader.resolve_devices(device_ids)
+    gens = loader.resolve_gens(devices)
     running, failed_running = _old_resolve_running(config, devices)
     downloaded_files, failed_files = _old_resolve_files(config, devices, gens, do_files_download)
 
     if stdin is None:
-        stdin = args.stdin(storage=storage, filter_acl=args.filter_acl, config=config)
+        stdin = args.stdin(filter_acl=args.filter_acl, config=config)
 
     fetched_packages, failed_packages = {}, {}
     if do_files_download and config == "running":
@@ -347,7 +351,6 @@ def old_new(
     ctx = OldNewDeviceContext(
         config=config,
         args=args,
-        storage=storage,
         downloaded_files=split_downloaded_files_multi_device(downloaded_files, gens, devices),
         failed_files=failed_files,
         running=running,
@@ -375,26 +378,25 @@ def old_new(
 
 
 @tracing.function
-def old_raw(args: GenOptions, storage, config, stdin=None,
-            do_files_download=False, use_mesh=True,
-            ) -> Iterable[Tuple[Device, Union[str, Dict[str, str]]]]:
-    devices = storage.make_devices(args.query, preload_neighbors=True, use_mesh=use_mesh)
-    device_gens = _old_resolve_gens(args, storage, devices)
-    running, failed_running = _old_resolve_running(config, devices)
-    downloaded_files, failed_files = _old_resolve_files(config, devices, device_gens, do_files_download)
+def old_raw(
+        args: GenOptions, loader: Loader, config, stdin=None,
+        do_files_download=False, use_mesh=True,
+) -> Iterable[Tuple[Device, Union[str, Dict[str, str]]]]:
+    device_gens = loader.resolve_gens(loader.devices)
+    running, failed_running = _old_resolve_running(config, loader.devices)
+    downloaded_files, failed_files = _old_resolve_files(config, loader.devices, device_gens, do_files_download)
     if stdin is None:
-        stdin = args.stdin(storage=storage, filter_acl=args.filter_acl, config=config)
+        stdin = args.stdin(filter_acl=args.filter_acl, config=config)
     ctx = OldNewDeviceContext(
         config=config,
         args=args,
-        storage=storage,
-        downloaded_files=split_downloaded_files_multi_device(downloaded_files, device_gens, devices),
+        downloaded_files=split_downloaded_files_multi_device(downloaded_files, device_gens, loader.devices),
         failed_files=failed_files,
         running=running,
         failed_running=failed_running,
         stdin=stdin,
         do_files_download=do_files_download,
-        device_count=len(devices),
+        device_count=len(loader.devices),
         no_new=True,
         add_annotations=False,
         add_implicit=False,
@@ -403,7 +405,7 @@ def old_raw(args: GenOptions, storage, config, stdin=None,
         failed_packages={},
         do_print_perf=True,
     )
-    for device in devices:
+    for device in loader.devices:
         if not device.is_pc():
             config = _old_new_get_config_cli(ctx, device)
             config = scrub_config(config, device.breed)
@@ -425,68 +427,59 @@ def worker(device_id, args: ShowGenOptions, stdin, loader: "Loader", filterer: F
     if span:
         span.set_attribute("device.id", device_id)
 
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        for res in old_new(
-            args,
-            storage,
-            config="/dev/null",
-            loader=loader,
-            filterer=filterer,
-            add_implicit=False,
-            add_annotations=args.annotate,
-            stdin=stdin,
-            device_ids=[device_id],
-        ):
-            new = res.get_new(args.acl_safe)
-            new_files = res.get_new_files(args.acl_safe)
-            new_file_fragments = res.get_new_file_fragments(args.acl_safe)
-            output_driver = output_driver_connector.get()
-            device = res.device
-            if new is None:
-                continue
-            for (entire_path, (entire_data, _)) in sorted(new_files.items(), key=itemgetter(0)):
-                yield (output_driver.entire_config_dest_path(device, entire_path), entire_data, False)
+    for res in old_new(
+        args,
+        config="/dev/null",
+        loader=loader,
+        filterer=filterer,
+        add_implicit=False,
+        add_annotations=args.annotate,
+        stdin=stdin,
+        device_ids=[device_id],
+    ):
+        new = res.get_new(args.acl_safe)
+        new_files = res.get_new_files(args.acl_safe)
+        new_file_fragments = res.get_new_file_fragments(args.acl_safe)
+        output_driver = output_driver_connector.get()
+        device = res.device
+        if new is None:
+            continue
+        for (entire_path, (entire_data, _)) in sorted(new_files.items(), key=itemgetter(0)):
+            yield (output_driver.entire_config_dest_path(device, entire_path), entire_data, False)
 
-            for (path, (data, _)) in sorted(new_file_fragments.items(), key=itemgetter(0)):
-                dumped_data = json.dumps(data, indent=4, sort_keys=True, ensure_ascii=False)
-                yield (output_driver.entire_config_dest_path(device, path), dumped_data, False)
+        for (path, (data, _)) in sorted(new_file_fragments.items(), key=itemgetter(0)):
+            dumped_data = json.dumps(data, indent=4, sort_keys=True, ensure_ascii=False)
+            yield (output_driver.entire_config_dest_path(device, path), dumped_data, False)
 
-            has_file_result = new_files or new_file_fragments
-            has_partial_result = new or not has_file_result
-            if device.hw.vendor in platform.VENDOR_REVERSES and has_partial_result:
-                orderer = patching.Orderer.from_hw(device.hw)
-                yield (output_driver.cfg_file_names(device)[0],
-                       format_config_blocks(
-                           orderer.order_config(new),
-                           device.hw,
-                           args.indent
-                       ),
-                       False)
+        has_file_result = new_files or new_file_fragments
+        has_partial_result = new or not has_file_result
+        if device.hw.vendor in platform.VENDOR_REVERSES and has_partial_result:
+            orderer = patching.Orderer.from_hw(device.hw)
+            yield (output_driver.cfg_file_names(device)[0],
+                   format_config_blocks(
+                       orderer.order_config(new),
+                       device.hw,
+                       args.indent
+                   ),
+                   False)
 
 
 def old_new_worker(device_id, args: DeployOptions, config, stdin, loader: "Loader", filterer: Filterer):
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        yield from old_new(
-            args,
-            storage,
-            config=config,
-            loader=loader,
-            filterer=filterer,
-            stdin=stdin,
-            device_ids=[device_id],
-            no_new=args.clear,
-            do_files_download=True,
-        )
+    yield from old_new(
+        args,
+        config=config,
+        loader=loader,
+        filterer=filterer,
+        stdin=stdin,
+        device_ids=[device_id],
+        no_new=args.clear,
+        do_files_download=True,
+    )
 
 
 class OldNewParallel(Parallel):
-    def __init__(self, storage: Storage, args: DeployOptions, loader: "Loader", filterer: Filterer):
-        self.storage = storage
-        stdin = args.stdin(storage=storage, filter_acl=args.filter_acl, config=args.config)
+    def __init__(self, args: DeployOptions, loader: "Loader", filterer: Filterer):
+        stdin = args.stdin(filter_acl=args.filter_acl, config=args.config)
         super().__init__(
             old_new_worker,
             args,
@@ -497,20 +490,19 @@ class OldNewParallel(Parallel):
         )
         self.tune_args(args)
 
-    def generated_configs(self, device_ids: List[int]) -> Generator[OldNewResult, None, None]:
-        skipped = set(device_ids)
+    def generated_configs(self, devices: List[Device]) -> Generator[OldNewResult, None, None]:
+        devices_by_id = {device.id: device for device in devices}
+        device_ids = list(devices_by_id)
 
         for task_result in self.irun(device_ids):
             if task_result.exc is not None:
-                device = self.storage.get_device(task_result.device_id, use_mesh=False, preload_neighbors=False)
+                device = devices_by_id.pop(task_result.device_id)
                 yield OldNewResult(device=device, err=task_result.exc)
-                skipped.discard(task_result.device_id)
             elif task_result.result is not None:
                 yield from task_result.result
-                skipped.discard(task_result.device_id)
+                devices_by_id.pop(task_result.device_id)
 
-        for device_id in skipped:
-            device = self.storage.get_device(device_id, use_mesh=False, preload_neighbors=False)
+        for device in devices_by_id.values():
             yield OldNewResult(device=device, err=Exception(f"No config returned for {device.hostname}"))
 
 
@@ -675,6 +667,8 @@ def _old_new_get_config_cli(ctx: OldNewDeviceContext, device: Device) -> str:
             raise exc
     elif ctx.config == "-":
         text = ctx.stdin["config"]
+        if ctx.device_count > 1:
+            raise ValueError("stdin config can not be used with multiple devices")
     else:
         if os.path.isdir(ctx.config):
             filename = _existing_cfg_file_name(ctx.config, device)
@@ -728,13 +722,14 @@ def _old_new_get_config_files(ctx: OldNewDeviceContext, device: Device) -> Devic
 
 
 @tracing.function
-def _old_resolve_gens(args: GenOptions, storage: Storage, devices: List[Device]) -> DeviceGenerators:
+def _old_resolve_gens(args: GenOptions, storage: Storage, devices: Iterable[Device]) -> DeviceGenerators:
     per_device_gens = DeviceGenerators()
     for device in devices:
         gens = generators.build_generators(storage, gens=args, device=device)
         per_device_gens.partial[device.fqdn] = gens.partial
         per_device_gens.entire[device.fqdn] = gens.entire
         per_device_gens.json_fragment[device.fqdn] = gens.json_fragment
+        per_device_gens.ref[device.fqdn] = gens.ref
     return per_device_gens
 
 
@@ -808,23 +803,16 @@ class Loader:
             return list(self._devices_map.values())
         return []
 
-    def resolve_devices(self, storage: Storage, device_ids: Iterable[int]) -> List[Device]:
+    def resolve_devices(self, device_ids: Iterable[int]) -> List[Device]:
         devices = []
         for device_id in device_ids:
             device = self._devices_map[device_id]
-
-            # can not use self._storage here, we can be in another process
-            device.storage = storage
-
             devices.append(device)
         return devices
 
-    def resolve_gens(self, storage: Storage, devices: Iterable[Device]) -> DeviceGenerators:
+    def resolve_gens(self, devices: Iterable[Device]) -> DeviceGenerators:
         if self._gens is not None:
-            for gen in self._gens.iter_gens():
-                # can not use self._storage here, we can be in another process
-                gen.storage = storage
             return self._gens
 
         with tracing_connector.get().start_as_current_span("Resolve gens"):
-            return _old_resolve_gens(self._args, storage, devices)
+            return _old_resolve_gens(self._args, self._storage, devices)

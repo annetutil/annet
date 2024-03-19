@@ -43,7 +43,6 @@ class GeneratorPartialRunArgs:
     def __init__(
         self,
         device: Device,
-        storage: Storage,
         use_acl: bool = False,
         use_acl_safe: bool = False,
         annotate: bool = False,
@@ -51,7 +50,6 @@ class GeneratorPartialRunArgs:
         no_new: bool = False,
     ):
         self.device = device
-        self.storage = storage
         self.use_acl = use_acl  # фильтруем по acl ввыод генератора (--no-acl для дебага)
         self.use_acl_safe = use_acl_safe  # [NOCDEV-6190] используем более строгий генераторный acl
         self.annotate = annotate  # добавляем в каждую строку вывода информацию откуда она была заyield'ена

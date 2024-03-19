@@ -27,13 +27,14 @@ def extend_device_base(
         interfaces: List[models.Interface],
         hw: Optional[HardwareView],
         breed: str,
+        storage: Storage,
         neighbours_ids: List[int],
 ) -> models.NetboxDevice:
     ...
 
 
 def extend_device(
-        device: api_models.Device,
+        device: api_models.Device, storage: Storage,
 ) -> models.NetboxDevice:
     return extend_device_base(
         device=device,
@@ -47,6 +48,7 @@ def extend_device(
             device.device_type.model,
         ),
         neighbours_ids=[],
+        storage=storage,
     )
 
 
@@ -89,7 +91,7 @@ class NetboxStorageV37(Storage):
             **kwargs,
     ) -> List[models.NetboxDevice]:
         device_ids = {
-            device.id: extend_device(device=device)
+            device.id: extend_device(device=device, storage=self)
             for device in self._load_devices(query)
         }
         if not device_ids:
@@ -128,7 +130,7 @@ class NetboxStorageV37(Storage):
             **kwargs,
     ) -> models.NetboxDevice:
         device = self.netbox.get_device(obj_id)
-        res = extend_device(device=device)
+        res = extend_device(device=device, storage=self)
         res.interfaces = self._load_interfaces([device.id])
         return res
 
