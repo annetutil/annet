@@ -135,7 +135,7 @@ class NetboxStorageV24(Storage):
             use_mesh=None,
             preload_extra_fields=False,
             **kwargs,
-    ) -> list[models.NetboxDevice]:
+    ) -> List[models.NetboxDevice]:
         device_ids = {
             device.id: extend_device(device=device, storage=self)
             for device in self._load_devices(query)

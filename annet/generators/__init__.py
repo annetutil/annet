@@ -598,7 +598,7 @@ def _filter_str(value: Union[str, int, float, tabparser.JuniperList, ParamsList,
 # =====
 class BaseGenerator:
     TYPE: str
-    TAGS: list[str]
+    TAGS: List[str]
 
     def supports_vendor(self, vendor: str) -> bool:  # pylint: disable=unused-argument
         return True
