@@ -26,8 +26,6 @@ if __name__ == "__main__":
             "annet.*",
             "annet_generators",
             "annet_generators.*",
-            "annet_nbexport",
-            "annet_nbexport.*"
         ]),
         package_data={
             "annet": ["configs/*"],
@@ -37,10 +35,9 @@ if __name__ == "__main__":
         entry_points={
           "console_scripts": [
               "annet = annet.annet:main",
-              "annet_nbexport = annet_nbexport.main:main",
           ],
           "annet.connectors": [
-            "storage = annet_nbexport:AnnetNbExportProvder",
+            "storage = annet.adapters.netbox.provider:NetboxProvider",
           ],
         },
         python_requires=">=3.8",

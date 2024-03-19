@@ -54,7 +54,9 @@ def show_current(args: cli_args.QueryOptions, config, arg_out: cli_args.FileOutO
                         entire_data = ""
                     yield (output_driver.entire_config_dest_path(device, entire_path), entire_data, False)
 
-    with storage_connector.get().storage()(args) as storage:
+    connector = storage_connector.get()
+    storage_opts = connector.opts().from_cli_opts(args)
+    with connector.storage()(storage_opts) as storage:
         ids = storage.resolve_object_ids_by_query(args.query)
         if not ids:
             get_logger().error("No devices found for %s", args.query)
@@ -80,7 +82,9 @@ def gen(args: cli_args.ShowGenOptions):
 @subcommand(cli_args.ShowDiffOptions)
 def diff(args: cli_args.ShowDiffOptions):
     """ Сгенерировать конфиг для устройств и показать дифф по рулбуку с текущим """
-    with storage_connector.get().storage()(args) as storage:
+    connector = storage_connector.get()
+    storage_opts = connector.opts().from_cli_opts(args)
+    with connector.storage()(storage_opts) as storage:
         filterer = filtering.filterer_connector.get()
         loader = Loader(storage, args)
         output_driver_connector.get().write_output(
