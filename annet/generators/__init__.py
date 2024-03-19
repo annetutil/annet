@@ -341,7 +341,7 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
             "generators_context": str(run_args.generators_context),
         })
 
-    with GeneratorPerfMesurer(gen,run_args=run_args) as pm:
+    with GeneratorPerfMesurer(gen, run_args=run_args) as pm:
         if not run_args.no_new:
             if gen.get_user_runner(device):
                 logger.info("Generating PARTIAL ...")

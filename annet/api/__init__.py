@@ -589,7 +589,8 @@ class Deployer:
         success_device_ids = []
         for host, hres in result.results.items():
             device = self.fqdn_to_device[host]
-            if (not isinstance(hres, Exception) and
+            if (
+                not isinstance(hres, Exception) and
                 host not in self.empty_diff_hostnames and
                 device.is_pc()
             ):
