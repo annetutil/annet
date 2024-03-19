@@ -4,7 +4,8 @@ import os
 import platform
 import subprocess
 import shutil
-from typing import Generator, Tuple, Iterable
+from contextlib import ExitStack, contextmanager
+from typing import Tuple, Iterable
 
 import yaml
 from contextlog import get_logger
@@ -18,7 +19,7 @@ from annet.diff import gen_sort_diff
 from annet.gen import Loader, old_raw
 from annet.lib import get_context_path, repair_context_file
 from annet.output import output_driver_connector, OutputDriver
-from annet.storage import Storage, storage_connector
+from annet.storage import storage_connector
 
 
 def fill_base_args(parser: ArgParser, pkg_name: str, logging_config: str):
@@ -58,15 +59,24 @@ def _gen_current_items(
                 yield (destname, entire_data, False)
 
 
+@contextmanager
+def get_loader(gen_args: cli_args.GenOptions, args: cli_args.QueryOptions):
+    exit_stack = ExitStack()
+    connectors = storage_connector.get_all()
+    storages = []
+    with exit_stack:
+        for connector in connectors:
+            storage_opts = connector.opts().from_cli_opts(args)
+            storages.append(exit_stack.enter_context(connector.storage()(storage_opts)))
+        yield Loader(*storages, args=gen_args)
+
+
 @subcommand(cli_args.QueryOptions, cli_args.opt_config, cli_args.FileOutOptions)
 def show_current(args: cli_args.QueryOptions, config, arg_out: cli_args.FileOutOptions) -> None:
     """ Показать текущий конфиг устройств """
     gen_args = cli_args.GenOptions(args, no_acl=True)
     output_driver = output_driver_connector.get()
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        loader = Loader(storage, args=gen_args)
+    with get_loader(gen_args, args) as loader:
         if not loader.devices:
             get_logger().error("No devices found for %s", args.query)
 
@@ -83,11 +93,7 @@ def show_current(args: cli_args.QueryOptions, config, arg_out: cli_args.FileOutO
 @subcommand(cli_args.ShowGenOptions)
 def gen(args: cli_args.ShowGenOptions):
     """ Сгенерировать конфиг для устройств """
-
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        loader = Loader(storage, args=args)
+    with get_loader(args, args) as loader:
         (success, fail) = api.gen(args, loader)
 
         out = [item for items in success.values() for item in items]
@@ -106,11 +112,8 @@ def gen(args: cli_args.ShowGenOptions):
 @subcommand(cli_args.ShowDiffOptions)
 def diff(args: cli_args.ShowDiffOptions):
     """ Сгенерировать конфиг для устройств и показать дифф по рулбуку с текущим """
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
+    with get_loader(args, args) as loader:
         filterer = filtering.filterer_connector.get()
-        loader = Loader(storage, args)
         device_ids = loader.device_ids
         output_driver_connector.get().write_output(
             args,
@@ -122,10 +125,7 @@ def diff(args: cli_args.ShowDiffOptions):
 @subcommand(cli_args.ShowPatchOptions)
 def patch(args: cli_args.ShowPatchOptions):
     """ Сгенерировать конфиг для устройств и сформировать патч """
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        loader = Loader(storage, args=args)
+    with get_loader(args, args) as loader:
         (success, fail) = api.patch(args, loader)
 
         out = [item for items in success.values() for item in items]
@@ -146,10 +146,7 @@ def deploy(args: cli_args.DeployOptions):
     fetcher = fetcher_connector.get()
     deploy_driver = driver_connector.get()
 
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        loader = Loader(storage, args=args)
+    with get_loader(args, args) as loader:
         return api.deploy(
             args=args, loader=loader, deployer=deployer,
             deploy_driver=deploy_driver, filterer=filterer,

@@ -1,5 +1,5 @@
 from logging import getLogger
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from adaptix import P
 from adaptix.conversion import impl_converter, link
@@ -84,12 +84,14 @@ class NetboxStorageV37(Storage):
 
     def make_devices(
             self,
-            query: NetboxQuery,
+            query: Union[NetboxQuery, list],
             preload_neighbors=False,
             use_mesh=None,
             preload_extra_fields=False,
             **kwargs,
     ) -> List[models.NetboxDevice]:
+        if isinstance(query, list):
+            query = NetboxQuery.new(query)
         device_ids = {
             device.id: extend_device(device=device, storage=self)
             for device in self._load_devices(query)
