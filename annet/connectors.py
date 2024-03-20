@@ -17,12 +17,12 @@ class Connector(ABC, Generic[T]):
         raise RuntimeError(f"{self.name} is not set")
 
     @cached_property
-    def _entry_point(self) -> Optional[Type[T]]:
+    def _entry_point(self) -> List[Type[T]]:
         return load_entry_point(self.ep_group, self.ep_name)
 
     def get(self, *args, **kwargs) -> T:
         if self._classes is None:
-            self._classes = self._entry_point  or [self._get_default()]
+            self._classes = self._entry_point or [self._get_default()]
         if len(self._classes) > 1:
             raise RuntimeError(
                 f"Multiple classes are registered with the same "
@@ -35,7 +35,7 @@ class Connector(ABC, Generic[T]):
 
     def get_all(self, *args, **kwargs) -> T:
         if self._classes is None:
-            self._classes = [self._entry_point or self._get_default()]
+            self._classes = self._entry_point or [self._get_default()]
 
         return [cls(*args, **kwargs) for cls in self._classes]
 
