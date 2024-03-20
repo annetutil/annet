@@ -57,6 +57,9 @@ class BaseGenerator:
     def supports_vendor(self, vendor: str) -> bool:  # pylint: disable=unused-argument
         return True
 
+    def supports_device(self, device) -> bool:  # pylint: disable=unused-argument
+        return True
+
 
 class TreeGenerator(BaseGenerator):
     def __init__(self, indent="  "):

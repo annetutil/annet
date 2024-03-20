@@ -31,7 +31,11 @@ from annet.types import (
     GeneratorPartialRunArgs,
     GeneratorResult,
 )
-from .base import BaseGenerator
+from .base import (
+    BaseGenerator,
+    TextGenerator as TextGenerator,
+    ParamsList as ParamsList,
+)
 from .exceptions import NotSupportedDevice, GeneratorError
 from .jsonfragment import JSONFragment
 from .partial import PartialGenerator
@@ -384,10 +388,12 @@ def _get_generators(module_paths: Union[List[str], dict], storage, device=None):
             else:
                 logger = get_logger()
                 for gen in generators:
-                    if gen.supports_vendor(device.hw.vendor):
-                        res_generators.append(gen)
-                    else:
+                    if not gen.supports_device(device):
+                        logger.info("generator %s does not support device %s, skipping", gen, device)
+                    elif not gen.supports_vendor(device.hw.vendor):
                         logger.info("generator %s does not support device vendor %s, skipping", gen, device.hw.vendor)
+                    else:
+                        res_generators.append(gen)
     return res_generators
 
 
