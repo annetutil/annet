@@ -20,6 +20,7 @@ class DeviceIp:
 
 @dataclass
 class Device(Entity):
+    url: str
     display_name: str
     device_type: DeviceType
     device_role: Entity

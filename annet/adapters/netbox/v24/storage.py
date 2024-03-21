@@ -45,6 +45,7 @@ def extend_device(
     model = device.device_type.model
 
     return models.NetboxDevice(
+        url=device.url,
         id=device.id,
         name=device.name,
         display=device.display_name,

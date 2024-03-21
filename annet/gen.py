@@ -61,16 +61,16 @@ class DeviceGenerators:
     """Collections of various types of generators found for devices."""
 
     # map device fqdn to found partial generators
-    partial: Dict[str, List[PartialGenerator]] = dataclasses.field(default_factory=dict)
+    partial: Dict[Any, List[PartialGenerator]] = dataclasses.field(default_factory=dict)
 
     # ref generators
-    ref: Dict[str, List[RefGenerator]] = dataclasses.field(default_factory=dict)
+    ref: Dict[Any, List[RefGenerator]] = dataclasses.field(default_factory=dict)
 
     # map device fqdn to found entire generators
-    entire: Dict[str, List[Entire]] = dataclasses.field(default_factory=dict)
+    entire: Dict[Any, List[Entire]] = dataclasses.field(default_factory=dict)
 
     # map device fqdn to found json fragment generators
-    json_fragment: Dict[str, List[JSONFragment]] = dataclasses.field(default_factory=dict)
+    json_fragment: Dict[Any, List[JSONFragment]] = dataclasses.field(default_factory=dict)
 
     def iter_gens(self) -> Iterator[BaseGenerator]:
         """Iterate over generators."""
@@ -79,11 +79,11 @@ class DeviceGenerators:
                 for gen in gen_list:
                     yield gen
 
-    def file_gens(self, device_fqdn: str) -> Iterator[Union[Entire, JSONFragment]]:
+    def file_gens(self, device: Any) -> Iterator[Union[Entire, JSONFragment]]:
         """Iterate over generators that generate files or file parts."""
         yield from itertools.chain(
-            self.entire.get(device_fqdn, []),
-            self.json_fragment.get(device_fqdn, []),
+            self.entire.get(device, []),
+            self.json_fragment.get(device, []),
         )
 
     def update(self, other: "DeviceGenerators") -> None:
@@ -166,8 +166,8 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
             no_new=ctx.no_new,
         )
         res = generators.run_partial_generators(
-            ctx.gens.partial[device.fqdn],
-            ctx.gens.ref[device.fqdn],
+            ctx.gens.partial[device],
+            ctx.gens.ref[device],
             run_args,
         )
         partial_results = res.partial_results
@@ -237,7 +237,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
                     get_logger(host=device.hostname).error(error_msg)
                     return OldNewResult(device=device, err=Exception(error_msg))
         res = generators.run_file_generators(
-            ctx.gens.file_gens(device.fqdn),
+            ctx.gens.file_gens(device),
             device,
         )
 
@@ -297,7 +297,7 @@ def split_downloaded_files(
     """Split downloaded files per generator type: entire/json_fragment."""
     ret = DeviceDownloadedFiles()
 
-    for gen in gens.file_gens(device.fqdn):
+    for gen in gens.file_gens(device):
         filepath = gen.path(device)
         if filepath in device_flat_files:
             if isinstance(gen, Entire):
@@ -524,7 +524,7 @@ def _get_files_to_download(devices: List[Device], gens: DeviceGenerators) -> Dic
     for device in devices:
         paths = set()
         try:
-            for generator in gens.file_gens(device.fqdn):
+            for generator in gens.file_gens(device):
                 try:
                     path = generator.path(device)
                     if path:
@@ -732,10 +732,10 @@ def _old_resolve_gens(args: GenOptions, storage: Storage, devices: Iterable[Devi
     per_device_gens = DeviceGenerators()
     for device in devices:
         gens = generators.build_generators(storage, gens=args, device=device)
-        per_device_gens.partial[device.fqdn] = gens.partial
-        per_device_gens.entire[device.fqdn] = gens.entire
-        per_device_gens.json_fragment[device.fqdn] = gens.json_fragment
-        per_device_gens.ref[device.fqdn] = gens.ref
+        per_device_gens.partial[device] = gens.partial
+        per_device_gens.entire[device] = gens.entire
+        per_device_gens.json_fragment[device] = gens.json_fragment
+        per_device_gens.ref[device] = gens.ref
     return per_device_gens
 
 

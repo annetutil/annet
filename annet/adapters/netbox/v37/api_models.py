@@ -16,6 +16,7 @@ class Interface(Entity):
 
 @dataclass
 class Device(Entity):
+    url: str
     display: str  # renamed in 3.x from display_name
     device_type: DeviceType
     device_role: Entity

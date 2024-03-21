@@ -389,7 +389,7 @@ def _get_generators(module_paths: Union[List[str], dict], storage, device=None):
                 logger = get_logger()
                 for gen in generators:
                     if not gen.supports_device(device):
-                        logger.info("generator %s does not support device %s, skipping", gen, device)
+                        logger.info("generator %s does not support device %s, skipping", gen, type(device))
                     elif not gen.supports_vendor(device.hw.vendor):
                         logger.info("generator %s does not support device vendor %s, skipping", gen, device.hw.vendor)
                     else:

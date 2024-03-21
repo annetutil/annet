@@ -62,6 +62,7 @@ class Interface(Entity):
 
 @dataclass
 class NetboxDevice(Entity):
+    url: str
     storage: Storage
     neighbours_ids: List[int]
 
@@ -93,8 +94,12 @@ class NetboxDevice(Entity):
     interfaces: List[Interface]
 
     # compat
+
     def __hash__(self):
-        return hash(self.id)
+        return hash((self.id, type(self)))
+
+    def __eq__(self, other):
+        return type(self) is type(other) and self.url == other.url
 
     def is_pc(self):
         return self.device_type.manufacturer.name == "Mellanox"
