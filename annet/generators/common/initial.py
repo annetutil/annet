@@ -14,7 +14,7 @@ class InitialConfig(PartialGenerator):
     """
     def __init__(self, storage=None):
         self._do_run = not storage
-        super().__init__(storage=None)
+        super().__init__(storage=storage)
 
     def run_huawei(self, device):
         if not self._do_run:

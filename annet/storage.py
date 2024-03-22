@@ -65,7 +65,6 @@ class Storage(abc.ABC):
     def flush_perf(self):
         pass
 
-
 class StorageOpts(abc.ABC):
     @classmethod
     @abc.abstractmethod

@@ -1,5 +1,5 @@
 from logging import getLogger
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from annet.adapters.netbox.common import models
 from annet.adapters.netbox.common.manufacturer import (
@@ -45,6 +45,7 @@ def extend_device(
     model = device.device_type.model
 
     return models.NetboxDevice(
+        url=device.url,
         id=device.id,
         name=device.name,
         display=device.display_name,
@@ -130,12 +131,14 @@ class NetboxStorageV24(Storage):
 
     def make_devices(
             self,
-            query: NetboxQuery,
+            query: Union[NetboxQuery, list],
             preload_neighbors=False,
             use_mesh=None,
             preload_extra_fields=False,
             **kwargs,
     ) -> List[models.NetboxDevice]:
+        if isinstance(query, list):
+            query = NetboxQuery.new(query)
         device_ids = {
             device.id: extend_device(device=device, storage=self)
             for device in self._load_devices(query)
@@ -149,6 +152,8 @@ class NetboxStorageV24(Storage):
         return list(device_ids.values())
 
     def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
+        if not query.globs:
+            return []
         return [
             device
             for device in self.netbox.all_devices().results
