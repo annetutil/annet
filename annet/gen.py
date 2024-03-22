@@ -730,6 +730,7 @@ def _old_new_get_config_files(ctx: OldNewDeviceContext, device: Device) -> Devic
 @tracing.function
 def _old_resolve_gens(args: GenOptions, storage: Storage, devices: Iterable[Device]) -> DeviceGenerators:
     per_device_gens = DeviceGenerators()
+    devices = devices or [None]  # get all generators if no devices provided
     for device in devices:
         gens = generators.build_generators(storage, gens=args, device=device)
         per_device_gens.partial[device] = gens.partial

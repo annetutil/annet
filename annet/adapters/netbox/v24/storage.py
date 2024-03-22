@@ -152,6 +152,8 @@ class NetboxStorageV24(Storage):
         return list(device_ids.values())
 
     def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
+        if not query.globs:
+            return []
         return [
             device
             for device in self.netbox.all_devices().results
