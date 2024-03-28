@@ -433,6 +433,11 @@ class FileOutOptions(ArgGroup):
     no_label = opt_no_label
     no_color = opt_no_color
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.dest:
+            self.no_color = True
+
 
 class DiffOptions(GenOptions, ComocutorOptions):
     clear = opt_clear
@@ -466,6 +471,11 @@ class ShowDiffOptions(DiffOptions, FileOutOptions):
     indent = opt_indent
     show_rules = opt_show_rules
     no_collapse = opt_no_collapse
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.dest:
+            self.no_collapse = True
 
 
 class ShowPatchOptions(PatchOptions, FileOutOptions):

@@ -30,8 +30,7 @@ def gen_sort_diff(
     :param diffs: Маппинг устройства в дифф
     :param args: Параметры коммандной строки
     """
-    # NOCDEV-2201 non-null --dest implies --no-collapse
-    if args.no_collapse or args.dest:
+    if args.no_collapse:
         devices_to_diff = {(dev,): diff for dev, diff in diffs.items()}
     else:
         non_pc_diffs = {dev: diff for dev, diff in diffs.items() if not isinstance(diff, PCDiff)}
