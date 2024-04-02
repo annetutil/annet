@@ -681,6 +681,8 @@ class PartialGenerator(TreeGenerator):
         self._annotations = []
         self._annotation_module = self.__class__.__module__ or ""
 
+        self._logged_unsupported: Set[str] = set()
+
     def supports_vendor(self, vendor: str) -> bool:
         if self.__class__.run is PartialGenerator.run:
             return hasattr(self, f"run_{vendor}")
@@ -695,15 +697,20 @@ class PartialGenerator(TreeGenerator):
         if hasattr(self, "acl_safe_" + device.hw.vendor):
             return getattr(self, "acl_safe_" + device.hw.vendor)(device)
 
+    def _log_unsupported_once(self, vendor):
+        if vendor not in self._logged_unsupported:
+            logger = get_logger()
+            logger.info(
+                "generator %s is not supported for vendor %s",
+                self,
+                vendor,
+            )
+            self._logged_unsupported.add(vendor)
+
     def run(self, device) -> Iterable[Union[str, tuple]]:
         if hasattr(self, "run_" + device.hw.vendor):
             return getattr(self, "run_" + device.hw.vendor)(device)
-        logger = get_logger()
-        logger.info(
-            "generator %s is not supported for vendor %s (%s)",
-            self,
-            device.hw.vendor,
-        )
+        self._log_unsupported_once(device.hw.vendor)
         return iter(())
 
     def get_user_runner(self, device):
