@@ -698,6 +698,12 @@ class PartialGenerator(TreeGenerator):
     def run(self, device) -> Iterable[Union[str, tuple]]:
         if hasattr(self, "run_" + device.hw.vendor):
             return getattr(self, "run_" + device.hw.vendor)(device)
+        logger = get_logger()
+        logger.info(
+            "generator %s is not supported for vendor %s (%s)",
+            self,
+            device.hw.vendor,
+        )
         return iter(())
 
     def get_user_runner(self, device):
