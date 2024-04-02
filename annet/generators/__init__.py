@@ -538,15 +538,7 @@ def _get_generators(module_paths: Union[List[str], dict], storage, device=None):
         module = importlib.import_module(module_path)
         if hasattr(module, "get_generators"):
             generators: List[BaseGenerator] = module.get_generators(storage)
-            if device is None:
-                res_generators += generators
-            else:
-                logger = get_logger()
-                for gen in generators:
-                    if gen.supports_vendor(device.hw.vendor):
-                        res_generators.append(gen)
-                    else:
-                        logger.info("generator %s does not support device vendor %s, skipping", gen, device.hw.vendor)
+            res_generators += generators
     return res_generators
 
 
