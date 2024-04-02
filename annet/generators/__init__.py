@@ -700,7 +700,7 @@ class PartialGenerator(TreeGenerator):
             return getattr(self, "run_" + device.hw.vendor)(device)
         logger = get_logger()
         logger.info(
-            "generator %s is not supported for vendor %s (%s)",
+            "generator %s is not supported for vendor %s",
             self,
             device.hw.vendor,
         )
