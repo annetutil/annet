@@ -294,7 +294,11 @@ def run_partial_generators(gens: List["PartialGenerator"], run_args: GeneratorPa
     logger.debug("Generating selected PARTIALs ...")
 
     for gen in gens:
-        result = _run_partial_generator(gen, run_args)
+        try:
+            result = _run_partial_generator(gen, run_args)
+        except NotSupportedDevice as exc:
+            logger.info("generator %s raised unsupported error: %r", gen, exc)
+            continue
 
         if not result:
             continue
@@ -321,6 +325,7 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
     safe_config = odict()
 
     if not gen.supports_device(device):
+        logger.info("generator %s is not supported for device %s", gen, device.hostname)
         return None
 
     span = tracing_connector.get().get_current_span()
@@ -438,8 +443,8 @@ def run_file_generators(
             raise RuntimeError(f"Unknown generator class type: cls={gen.__class__} TYPE={gen.__class__.TYPE}")
         try:
             result = run_generator_fn(gen, device, storage)
-        except NotSupportedDevice:
-            logger.info("generator %s is not supported for this device", gen)
+        except NotSupportedDevice as exc:
+            logger.info("generator %s raised unsupported error: %r", gen, exc)
             continue
         if result:
             add_result_fn(result)
