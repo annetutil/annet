@@ -28,30 +28,36 @@ class PartialGenerator(TreeGenerator):
         self._annotations = []
         self._annotation_module = self.__class__.__module__ or ""
 
-    def supports_vendor(self, vendor: str) -> bool:
+    def supports_device(self, device) -> bool:
         if self.__class__.run is PartialGenerator.run:
-            return hasattr(self, f"run_{vendor}")
+            return bool(self._get_vendor_func(device.hw.vendor, "run"))
         else:
             return True
 
     def acl(self, device):
-        if hasattr(self, "acl_" + device.hw.vendor):
-            return getattr(self, "acl_" + device.hw.vendor)(device)
+        acl_func = self._get_vendor_func(device.hw.vendor, "acl")
+        if acl_func:
+            return acl_func(device)
 
     def acl_safe(self, device):
-        if hasattr(self, "acl_safe_" + device.hw.vendor):
-            return getattr(self, "acl_safe_" + device.hw.vendor)(device)
+        acl_func = self._get_vendor_func(device.hw.vendor, "acl_safe")
+        if acl_func:
+            return acl_func(device)
 
     def run(self, device) -> Iterable[Union[str, tuple]]:
-        if hasattr(self, "run_" + device.hw.vendor):
-            return getattr(self, "run_" + device.hw.vendor)(device)
-        return iter(())
+        run_func = self._get_vendor_func(device.hw.vendor, "run")
+        if run_func:
+            return run_func(device)
 
     def get_user_runner(self, device):
         if self.__class__.run is not PartialGenerator.run:
             return self.run
-        elif hasattr(self, "run_" + device.hw.vendor):
-            return getattr(self, "run_" + device.hw.vendor)
+        return self._get_vendor_func(device.hw.vendor, "run")
+
+    def _get_vendor_func(self, vendor: str, func_name: str):
+        attr_name = f"{func_name}_{vendor}"
+        if hasattr(self, attr_name):
+            return getattr(self, attr_name)
         return None
 
     # =====

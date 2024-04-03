@@ -31,6 +31,9 @@ class JSONFragment(TreeGenerator):
         if not hasattr(self, "reload_prio"):
             self.reload_prio = 100
 
+    def supports_device(self, device: Device):
+        return bool(self.path(device))
+
     def path(self, device: Device) -> Optional[str]:
         raise NotImplementedError("Required PATH for JSON_FRAGMENT generator")
 

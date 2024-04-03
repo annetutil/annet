@@ -33,6 +33,9 @@ class Entire(BaseGenerator):
             self.prio = 100
         self.__device = None
 
+    def supports_device(self, device):
+        return bool(self.path(device))
+
     def run(self, device) -> Union[None, str, Iterable[Union[str, tuple]]]:
         raise NotImplementedError
 

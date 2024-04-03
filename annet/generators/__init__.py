@@ -143,8 +143,8 @@ def run_partial_generators(
     for gen in gens:
         try:
             result = _run_partial_generator(gen, run_args)
-        except NotSupportedDevice:
-            logger.info("generator %s is not supported for this device, skip generator for this devices!", gen)
+        except NotSupportedDevice as exc:
+            logger.info("generator %s raised unsupported error: %r", gen, exc)
             continue
 
         if not result:
@@ -164,12 +164,16 @@ def run_partial_generators(
 
 
 @tracing.function(name="run_partial_generator")
-def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRunArgs) -> GeneratorPartialResult:
+def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRunArgs) -> Optional[GeneratorPartialResult]:
     logger = get_logger(generator=_make_generator_ctx(gen))
     device = run_args.device
     output = ""
     config = odict()
     safe_config = odict()
+
+    if not gen.supports_device(device):
+        logger.info("generator %s is not supported for device %s", gen, device.hostname)
+        return None
 
     span = tracing_connector.get().get_current_span()
     if span:
@@ -285,8 +289,8 @@ def run_file_generators(
             raise RuntimeError(f"Unknown generator class type: cls={gen.__class__} TYPE={gen.__class__.TYPE}")
         try:
             result = run_generator_fn(gen, device)
-        except NotSupportedDevice:
-            logger.info("generator %s is not supported for this device", gen)
+        except NotSupportedDevice as exc:
+            logger.info("generator %s raised unsupported error: %r", gen, exc)
             continue
         if result:
             add_result_fn(result)
@@ -296,33 +300,34 @@ def run_file_generators(
 
 @tracing.function(min_duration="0.5")
 def _run_entire_generator(gen: "Entire", device: "Device") -> Optional[GeneratorResult]:
+    logger = get_logger(generator=_make_generator_ctx(gen))
+    if not gen.supports_device(device):
+        logger.info("generator %s is not supported for device %s", gen, device.hostname)
+        return
+
     span = tracing_connector.get().get_current_span()
     if span:
         tracing_connector.get().set_device_attributes(span, device)
         tracing_connector.get().set_dimensions_attributes(span, gen, device)
 
-    logger = get_logger(generator=_make_generator_ctx(gen))
     path = gen.path(device)
-    if path:
-        logger.info("Generating ENTIRE ...")
+    if not path:
+        raise RuntimeError("entire generator should return non-empty path")
 
-        with GeneratorPerfMesurer(gen, trace_min_duration="0.5") as pm:
-            output = gen(device)
+    logger.info("Generating ENTIRE ...")
+    with GeneratorPerfMesurer(gen, trace_min_duration="0.5") as pm:
+        output = gen(device)
 
-        reload_cmds = gen.get_reload_cmds(device)
-        prio = gen.prio
-
-        return GeneratorEntireResult(
-            name=gen.__class__.__name__,
-            tags=gen.TAGS,
-            path=path,
-            output=output,
-            reload=reload_cmds,
-            prio=prio,
-            perf=pm.last_result,
-            is_safe=gen.is_safe(device),
-        )
-    return None
+    return GeneratorEntireResult(
+        name=gen.__class__.__name__,
+        tags=gen.TAGS,
+        path=path,
+        output=output,
+        reload=gen.get_reload_cmds(device),
+        prio=gen.prio,
+        perf=pm.last_result,
+        is_safe=gen.is_safe(device),
+    )
 
 
 def _make_generator_ctx(gen):
@@ -334,34 +339,36 @@ def _run_json_fragment_generator(
         device: "Device",
 ) -> Optional[GeneratorResult]:
     logger = get_logger(generator=_make_generator_ctx(gen))
+    if not gen.supports_device(device):
+        logger.info("generator %s is not supported for device %s", gen, device.hostname)
+
     path = gen.path(device)
+    if not path:
+        raise RuntimeError("json fragment generator should return non-empty path")
 
     acl_item_or_list_of_items = gen.acl(device)
+    if not acl_item_or_list_of_items:
+        raise RuntimeError("json fragment generator should return non-empty acl")
     if isinstance(acl_item_or_list_of_items, list):
         acl = acl_item_or_list_of_items
     else:
         acl = [acl_item_or_list_of_items]
 
-    if path:
-        logger.info("Generating JSON_FRAGMENT ...")
-
-        with GeneratorPerfMesurer(gen) as pm:
-            config = gen(device)
-
-        reload_cmds = gen.get_reload_cmds(device)
-
-        return GeneratorJSONFragmentResult(
-            name=gen.__class__.__name__,
-            tags=gen.TAGS,
-            path=path,
-            acl=acl,
-            config=config,
-            reload=reload_cmds,
-            perf=pm.last_result,
-            is_safe=gen.is_safe(device),
-            reload_prio=gen.reload_prio,
-        )
-    return None
+    logger.info("Generating JSON_FRAGMENT ...")
+    with GeneratorPerfMesurer(gen) as pm:
+        config = gen(device)
+    reload_cmds = gen.get_reload_cmds(device)
+    return GeneratorJSONFragmentResult(
+        name=gen.__class__.__name__,
+        tags=gen.TAGS,
+        path=path,
+        acl=acl,
+        config=config,
+        reload=reload_cmds,
+        perf=pm.last_result,
+        is_safe=gen.is_safe(device),
+        reload_prio=gen.reload_prio,
+    )
 
 
 def _get_generators(module_paths: Union[List[str], dict], storage, device=None):
@@ -383,17 +390,7 @@ def _get_generators(module_paths: Union[List[str], dict], storage, device=None):
         module = importlib.import_module(module_path)
         if hasattr(module, "get_generators"):
             generators: List[BaseGenerator] = module.get_generators(storage)
-            if device is None:
-                res_generators += generators
-            else:
-                logger = get_logger()
-                for gen in generators:
-                    if not gen.supports_device(device):
-                        logger.info("generator %s does not support device %s, skipping", gen, type(device))
-                    elif not gen.supports_vendor(device.hw.vendor):
-                        logger.info("generator %s does not support device vendor %s, skipping", gen, device.hw.vendor)
-                    else:
-                        res_generators.append(gen)
+            res_generators += generators
     return res_generators
 
 
