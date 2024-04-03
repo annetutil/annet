@@ -464,7 +464,7 @@ def _run_entire_generator(gen: "Entire", device: "Device", storage: Storage) -> 
         tracing_connector.get().set_device_attributes(span, device)
         tracing_connector.get().set_dimensions_attributes(span, gen, device)
 
-    path = gen.device_supported(device)
+    path = gen.path(device)
     if not path:
         raise RuntimeError("entire generator should return non-empty path")
 
