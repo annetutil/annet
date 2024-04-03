@@ -294,11 +294,7 @@ def run_partial_generators(gens: List["PartialGenerator"], run_args: GeneratorPa
     logger.debug("Generating selected PARTIALs ...")
 
     for gen in gens:
-        try:
-            result = _run_partial_generator(gen, run_args)
-        except NotSupportedDevice:
-            logger.info("generator %s is not supported for this device, skip generator for this devices!", gen)
-            continue
+        result = _run_partial_generator(gen, run_args)
 
         if not result:
             continue
@@ -317,12 +313,15 @@ def run_partial_generators(gens: List["PartialGenerator"], run_args: GeneratorPa
 
 
 @tracing.function(name="run_partial_generator")
-def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRunArgs) -> GeneratorPartialResult:
+def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRunArgs) -> Optional[GeneratorPartialResult]:
     logger = get_logger(generator=_make_generator_ctx(gen))
     device = run_args.device
     output = ""
     config = odict()
     safe_config = odict()
+
+    if not gen.supports_device(device):
+        return None
 
     span = tracing_connector.get().get_current_span()
     if span:
@@ -450,33 +449,34 @@ def run_file_generators(
 
 @tracing.function(min_duration="0.5")
 def _run_entire_generator(gen: "Entire", device: "Device", storage: Storage) -> Optional[GeneratorResult]:
+    logger = get_logger(generator=_make_generator_ctx(gen))
+    if not gen.device_supported(device):
+        logger.info("generator %s is not supported for device %s", gen, device.hostname)
+        return
+
     span = tracing_connector.get().get_current_span()
     if span:
         tracing_connector.get().set_device_attributes(span, device)
         tracing_connector.get().set_dimensions_attributes(span, gen, device)
 
-    logger = get_logger(generator=_make_generator_ctx(gen))
-    path = gen.path(device)
-    if path:
-        logger.info("Generating ENTIRE ...")
+    path = gen.device_supported(device)
+    if not path:
+        raise RuntimeError("entire generator should return non-empty path")
 
-        with GeneratorPerfMesurer(gen, storage, trace_min_duration="0.5") as pm:
-            output = gen(device)
+    logger.info("Generating ENTIRE ...")
+    with GeneratorPerfMesurer(gen, storage, trace_min_duration="0.5") as pm:
+        output = gen(device)
 
-        reload_cmds = gen.get_reload_cmds(device)
-        prio = gen.prio
-
-        return GeneratorEntireResult(
-            name=gen.__class__.__name__,
-            tags=gen.TAGS,
-            path=path,
-            output=output,
-            reload=reload_cmds,
-            prio=prio,
-            perf=pm.last_result,
-            is_safe=gen.is_safe(device),
-        )
-    return None
+    return GeneratorEntireResult(
+        name=gen.__class__.__name__,
+        tags=gen.TAGS,
+        path=path,
+        output=output,
+        reload=gen.get_reload_cmds(device),
+        prio=gen.prio,
+        perf=pm.last_result,
+        is_safe=gen.is_safe(device),
+    )
 
 
 def _make_generator_ctx(gen):
@@ -489,34 +489,36 @@ def _run_json_fragment_generator(
         storage: Storage,
 ) -> Optional[GeneratorResult]:
     logger = get_logger(generator=_make_generator_ctx(gen))
+    if not gen.device_supported(device):
+        logger.info("generator %s is not supported for device %s", gen, device.hostname)
+
     path = gen.path(device)
+    if not path:
+        raise RuntimeError("json fragment generator should return non-empty path")
 
     acl_item_or_list_of_items = gen.acl(device)
+    if not acl_item_or_list_of_items:
+        raise RuntimeError("json fragment generator should return non-empty acl")
     if isinstance(acl_item_or_list_of_items, list):
         acl = acl_item_or_list_of_items
     else:
         acl = [acl_item_or_list_of_items]
 
-    if path:
-        logger.info("Generating JSON_FRAGMENT ...")
-
-        with GeneratorPerfMesurer(gen, storage) as pm:
-            config = gen(device)
-
-        reload_cmds = gen.get_reload_cmds(device)
-
-        return GeneratorJSONFragmentResult(
-            name=gen.__class__.__name__,
-            tags=gen.TAGS,
-            path=path,
-            acl=acl,
-            config=config,
-            reload=reload_cmds,
-            perf=pm.last_result,
-            is_safe=gen.is_safe(device),
-            reload_prio=gen.reload_prio,
-        )
-    return None
+    logger.info("Generating JSON_FRAGMENT ...")
+    with GeneratorPerfMesurer(gen, storage) as pm:
+        config = gen(device)
+    reload_cmds = gen.get_reload_cmds(device)
+    return GeneratorJSONFragmentResult(
+        name=gen.__class__.__name__,
+        tags=gen.TAGS,
+        path=path,
+        acl=acl,
+        config=config,
+        reload=reload_cmds,
+        perf=pm.last_result,
+        is_safe=gen.is_safe(device),
+        reload_prio=gen.reload_prio,
+    )
 
 
 def _get_generators(module_paths: Union[List[str], dict], storage, device=None):
@@ -587,7 +589,7 @@ class BaseGenerator:
     TYPE: str
     TAGS: list[str]
 
-    def supports_vendor(self, vendor: str) -> bool:  # pylint: disable=unused-argument
+    def supports_device(self, device: Device) -> bool:  # pylint: disable=unused-argument
         return True
 
 
@@ -681,36 +683,36 @@ class PartialGenerator(TreeGenerator):
         self._annotations = []
         self._annotation_module = self.__class__.__module__ or ""
 
-    def supports_vendor(self, vendor: str) -> bool:
+    def supports_device(self, device: Device) -> bool:
         if self.__class__.run is PartialGenerator.run:
-            return hasattr(self, f"run_{vendor}")
+            return bool(self._get_vendor_func(device.hw.vendor, "run"))
         else:
             return True
 
     def acl(self, device):
-        if hasattr(self, "acl_" + device.hw.vendor):
-            return getattr(self, "acl_" + device.hw.vendor)(device)
+        acl_func = self._get_vendor_func(device.hw.vendor, "acl")
+        if acl_func:
+            return acl_func(device)
 
     def acl_safe(self, device):
-        if hasattr(self, "acl_safe_" + device.hw.vendor):
-            return getattr(self, "acl_safe_" + device.hw.vendor)(device)
+        acl_func = self._get_vendor_func(device.hw.vendor, "acl_safe")
+        if acl_func:
+            return acl_func(device)
 
     def run(self, device) -> Iterable[Union[str, tuple]]:
-        if hasattr(self, "run_" + device.hw.vendor):
-            return getattr(self, "run_" + device.hw.vendor)(device)
-        logger = get_logger()
-        logger.info(
-            "generator %s is not supported for vendor %s",
-            self,
-            device.hw.vendor,
-        )
-        return iter(())
+        run_func = self._get_vendor_func(device.hw.vendor, "run")
+        if run_func:
+            return run_func(device)
 
     def get_user_runner(self, device):
         if self.__class__.run is not PartialGenerator.run:
             return self.run
-        elif hasattr(self, "run_" + device.hw.vendor):
-            return getattr(self, "run_" + device.hw.vendor)
+        return self._get_vendor_func(device.hw.vendor, "run")
+
+    def _get_vendor_func(self, vendor: str, func_name: str):
+        attr_name = f"{func_name}_{vendor}"
+        if hasattr(self, attr_name):
+            return getattr(self, attr_name)
         return None
 
     # =====
@@ -789,6 +791,9 @@ class Entire(BaseGenerator):
         if not hasattr(self, "prio"):
             self.prio = 100
         self.__device = None
+
+    def device_supported(self, device: Device):
+        return bool(self.path(device))
 
     def run(self, device) -> Union[None, str, Iterable[Union[str, tuple]]]:
         raise NotImplementedError
@@ -906,6 +911,9 @@ class JSONFragment(TreeGenerator):
         # if two generators edit same file, commands from generator with greater `reload_prio` will be used
         if not hasattr(self, "reload_prio"):
             self.reload_prio = 100
+
+    def device_supported(self, device: Device):
+        return bool(self.path(device))
 
     def path(self, device: Device) -> Optional[str]:
         raise NotImplementedError("Required PATH for JSON_FRAGMENT generator")
