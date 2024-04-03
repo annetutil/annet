@@ -91,7 +91,7 @@ class Entire(BaseGenerator):
         for text in run_res:
             if isinstance(text, tuple):
                 text = " ".join(map(_filter_str, flatten(text)))
-            assert re.search(r"\bNone\b", text) is None,\
+            assert re.search(r"\bNone\b", text) is None, \
                 "Found 'None' in yield result: %s" % text
             parts.append(text)
         return "\n".join(parts)

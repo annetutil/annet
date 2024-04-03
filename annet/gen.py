@@ -802,7 +802,6 @@ class Loader:
             get_logger().error("No devices found for %s", self._args.query)
             return
 
-
     @property
     def device_fqdns(self):
         return {
