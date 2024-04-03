@@ -455,7 +455,7 @@ def run_file_generators(
 @tracing.function(min_duration="0.5")
 def _run_entire_generator(gen: "Entire", device: "Device", storage: Storage) -> Optional[GeneratorResult]:
     logger = get_logger(generator=_make_generator_ctx(gen))
-    if not gen.device_supported(device):
+    if not gen.supports_device(device):
         logger.info("generator %s is not supported for device %s", gen, device.hostname)
         return
 
@@ -494,7 +494,7 @@ def _run_json_fragment_generator(
         storage: Storage,
 ) -> Optional[GeneratorResult]:
     logger = get_logger(generator=_make_generator_ctx(gen))
-    if not gen.device_supported(device):
+    if not gen.supports_device(device):
         logger.info("generator %s is not supported for device %s", gen, device.hostname)
 
     path = gen.path(device)
@@ -797,7 +797,7 @@ class Entire(BaseGenerator):
             self.prio = 100
         self.__device = None
 
-    def device_supported(self, device: Device):
+    def supports_device(self, device: Device):
         return bool(self.path(device))
 
     def run(self, device) -> Union[None, str, Iterable[Union[str, tuple]]]:
@@ -917,7 +917,7 @@ class JSONFragment(TreeGenerator):
         if not hasattr(self, "reload_prio"):
             self.reload_prio = 100
 
-    def device_supported(self, device: Device):
+    def supports_device(self, device: Device):
         return bool(self.path(device))
 
     def path(self, device: Device) -> Optional[str]:
