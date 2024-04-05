@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import time
+import warnings
 from collections import OrderedDict as odict
 from itertools import groupby
 from operator import itemgetter
@@ -17,23 +18,24 @@ from typing import (
     Optional,
     Set,
     Tuple,
-    Union,
-    cast,
+    Union, cast,
 )
 
 import colorama
+import annet.lib
 from annet.annlib import jsontools
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.rbparser.platform import VENDOR_REVERSES
 from annet.annlib.types import GeneratorType
 from contextlog import get_logger
 
-import annet.deploy
+from annet.deploy import Fetcher, DeployDriver
 from annet import cli_args
 from annet import diff as ann_diff
 from annet import filtering
 from annet import gen as ann_gen
 from annet import patching, rulebook, tabparser, tracing
+from annet.filtering import Filterer
 from annet.hardware import hardware_connector
 from annet.output import (
     LABEL_NEW_PREFIX,
@@ -43,7 +45,7 @@ from annet.output import (
 )
 from annet.parallel import Parallel, TaskResult
 from annet.reference import RefTracker
-from annet.storage import Device, Storage, storage_connector
+from annet.storage import Device, storage_connector
 from annet.types import Diff, ExitCode, OldNewResult, Op, PCDiff, PCDiffFile
 
 
@@ -185,43 +187,54 @@ def _print_pre_as_diff(pre, show_rules, indent, file=None, _level=0):
                         rule_printed = False
 
 
+class PoolProgressLogger:
+    def __init__(self, device_fqdns: Dict[int, str]):
+        self.device_fqdns = device_fqdns
+
+    def __call__(self, pool: Parallel, task_result: TaskResult):
+        progress_logger = get_logger("progress")
+        perc = int(pool.tasks_done / len(self.device_fqdns) * 100)
+
+        fqdn = self.device_fqdns[task_result.device_id]
+        elapsed_time = "%dsec" % int(time.monotonic() - task_result.extra["start_time"])
+        if task_result.extra.get("regression", False):
+            status = task_result.extra["status"]
+            status_color = task_result.extra["status_color"]
+            message = task_result.extra["message"]
+        else:
+            status = "OK" if task_result.exc is None else "FAIL"
+            status_color = colorama.Fore.GREEN if status == "OK" else colorama.Fore.RED
+            message = "" if status == "OK" else str(task_result.exc)
+        progress_logger.info(message,
+                             perc=perc, fqdn=fqdn, status=status, status_color=status_color,
+                             worker=task_result.worker_name, task_time=elapsed_time)
+        return task_result
+
+
 def log_host_progress_cb(pool: Parallel, task_result: TaskResult):
-    progress_logger = get_logger("progress")
+    warnings.warn(
+        "log_host_progress_cb is deprecated, use PoolProgressLogger",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     args = cast(cli_args.QueryOptions, pool.args[0])
     connector = storage_connector.get()
     storage_opts = connector.opts().from_cli_opts(args)
     with connector.storage()(storage_opts) as storage:
         hosts = storage.resolve_fdnds_by_query(args.query)
-    perc = int(pool.tasks_done / len(hosts) * 100)
     fqdn = hosts[task_result.device_id]
-    elapsed_time = "%dsec" % int(time.monotonic() - task_result.extra["start_time"])
-    if task_result.extra.get("regression", False):
-        status = task_result.extra["status"]
-        status_color = task_result.extra["status_color"]
-        message = task_result.extra["message"]
-    else:
-        status = "OK" if task_result.exc is None else "FAIL"
-        status_color = colorama.Fore.GREEN if status == "OK" else colorama.Fore.RED
-        message = "" if status == "OK" else str(task_result.exc)
-    progress_logger.info(message,
-                         perc=perc, fqdn=fqdn, status=status, status_color=status_color,
-                         worker=task_result.worker_name, task_time=elapsed_time)
-    return task_result
+    PoolProgressLogger(device_fqdns=fqdn)(pool, task_result)
 
 
 # =====
-def gen(args: cli_args.ShowGenOptions):
+def gen(args: cli_args.ShowGenOptions, loader: ann_gen.Loader):
     """ Сгенерировать конфиг для устройств """
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        loader = ann_gen.Loader(storage, args)
-        stdin = args.stdin(storage=storage, filter_acl=args.filter_acl, config=None)
+    stdin = args.stdin(filter_acl=args.filter_acl, config=None)
 
     filterer = filtering.filterer_connector.get()
     pool = Parallel(ann_gen.worker, args, stdin, loader, filterer).tune_args(args)
     if args.show_hosts_progress:
-        pool.add_callback(log_host_progress_cb)
+        pool.add_callback(PoolProgressLogger(loader.device_fqdns))
 
     return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
 
@@ -244,22 +257,18 @@ def _diff_files(old_files, new_files, context=3):
     return ret
 
 
-def patch(args: cli_args.ShowPatchOptions):
+def patch(args: cli_args.ShowPatchOptions, loader: ann_gen.Loader):
     """ Сгенерировать патч для устройств """
     global live_configs  # pylint: disable=global-statement
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        loader = ann_gen.Loader(storage, args)
-        if args.config == "running":
-            fetcher = annet.deploy.fetcher_connector.get()
-            live_configs = fetcher.fetch(loader.devices, processes=args.parallel)
-        stdin = args.stdin(storage=storage, filter_acl=args.filter_acl, config=args.config)
+    if args.config == "running":
+        fetcher = annet.deploy.fetcher_connector.get()
+        live_configs = fetcher.fetch(loader.devices, processes=args.parallel)
+    stdin = args.stdin(filter_acl=args.filter_acl, config=args.config)
 
     filterer = filtering.filterer_connector.get()
     pool = Parallel(_patch_worker, args, stdin, loader, filterer).tune_args(args)
     if args.show_hosts_progress:
-        pool.add_callback(log_host_progress_cb)
+        pool.add_callback(PoolProgressLogger(loader.device_fqdns))
     return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
 
 
@@ -290,71 +299,70 @@ def _patch_worker(device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann
 
 
 # =====
-def res_diff_patch(device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann_gen.Loader, filterer: filtering.Filterer) -> Iterable[
-    Tuple[OldNewResult, Dict, Dict]]:
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        for res in ann_gen.old_new(
-            args,
-            storage,
-            config=args.config,
-            loader=loader,
-            filterer=filterer,
-            stdin=stdin,
-            device_ids=[device_id],
-            no_new=args.clear,
-            do_files_download=True,
-        ):
-            old = res.get_old(args.acl_safe)
-            new = res.get_new(args.acl_safe)
-            new_json_fragment_files = res.get_new_file_fragments(args.acl_safe)
+def res_diff_patch(
+        device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann_gen.Loader, filterer: filtering.Filterer,
+) -> Iterable[Tuple[OldNewResult, Dict, Dict]]:
+    for res in ann_gen.old_new(
+        args,
+        config=args.config,
+        loader=loader,
+        filterer=filterer,
+        stdin=stdin,
+        device_ids=[device_id],
+        no_new=args.clear,
+        do_files_download=True,
+    ):
+        old = res.get_old(args.acl_safe)
+        new = res.get_new(args.acl_safe)
+        new_json_fragment_files = res.get_new_file_fragments(args.acl_safe)
 
-            device = res.device
-            acl_rules = res.get_acl_rules(args.acl_safe)
-            if res.old_json_fragment_files or new_json_fragment_files:
-                yield res, None, None
-            elif old is not None:
-                (diff_tree, patch_tree) = _diff_and_patch(device, old, new, acl_rules, res.filter_acl_rules,
-                                                          args.add_comments)
-                yield res, diff_tree, patch_tree
+        device = res.device
+        acl_rules = res.get_acl_rules(args.acl_safe)
+        if res.old_json_fragment_files or new_json_fragment_files:
+            yield res, None, None
+        elif old is not None:
+            (diff_tree, patch_tree) = _diff_and_patch(device, old, new, acl_rules, res.filter_acl_rules,
+                                                      args.add_comments)
+            yield res, diff_tree, patch_tree
 
 
-def diff(args: cli_args.DiffOptions, loader: ann_gen.Loader, filterer: filtering.Filterer) -> Mapping[Device, Union[Diff, PCDiff]]:
+def diff(
+        args: cli_args.DiffOptions,
+        loader: ann_gen.Loader,
+        device_ids: List[int],
+        filterer: filtering.Filterer,
+) -> Mapping[Device, Union[Diff, PCDiff]]:
     ret = {}
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        for res in ann_gen.old_new(
-            args,
-            storage,
-            config=args.config,
-            loader=loader,
-            no_new=args.clear,
-            do_files_download=True,
-            device_ids=loader.device_ids,
-            filterer=filterer,
-        ):
-            old = res.get_old(args.acl_safe)
-            new = res.get_new(args.acl_safe)
-            device = res.device
-            acl_rules = res.get_acl_rules(args.acl_safe)
-            new_files = res.get_new_files(args.acl_safe)
-            new_json_fragment_files = res.get_new_file_fragments()
-            pc_diff_files = []
-            if res.old_files or new_files:
-                pc_diff_files.extend(_pc_diff(device.hostname, res.old_files, new_files))
-            if res.old_json_fragment_files or new_json_fragment_files:
-                pc_diff_files.extend(_json_fragment_diff(device.hostname, res.old_json_fragment_files, new_json_fragment_files))
-
-            if pc_diff_files:
-                pc_diff_files.sort(key=lambda f: f.label)
-                ret[device] = PCDiff(hostname=device.hostname, diff_files=pc_diff_files)
-            elif old is not None:
-                rb = rulebook.get_rulebook(device.hw)
-                diff_tree = patching.make_diff(old, new, rb, [acl_rules, res.filter_acl_rules])
-                diff_tree = patching.strip_unchanged(diff_tree)
-                ret[device] = diff_tree
+    for res in ann_gen.old_new(
+        args,
+        config=args.config,
+        loader=loader,
+        no_new=args.clear,
+        do_files_download=True,
+        device_ids=device_ids,
+        filterer=filterer,
+    ):
+        old = res.get_old(args.acl_safe)
+        new = res.get_new(args.acl_safe)
+        device = res.device
+        acl_rules = res.get_acl_rules(args.acl_safe)
+        new_files = res.get_new_files(args.acl_safe)
+        new_json_fragment_files = res.get_new_file_fragments()
+        if res.old_files or new_files:
+            ret[device] = PCDiff(
+                hostname=device.hostname,
+                diff_files=list(_pc_diff(device.hostname, res.old_files, new_files)),
+            )
+        elif res.old_json_fragment_files or new_json_fragment_files:
+            ret[device] = PCDiff(
+                hostname=device.hostname,
+                diff_files=list(_json_fragment_diff(device.hostname, res.old_json_fragment_files, new_json_fragment_files)),
+            )
+        elif old is not None:
+            rb = rulebook.get_rulebook(device.hw)
+            diff_tree = patching.make_diff(old, new, rb, [acl_rules, res.filter_acl_rules])
+            diff_tree = patching.strip_unchanged(diff_tree)
+            ret[device] = diff_tree
     return ret
 
 
@@ -592,24 +600,24 @@ class Deployer:
             ans = ask.loop()
         return ans
 
-    def check_diff(self, result: annet.deploy.DeployResult, storage: Storage):
+    def check_diff(self, result: annet.deploy.DeployResult, loader: ann_gen.Loader):
         global live_configs  # pylint: disable=global-statement
-        success_hosts = [
-            host.split(".", 1)[0] for (host, hres) in result.results.items()
-            if (not isinstance(hres, Exception) and
+        success_device_ids = []
+        for host, hres in result.results.items():
+            device = self.fqdn_to_device[host]
+            if (
+                not isinstance(hres, Exception) and
                 host not in self.empty_diff_hostnames and
-                not self.fqdn_to_device[host].is_pc())
-        ]
+                device.is_pc()
+            ):
+                success_device_ids.append(device.id)
         diff_args = self.args.copy_from(
             self.args,
             config="running",
-            query=success_hosts,
         )
         if diff_args.query:
             live_configs = None
-            loader = ann_gen.Loader(storage, diff_args, no_empty_warning=True)
-
-            diffs = diff(diff_args, loader, self._filterer)
+            diffs = diff(diff_args, loader, success_device_ids, self._filterer)
             non_pc_diffs = {dev: diff for dev, diff in diffs.items() if not isinstance(diff, PCDiff)}
             devices_to_diff = ann_diff.collapse_diffs(non_pc_diffs)
             devices_to_diff.update({(dev,): diff for dev, diff in diffs.items() if isinstance(diff, PCDiff)})
@@ -630,57 +638,56 @@ class Deployer:
                     _print_pre_as_diff(patching.make_pre(diff_obj), diff_args.show_rules, diff_args.indent)
 
 
-def deploy(args: cli_args.DeployOptions) -> ExitCode:
+def deploy(
+    args: cli_args.DeployOptions,
+    loader: ann_gen.Loader,
+    deployer: Deployer,
+    filterer: Filterer,
+    fetcher: Fetcher,
+    deploy_driver: DeployDriver,
+) -> ExitCode:
     """ Сгенерировать конфиг для устройств и задеплоить его """
     ret: ExitCode = 0
-    deployer = Deployer(args)
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
-    with connector.storage()(storage_opts) as storage:
-        global live_configs  # pylint: disable=global-statement
-        loader = ann_gen.Loader(storage, args)
-        filterer = filtering.filterer_connector.get()
-        fetcher = annet.deploy.fetcher_connector.get()
-        deploy_driver = annet.deploy.driver_connector.get()
-        live_configs = fetcher.fetch(devices=loader.devices, processes=args.parallel)
-        pool = ann_gen.OldNewParallel(storage, args, loader, filterer)
+    global live_configs  # pylint: disable=global-statement
+    live_configs = fetcher.fetch(devices=loader.devices, processes=args.parallel)
+    pool = ann_gen.OldNewParallel(args, loader, filterer)
 
-        for res in pool.generated_configs(loader.device_ids):
-            # Меняем exit code если хоть один device ловил exception
-            if res.err is not None:
-                ret |= 2 ** 3
-            job = DeployerJob.from_device(res.device, args)
-            deployer.parse_result(job, res)
+    for res in pool.generated_configs(loader.devices):
+        # Меняем exit code если хоть один device ловил exception
+        if res.err is not None:
+            ret |= 2 ** 3
+        job = DeployerJob.from_device(res.device, args)
+        deployer.parse_result(job, res)
 
-        deploy_cmds = deployer.deploy_cmds
-        result = annet.deploy.DeployResult(hostnames=[], results={}, durations={}, original_states={})
-        if deploy_cmds:
-            ans = deployer.ask_deploy()
-            if ans != "y":
-                return 2 ** 2
-            result = annet.lib.do_async(deploy_driver.bulk_deploy(deploy_cmds, args))
+    deploy_cmds = deployer.deploy_cmds
+    result = annet.deploy.DeployResult(hostnames=[], results={}, durations={}, original_states={})
+    if deploy_cmds:
+        ans = deployer.ask_deploy()
+        if ans != "y":
+            return 2 ** 2
+        result = annet.lib.do_async(deploy_driver.bulk_deploy(deploy_cmds, args))
 
-        rolled_back = False
-        rollback_cmds = {deployer.fqdn_to_device[x]: cc for x, cc in result.original_states.items() if cc}
-        if args.rollback and rollback_cmds:
-            ans = deployer.ask_rollback()
-            if rollback_cmds and ans == "y":
-                rolled_back = True
-                annet.lib.do_async(deploy_driver.bulk_deploy(rollback_cmds, args))
+    rolled_back = False
+    rollback_cmds = {deployer.fqdn_to_device[x]: cc for x, cc in result.original_states.items() if cc}
+    if args.rollback and rollback_cmds:
+        ans = deployer.ask_rollback()
+        if rollback_cmds and ans == "y":
+            rolled_back = True
+            annet.lib.do_async(deploy_driver.bulk_deploy(rollback_cmds, args))
 
-        if not args.no_check_diff and not rolled_back:
-            deployer.check_diff(result, storage)
+    if not args.no_check_diff and not rolled_back:
+        deployer.check_diff(result, loader)
 
-        if deployer.failed_configs:
-            result.add_results(deployer.failed_configs)
-            ret |= 2 ** 1
+    if deployer.failed_configs:
+        result.add_results(deployer.failed_configs)
+        ret |= 2 ** 1
 
-        annet.deploy.show_bulk_report(result.hostnames, result.results, result.durations, log_dir=None)
-        for host_result in result.results.values():
-            if isinstance(host_result, Exception):
-                ret |= 2 ** 0
-                break
-        return ret
+    annet.deploy.show_bulk_report(result.hostnames, result.results, result.durations, log_dir=None)
+    for host_result in result.results.values():
+        if isinstance(host_result, Exception):
+            ret |= 2 ** 0
+            break
+    return ret
 
 
 def file_diff(args: cli_args.FileDiffOptions):

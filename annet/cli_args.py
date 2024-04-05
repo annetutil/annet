@@ -3,6 +3,7 @@
 import abc
 import argparse
 import enum
+import logging
 import os
 
 from valkit.common import valid_string_list
@@ -360,15 +361,14 @@ class QueryOptionsBase(CacheOptions):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not isinstance(self.query, Query):
-            query_type = storage_connector.get().query()
-            self.query = query_type.new(self.query, hosts_range=self.hosts_range)
-
-    def validate_stdin(self, arg, val, **kwargs):
-        if "storage" in kwargs and arg == "config":
-            storage = kwargs["storage"]
-            if len(storage.resolve_object_ids_by_query(self.query)) > 1:
-                raise ValueError("stdin config can not be used with multiple devices")
-        super().validate_stdin(arg, val, **kwargs)
+            connectors = storage_connector.get_all()
+            if not connectors:
+                pass
+            elif len(connectors) == 1:
+                query_type = connectors[0].query()
+                self.query = query_type.new(self.query, hosts_range=self.hosts_range)
+            else:
+                logging.warning("Multiple connectors found, skip parsing query")
 
 
 class QueryOptions(QueryOptionsBase):

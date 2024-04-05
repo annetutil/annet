@@ -1,6 +1,5 @@
 import abc
-from typing import Any, Iterable, Optional, Type, Union
-
+from typing import Any, Iterable, Optional, Type, Union, Protocol
 
 try:
     from annet.connectors import Connector
@@ -81,7 +80,12 @@ class Query(abc.ABC):
         pass
 
 
-class Device(abc.ABC):
+class Device(Protocol):
+    @property
+    @abc.abstractmethod
+    def storage(self) -> Storage:
+        pass
+
     @abc.abstractmethod
     def __hash__(self):
         pass
