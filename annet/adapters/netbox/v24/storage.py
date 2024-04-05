@@ -1,5 +1,5 @@
 from logging import getLogger
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from annet.adapters.netbox.common import models
 from annet.adapters.netbox.common.manufacturer import (
@@ -39,12 +39,13 @@ def extend_label(
 
 
 def extend_device(
-        device: api_models.Device,
+        device: api_models.Device, storage: Storage,
 ) -> models.NetboxDevice:
     manufacturer = device.device_type.manufacturer.name
     model = device.device_type.model
 
     return models.NetboxDevice(
+        url=device.url,
         id=device.id,
         name=device.name,
         display=device.display_name,
@@ -73,6 +74,7 @@ def extend_device(
         breed=get_breed(manufacturer, model),
         interfaces=[],
         neighbours_ids=[],
+        storage=storage,
     )
 
 
@@ -129,14 +131,16 @@ class NetboxStorageV24(Storage):
 
     def make_devices(
             self,
-            query: NetboxQuery,
+            query: Union[NetboxQuery, list],
             preload_neighbors=False,
             use_mesh=None,
             preload_extra_fields=False,
             **kwargs,
-    ) -> list[models.NetboxDevice]:
+    ) -> List[models.NetboxDevice]:
+        if isinstance(query, list):
+            query = NetboxQuery.new(query)
         device_ids = {
-            device.id: extend_device(device=device)
+            device.id: extend_device(device=device, storage=self)
             for device in self._load_devices(query)
         }
         if not device_ids:
@@ -148,6 +152,8 @@ class NetboxStorageV24(Storage):
         return list(device_ids.values())
 
     def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
+        if not query.globs:
+            return []
         return [
             device
             for device in self.netbox.all_devices().results
@@ -175,7 +181,7 @@ class NetboxStorageV24(Storage):
             **kwargs,
     ) -> models.NetboxDevice:
         device = self.netbox.get_device(obj_id)
-        res = extend_device(device=device)
+        res = extend_device(device=device, storage=self)
         res.interfaces = self._load_interfaces([device.id])
         return res
 

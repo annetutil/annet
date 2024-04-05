@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
 
 from annet.adapters.netbox.common.models import (
     Entity, Label, DeviceType, DeviceIp,
@@ -16,6 +16,7 @@ class Interface(Entity):
 
 @dataclass
 class Device(Entity):
+    url: str
     display: str  # renamed in 3.x from display_name
     device_type: DeviceType
     device_role: Entity
@@ -32,6 +33,6 @@ class Device(Entity):
     primary_ip4: Optional[DeviceIp]
     primary_ip6: Optional[DeviceIp]
     tags: List[Entity]
-    custom_fields: dict[str, Any]
+    custom_fields: Dict[str, Any]
     created: datetime
     last_updated: datetime

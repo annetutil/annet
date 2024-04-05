@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Dict
 
 from adaptix import Retort, name_mapping, NameStyle
 from dataclass_rest import get
@@ -10,7 +11,7 @@ from .client import BaseNetboxClient
 @dataclass
 class Status:
     netbox_version: str
-    plugins: dict[str, str]
+    plugins: Dict[str, str]
 
 
 class NetboxStatusClient(BaseNetboxClient):

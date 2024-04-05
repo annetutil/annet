@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
 
 from annet.annlib.netdev.views.hardware import HardwareView
+from annet.storage import Storage
 
 
 @dataclass
@@ -61,6 +62,8 @@ class Interface(Entity):
 
 @dataclass
 class NetboxDevice(Entity):
+    url: str
+    storage: Storage
     neighbours_ids: List[int]
 
     display: str
@@ -79,7 +82,7 @@ class NetboxDevice(Entity):
     primary_ip4: Optional[DeviceIp]
     primary_ip6: Optional[DeviceIp]
     tags: List[Entity]
-    custom_fields: dict[str, Any]
+    custom_fields: Dict[str, Any]
     created: datetime
     last_updated: datetime
 
@@ -91,8 +94,12 @@ class NetboxDevice(Entity):
     interfaces: List[Interface]
 
     # compat
+
     def __hash__(self):
-        return hash(self.id)
+        return hash((self.id, type(self)))
+
+    def __eq__(self, other):
+        return type(self) is type(other) and self.url == other.url
 
     def is_pc(self):
         return self.device_type.manufacturer.name == "Mellanox"
