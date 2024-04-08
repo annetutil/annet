@@ -378,7 +378,7 @@ def old_new(
     do_files_download=False,
     do_print_perf=True,
 ):
-    devices = loader.resolve_devices(device_ids)
+    devices = loader.devices
     gens = loader.resolve_gens(devices)
     running, failed_running = _old_resolve_running(config, devices)
     downloaded_files, failed_files = _old_resolve_files(config, devices, gens, do_files_download)
@@ -857,13 +857,6 @@ class Loader:
         if self._devices_map:
             return list(self._devices_map.values())
         return []
-
-    def resolve_devices(self, device_ids: Iterable[int]) -> List[Device]:
-        devices = []
-        for device_id in device_ids:
-            device = self._devices_map[device_id]
-            devices.append(device)
-        return devices
 
     def resolve_gens(self, devices: Iterable[Device]) -> DeviceGenerators:
         if self._gens is not None:
