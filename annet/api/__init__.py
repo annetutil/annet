@@ -655,6 +655,7 @@ def deploy(
     for res in pool.generated_configs(loader.devices):
         # Меняем exit code если хоть один device ловил exception
         if res.err is not None:
+            get_logger(res.device.hostname).error("error generating configs", exc_info=res.err)
             ret |= 2 ** 3
         job = DeployerJob.from_device(res.device, args)
         deployer.parse_result(job, res)
