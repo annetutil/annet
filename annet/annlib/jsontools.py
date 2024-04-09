@@ -89,13 +89,6 @@ def apply_patch(content: Optional[bytes], patch_bytes: bytes) -> bytes:
     return new_contents
 
 
-def _apply_path(doc: Dict[str, Any], path: List[str]):
-    if len(path) > 0:
-        if not path[0] in doc:
-            doc[path[0]] = {}
-        _apply_path(doc[path[0]], path[1:])
-
-
 def apply_acl_filters(content: Dict[str, Any], filters: List[str]) -> Dict[str, Any]:
     result = {}
     for f in filters:
@@ -104,7 +97,12 @@ def apply_acl_filters(content: Dict[str, Any], filters: List[str]) -> Dict[str, 
         try:
             part = pointer.get(copy.deepcopy(content))
 
-            _apply_path(result, pointer.get_parts())
+            sub_tree = result
+            for i in pointer.get_parts():
+                if i not in sub_tree:
+                    sub_tree[i] = {}
+                sub_tree = sub_tree[i]
+
             patch = jsonpatch.JsonPatch([{"op": "add", "path": f, "value": part}])
             result = patch.apply(result)
         except jsonpointer.JsonPointerException:
