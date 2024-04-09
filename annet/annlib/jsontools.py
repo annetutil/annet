@@ -91,8 +91,9 @@ def apply_patch(content: Optional[bytes], patch_bytes: bytes) -> bytes:
 
 def _apply_path(doc: Dict[str, Any], path: List[str]):
     if len(path) > 0:
-        doc[path[0]] = {}
-        _apply_path(doc, path[1:])
+        if not path[0] in doc:
+            doc[path[0]] = {}
+        _apply_path(doc[path[0]], path[1:])
 
 
 def apply_acl_filters(content: Dict[str, Any], filters: List[str]) -> Optional[Dict[str, Any]]:
@@ -104,7 +105,7 @@ def apply_acl_filters(content: Dict[str, Any], filters: List[str]) -> Optional[D
             part = pointer.get(copy.deepcopy(content))
 
             _apply_path(result, pointer.get_parts())
-            patch = jsonpatch.JsonPatch([{'op': 'add', 'path': f, 'value': part}])
+            patch = jsonpatch.JsonPatch([{"op": "add", "path": f, "value": part}])
             result = patch.apply(result)
         except jsonpointer.JsonPointerException:
             # no value found in new_fragment by the pointer, skip the ACL item
