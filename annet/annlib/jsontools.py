@@ -96,7 +96,7 @@ def _apply_path(doc: Dict[str, Any], path: List[str]):
         _apply_path(doc[path[0]], path[1:])
 
 
-def apply_acl_filters(content: Dict[str, Any], filters: List[str]) -> Optional[Dict[str, Any]]:
+def apply_acl_filters(content: Dict[str, Any], filters: List[str]) -> Dict[str, Any]:
     result = {}
     for f in filters:
         pointer = jsonpointer.JsonPointer(f)

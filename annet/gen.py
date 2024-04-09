@@ -236,7 +236,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
         old_json_fragment_files = old_files.json_fragment_files
 
         new_files = res.new_files()
-        new_json_fragment_files = res.new_json_fragment_files(old_files.json_fragment_files)
+        new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files)
 
         if ctx.args.acl_safe:
             safe_new_files = res.new_files(safe=True)
@@ -273,7 +273,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
         new_files=new_files,
         partial_result=partial_results,
         entire_result=entire_results,
-        old_json_fragment_files=old_files.json_fragment_files,
+        old_json_fragment_files=old_json_fragment_files,
         new_json_fragment_files=new_json_fragment_files,
         json_fragment_result=json_fragment_results,
         implicit_rules=implicit_rules,
