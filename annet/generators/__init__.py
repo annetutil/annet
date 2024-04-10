@@ -531,7 +531,6 @@ def _run_json_fragment_generator(
         config=config,
         reload=reload_cmds,
         perf=pm.last_result,
-        is_safe=gen.is_safe(device),
         reload_prio=gen.reload_prio,
     )
 
@@ -955,11 +954,6 @@ class JSONFragment(TreeGenerator):
 
     def run(self, device: Device):
         raise NotImplementedError
-
-    # pylint: disable=unused-argument
-    def is_safe(self, device: Device) -> bool:
-        """Output gen results when --acl-safe flag is used"""
-        return False
 
     def get_reload_cmds(self, device: Device) -> str:
         ret = self.reload(device) or ""

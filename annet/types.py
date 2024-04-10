@@ -130,7 +130,6 @@ class GeneratorJSONFragmentResult:
         config: Dict[str, Any],
         reload: str,
         perf: GeneratorPerf,
-        is_safe: bool,
         reload_prio: int,
     ):
         self.name = name
@@ -141,7 +140,6 @@ class GeneratorJSONFragmentResult:
         self.config = config
         self.reload = reload
         self.perf = perf
-        self.is_safe = is_safe
         self.reload_prio = reload_prio
 
 
