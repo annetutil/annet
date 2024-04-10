@@ -239,6 +239,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
         new_files = res.new_files()
         new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files)
 
+        filters = None
         filters_text = build_filter_text(filterer, device, ctx.stdin, ctx.args, ctx.config)
         if filters_text:
             filters = filters_text.split("\n")
@@ -259,12 +260,13 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
         if ctx.args.acl_safe:
             safe_new_files = res.new_files(safe=True)
             safe_new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files, safe=True)
-            for file_name in safe_new_json_fragment_files:
-                safe_new_json_fragment_files = _update_json_config(
-                    safe_new_json_fragment_files,
-                    file_name,
-                    jsontools.apply_acl_filters(safe_new_json_fragment_files[file_name][0], filters)
-                )
+            if filters:
+                for file_name in safe_new_json_fragment_files:
+                    safe_new_json_fragment_files = _update_json_config(
+                        safe_new_json_fragment_files,
+                        file_name,
+                        jsontools.apply_acl_filters(safe_new_json_fragment_files[file_name][0], filters)
+                    )
 
     if ctx.args.profile:
         perf = res.perf_mesures()
