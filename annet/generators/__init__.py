@@ -180,9 +180,8 @@ class RunGeneratorResult:
     def new_json_fragment_files(
             self,
             old_files: Dict[str, Optional[str]],
-            safe: bool = False,  # pylint: disable=unused-argument
+            safe: bool = False,
     ) -> Dict[str, Tuple[Any, Optional[str]]]:
-        # TODO: safe
         files: Dict[str, Tuple[Any, Optional[str]]] = {}
         reload_prios: Dict[str, int] = {}
         for generator_result in self.json_fragment_results.values():
@@ -194,7 +193,12 @@ class RunGeneratorResult:
                     files[filepath] = ({}, None)
             previous_config: Dict[str, Any] = files[filepath][0]
             new_fragment = generator_result.config
-            new_config = jsontools.apply_json_fragment(previous_config, new_fragment, generator_result.acl)
+
+            if safe:
+                new_config = jsontools.apply_json_fragment(previous_config, new_fragment, generator_result.acl_safe)
+            else:
+                new_config = jsontools.apply_json_fragment(previous_config, new_fragment, generator_result.acl)
+
             if filepath in reload_prios and reload_prios[filepath] > generator_result.reload_prio:
                 _, reload_cmd = files[filepath]
             else:
@@ -502,12 +506,17 @@ def _run_json_fragment_generator(
         raise RuntimeError("json fragment generator should return non-empty path")
 
     acl_item_or_list_of_items = gen.acl(device)
+    safe_acl_item_or_list_of_items = gen.acl_safe(device)
     if not acl_item_or_list_of_items:
         raise RuntimeError("json fragment generator should return non-empty acl")
     if isinstance(acl_item_or_list_of_items, list):
         acl = acl_item_or_list_of_items
     else:
         acl = [acl_item_or_list_of_items]
+    if isinstance(safe_acl_item_or_list_of_items, list):
+        acl_safe = safe_acl_item_or_list_of_items
+    else:
+        acl_safe = [safe_acl_item_or_list_of_items]
 
     logger.info("Generating JSON_FRAGMENT ...")
     with GeneratorPerfMesurer(gen, storage) as pm:
@@ -518,6 +527,7 @@ def _run_json_fragment_generator(
         tags=gen.TAGS,
         path=path,
         acl=acl,
+        acl_safe=acl_safe,
         config=config,
         reload=reload_cmds,
         perf=pm.last_result,
@@ -930,6 +940,14 @@ class JSONFragment(TreeGenerator):
     def acl(self, device: Device) -> Union[str, List[str]]:
         """
         Restrict the generator to a specified ACL using JSON Pointer syntax.
+
+        Expected ACL to be a list of strings, but a single string is also allowed.
+        """
+        raise NotImplementedError("Required ACL for JSON_FRAGMENT generator")
+
+    def acl_safe(self, device: Device) -> Union[str, List[str]]:
+        """
+        Restrict the generator to a specified safe ACL using JSON Pointer syntax.
 
         Expected ACL to be a list of strings, but a single string is also allowed.
         """

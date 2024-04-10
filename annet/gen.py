@@ -216,6 +216,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
 
     new_files = {}
     safe_new_files = {}
+    safe_new_json_fragment_files = {}
     if not ctx.no_new:
         if device in ctx.fetched_packages:
             if ctx.args.required_packages_check:
@@ -238,9 +239,6 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
         new_files = res.new_files()
         new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files)
 
-        if ctx.args.acl_safe:
-            safe_new_files = res.new_files(safe=True)
-
         filters = build_filter_text(filterer, device, ctx.stdin, ctx.args, ctx.config).split("\n")
 
         for file_name in new_json_fragment_files:
@@ -255,6 +253,16 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
                 file_name,
                 jsontools.apply_acl_filters(old_json_fragment_files[file_name][0], filters)
             )
+
+        if ctx.args.acl_safe:
+            safe_new_files = res.new_files(safe=True)
+            safe_new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files, safe=True)
+            for file_name in safe_new_json_fragment_files:
+                safe_new_json_fragment_files = _update_json_config(
+                    safe_new_json_fragment_files,
+                    file_name,
+                    jsontools.apply_acl_filters(safe_new_json_fragment_files[file_name][0], filters)
+                )
 
     if ctx.args.profile:
         perf = res.perf_mesures()
@@ -281,6 +289,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
         safe_old=safe_old,
         safe_new=safe_new,
         safe_new_files=safe_new_files,
+        safe_new_json_fragment_files=safe_new_json_fragment_files,
         filter_acl_rules=filter_acl_rules,
     )
 

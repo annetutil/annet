@@ -106,7 +106,7 @@ def apply_acl_filters(content: Dict[str, Any], filters: List[str]) -> Dict[str, 
             patch = jsonpatch.JsonPatch([{"op": "add", "path": f, "value": part}])
             result = patch.apply(result)
         except jsonpointer.JsonPointerException:
-            # no value found in new_fragment by the pointer, skip the ACL item
+            # no value found in content by the pointer, skip the ACL item
             continue
 
     return result

@@ -126,6 +126,7 @@ class GeneratorJSONFragmentResult:
         tags: List[str],
         path: str,
         acl: List[str],
+        acl_safe: List[str],
         config: Dict[str, Any],
         reload: str,
         perf: GeneratorPerf,
@@ -136,6 +137,7 @@ class GeneratorJSONFragmentResult:
         self.tags = tags
         self.path = path
         self.acl = acl
+        self.acl_safe = acl_safe
         self.config = config
         self.reload = reload
         self.perf = perf
@@ -171,6 +173,7 @@ class OldNewResult:
         safe_old=None,
         safe_new=None,
         safe_new_files=None,
+        safe_new_json_fragment_files=None,
         filter_acl_rules=None
     ):
         self.device: Device = device
@@ -193,6 +196,7 @@ class OldNewResult:
         self.safe_old: MutableMapping = safe_old if safe_old else OrderedDict()
         self.safe_new: MutableMapping = safe_new if safe_new else OrderedDict()
         self.safe_new_files: MutableMapping = safe_new_files if safe_new_files else {}
+        self.safe_new_json_fragment_files: MutableMapping = safe_new_json_fragment_files or {}
 
         self.filter_acl_rules: Optional[MutableMapping] = filter_acl_rules
 
@@ -221,5 +225,7 @@ class OldNewResult:
         return self.new_files
 
     def get_new_file_fragments(self, safe: bool = False) -> Dict[str, Tuple[Any, Optional[str]]]:  # pylint: disable=unused-argument
-        # TODO: safe
+        if safe:
+            return self.safe_new_json_fragment_files
+
         return self.new_json_fragment_files
