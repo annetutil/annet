@@ -260,7 +260,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
         if ctx.args.acl_safe:
             safe_new_files = res.new_files(safe=True)
             safe_new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files, safe=True)
-            if len(filters):
+            if filters:
                 for file_name in safe_new_json_fragment_files:
                     safe_new_json_fragment_files = _update_json_config(
                         safe_new_json_fragment_files,
