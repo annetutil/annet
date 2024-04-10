@@ -500,6 +500,7 @@ def _run_json_fragment_generator(
     logger = get_logger(generator=_make_generator_ctx(gen))
     if not gen.supports_device(device):
         logger.info("generator %s is not supported for device %s", gen, device.hostname)
+        return
 
     path = gen.path(device)
     if not path:
