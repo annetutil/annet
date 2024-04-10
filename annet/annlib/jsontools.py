@@ -87,3 +87,26 @@ def apply_patch(content: Optional[bytes], patch_bytes: bytes) -> bytes:
 
     new_contents = format_json(new_doc, stable=True).encode()
     return new_contents
+
+
+def apply_acl_filters(content: Dict[str, Any], filters: List[str]) -> Dict[str, Any]:
+    result = {}
+    for f in filters:
+        pointer = jsonpointer.JsonPointer(f)
+
+        try:
+            part = pointer.get(copy.deepcopy(content))
+
+            sub_tree = result
+            for i in pointer.get_parts():
+                if i not in sub_tree:
+                    sub_tree[i] = {}
+                sub_tree = sub_tree[i]
+
+            patch = jsonpatch.JsonPatch([{"op": "add", "path": f, "value": part}])
+            result = patch.apply(result)
+        except jsonpointer.JsonPointerException:
+            # no value found in new_fragment by the pointer, skip the ACL item
+            continue
+
+    return result
