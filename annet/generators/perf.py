@@ -15,9 +15,6 @@ from annet.types import (
 from .entire import Entire
 from .partial import PartialGenerator
 
-# =====
-DISABLED_TAG = "disable"
-
 
 class GeneratorPerfMesurer:
     def __init__(
