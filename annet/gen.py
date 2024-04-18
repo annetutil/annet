@@ -253,11 +253,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
                     )
             for file_name in old_json_fragment_files:
                 if old_json_fragment_files.get(file_name) is not None:
-                    old_json_fragment_files = _update_json_config(
-                        old_json_fragment_files,
-                        file_name,
-                        jsontools.apply_acl_filters(old_json_fragment_files[file_name][0], filters)
-                    )
+                    old_json_fragment_files[file_name] = jsontools.apply_acl_filters(old_json_fragment_files[file_name], filters)
 
         if ctx.args.acl_safe:
             safe_new_files = res.new_files(safe=True)
