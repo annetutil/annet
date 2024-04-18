@@ -92,7 +92,11 @@ def apply_patch(content: Optional[bytes], patch_bytes: bytes) -> bytes:
 def apply_acl_filters(content: Dict[str, Any], filters: List[str]) -> Dict[str, Any]:
     result = {}
     for f in filters:
-        pointer = jsonpointer.JsonPointer(f)
+        filter_text = f.strip()
+        if not filter_text:
+            continue
+
+        pointer = jsonpointer.JsonPointer(filter_text)
 
         try:
             part = pointer.get(copy.deepcopy(content))
@@ -103,7 +107,7 @@ def apply_acl_filters(content: Dict[str, Any], filters: List[str]) -> Dict[str, 
                     sub_tree[i] = {}
                 sub_tree = sub_tree[i]
 
-            patch = jsonpatch.JsonPatch([{"op": "add", "path": f, "value": part}])
+            patch = jsonpatch.JsonPatch([{"op": "add", "path": filter_text, "value": part}])
             result = patch.apply(result)
         except jsonpointer.JsonPointerException:
             # no value found in content by the pointer, skip the ACL item
