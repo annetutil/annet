@@ -286,7 +286,7 @@ def test_acl_filter_empty_line(edgecore_json_config, acl_filter2):
     filters = acl_filter2.split("\n")
     result = jsontools.apply_acl_filters(edgecore_json_config, filters)
 
-    assert result == edgecore_json_config
+    assert result == {}
 
 
 def test_acl_filter_wrong_filters_skip(edgecore_json_config, acl_filter3, filter3_result):
