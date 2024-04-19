@@ -1,5 +1,5 @@
 from logging import getLogger
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from adaptix import P
 from adaptix.conversion import impl_converter, link
@@ -27,13 +27,14 @@ def extend_device_base(
         interfaces: List[models.Interface],
         hw: Optional[HardwareView],
         breed: str,
+        storage: Storage,
         neighbours_ids: List[int],
 ) -> models.NetboxDevice:
     ...
 
 
 def extend_device(
-        device: api_models.Device,
+        device: api_models.Device, storage: Storage,
 ) -> models.NetboxDevice:
     return extend_device_base(
         device=device,
@@ -47,6 +48,7 @@ def extend_device(
             device.device_type.model,
         ),
         neighbours_ids=[],
+        storage=storage,
     )
 
 
@@ -82,14 +84,16 @@ class NetboxStorageV37(Storage):
 
     def make_devices(
             self,
-            query: NetboxQuery,
+            query: Union[NetboxQuery, list],
             preload_neighbors=False,
             use_mesh=None,
             preload_extra_fields=False,
             **kwargs,
     ) -> List[models.NetboxDevice]:
+        if isinstance(query, list):
+            query = NetboxQuery.new(query)
         device_ids = {
-            device.id: extend_device(device=device)
+            device.id: extend_device(device=device, storage=self)
             for device in self._load_devices(query)
         }
         if not device_ids:
@@ -101,6 +105,8 @@ class NetboxStorageV37(Storage):
         return list(device_ids.values())
 
     def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
+        if not query.globs:
+            return []
         return [
             device
             for device in self.netbox.all_devices(
@@ -128,7 +134,7 @@ class NetboxStorageV37(Storage):
             **kwargs,
     ) -> models.NetboxDevice:
         device = self.netbox.get_device(obj_id)
-        res = extend_device(device=device)
+        res = extend_device(device=device, storage=self)
         res.interfaces = self._load_interfaces([device.id])
         return res
 
