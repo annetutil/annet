@@ -455,12 +455,6 @@ class PatchOptions(DiffOptions):
     add_comments = opt_add_comments
 
 
-class DeployOptions(PatchOptions, DeviceCliOptions):
-    no_check_diff = opt_no_check_diff
-    entire_reload = opt_entire_reload
-    rollback = opt_rollback
-
-
 class ShowGenOptions(GenOptions, FileOutOptions):
     indent = opt_indent
     annotate = opt_annotate
@@ -497,6 +491,12 @@ class ShowGeneratorsOptions(QueryOptionsOptional, GenSelectOptions):
     format = opt_show_generators_format
     acl_safe = opt_acl_safe
     ignore_disabled = False
+
+
+class DeployOptions(ShowDiffOptions, PatchOptions, DeviceCliOptions):
+    no_check_diff = opt_no_check_diff
+    entire_reload = opt_entire_reload
+    rollback = opt_rollback
 
 
 class SelectContext(ArgGroup):
