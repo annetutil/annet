@@ -130,6 +130,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
     entire_results = []
     implicit_rules: Optional[Dict[str, Any]] = None
     filter_acl_rules: Optional[Dict[str, Any]] = None
+    old_json_fragment_files: Dict[str, Dict[str, Any]] = {}
     new_json_fragment_files: Dict[str, Dict[str, Any]] = {}
     json_fragment_results: Dict[str, generators.GeneratorJSONFragmentResult] = {}
 
