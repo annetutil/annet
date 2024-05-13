@@ -96,7 +96,7 @@
     "Nokia.NS7750": " 7750",
     "Nokia.SR_1s": "SR-1s",
 
-    "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa)",
+    "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa|[Aa]sterfusion CX)",
 
     "PC.Whitebox": "([Mm]ellanox SN|[Ee]dge-?[Cc]ore)",
     "PC.Whitebox.Mellanox": "[Mm]ellanox",
@@ -111,6 +111,10 @@
     "PC.Moxa": "[Mm]oxa",
     "PC.Moxa.NPort": " [Nn][Pp]ort",
     "PC.Moxa.NPort.6610": "6610",
+    "PC.Whitebox.Asterfusion": "[Aa]sterfusion",
+    "PC.Whitebox.Asterfusion.CX": " CX",
+    "PC.Whitebox.Asterfusion.CX.CX500": " CX5\\d\\d",
+    "PC.Whitebox.Asterfusion.CX.CX500.CX532P-N": " CX532P-N",
 
     "RouterOS": "^([Rr]outer[Oo][Ss]|[Mm]ikro[Tt]ik)",
 
@@ -133,5 +137,9 @@
 
     "Ribbon": "^Ribbon",
     "Ribbon.OPT": " OPT",
-    "Ribbon.OPT.OPT9608": "9608D?"
+    "Ribbon.OPT.OPT9608": "9608D?",
+
+    "H3C": "^[Hh]3[Cc]",
+    "H3C.S12500": " S125\\d{2}",
+    "H3C.S12500.S12500R": " S12500R"
 }
