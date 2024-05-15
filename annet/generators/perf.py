@@ -57,6 +57,7 @@ class GeneratorPerfMesurer:
                exc_tb=None) -> GeneratorPerf:
         total = time.monotonic() - self._start_time
         self._span_ctx.__exit__(exc_type, exc_val, exc_tb)
+        rt = self._gen.storage.flush_perf()
 
         meta = {}
         if tracing_connector.get().enabled:
@@ -68,7 +69,7 @@ class GeneratorPerfMesurer:
                 },
             }
 
-        self.last_result = GeneratorPerf(total=total, rt=total, meta=meta)
+        self.last_result = GeneratorPerf(total=total, rt=rt, meta=meta)
         return self.last_result
 
     def __enter__(self):

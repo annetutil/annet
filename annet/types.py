@@ -25,7 +25,12 @@ class GeneratorPerf:
     Рантайм статистика времени выполнения генератора
     """
 
-    def __init__(self, total: float, rt: float, meta: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        total: float,
+        rt: Optional[Dict[str, List[Dict[str, Any]]]],
+        meta: Optional[Dict[str, Any]] = None
+    ):
         self.total = total
         self.rt = rt
         self._meta = meta

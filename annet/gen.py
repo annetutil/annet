@@ -833,8 +833,10 @@ class Loader:
                     use_mesh=not self._args.no_mesh,
                     preload_extra_fields=True,
                 )
+
                 for device in devices:
                     self._devices_map[device.id] = device
+
                 self._gens.update(_old_resolve_gens(self._args, storage, devices))
         if not devices and not self._no_empty_warning:
             get_logger().error("No devices found for %s", self._args.query)
