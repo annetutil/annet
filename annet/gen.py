@@ -821,7 +821,6 @@ class Loader:
         self._no_empty_warning = no_empty_warning
         self._devices_map: Dict[int, Device] = {}
         self._gens: DeviceGenerators = DeviceGenerators()
-        self._counter = itertools.count()
 
         self._preload()
 
@@ -835,7 +834,7 @@ class Loader:
                     preload_extra_fields=True,
                 )
                 for device in devices:
-                    self._devices_map[next(self._counter)] = device
+                    self._devices_map[device.id] = device
                 self._gens.update(_old_resolve_gens(self._args, storage, devices))
         if not devices and not self._no_empty_warning:
             get_logger().error("No devices found for %s", self._args.query)
