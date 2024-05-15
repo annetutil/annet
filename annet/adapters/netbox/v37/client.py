@@ -1,62 +1,35 @@
-from datetime import datetime
-from typing import List, Optional
-
-import dateutil.parser
-from adaptix import Retort, loader
-from dataclass_rest import get
-from dataclass_rest.client_protocol import FactoryProtocol
-
 from annet.adapters.netbox.common.client import (
-    BaseNetboxClient, collect, PagingResponse,
-)
-from annet.adapters.netbox.common.models import IpAddress
-from .api_models import Device, Interface
+    collect, )
+from annet_netbox import Client
+from annet_netbox.api.dcim import dcim_devices_list, dcim_devices_retrieve, dcim_interfaces_list
+from annet_netbox.api.ipam import ipam_ip_addresses_list
 
 
-class NetboxV37(BaseNetboxClient):
-    def _init_response_body_factory(self) -> FactoryProtocol:
-        return Retort(recipe=[
-            loader(datetime, dateutil.parser.parse)
-        ])
+def use_client(func):
+    def wrapper(self, *args, **kwargs):
+        return func(client=self, *args, **kwargs)
 
-    @get("dcim/interfaces")
-    def interfaces(
-            self,
-            device_id: Optional[List[int]] = None,
-            limit: int = 20,
-            offset: int = 0,
-    ) -> PagingResponse[Interface]:
-        pass
+    return wrapper
 
+
+class NetboxV37(Client):
+    def __init__(self, url: str, token: str):
+        headers = {}
+        if token:
+            headers["Authorization"] = f"Token {token}"
+        super().__init__(
+            base_url=url,
+            headers=headers,
+            raise_on_unexpected_status=True,
+        )
+
+    interfaces = use_client(dcim_interfaces_list.sync)
     all_interfaces = collect(interfaces, field="device_id")
 
-    @get("ipam/ip-addresses")
-    def ip_addresses(
-            self,
-            interface_id: Optional[List[int]] = None,
-            limit: int = 20,
-            offset: int = 0,
-    ) -> PagingResponse[IpAddress]:
-        pass
-
+    ip_addresses = use_client(ipam_ip_addresses_list.sync)
     all_ip_addresses = collect(ip_addresses, field="interface_id")
 
-    @get("dcim/devices")
-    def devices(
-            self,
-            name: Optional[List[str]] = None,
-            name__ic: Optional[List[str]] = None,
-            tag: Optional[List[str]] = None,
-            limit: int = 20,
-            offset: int = 0,
-    ) -> PagingResponse[Device]:
-        pass
-
+    devices = use_client(dcim_devices_list.sync)
     all_devices = collect(devices)
 
-    @get("dcim/devices/{device_id}")
-    def get_device(
-            self,
-            device_id: int,
-    ) -> Device:
-        pass
+    get_device = use_client(dcim_devices_retrieve.sync)

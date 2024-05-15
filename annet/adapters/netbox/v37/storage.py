@@ -1,8 +1,9 @@
 from logging import getLogger
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Any
 
 from adaptix import P
 from adaptix.conversion import impl_converter, link
+from net_box_rest_api_client.models import DeviceWithConfigContext
 
 from annet.adapters.netbox.common import models
 from annet.adapters.netbox.common.manufacturer import (
@@ -14,49 +15,10 @@ from annet.annlib.netdev.views.hardware import HardwareView
 from annet.storage import Storage
 from . import api_models
 from .client import NetboxV37
+from .mappers import extend_device, extend_interface, extend_ip
 
 logger = getLogger(__name__)
 
-
-@impl_converter(recipe=[
-    link(P[api_models.Device].name, P[models.NetboxDevice].hostname),
-    link(P[api_models.Device].name, P[models.NetboxDevice].fqdn),
-])
-def extend_device_base(
-        device: api_models.Device,
-        interfaces: List[models.Interface],
-        hw: Optional[HardwareView],
-        breed: str,
-        storage: Storage,
-        neighbours_ids: List[int],
-) -> models.NetboxDevice:
-    ...
-
-
-def extend_device(
-        device: api_models.Device, storage: Storage,
-) -> models.NetboxDevice:
-    return extend_device_base(
-        device=device,
-        interfaces=[],
-        breed=get_breed(
-            device.device_type.manufacturer.name,
-            device.device_type.model,
-        ),
-        hw=get_hw(
-            device.device_type.manufacturer.name,
-            device.device_type.model,
-        ),
-        neighbours_ids=[],
-        storage=storage,
-    )
-
-
-@impl_converter
-def extend_interface(
-        interface: api_models.Interface, ip_addresses: List[models.IpAddress],
-) -> models.Interface:
-    ...
 
 
 class NetboxStorageV37(Storage):
@@ -110,7 +72,7 @@ class NetboxStorageV37(Storage):
         return [
             device
             for device in self.netbox.all_devices(
-                name__ic=query.globs,
+                name_ic=query.globs,
             ).results
             if _match_query(query, device)
             if is_supported(device.device_type.manufacturer.name)

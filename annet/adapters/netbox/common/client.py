@@ -32,7 +32,10 @@ def _collect_by_pages(func: Func) -> Func:
             page = method(*args, **kwargs)
             kwargs["offset"] += limit
             results.extend(page.results)
-            has_next = bool(page.next)
+            # patch for generated client
+            has_next = bool(
+                getattr(page, "next", None) or getattr(page, "next_", None)
+            )
         return PagingResponse(
             previous=None,
             next=None,
