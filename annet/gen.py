@@ -834,6 +834,10 @@ class Loader:
                     preload_extra_fields=True,
                 )
                 for device in devices:
+                    if device.id in self._devices_map:
+                        raise RuntimeError(
+                            f"two devices have same id: {self._devices_map[device.id]} vs {device}"
+                        )
                     self._devices_map[device.id] = device
                 self._gens.update(_old_resolve_gens(self._args, storage, devices))
         if not devices and not self._no_empty_warning:
