@@ -28,7 +28,7 @@ class GeneratorPerf:
     def __init__(
         self,
         total: float,
-        rt: Dict[str, List[Dict[str, Union[str, float]]]],
+        rt: Optional[Dict[str, List[Dict[str, Any]]]],
         meta: Optional[Dict[str, Any]] = None
     ):
         self.total = total
