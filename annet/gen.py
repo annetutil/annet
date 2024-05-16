@@ -378,7 +378,11 @@ def old_new(
     do_files_download=False,
     do_print_perf=True,
 ):
-    devices = loader.devices
+    if device_ids is None:
+        devices = loader.devices
+    else:
+        devices = [loader.get_device(device_id) for device_id in device_ids]
+
     gens = loader.resolve_gens(devices)
     running, failed_running = _old_resolve_running(config, devices)
     downloaded_files, failed_files = _old_resolve_files(config, devices, gens, do_files_download)
@@ -819,7 +823,7 @@ class Loader:
         self._args = args
         self._storages = storages
         self._no_empty_warning = no_empty_warning
-        self._devices_map: Dict[int, Device] = {}
+        self._devices_map: Dict[Any, Device] = {}
         self._gens: DeviceGenerators = DeviceGenerators()
 
         self._preload()
@@ -843,14 +847,19 @@ class Loader:
             return
 
     @property
-    def device_fqdns(self):
+    def device_fqdns(self) -> Dict[Any, str]:
         return {
             device_id: d.fqdn
             for device_id, d in self._devices_map.items()
         }
 
+    def get_device(self, device_id: Any) -> Device:
+        if device_id not in self._devices_map:
+            raise KeyError(f"Unknown device with id {device_id}")
+        return self._devices_map[device_id]
+
     @property
-    def device_ids(self):
+    def device_ids(self) -> List[Any]:
         return list(self._devices_map)
 
     @property
