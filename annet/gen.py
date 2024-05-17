@@ -711,7 +711,7 @@ def _old_new_get_config_cli(ctx: OldNewDeviceContext, device: Device) -> str:
         if text is None:
             exc = (ctx.failed_running.get(device) or
                    Exception("I can't get device config and I don't know why"))
-            get_logger(host=device.hostname).error("config error %s", exc)
+            get_logger(host=device.hostname).error("config error %r", exc)
             raise exc
     elif ctx.config == "-":
         text = ctx.stdin["config"]

@@ -359,7 +359,7 @@ async def bulk(
     tasks = []
     res = {}
     pending = set()
-    tasks_to_hostname = {}
+    tasks_to_device = {}
     time_of_start = {}
     deploy_durations = {}
     now = None
@@ -391,10 +391,15 @@ async def bulk(
             return task.result()
 
     for device in devices:
-        conn = await executor.amake_connection(device=device)
+        try:
+            conn = await executor.amake_connection(device=device)
+        except Exception as exc:
+            _logger.error("failed to connect to %s %r", device.hostname, exc)
+            res[device] = exc
+            continue
         start_hook(device)
         task = asyncio.create_task(coro_gen(conn=conn, device=device, **kwargs))
-        tasks_to_hostname[task] = device
+        tasks_to_device[task] = device
         tasks.append(task)
     try:
         ndone = 0
@@ -415,21 +420,21 @@ async def bulk(
 
                 now = time.monotonic()
                 for task in done:
-                    hostname = tasks_to_hostname[task]
-                    res[hostname] = end_hook(hostname, task)
+                    device = tasks_to_device[task]
+                    res[device] = end_hook(device, task)
                     ndone += 1
     except CancelAllTasks:
         exc = asyncio.CancelledError()
 
         now = time.monotonic()
-        for hostname, task in _get_remaining(tasks, pending, tasks_to_hostname):
-            res[hostname] = exc
+        for device, task in _get_remaining(tasks, pending, tasks_to_device):
+            res[device] = exc
 
-            if hostname in time_of_start:
-                duration = now - time_of_start[hostname]
+            if device.hostname in time_of_start:
+                duration = now - time_of_start[device.hostname]
             else:
                 duration = None
-            deploy_durations[hostname] = duration
+            deploy_durations[device.hostname] = duration
 
             if not asyncio.iscoroutine(task):
                 _logger.info("task %s", task)
@@ -471,11 +476,11 @@ class CancelAllTasks(Exception):
     pass
 
 
-def _get_remaining(tasks, pending, tasks_to_hostname):
+def _get_remaining(tasks, pending, tasks_to_device):
     for task in pending:
-        yield (tasks_to_hostname[task], task)
+        yield (tasks_to_device[task], task)
     for task in tasks:
-        yield (tasks_to_hostname[task], task)
+        yield (tasks_to_device[task], task)
 
 
 _platform = platform.system()
