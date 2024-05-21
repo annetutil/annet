@@ -514,7 +514,7 @@ def worker(device_id, args: ShowGenOptions, stdin, loader: "Loader", filterer: F
 
 
 def old_new_worker(device_id, args: DeployOptions, config, stdin, loader: "Loader", filterer: Filterer):
-    yield from old_new(
+    for res in old_new(
         args,
         config=config,
         loader=loader,
@@ -523,7 +523,10 @@ def old_new_worker(device_id, args: DeployOptions, config, stdin, loader: "Loade
         device_ids=[device_id],
         no_new=args.clear,
         do_files_download=True,
-    )
+    ):
+        if res.err is not None and not args.tolerate_fails:
+            raise res.err
+        yield res
 
 
 class OldNewParallel(Parallel):
@@ -538,12 +541,13 @@ class OldNewParallel(Parallel):
             filterer=filterer,
         )
         self.tune_args(args)
+        self.tolerate_fails = args.tolerate_fails
 
     def generated_configs(self, devices: List[Device]) -> Generator[OldNewResult, None, None]:
         devices_by_id = {device.id: device for device in devices}
         device_ids = list(devices_by_id)
 
-        for task_result in self.irun(device_ids):
+        for task_result in self.irun(device_ids, self.tolerate_fails):
             if task_result.exc is not None:
                 device = devices_by_id.pop(task_result.device_id)
                 yield OldNewResult(device=device, err=task_result.exc)
