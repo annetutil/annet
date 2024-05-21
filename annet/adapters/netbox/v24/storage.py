@@ -1,6 +1,9 @@
 from logging import getLogger
 from typing import Optional, List, Union
 
+from annetbox.v24 import models as api_models
+from annetbox.v24.client_sync import NetboxV24
+
 from annet.adapters.netbox.common import models
 from annet.adapters.netbox.common.manufacturer import (
     is_supported, get_hw, get_breed,
@@ -8,8 +11,6 @@ from annet.adapters.netbox.common.manufacturer import (
 from annet.adapters.netbox.common.query import NetboxQuery
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
 from annet.storage import Storage
-from . import api_models
-from .client import NetboxV24
 
 logger = getLogger(__name__)
 
@@ -156,20 +157,20 @@ class NetboxStorageV24(Storage):
             return []
         return [
             device
-            for device in self.netbox.all_devices().results
+            for device in self.netbox.dcim_all_devices().results
             if _match_query(query, device)
             if is_supported(device.device_type.manufacturer.name)
         ]
 
     def _load_interfaces(self, device_ids: List[int]) -> List[
         models.Interface]:
-        interfaces = self.netbox.all_interfaces(device_id=device_ids)
+        interfaces = self.netbox.dcim_all_interfaces(device_id=device_ids)
         extended_ifaces = {
             interface.id: extend_interface(interface)
             for interface in interfaces.results
         }
 
-        ips = self.netbox.all_ip_addresses(interface_id=list(extended_ifaces))
+        ips = self.netbox.ipam_all_ip_addresses(interface_id=list(extended_ifaces))
         for ip in ips.results:
             extended_ip = extend_ip(ip)
             interface = extended_ifaces[extended_ip.assigned_object_id]
@@ -180,7 +181,7 @@ class NetboxStorageV24(Storage):
             self, obj_id, preload_neighbors=False, use_mesh=None,
             **kwargs,
     ) -> models.NetboxDevice:
-        device = self.netbox.get_device(obj_id)
+        device = self.netbox.dcim_device(obj_id)
         res = extend_device(device=device, storage=self)
         res.interfaces = self._load_interfaces([device.id])
         return res
