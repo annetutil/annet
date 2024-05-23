@@ -347,21 +347,22 @@ def diff(
         acl_rules = res.get_acl_rules(args.acl_safe)
         new_files = res.get_new_files(args.acl_safe)
         new_json_fragment_files = res.get_new_file_fragments()
+
+        pc_diff_files = []
         if res.old_files or new_files:
-            ret[device] = PCDiff(
-                hostname=device.hostname,
-                diff_files=list(_pc_diff(device.hostname, res.old_files, new_files)),
-            )
-        elif res.old_json_fragment_files or new_json_fragment_files:
-            ret[device] = PCDiff(
-                hostname=device.hostname,
-                diff_files=list(_json_fragment_diff(device.hostname, res.old_json_fragment_files, new_json_fragment_files)),
-            )
+            pc_diff_files.extend(_pc_diff(device.hostname, res.old_files, new_files))
+        if res.old_json_fragment_files or new_json_fragment_files:
+            pc_diff_files.extend(_json_fragment_diff(device.hostname, res.old_json_fragment_files, new_json_fragment_files))
+
+        if pc_diff_files:
+            pc_diff_files.sort(key=lambda f: f.label)
+            ret[device] = PCDiff(hostname=device.hostname, diff_files=pc_diff_files)
         elif old is not None:
             rb = rulebook.get_rulebook(device.hw)
             diff_tree = patching.make_diff(old, new, rb, [acl_rules, res.filter_acl_rules])
             diff_tree = patching.strip_unchanged(diff_tree)
             ret[device] = diff_tree
+
     return ret
 
 
