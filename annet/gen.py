@@ -79,6 +79,19 @@ class DeviceGenerators:
                 for gen in gen_list:
                     yield gen
 
+    def for_devices(self, devices: Iterable[Device]) -> "DeviceGenerators":
+        result = DeviceGenerators()
+        for device in devices:
+            if device in self.partial:
+                result.partial[device] = self.partial[device]
+            if device in self.ref:
+                result.ref[device] = self.ref[device]
+            if device in self.entire:
+                result.entire[device] = self.entire[device]
+            if device in self.json_fragment:
+                result.json_fragment[device] = self.json_fragment[device]
+        return result
+
     def file_gens(self, device: Any) -> Iterator[Union[Entire, JSONFragment]]:
         """Iterate over generators that generate files or file parts."""
         yield from itertools.chain(
@@ -872,8 +885,4 @@ class Loader:
         return []
 
     def resolve_gens(self, devices: Iterable[Device]) -> DeviceGenerators:
-        if self._gens is not None:
-            return self._gens
-
-        with tracing_connector.get().start_as_current_span("Resolve gens"):
-            return _old_resolve_gens(self._args, self._storage, devices)
+        return self._gens.for_devices(devices)

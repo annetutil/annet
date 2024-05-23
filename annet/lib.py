@@ -84,6 +84,7 @@ def get_context_path(touch: Optional[bool] = False) -> str:
     return str(path)
 
 
+@lru_cache(maxsize=1)
 def get_context() -> dict:
     with open(get_context_path()) as f:
         raw = yaml.safe_load(f)
