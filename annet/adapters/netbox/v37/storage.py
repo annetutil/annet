@@ -3,6 +3,8 @@ from typing import Optional, List, Union
 
 from adaptix import P
 from adaptix.conversion import impl_converter, link
+from annetbox.v37 import models as api_models
+from annetbox.v37.client_sync import NetboxV37
 
 from annet.adapters.netbox.common import models
 from annet.adapters.netbox.common.manufacturer import (
@@ -12,8 +14,7 @@ from annet.adapters.netbox.common.query import NetboxQuery
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.storage import Storage
-from . import api_models
-from .client import NetboxV37
+
 
 logger = getLogger(__name__)
 
@@ -54,7 +55,8 @@ def extend_device(
 
 @impl_converter
 def extend_interface(
-        interface: api_models.Interface, ip_addresses: List[models.IpAddress],
+        interface: api_models.Interface,
+        ip_addresses: List[models.IpAddress],
 ) -> models.Interface:
     ...
 
@@ -109,7 +111,7 @@ class NetboxStorageV37(Storage):
             return []
         return [
             device
-            for device in self.netbox.all_devices(
+            for device in self.netbox.dcim_all_devices(
                 name__ic=query.globs,
             ).results
             if _match_query(query, device)
@@ -118,13 +120,13 @@ class NetboxStorageV37(Storage):
 
     def _load_interfaces(self, device_ids: List[int]) -> List[
         models.Interface]:
-        interfaces = self.netbox.all_interfaces(device_id=device_ids)
+        interfaces = self.netbox.dcim_all_interfaces(device_id=device_ids)
         extended_ifaces = {
             interface.id: extend_interface(interface, [])
             for interface in interfaces.results
         }
 
-        ips = self.netbox.all_ip_addresses(interface_id=list(extended_ifaces))
+        ips = self.netbox.ipam_all_ip_addresses(interface_id=list(extended_ifaces))
         for ip in ips.results:
             extended_ifaces[ip.assigned_object_id].ip_addresses.append(ip)
         return list(extended_ifaces.values())
@@ -133,7 +135,7 @@ class NetboxStorageV37(Storage):
             self, obj_id, preload_neighbors=False, use_mesh=None,
             **kwargs,
     ) -> models.NetboxDevice:
-        device = self.netbox.get_device(obj_id)
+        device = self.netbox.dcim_device(obj_id)
         res = extend_device(device=device, storage=self)
         res.interfaces = self._load_interfaces([device.id])
         return res
