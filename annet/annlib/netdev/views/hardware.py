@@ -89,6 +89,8 @@ def hw_to_vendor(hw: HardwareView) -> Optional[str]:
         return "aruba"
     elif hw.Ribbon:
         return "ribbon"
+    elif hw.H3C:
+        return "h3c"
     return None
 
 
@@ -106,6 +108,7 @@ def vendor_to_hw(vendor):
             "aruba": "Aruba",
             "routeros": "RouterOS",
             "ribbon": "Ribbon",
+            "h3c": "H3C",
         }.get(vendor.lower(), vendor),
         None,
     )

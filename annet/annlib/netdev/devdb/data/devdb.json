@@ -98,7 +98,7 @@
 
     "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa|[Aa]sterfusion CX)",
 
-    "PC.Whitebox": "([Mm]ellanox SN|[Ee]dge-?[Cc]ore)",
+    "PC.Whitebox": "([Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Aa]sterfusion CX)",
     "PC.Whitebox.Mellanox": "[Mm]ellanox",
     "PC.Whitebox.Mellanox.SN": " SN",
     "PC.Whitebox.Mellanox.SN.SN2100": " SN2100",
