@@ -125,9 +125,9 @@ def run_partial_initial(device):
 
 @tracing.function
 def run_partial_generators(
-        gens: List["PartialGenerator"],
-        ref_gens: List["RefGenerator"],
-        run_args: GeneratorPartialRunArgs,
+    gens: List["PartialGenerator"],
+    ref_gens: List["RefGenerator"],
+    run_args: GeneratorPartialRunArgs,
 ):
     logger = get_logger(host=run_args.device.hostname)
     tracing_connector.get().set_device_attributes(tracing_connector.get().get_current_span(), run_args.device)
@@ -151,14 +151,12 @@ def run_partial_generators(
         if not result:
             continue
 
-        config = result.safe_config if run_args.use_acl_safe else result.config
-
-        ref_match = ret.ref_matcher.match(config)
+        ref_match = ret.ref_matcher.match(result.config)
         for ref_gen, groups in ref_match:
             gens.append(ref_gen.with_groups(groups))
             ret.ref_track.add(gen.__class__, ref_gen.__class__)
 
-        ret.ref_track.config(gen.__class__, config)
+        ret.ref_track.config(gen.__class__, result.config)
         ret.add_partial(result)
 
     return ret
