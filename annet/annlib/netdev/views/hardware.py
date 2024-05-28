@@ -61,6 +61,10 @@ class HardwareView(HardwareLeaf):
     def vendor(self) -> Optional[str]:
         return hw_to_vendor(self)
 
+    @property
+    def soft(self) -> str:
+        return self._soft
+
     def __hash__(self):
         return hash(self.model)
 
