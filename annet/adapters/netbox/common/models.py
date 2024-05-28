@@ -40,6 +40,22 @@ class DeviceIp:
 
 
 @dataclass
+class Prefix:
+    id: int
+    prefix: str
+    site: Entity | None
+    vrf: Entity | None
+    tenant: Entity | None
+    vlan: Entity | None
+    role: Entity | None
+    status: Label
+    is_pool: bool
+    custom_fields: dict[str, Any]
+    created: datetime
+    last_updated: datetime
+
+
+@dataclass
 class IpAddress:
     id: int
     assigned_object_id: int
@@ -50,12 +66,27 @@ class IpAddress:
     tags: List[Entity]
     created: datetime
     last_updated: datetime
+    prefix: Optional[Prefix] = None
+
+
+@dataclass
+class InterfaceConnectedEndpoint(Entity):
+    device: Entity
+
+
+@dataclass
+class InterfaceType:
+    value: str
+    label: str
 
 
 @dataclass
 class Interface(Entity):
     device: Entity
     enabled: bool
+    description: str
+    type: InterfaceType
+    connected_endpoints: Optional[list[InterfaceConnectedEndpoint]]
     display: str = ""
     ip_addresses: List[IpAddress] = field(default_factory=list)
 
@@ -64,7 +95,6 @@ class Interface(Entity):
 class NetboxDevice(Entity):
     url: str
     storage: Storage
-    neighbours_ids: List[int]
 
     display: str
     device_type: DeviceType
@@ -92,6 +122,7 @@ class NetboxDevice(Entity):
     breed: str
 
     interfaces: List[Interface]
+    neighbours: Optional[List["NetboxDevice"]]
 
     # compat
 
