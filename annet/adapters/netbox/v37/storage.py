@@ -152,7 +152,7 @@ class NetboxStorageV37(Storage):
 
         ips = self.netbox.ipam_all_ip_addresses(interface_id=list(extended_ifaces))
         ip_to_cidrs: Dict[str, str] = {ip.address: str(ip_interface(ip.address).network) for ip in ips.results}
-        prefixes = self.netbox.ipam_all_prefixes(prefix=[x for x in ip_to_cidrs.values()])
+        prefixes = self.netbox.ipam_all_prefixes(prefix=list(ip_to_cidrs.values()))
         cidr_to_prefix: Dict[str, models.Prefix] = {x.prefix: x for x in prefixes.results}
 
         for ip in ips.results:
