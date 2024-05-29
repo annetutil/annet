@@ -606,14 +606,14 @@ def _print_perf(gen_type, perf):
                 (
                     (gen if not method else None),
                     (method or "." * 30),
-                    sum(map(itemgetter("time"), stat)),
-                    (min(map(itemgetter("time"), stat)) if method else None),
-                    (percentile(stat, 0.95, itemgetter("time")) if method else None),
-                    (max(map(itemgetter("time"), stat)) if method else None),
-                    (len(stat) if method else None),
+                    sum(map(itemgetter("time"), stat) if stat else None),
+                    (min(map(itemgetter("time"), stat)) if stat else None),
+                    (percentile(stat, 0.95, itemgetter("time")) if stat else None),
+                    (max(map(itemgetter("time"), stat)) if stat else None),
+                    (len(stat) if stat else None),
                     (len(list(filter(
                                      lambda item: item in ["call", "disk_write"],
-                                     map(itemgetter("op"), stat)))) if method else None),
+                                     map(itemgetter("op"), stat)))) if stat else None),
                 )
 
                 for (gen, gen_perf) in sorted(
