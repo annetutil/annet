@@ -89,7 +89,6 @@ class InterfaceMode:
 @dataclass
 class InterfaceVlan(Entity):
     vid: int
-    name: str
 
 
 @dataclass
