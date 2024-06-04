@@ -81,12 +81,26 @@ class InterfaceType:
 
 
 @dataclass
+class InterfaceMode:
+    value: str
+    label: str
+
+
+@dataclass
+class InterfaceVlan(Entity):
+    vid: int
+
+
+@dataclass
 class Interface(Entity):
     device: Entity
     enabled: bool
     description: str
     type: InterfaceType
     connected_endpoints: Optional[list[InterfaceConnectedEndpoint]]
+    mode: Optional[InterfaceMode]
+    untagged_vlan: Optional[InterfaceVlan]
+    tagged_vlans: Optional[List[InterfaceVlan]]
     display: str = ""
     ip_addresses: List[IpAddress] = field(default_factory=list)
 
