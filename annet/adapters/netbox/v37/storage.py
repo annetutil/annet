@@ -42,6 +42,9 @@ def extend_device(
         neighbours: Optional[List[models.NetboxDevice]],
         storage: Storage,
 ) -> models.NetboxDevice:
+    platform_name: str = ""
+    if device.platform:
+        platform_name = device.platform.name
     return extend_device_base(
         device=device,
         interfaces=interfaces,
@@ -52,6 +55,7 @@ def extend_device(
         hw=get_hw(
             device.device_type.manufacturer.name,
             device.device_type.model,
+            platform_name,
         ),
         neighbours=neighbours,
         storage=storage,

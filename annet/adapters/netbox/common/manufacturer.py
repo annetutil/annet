@@ -19,15 +19,12 @@ _VENDORS = {
 }
 
 
-def _vendor_to_hw(vendor):
-    return HardwareView(_VENDORS.get(vendor.lower(), vendor), None)
-
-
-def get_hw(manufacturer: str, model: str):
+def get_hw(manufacturer: str, model: str, platform_name: str):
     # by some reason Netbox calls Mellanox SN as MSN, so we fix them here
     if manufacturer == "Mellanox" and model.startswith("MSN"):
         model = model.replace("MSN", "SN", 1)
-    hw = _vendor_to_hw(manufacturer + " " + model)
+    vendor = manufacturer + " " + model
+    hw = HardwareView(_VENDORS.get(vendor.lower(), vendor), platform_name)
     if not hw:
         raise ValueError(f"unsupported manufacturer {manufacturer}")
     return hw
