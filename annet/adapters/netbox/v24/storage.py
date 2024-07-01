@@ -44,6 +44,9 @@ def extend_device(
 ) -> models.NetboxDevice:
     manufacturer = device.device_type.manufacturer.name
     model = device.device_type.model
+    platform_name = ""
+    if device.platform:
+        platform_name = device.platform.name
 
     return models.NetboxDevice(
         url=device.url,
@@ -71,7 +74,7 @@ def extend_device(
 
         fqdn=device.name,
         hostname=device.name,
-        hw=get_hw(manufacturer, model),
+        hw=get_hw(manufacturer, model, platform_name),
         breed=get_breed(manufacturer, model),
         interfaces=[],
         neighbours_ids=[],
