@@ -1,0 +1,196 @@
+- vendor: Huawei
+  diff: |
+    xpl route-filter foo_8
+      if community matches-any bar_0 then
+        approve
+      - else
+        - refuse
+      + elseif community matches-any foo_bar_0 then
+        + refuse
+    xpl route-filter foo_26
+      if community matches-any bar_0 then
+        approve
+      - else
+        - refuse
+      + elseif community matches-any foo_bar_0 then
+        + refuse
+  patch: |
+    system-view
+    xpl route-filter foo_8
+      if community matches-any bar_0 then
+        approve
+      elseif community matches-any foo_bar_0 then
+        refuse
+      endif
+      end-filter
+    xpl route-filter foo_26
+      if community matches-any bar_0 then
+        approve
+      elseif community matches-any foo_bar_0 then
+        refuse
+      endif
+      end-filter
+    q
+    save
+- vendor: Huawei
+  diff: |+
+    - xpl route-filter foo_5
+      - if community matches-any bar_0 then
+        - approve
+      - elseif community matches-any foo_bar_0 then
+        - refuse
+      - else
+        - refuse
+    - xpl route-filter foo_6
+      - if community matches-any bar_0 then
+        - approve
+    - xpl route-filter foo_7
+      - if community matches-any bar_0 then
+        - approve
+      - elseif community matches-any foo_bar_0 then
+        - refuse
+      - else
+        - refuse
+    - xpl route-filter foo_8
+      - if community matches-any bar_0 then
+        - approve
+      - else
+        - refuse
+    - xpl route-filter foo_23
+      - if community matches-any bar_0 then
+        - approve
+      - elseif community matches-any foo_bar_0 then
+        - refuse
+      - else
+        - refuse
+    - xpl route-filter foo_24
+      - if community matches-any bar_0 then
+        - approve
+    - xpl route-filter foo_25
+      - if community matches-any bar_0 then
+        - approve
+      - elseif community matches-any foo_bar_0 then
+        - refuse
+      - else
+        - refuse
+    - xpl route-filter foo_26
+      - if community matches-any bar_0 then
+        - approve
+      - else
+        - refuse
+    + xpl route-filter bar_5
+      + if community matches-any foo_0 then
+        + approve
+      + elseif community matches-any bar_foo_0 then
+        + refuse
+      + else
+        + refuse
+    + xpl route-filter bar_6
+      + if community matches-any foo_0 then
+        + approve
+    + xpl route-filter bar_7
+      + if community matches-any foo_0 then
+        + approve
+      + elseif community matches-any bar_foo_0 then
+        + refuse
+      + else
+        + refuse
+    + xpl route-filter bar_8
+      + if community matches-any foo_0 then
+        + approve
+      + else
+        + refuse
+    + xpl route-filter bar_23
+      + if community matches-any foo_0 then
+        + approve
+      + elseif community matches-any bar_foo_0 then
+        + refuse
+      + else
+        + refuse
+    + xpl route-filter bar_24
+      + if community matches-any foo_0 then
+        + approve
+    + xpl route-filter bar_25
+      + if community matches-any foo_0 then
+        + approve
+      + elseif community matches-any bar_foo_0 then
+        + refuse
+      + else
+        + refuse
+    + xpl route-filter bar_26
+      + if community matches-any foo_0 then
+        + approve
+      + else
+        + refuse
+  patch: |+
+    system-view
+    undo xpl route-filter foo_5
+    undo xpl route-filter foo_6
+    undo xpl route-filter foo_7
+    undo xpl route-filter foo_8
+    undo xpl route-filter foo_23
+    undo xpl route-filter foo_24
+    undo xpl route-filter foo_25
+    undo xpl route-filter foo_26
+    xpl route-filter bar_5
+      if community matches-any foo_0 then
+        approve
+      elseif community matches-any bar_foo_0 then
+        refuse
+      else
+        refuse
+      endif
+      end-filter
+    xpl route-filter bar_6
+      if community matches-any foo_0 then
+        approve
+      endif
+      end-filter
+    xpl route-filter bar_7
+      if community matches-any foo_0 then
+        approve
+      elseif community matches-any bar_foo_0 then
+        refuse
+      else
+        refuse
+      endif
+      end-filter
+    xpl route-filter bar_8
+      if community matches-any foo_0 then
+        approve
+      else
+        refuse
+      endif
+      end-filter
+    xpl route-filter bar_23
+      if community matches-any foo_0 then
+        approve
+      elseif community matches-any bar_foo_0 then
+        refuse
+      else
+        refuse
+      endif
+      end-filter
+    xpl route-filter bar_24
+      if community matches-any foo_0 then
+        approve
+      endif
+      end-filter
+    xpl route-filter bar_25
+      if community matches-any foo_0 then
+        approve
+      elseif community matches-any bar_foo_0 then
+        refuse
+      else
+        refuse
+      endif
+      end-filter
+    xpl route-filter bar_26
+      if community matches-any foo_0 then
+        approve
+      else
+        refuse
+      endif
+      end-filter
+    q
+    save

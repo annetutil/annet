@@ -1,5 +1,4 @@
 import dataclasses
-import inspect
 import itertools
 import re
 from collections import OrderedDict as odict
@@ -195,7 +194,7 @@ class BlockExitFormatter(CommonFormatter):
         yield value
         yield BlockEnd
 
-    def block_exit(self, context: Optional[FormatterContext]):
+    def block_exit(self, context: Optional[FormatterContext]) -> Iterable[Any]:
         current = context and context.row
         if current and not current.startswith(self._no_block_exit):
             yield from self.block_wrapper(self._block_exit)
@@ -219,12 +218,8 @@ class BlockExitFormatter(CommonFormatter):
                 block_level -= 1
 
             if row is BlockEnd and block_level == level and is_patch:
-                exit_statements = self.block_exit(context)
-                if inspect.isgenerator(exit_statements):
-                    for exit_statement in filter(None, exit_statements):
-                        yield exit_statement, last_row_context
-                elif exit_statements:
-                    yield exit_statements, last_row_context
+                for exit_statement in filter(None, self.block_exit(context)):
+                    yield exit_statement, last_row_context
 
 
 class HuaweiFormatter(BlockExitFormatter):
