@@ -1,8 +1,15 @@
+import dataclasses
+import inspect
 import itertools
 import re
 from collections import OrderedDict as odict
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple
 
 from .types import Op
+
+
+if TYPE_CHECKING:
+    from .patching import PatchTree
 
 
 # =====
@@ -23,6 +30,36 @@ class BlockEnd:
     pass
 
 
+RowWithContext = Tuple[str, Optional[Dict[str, Any]]]
+
+
+@dataclasses.dataclass
+class FormatterContext:
+    parent: Optional["FormatterContext"] = None
+
+    prev: Optional[RowWithContext] = None
+    current: Optional[RowWithContext] = None
+    next: Optional[RowWithContext] = None
+
+    @property
+    def level(self) -> int:
+        if self.parent is None:
+            return 0
+        return self.parent.level + 1
+
+    @property
+    def row_prev(self) -> Optional[str]:
+        return self.prev and self.prev[0]
+
+    @property
+    def row(self) -> Optional[str]:
+        return self.current and self.current[0]
+
+    @property
+    def row_next(self) -> Optional[str]:
+        return self.next and self.next[0]
+
+
 # =====
 class CommonFormatter:
     def __init__(self, indent="  "):
@@ -41,11 +78,11 @@ class CommonFormatter:
             )
         )
 
-    def diff(self, diff):
-        return list(self._diff_lines(diff))
-
     def diff_generator(self, diff):
         yield from self._diff_lines(diff)
+
+    def diff(self, diff):
+        return list(self.diff_generator(diff))
 
     def patch(self, patch):
         return "\n".join(
@@ -103,17 +140,37 @@ class CommonFormatter:
                 row = self._indent * _level + row
             yield row
 
-    def blocks_and_context(self, tree, is_patch, _level=0, _parent=None):
-        empty_context = {}
+    def blocks_and_context(
+        self,
+        tree: "PatchTree",
+        is_patch: bool,
+        context: Optional[FormatterContext] = None
+    ):
+        if context is None:
+            context = FormatterContext()
+
         if is_patch:
-            items = ((item.row, item.child, item.context) for item in tree.itms)
+            items = [(item.row, item.child, item.context) for item in tree.itms]
         else:
-            items = ((row, child, empty_context) for row, child in tree.items())
-        for row, sub_config, context in items:
-            yield row, context
+            items = [(row, child, {}) for row, child in tree.items()]
+
+        n = len(items)
+        for i in range(n):
+            prev_row, prev_sub_config, prev_row_context = items[i - 1] if i > 0 else (None, None, None)
+            row, sub_config, row_context = items[i]
+            next_row, next_sub_config, next_row_context = items[i + 1] if i + 1 < n else (None, None, None)
+
+            context.current = (row, row_context)
+            context.prev = (prev_row, prev_row_context) if prev_row else None
+            context.next = (next_row, next_row_context) if next_row else None
+
+            yield row, row_context
+
             if sub_config or (is_patch and sub_config is not None):
                 yield BlockBegin, None
-                yield from self.blocks_and_context(sub_config, is_patch, _level + 1, row)
+                yield from self.blocks_and_context(
+                    sub_config, is_patch, context=FormatterContext(parent=context)
+                )
                 yield BlockEnd, None
 
     def _blocks(self, tree, is_patch):
@@ -133,20 +190,41 @@ class BlockExitFormatter(CommonFormatter):
         res = super().split(text)
         return res
 
-    def block_exit(self, parent):
-        if not (parent and parent.startswith(self._no_block_exit)):
-            return self._block_exit
+    def block_wrapper(self, value: Any) -> Iterable[Any]:
+        yield BlockBegin
+        yield value
+        yield BlockEnd
 
-    def blocks_and_context(self, tree, is_patch, _level=0, _parent=None):
-        last_context = {}
-        for row, context in super().blocks_and_context(tree, is_patch, _level, _parent):
-            yield row, context
-            if context is not None:
-                last_context = context
-        if is_patch and _level > 0:
-            exit_statement = self.block_exit(_parent)
-            if exit_statement:
-                yield exit_statement, last_context
+    def block_exit(self, context: Optional[FormatterContext]):
+        current = context and context.row
+        if current and not current.startswith(self._no_block_exit):
+            yield from self.block_wrapper(self._block_exit)
+
+    def blocks_and_context(self, tree, is_patch, context: Optional[FormatterContext] = None):
+        if context is None:
+            context = FormatterContext()
+
+        level = context.level
+        block_level = level
+
+        last_row_context = {}
+        for row, row_context in super().blocks_and_context(tree, is_patch, context=context):
+            yield row, row_context
+            if row_context is not None:
+                last_row_context = row_context
+
+            if row is BlockBegin:
+                block_level += 1
+            elif row is BlockEnd:
+                block_level -= 1
+
+            if row is BlockEnd and block_level == level and is_patch:
+                exit_statements = self.block_exit(context)
+                if inspect.isgenerator(exit_statements):
+                    for exit_statement in filter(None, exit_statements):
+                        yield exit_statement, last_row_context
+                elif exit_statements:
+                    yield exit_statements, last_row_context
 
 
 class HuaweiFormatter(BlockExitFormatter):
@@ -166,18 +244,34 @@ class HuaweiFormatter(BlockExitFormatter):
         # например на VRP V100R006C00SPC500 + V100R006SPH003
         policy_end_blocks = ("end-list", "endif", "end-filter")
         tree = self.split_remove_spaces(text)
-        tree[:] = filter(lambda x: not x.endswith(policy_end_blocks), tree)
+        tree[:] = filter(lambda x: not str(x).strip().startswith(policy_end_blocks), tree)
         return tree
 
-    def block_exit(self, parent):
-        if parent:
-            if parent.startswith("xpl route-filter"):
-                return "end-filter"
-            elif parent.startswith(("xpl")):
-                return "end-list"
-            elif parent.startswith("if") and parent.endswith("then"):
-                return "endif"
-        return super().block_exit(parent)
+    def block_exit(self, context: Optional[FormatterContext]):
+        row = context and context.row
+        row_next = context and context.row_next
+        parent_row = context and context.parent and context.parent.row
+
+        if row:
+            if row.startswith("xpl route-filter"):
+                yield from self.block_wrapper("end-filter")
+                return
+
+            if row.startswith("xpl"):
+                yield from self.block_wrapper("end-list")
+                return
+
+            if parent_row and parent_row.startswith("xpl route-filter"):
+                if row.startswith(("if", "elseif")) and row.endswith("then"):
+                    if not row_next or not (
+                        row_next == "else" or row_next.startswith("elseif") and row_next.endswith("then")
+                    ):
+                        yield "endif"
+                elif row == "else":
+                    yield "endif"
+                return
+
+        yield from super().block_exit(context)
 
 
 class CiscoFormatter(BlockExitFormatter):
@@ -198,15 +292,19 @@ class AsrFormatter(BlockExitFormatter):
         tree[:] = filter(lambda x: not x.endswith(policy_end_blocks), tree)
         return tree
 
-    def block_exit(self, parent):
-        if parent:
-            if parent.startswith(("prefix-set", "as-path-set", "community-set")):
-                return "end-set"
-            elif parent.startswith("if") and parent.endswith("then"):
-                return "endif"
-            elif parent.startswith("route-policy"):
-                return "end-policy"
-        return super().block_exit(parent)
+    def block_exit(self, context: Optional[FormatterContext]) -> str:
+        current = context and context.row
+        if current:
+            if current.startswith(("prefix-set", "as-path-set", "community-set")):
+                yield from self.block_wrapper("end-set")
+                return
+            elif current.startswith("if") and current.endswith("then"):
+                yield from self.block_wrapper("endif")
+                return
+            elif current.startswith("route-policy"):
+                yield from self.block_wrapper("end-policy")
+                return
+        yield from super().block_exit(context)
 
 
 class JuniperFormatter(CommonFormatter):
@@ -381,18 +479,24 @@ class RosFormatter(CommonFormatter):
     def patch_plain(self, patch):
         return list(self.cmd_paths(patch).keys())
 
-    def blocks_and_context(self, tree, is_patch, _level=0, _parent=None):
+    def blocks_and_context(
+        self,
+        tree: "PatchTree",
+        is_patch: bool,
+        context: Optional[FormatterContext] = None
+    ):
         rows = []
-        empty_context = {}
+
         if is_patch:
             items = ((item.row, item.child, item.context) for item in tree.itms)
         else:
-            items = ((row, child, empty_context) for row, child in tree.items())
-        for row, sub_config, context in items:
+            items = ((row, child, {}) for row, child in tree.items())
+
+        for row, sub_config, row_context in items:
             if sub_config or (is_patch and sub_config is not None):
-                rows.append((row, sub_config, context))
+                rows.append((row, sub_config, row_context))
             else:
-                rows.append((row, None, context))
+                rows.append((row, None, row_context))
 
         prev_prow = None
         for sub_config, row_group in itertools.groupby(rows, lambda x: x[1]):
@@ -400,20 +504,25 @@ class RosFormatter(CommonFormatter):
                 if prev_prow:
                     yield prev_prow
                     yield BlockBegin, None
-                for (row, _, context) in row_group:
-                    yield row, context
+                for row, _, row_context in row_group:
+                    yield row, row_context
                 if prev_prow:
                     yield BlockEnd, None
             else:
-                for (row, _, context) in row_group:
-                    if _parent:
-                        prev_prow = _parent
-                        prow = f"{_parent} {row}"
+                for row, _, row_context in row_group:
+                    if context and context.parent and context.parent.row:
+                        prev_prow = context.parent.row
+                        prow = f"{context.parent.row} {row}"
                     else:
                         prow = row
-                    yield prow, context
+                    yield prow, row_context
+
                     yield BlockBegin, None
-                    yield from self.blocks_and_context(sub_config, is_patch, _level + 1, prow)
+                    yield from self.blocks_and_context(
+                        sub_config,
+                        is_patch,
+                        context=FormatterContext(parent=context, current=(prow, row_context))
+                    )
                     yield BlockEnd, None
 
     def _formatted_blocks(self, blocks):
