@@ -2,10 +2,9 @@ import dataclasses
 import itertools
 import re
 from collections import OrderedDict as odict
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Union
 
 from .types import Op
-
 
 if TYPE_CHECKING:
     from .patching import PatchTree
@@ -30,6 +29,10 @@ class BlockEnd:
 
 
 RowWithContext = Tuple[str, Optional[Dict[str, Any]]]
+
+
+def block_wrapper(value: Any) -> Iterable[Any]:
+    yield from iter((BlockBegin, value, BlockEnd))
 
 
 @dataclasses.dataclass
@@ -189,15 +192,10 @@ class BlockExitFormatter(CommonFormatter):
         res = super().split(text)
         return res
 
-    def block_wrapper(self, value: Any) -> Iterable[Any]:
-        yield BlockBegin
-        yield value
-        yield BlockEnd
-
     def block_exit(self, context: Optional[FormatterContext]) -> Iterable[Any]:
         current = context and context.row
         if current and not current.startswith(self._no_block_exit):
-            yield from self.block_wrapper(self._block_exit)
+            yield from block_wrapper(self._block_exit)
 
     def blocks_and_context(self, tree, is_patch, context: Optional[FormatterContext] = None):
         if context is None:
@@ -243,28 +241,24 @@ class HuaweiFormatter(BlockExitFormatter):
         return tree
 
     def block_exit(self, context: Optional[FormatterContext]):
-        row = context and context.row
+        row = context and context.row or ""
         row_next = context and context.row_next
-        parent_row = context and context.parent and context.parent.row
+        parent_row = context and context.parent and context.parent.row or ""
 
-        if row:
-            if row.startswith("xpl route-filter"):
-                yield from self.block_wrapper("end-filter")
-                return
+        if row.startswith("xpl route-filter"):
+            yield from block_wrapper("end-filter")
+            return
 
-            if row.startswith("xpl"):
-                yield from self.block_wrapper("end-list")
-                return
+        if row.startswith("xpl"):
+            yield from block_wrapper("end-list")
+            return
 
-            if parent_row and parent_row.startswith("xpl route-filter"):
-                if row.startswith(("if", "elseif")) and row.endswith("then"):
-                    if not row_next or not (
-                        row_next == "else" or row_next.startswith("elseif") and row_next.endswith("then")
-                    ):
-                        yield "endif"
-                elif row == "else":
-                    yield "endif"
-                return
+        if parent_row.startswith("xpl route-filter"):
+            if (row.startswith(("if", "elseif")) and row.endswith("then")) and not row_next:
+                yield "endif"
+            elif row == "else":
+                yield "endif"
+            return
 
         yield from super().block_exit(context)
 
@@ -288,18 +282,16 @@ class AsrFormatter(BlockExitFormatter):
         return tree
 
     def block_exit(self, context: Optional[FormatterContext]) -> str:
-        current = context and context.row
-        if current:
-            if current.startswith(("prefix-set", "as-path-set", "community-set")):
-                yield from self.block_wrapper("end-set")
-                return
-            elif current.startswith("if") and current.endswith("then"):
-                yield from self.block_wrapper("endif")
-                return
-            elif current.startswith("route-policy"):
-                yield from self.block_wrapper("end-policy")
-                return
-        yield from super().block_exit(context)
+        current = context and context.row or ""
+
+        if current.startswith(("prefix-set", "as-path-set", "community-set")):
+            yield from block_wrapper("end-set")
+        elif current.startswith("if") and current.endswith("then"):
+            yield from block_wrapper("endif")
+        elif current.startswith("route-policy"):
+            yield from block_wrapper("end-policy")
+        else:
+            yield from super().block_exit(context)
 
 
 class JuniperFormatter(CommonFormatter):
