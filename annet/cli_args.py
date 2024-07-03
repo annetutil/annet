@@ -27,7 +27,7 @@ def convert_to_none(arg):
 
 
 def valid_config_source(value):
-    if value not in ["cfglister", "running", "empty", "-"] and not os.path.exists(value):
+    if value not in ["running", "empty", "-"] and not os.path.exists(value):
         raise ValueError("No such file or directory %r" % value)
     return value
 
@@ -174,14 +174,14 @@ opt_annotate = Arg(
 
 opt_config = Arg(
     "--config", default="running", type=valid_config_source,
-    help="'cfglister', 'running', 'empty', путь к файлу конфига, "
+    help="'running', 'empty', путь к файлу конфига, "
          "каталогу с файлами конфига в формате <hostname>.cfg "
          "или '-' (stdin)"
 )
 
 opt_clear = Arg(
     "--clear", default=False,
-    help="Используя acl вычищает команды относящиеся к данному генератору"
+    help="Используя acl вычищает команды относящиеся к данному генератору, "
          "аналогично использованию return в самом начале генератора"
 )
 

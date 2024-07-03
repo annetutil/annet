@@ -15,8 +15,8 @@ from typing import (  # pylint: disable=unused-import
 from .lib import jun_activate, merge_dicts, strip_annotation, uniq
 from .rbparser import platform
 from .rbparser.ordering import compile_ordering_text
-from .rulebook.common import default as common_default
 from .rulebook.common import call_diff_logic
+from .rulebook.common import default as common_default
 from .tabparser import CommonFormatter
 from .types import Diff, Op
 
@@ -115,7 +115,7 @@ class PatchTree:
         return (
             f"PatchTree(\n"
             f"    itms=[\n"
-            f"        {n.join(itms).strip()}\n"
+            f"{textwrap.indent(n.join(itms), '    ')}\n"
             f"    ]\n"
             f")"
         )
