@@ -92,6 +92,11 @@ class InterfaceVlan(Entity):
 
 
 @dataclass
+class InterfaceVrf(Entity):
+    name: str
+
+
+@dataclass
 class Interface(Entity):
     device: Entity
     enabled: bool
@@ -103,6 +108,7 @@ class Interface(Entity):
     tagged_vlans: Optional[List[InterfaceVlan]]
     display: str = ""
     ip_addresses: List[IpAddress] = field(default_factory=list)
+    vrf: Optional[InterfaceVrf] = None
 
 
 @dataclass
