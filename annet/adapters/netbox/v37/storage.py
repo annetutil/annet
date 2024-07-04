@@ -204,7 +204,7 @@ class NetboxStorageV37(Storage):
         res = extend_device(
             device=device,
             storage=self,
-            interfaces=interfaces[device.id],
+            interfaces=interfaces,
             neighbours=neighbours,
         )
         return res
