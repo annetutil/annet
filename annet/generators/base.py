@@ -8,6 +8,7 @@ from typing import Union, List
 from annet import tabparser, tracing
 from annet.tracing import tracing_connector
 from .exceptions import InvalidValueFromGenerator
+from ..types import BLOCK_HOLDER
 
 
 class DefaultBlockIfCondition:
@@ -23,15 +24,16 @@ class GenStringable(abc.ABC):
         pass
 
 
-def _filter_str(value: Union[
-    str, int, float, tabparser.JuniperList, ParamsList, GenStringable]):
-    if isinstance(value, (
+def _filter_str(value: Union[str, int, float, tabparser.JuniperList, ParamsList, GenStringable]):
+    if isinstance(
+        value, (
             str,
             int,
             float,
             tabparser.JuniperList,
             ParamsList,
-    )):
+        )
+    ):
         return str(value)
 
     if hasattr(value, "gen_str") and callable(value.gen_str):
@@ -41,11 +43,11 @@ def _filter_str(value: Union[
         "Invalid yield type: %s(%s)" % (type(value).__name__, value))
 
 
-def _split_and_strip(text):
+def _split_and_strip(text) -> List[str]:
     if "\n" in text:
         rows = textwrap.dedent(text).strip().split("\n")
     else:
-        rows = [text]
+        rows = [text.strip()]
     return rows
 
 
@@ -62,7 +64,6 @@ class TreeGenerator(BaseGenerator):
     def __init__(self, indent="  "):
         self._indents = []
         self._rows = []
-        self._block_path = []
         self._indent = indent
 
     @tracing.contextmanager(min_duration="0.1")
@@ -74,12 +75,14 @@ class TreeGenerator(BaseGenerator):
 
         indent = self._indent if indent is None else indent
         block = " ".join(map(_filter_str, tokens))
-        self._block_path.append(block)
+        if "\n" in block:
+            raise InvalidValueFromGenerator("multiline values of block is denied")
+
         self._append_text(block)
         self._indents.append(indent)
+        self._append_text(BLOCK_HOLDER)
         yield
         self._indents.pop(-1)
-        self._block_path.pop(-1)
 
     @contextlib.contextmanager
     def block_if(self, *tokens, condition=DefaultBlockIfCondition):

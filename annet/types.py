@@ -1,9 +1,10 @@
 from collections import OrderedDict
 from typing import Any, Dict, List, MutableMapping, NamedTuple, Optional, Tuple, Union
-
 from annet.annlib.types import Op  # pylint: disable=unused-import
 
 from annet.storage import Device, Storage
+
+BLOCK_HOLDER = "EmPtY-BlOcK-HoLdEr"
 
 
 class PCDiffFile(NamedTuple):

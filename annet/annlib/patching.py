@@ -19,6 +19,7 @@ from .rulebook.common import call_diff_logic
 from .rulebook.common import default as common_default
 from .tabparser import CommonFormatter
 from .types import Diff, Op
+from ..types import BLOCK_HOLDER
 
 
 # =====
@@ -208,16 +209,22 @@ class Orderer:
 # =====
 def apply_acl(config, rules, fatal_acl=False, exclusive=False, with_annotations=False, _path=()):
     passed = odict()
-    for (row, children) in config.items():
+
+    for row, children in config.items():
         if with_annotations:
-            # do not pass annotations through ACL
-            test_row = strip_annotation(row)
+            test_row = strip_annotation(row)  # do not pass annotations through ACL
         else:
             test_row = row
+
+        if test_row == BLOCK_HOLDER:
+            passed[row] = odict()
+            continue
+
         try:
-            (match, children_rules) = match_row_to_acl(test_row, rules, exclusive)
+            match, children_rules = match_row_to_acl(test_row, rules, exclusive)
         except AclNotExclusiveError as err:
             raise AclNotExclusiveError("'%s', %s" % ("/ ".join(_path + (row,)), err))
+
         if match:
             if not (match["is_reverse"] and all(match["attrs"]["cant_delete"])):
                 passed[row] = apply_acl(
@@ -230,17 +237,20 @@ def apply_acl(config, rules, fatal_acl=False, exclusive=False, with_annotations=
                 )
         elif fatal_acl:
             raise AclError(" / ".join(_path + (row,)))
+
     return passed
 
 
 def apply_acl_diff(diff, rules):
     passed = []
     for (op, row, children, d_match) in diff:
-        (match, children_rules) = match_row_to_acl(row, rules)
+        match, children_rules = match_row_to_acl(row, rules)
         if match:
             if op == Op.REMOVED and all(match["attrs"]["cant_delete"]):
                 op = Op.AFFECTED
             children = apply_acl_diff(children, children_rules)
+            passed.append((op, row, children, d_match))
+        elif row == BLOCK_HOLDER:
             passed.append((op, row, children, d_match))
     return passed
 
@@ -248,7 +258,9 @@ def apply_acl_diff(diff, rules):
 def mark_unchanged(diff):
     passed = []
     for (op, row, children, d_match) in diff:
-        if op == Op.AFFECTED:
+        if op == Op.ADDED and row.strip().startswith(BLOCK_HOLDER):
+            op = Op.UNCHANGED
+        elif op == Op.AFFECTED:
             children = mark_unchanged(children)
             if all(x[0] == Op.UNCHANGED for x in children):
                 op = Op.UNCHANGED
@@ -423,6 +435,7 @@ def make_patch(pre, rb, hw, add_comments, orderer=None, _root_pre=None, do_commi
 
 def match_row_to_acl(row, rules, exclusive=False):
     matches = _find_acl_matches(row, rules)
+
     if matches:
         if exclusive:
             gen_cant_delete = {}
@@ -434,12 +447,15 @@ def match_row_to_acl(row, rules, exclusive=False):
                         gen_cant_delete[name] = flag
                     else:
                         gen_cant_delete[name] &= flag
+
             can_delete = {name: flag for name, flag in gen_cant_delete.items() if not flag}
             if len(can_delete) > 1:
                 generator_names = ", ".join(can_delete.keys())
                 raise AclNotExclusiveError("generators: '%s'" % generator_names)
+
         return _select_match(matches, rules)
-    return (None, None)  # (match, children_rules)
+
+    return None, None  # (match, children_rules)
 
 
 def _match_row_to_rules(row, rules):

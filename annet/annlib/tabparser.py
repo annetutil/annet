@@ -5,6 +5,7 @@ from collections import OrderedDict as odict
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Union
 
 from .types import Op
+from ..types import BLOCK_HOLDER
 
 if TYPE_CHECKING:
     from .patching import PatchTree
@@ -93,7 +94,7 @@ class CommonFormatter:
             )
         )
 
-    def cmd_paths(self, patch):
+    def cmd_paths(self, patch: "PatchTree"):
         ret = odict()
         path = []
         for row, context in self.blocks_and_context(patch, is_patch=True):
@@ -128,7 +129,7 @@ class CommonFormatter:
         if _level > 0 and self._block_end and _block_sign is not None:
             yield "%s %s%s" % (_block_sign, self._indent * (_level - 1), self._block_end)
 
-    def _indented_blocks(self, tree):
+    def _indented_blocks(self, tree: "PatchTree"):
         return self._indent_blocks(self._blocks(tree, False))
 
     def _indent_blocks(self, blocks):
@@ -166,7 +167,8 @@ class CommonFormatter:
             context.prev = (prev_row, prev_row_context) if prev_row else None
             context.next = (next_row, next_row_context) if next_row else None
 
-            yield row, row_context
+            if not row.strip().startswith(BLOCK_HOLDER):
+                yield row, row_context
 
             if sub_config or (is_patch and sub_config is not None):
                 yield BlockBegin, None
@@ -175,7 +177,7 @@ class CommonFormatter:
                 )
                 yield BlockEnd, None
 
-    def _blocks(self, tree, is_patch):
+    def _blocks(self, tree: "PatchTree", is_patch: bool):
         for row, _context in self.blocks_and_context(tree, is_patch):
             yield row
 
