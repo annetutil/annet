@@ -30,9 +30,13 @@ def apply_json_fragment(
         except jsonpointer.JsonPointerException:
             # no value found in new_fragment by the pointer,
             # try to delete it from the new config
-            doc, part = pointer.to_last(full_new_config)
-            if isinstance(doc, dict) and isinstance(part, str):
-                doc.pop(part, None)
+            try:
+                doc, part = pointer.to_last(full_new_config)
+                if isinstance(doc, dict) and isinstance(part, str):
+                    doc.pop(part, None)
+            except jsonpointer.JsonPointerException:
+                # not found in the old config either
+                pass
             continue
 
         _ensure_pointer_exists(full_new_config, pointer)
