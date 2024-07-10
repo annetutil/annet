@@ -116,7 +116,7 @@ class RunGeneratorResult:
             else:
                 reload_cmd = generator_result.reload
                 reload_prios[filepath] = reload_prio
-                files[filepath] = (new_config, reload_cmd)
+            files[filepath] = (new_config, reload_cmd)
         return files
 
     def perf_mesures(self) -> Dict[str, Dict[str, int]]:
