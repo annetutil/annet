@@ -105,12 +105,17 @@ class RunGeneratorResult:
                 new_fragment,
                 result_acl,
             )
-            if filepath in reload_prios and \
-                    reload_prios[filepath] > generator_result.reload_prio:
+            if jsontools.format_json(new_config) == jsontools.format_json(previous_config):
+                # config is not changed, deprioritize reload_cmd
+                reload_prio = 0
+            else:
+                reload_prio = generator_result.reload_prio
+
+            if filepath in reload_prios and reload_prios[filepath] > reload_prio:
                 _, reload_cmd = files[filepath]
             else:
                 reload_cmd = generator_result.reload
-                reload_prios[filepath] = generator_result.reload_prio
+                reload_prios[filepath] = reload_prio
             files[filepath] = (new_config, reload_cmd)
         return files
 
