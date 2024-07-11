@@ -40,6 +40,11 @@ class DeviceIp:
 
 
 @dataclass
+class InterfaceVrf(Entity):
+    name: str
+
+
+@dataclass
 class Prefix:
     id: int
     prefix: str
@@ -67,6 +72,7 @@ class IpAddress:
     created: datetime
     last_updated: datetime
     prefix: Optional[Prefix] = None
+    vrf: Optional[InterfaceVrf] = None
 
 
 @dataclass
@@ -89,11 +95,6 @@ class InterfaceMode:
 @dataclass
 class InterfaceVlan(Entity):
     vid: int
-
-
-@dataclass
-class InterfaceVrf(Entity):
-    name: str
 
 
 @dataclass
