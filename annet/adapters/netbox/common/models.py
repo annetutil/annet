@@ -53,6 +53,7 @@ class Prefix:
     custom_fields: dict[str, Any]
     created: datetime
     last_updated: datetime
+    description: str | None = ""
 
 
 @dataclass
