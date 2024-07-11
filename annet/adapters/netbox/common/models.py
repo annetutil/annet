@@ -40,11 +40,6 @@ class DeviceIp:
 
 
 @dataclass
-class InterfaceVrf(Entity):
-    name: str
-
-
-@dataclass
 class Prefix:
     id: int
     prefix: str
@@ -72,7 +67,7 @@ class IpAddress:
     created: datetime
     last_updated: datetime
     prefix: Optional[Prefix] = None
-    vrf: Optional[InterfaceVrf] = None
+    vrf: Optional[Entity] = None
 
 
 @dataclass
@@ -109,7 +104,7 @@ class Interface(Entity):
     tagged_vlans: Optional[List[InterfaceVlan]]
     display: str = ""
     ip_addresses: List[IpAddress] = field(default_factory=list)
-    vrf: Optional[InterfaceVrf] = None
+    vrf: Optional[Entity] = None
 
 
 @dataclass
