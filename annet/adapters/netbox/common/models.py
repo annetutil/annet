@@ -53,6 +53,7 @@ class Prefix:
     custom_fields: dict[str, Any]
     created: datetime
     last_updated: datetime
+    description: str | None = ""
 
 
 @dataclass
@@ -67,6 +68,7 @@ class IpAddress:
     created: datetime
     last_updated: datetime
     prefix: Optional[Prefix] = None
+    vrf: Optional[Entity] = None
 
 
 @dataclass
@@ -103,6 +105,7 @@ class Interface(Entity):
     tagged_vlans: Optional[List[InterfaceVlan]]
     display: str = ""
     ip_addresses: List[IpAddress] = field(default_factory=list)
+    vrf: Optional[Entity] = None
 
 
 @dataclass
