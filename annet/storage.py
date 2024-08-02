@@ -1,10 +1,7 @@
 import abc
 from typing import Any, Iterable, Optional, Type, Union, Protocol
 
-try:
-    from annet.connectors import Connector
-except ImportError:
-    from noc.annushka.annet.connectors import Connector  # noqa: F401
+from annet.connectors import Connector
 
 
 class _StorageConnector(Connector["StorageProvider"]):
