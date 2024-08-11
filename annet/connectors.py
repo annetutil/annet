@@ -3,6 +3,7 @@ from abc import ABC
 from functools import cached_property
 from importlib.metadata import entry_points
 from typing import Generic, Optional, Type, TypeVar, List
+from annet.lib import get_context
 
 T = TypeVar("T")
 
@@ -33,7 +34,7 @@ class Connector(ABC, Generic[T]):
         res = self._classes[0]
         return res(*args, **kwargs)
 
-    def get_all(self, *args, **kwargs) -> T:
+    def get_all(self, *args, **kwargs) -> list[T]:
         if self._classes is None:
             self._classes = self._entry_point or [self._get_default()]
 

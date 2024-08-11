@@ -19,7 +19,7 @@ from annet.diff import gen_sort_diff
 from annet.gen import Loader, old_raw
 from annet.lib import get_context_path, repair_context_file
 from annet.output import output_driver_connector, OutputDriver
-from annet.storage import storage_connector
+from annet.storage import get_storage
 
 
 def fill_base_args(parser: ArgParser, pkg_name: str, logging_config: str):
@@ -62,12 +62,11 @@ def _gen_current_items(
 @contextmanager
 def get_loader(gen_args: cli_args.GenOptions, args: cli_args.QueryOptions):
     exit_stack = ExitStack()
-    connectors = storage_connector.get_all()
     storages = []
     with exit_stack:
-        for connector in connectors:
-            storage_opts = connector.opts().from_cli_opts(args)
-            storages.append(exit_stack.enter_context(connector.storage()(storage_opts)))
+        connector, connector_opts = get_storage()
+        storage_opts = connector.opts().parse_params(connector_opts, args)
+        storages.append(exit_stack.enter_context(connector.storage()(storage_opts)))
         yield Loader(*storages, args=gen_args)
 
 

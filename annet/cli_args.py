@@ -10,7 +10,7 @@ from valkit.common import valid_string_list
 
 from annet.argparse import Arg, ArgGroup, DefaultFromEnv
 from annet.hardware import hardware_connector
-from annet.storage import Query, storage_connector
+from annet.storage import Query, get_storage
 
 
 # ====
@@ -361,14 +361,9 @@ class QueryOptionsBase(CacheOptions):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not isinstance(self.query, Query):
-            connectors = storage_connector.get_all()
-            if not connectors:
-                pass
-            elif len(connectors) == 1:
-                query_type = connectors[0].query()
-                self.query = query_type.new(self.query, hosts_range=self.hosts_range)
-            else:
-                logging.warning("Multiple connectors found, skip parsing query")
+            storage, _ = get_storage()
+            query_type = storage.query()
+            self.query = query_type.new(self.query, hosts_range=self.hosts_range)
 
 
 class QueryOptions(QueryOptionsBase):

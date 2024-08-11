@@ -1,7 +1,6 @@
 import abc
 from typing import Any, Iterable, Optional, Type, Union, Protocol
-
-from annet.connectors import Connector
+from annet.connectors import Connector, get_context
 
 
 class _StorageConnector(Connector["StorageProvider"]):
@@ -120,3 +119,19 @@ class Device(Protocol):
     @abc.abstractmethod
     def breed(self):
         pass
+
+
+def get_storage() -> (Storage, dict[str, Any]):
+    connectors = storage_connector.get_all()
+    seen: list[str] = []
+    if context_storage := get_context().get("storage"):
+        for connector in connectors:
+            seen.append(connector.__class__.__module__)
+            if "adapter" not in context_storage:
+                raise Exception("adapter is not set in %s" % context_storage)
+            if context_storage["adapter"] == connector.__class__.__module__:
+                return connector, context_storage.get("params", {})
+        else:
+            raise Exception("unknown storage %s: seen %s" % (context_storage["adapter"], seen))
+    else:
+        return connectors[0], {}
