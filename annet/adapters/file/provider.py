@@ -140,8 +140,10 @@ class FS(Storage):
         return result
 
     def get_device(self, obj_id: str, preload_neighbors=False, use_mesh=None, **kwargs) -> Device:
-        result = filter_query(self.inventory.devices, query)
-        return []
+        result = filter_query(self.inventory.devices, Query.new(obj_id))
+        if not result:
+            raise Exception("not found")
+        return result[0]
 
     def flush_perf(self):
         pass
