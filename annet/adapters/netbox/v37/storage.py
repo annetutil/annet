@@ -4,7 +4,7 @@ from ipaddress import ip_interface
 from collections import defaultdict
 
 from adaptix import P
-from adaptix.conversion import impl_converter, link
+from adaptix.conversion import impl_converter, link, link_constant
 from annetbox.v37 import models as api_models
 from annetbox.v37.client_sync import NetboxV37
 
@@ -24,13 +24,13 @@ logger = getLogger(__name__)
 @impl_converter(recipe=[
     link(P[api_models.Device].name, P[models.NetboxDevice].hostname),
     link(P[api_models.Device].name, P[models.NetboxDevice].fqdn),
+    link_constant(P[models.NetboxDevice].neighbours, value=None),
 ])
 def extend_device_base(
         device: api_models.Device,
         interfaces: List[models.Interface],
         hw: Optional[HardwareView],
         breed: str,
-        neighbours: Optional[List[models.NetboxDevice]],
         storage: Storage,
 ) -> models.NetboxDevice:
     ...
@@ -45,7 +45,7 @@ def extend_device(
     platform_name: str = ""
     if device.platform:
         platform_name = device.platform.name
-    return extend_device_base(
+    res = extend_device_base(
         device=device,
         interfaces=interfaces,
         breed=get_breed(
@@ -57,9 +57,10 @@ def extend_device(
             device.device_type.model,
             platform_name,
         ),
-        neighbours=neighbours,
         storage=storage,
     )
+    res.neighbours = neighbours
+    return res
 
 
 @impl_converter
