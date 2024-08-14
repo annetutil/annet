@@ -4,6 +4,7 @@ __pycache__
 /.idea/
 /.tox-logs/
 /coverage.xml
+/build/
 
 venv
 .venv
