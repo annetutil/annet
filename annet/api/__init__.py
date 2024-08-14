@@ -45,7 +45,7 @@ from annet.output import (
 )
 from annet.parallel import Parallel, TaskResult
 from annet.reference import RefTracker
-from annet.storage import Device, storage_connector
+from annet.storage import Device, get_storage
 from annet.types import Diff, ExitCode, OldNewResult, Op, PCDiff, PCDiffFile
 
 
@@ -218,8 +218,8 @@ def log_host_progress_cb(pool: Parallel, task_result: TaskResult):
         stacklevel=2,
     )
     args = cast(cli_args.QueryOptions, pool.args[0])
-    connector = storage_connector.get()
-    storage_opts = connector.opts().from_cli_opts(args)
+    connector, connector_opts = get_storage()
+    storage_opts = connector.opts().parse_params(connector_opts, args)
     with connector.storage()(storage_opts) as storage:
         fqdns = storage.resolve_fdnds_by_query(args.query)
     PoolProgressLogger(device_fqdns=fqdns)(pool, task_result)

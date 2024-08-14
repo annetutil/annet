@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 
 class NetboxStorageOpts:
@@ -7,7 +8,7 @@ class NetboxStorageOpts:
         self.token = token
 
     @classmethod
-    def from_cli_opts(cls, cli_opts):
+    def parse_params(cls, conf_params: dict[str, str] | None, cli_opts: Any):
         return cls(
             url=os.getenv("NETBOX_URL", "http://localhost"),
             token=os.getenv("NETBOX_TOKEN", "").strip(),

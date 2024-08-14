@@ -1,7 +1,6 @@
 import abc
 from typing import Any, Iterable, Optional, Type, Union, Protocol
-
-from annet.connectors import Connector
+from annet.connectors import Connector, get_context
 
 
 class _StorageConnector(Connector["StorageProvider"]):
@@ -23,6 +22,10 @@ class StorageProvider(abc.ABC):
 
     @abc.abstractmethod
     def query(self) -> Type["Query"]:
+        pass
+
+    @abc.abstractmethod
+    def name(self) -> str:
         pass
 
 
@@ -66,7 +69,7 @@ class Storage(abc.ABC):
 class StorageOpts(abc.ABC):
     @classmethod
     @abc.abstractmethod
-    def from_cli_opts(cls, cli_opts) -> "StorageOpts":
+    def parse_params(cls, conf_params: dict[str, str] | None, cli_opts: Any):
         pass
 
 
@@ -120,3 +123,20 @@ class Device(Protocol):
     @abc.abstractmethod
     def breed(self):
         pass
+
+
+def get_storage() -> (Storage, dict[str, Any]):
+    connectors = storage_connector.get_all()
+    seen: list[str] = []
+    if context_storage := get_context().get("storage"):
+        for connector in connectors:
+            con_name = connector.name()
+            seen.append(con_name)
+            if "adapter" not in context_storage:
+                raise Exception("adapter is not set in %s" % context_storage)
+            if context_storage["adapter"] == con_name:
+                return connector, context_storage.get("params", {})
+        else:
+            raise Exception("unknown storage %s: seen %s" % (context_storage["adapter"], seen))
+    else:
+        return connectors[0], {}

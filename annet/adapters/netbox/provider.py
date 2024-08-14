@@ -32,3 +32,6 @@ class NetboxProvider(StorageProvider):
 
     def query(self):
         return NetboxQuery
+
+    def name(self) -> str:
+        return "netbox"
