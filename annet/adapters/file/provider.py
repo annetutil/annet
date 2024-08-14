@@ -75,6 +75,9 @@ class Provider(StorageProvider):
     def query(self):
         return Query
 
+    def name(self) -> str:
+        return "file"
+
 
 @dataclass
 class Query(Query):

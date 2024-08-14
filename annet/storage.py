@@ -24,6 +24,10 @@ class StorageProvider(abc.ABC):
     def query(self) -> Type["Query"]:
         pass
 
+    @abc.abstractmethod
+    def name(self) -> str:
+        pass
+
 
 class Storage(abc.ABC):
     @abc.abstractmethod
@@ -126,10 +130,11 @@ def get_storage() -> (Storage, dict[str, Any]):
     seen: list[str] = []
     if context_storage := get_context().get("storage"):
         for connector in connectors:
-            seen.append(connector.__class__.__module__)
+            con_name = connector.name()
+            seen.append(con_name)
             if "adapter" not in context_storage:
                 raise Exception("adapter is not set in %s" % context_storage)
-            if context_storage["adapter"] == connector.__class__.__module__:
+            if context_storage["adapter"] == con_name:
                 return connector, context_storage.get("params", {})
         else:
             raise Exception("unknown storage %s: seen %s" % (context_storage["adapter"], seen))
