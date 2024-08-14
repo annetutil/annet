@@ -14,7 +14,7 @@ storage:
   default:
     adapter: annet.adapters.file.provider
     params:
-      path: /tmp/olo
+      path: /path/to/file
 
 context:
   default:
