@@ -1,0 +1,41 @@
+- vendor: Huawei
+  diff: |
+    bgp 1234
+      - peer SPINE1 bfd enable
+      - peer SPINE1 bfd min-tx-interval 500 min-rx-interval 500 detect-multiplier 4
+  patch: |
+    system-view
+    bgp 1234
+      undo peer SPINE1 bfd min-tx-interval
+      undo peer SPINE1 bfd min-rx-interval
+      undo peer SPINE1 bfd detect-multiplier
+      undo peer SPINE1 bfd enable
+      quit
+    q
+    save
+- vendor: Huawei
+  diff: |
+    bgp 1234
+      - peer SPINE1 bfd min-tx-interval 1000 min-rx-interval 1000 detect-multiplier 4
+      + peer SPINE1 bfd min-tx-interval 500 min-rx-interval 500 detect-multiplier 4
+  patch: |
+    system-view
+    bgp 1234
+      peer SPINE1 bfd min-tx-interval 500 min-rx-interval 500 detect-multiplier 4
+      quit
+    q
+    save
+- vendor: Huawei
+  diff: |
+    bgp 1234
+      - peer SPINE1 bfd min-tx-interval 1000 min-rx-interval 1000 detect-multiplier 4
+      + peer SPINE1 bfd min-tx-interval 500
+  patch: |
+    system-view
+    bgp 1234
+      undo peer SPINE1 bfd min-rx-interval
+      undo peer SPINE1 bfd detect-multiplier
+      peer SPINE1 bfd min-tx-interval 500
+      quit
+    q
+    save

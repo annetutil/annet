@@ -1,0 +1,35 @@
+- vendor: Aruba
+  diff: |
+    - syslog-level error
+    + syslog-level critical
+  patch: |
+    conf t
+    syslog-level critical
+    end
+    commit apply
+    write memory
+
+- vendor: Aruba
+  diff: |
+    - syslog-level critical user
+    + syslog-level error user
+    - syslog-level warn system
+    + syslog-level error system
+  patch: |
+    conf t
+    syslog-level error user
+    syslog-level error system
+    end
+    commit apply
+    write memory
+
+- vendor: Aruba
+  diff: "+ syslog-server 172.17.17.254 10.10.205.184 10.8.254.95            \
+    \                                                                    \n- syslog-server\
+    \ 10.10.205.184 \n"
+  patch: |
+    conf t
+    syslog-server 172.17.17.254 10.10.205.184 10.8.254.95
+    end
+    commit apply
+    write memory

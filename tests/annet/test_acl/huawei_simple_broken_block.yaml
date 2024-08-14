@@ -1,0 +1,18 @@
+- vendor: huawei
+  acl: |
+    block1
+      block1_sub
+        block1_sub_sub1
+    block.*
+      block1_sub
+        block1_sub_sub2
+  input: |
+    block1
+      block1_sub
+        block1_sub_sub1
+        block1_sub_sub2
+  output: |
+    block1
+      block1_sub
+        block1_sub_sub1
+        block1_sub_sub2

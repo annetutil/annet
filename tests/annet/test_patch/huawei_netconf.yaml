@@ -1,0 +1,12 @@
+- vendor: huawei
+  before: |
+    netconf
+      protocol inbound ssh port 830
+  after: ''
+  patch: |
+    system-view
+    netconf
+      undo protocol inbound ssh port 830
+      quit
+    q
+    save

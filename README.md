@@ -1,92 +1,176 @@
-# Annet
+# Annet - network configuration utility
 
+The system contains network appliance config generators written in Python with optional use of text preprocessors (Jinja2, Mako).
+Huawei, Cisco IOS, Cisco NX-OS, Cisco IOS-XR, Juniper, as well as devices configured via separate config files (Linux, FreeBSD, Cumulus) are supported.
 
+annet has a number of modes (subcommands):
 
-## Getting started
+- ```annet gen``` - generates the entire config for the specified devices or specified parts of it
+- ```annet diff``` - first does gen and then builds diff with current config version
+- ```annet patch``` - first does diff and then generates a list of commands to apply diff on the device
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Usage help can be obtained by calling ```annet -h``` or for a specific command, such as ```annet gen -h```.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## Overview
 
-## Add your files
+### annet gen
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+The annet_generators directory contains many files called generators.
+A generator takes information about the switch as input and returns the configuration.
+The part of the config that the generator is responsible for is specified in the generator's acl function. If a generator returns a configuration that does not fall under acl, an exception will be thrown.
 
+Example generator:
+
+```python
+from annet.generators import PartialGenerator
+
+class Mtu(PartialGenerator):
+    TAGS = ["mtu"]
+    def acl_cisco(self, _):
+        return "system mtu jumbo"
+
+    def run_cisco(self, device):
+        yield "system mtu jumbo %d" % 9000
 ```
-cd existing_repo
-git remote add origin https://git.dev.cloud.mts.ru/anteron/annet.git
-git branch -M master
-git push -uf origin master
+
+
+And an example of calling annet:
+```bash
+annet gen -g mtu sw6-i1
+# -------------------- sw6-i1.cfg --------------------
+system mtu jumbo 9000
 ```
 
-## Integrate with your tools
+Method `acl_cisco` defines scope of the generator, which commands and block it controls.
+The option `-g mtu` means that only generators with the mtu element in the TAGS variable should be called. If no tag is specified, all generators will be executed.
 
-- [ ] [Set up project integrations](https://git.dev.cloud.mts.ru/anteron/annet/-/settings/integrations)
 
-## Collaborate with your team
+### annet diff
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+If we were configuring the switch from scratch, these options would be enough, but in our reality we need to be able not only to generate the desired configuration, but also to be able to bring the current configuration to the desired one.
+To do this, you need to be able to delete an outdated configuration and correctly add a new one. The **diff** module, which implements some tricky logic, is responsible for this work.
+This logic is defined in the rulebook/texts/VENDOR folder.
 
-## Test and Deploy
+Example diff:
+```diff
+# -------------------- sw1-i38.cfg --------------------
+  acl number 2610
+- rule 40 permit source 10.11.170.150 0
++ rule 12 permit source 10.11.133.81 0
+```
 
-Use the built-in continuous integration in GitLab.
+### annet patch
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+Next, you need to create a list of commands from the resulting diff. The **patch** module is responsible for this. It receives the diff, runs the logic specified in rulebook/texts/VENDOR and returns the list of commands.
+Let's take the above diff. It says to remove the command ``rule 40 permit source 10.11.170.150 0`` and add ``rule 12 permit source 10.11.133.81 0``.
+Basic command delete logic for huawei is adding undo to the command. So the undo command will look like this: ``undo rule 40 permit source 10.11.170.150 0```, but this is an invalid command. In case of canceling acl rules, you need to execute ``undo rule N```.
+So you need to write the undo logic for the ```rule ```` command in the ``acl ``` block.
+Here is the part of rulebook/texts/huawei.rul responsible for this:
+```
+acl name *
+	rule * %logic=huawei.misc.undo_redo
+```
+The asterisk here means that the key argument of the undo_redo function will contain the first word after rule, namely the rule number.
 
-***
+Here, the undo_redo function from the file in rulebook/huawei/misc.py is used to generate the command to remove rules in acl.
+```python
+def undo_redo(rule, key, diff, **_):
+    ...
+```
+Now calling ```annet patch -g snmp sw1-i38```` returns the correct set of commands.
+```
+acl number 2610
+  undo rule 40
+  rule 12 permit source 10.11.133.81 0
+  quit
+```
 
-# Editing this README
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+<!-- ### annet deploy
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+To apply these commands on a switch there is a **deploy** module.
+annet can apply changes (roll out) to multiple devices at the same time.
 
-## Name
-Choose a self-explaining name for your project.
+By default, the edits that annet proposes to roll out will be shown before the rollout.
+The user must confirm that they agree to roll out the proposed diff to a given list of devices.
+During the rollout, annet will display the overall progress of the task and the log of one of the devices.
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Normal layout. The screen with patches will be shown and the process of laying out will be displayed.
+```bash
+annet deploy -g snmp $HOST
+```
+Credentials will be used from the current user (username, ssh key, ssh agent, encrypted password in $HOME). -->
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## Configuration
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+The path to the configuration file is searched in following order:
+- `ANN_CONTEXT_CONFIG_PATH` env.
+- `~/.annet/context.yml`.
+- `annet/configs/context.yml`.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+Config example:
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+```yaml
+connection:
+  default:
+    login: ~
+    passwords: ~
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+generators:
+  default:
+    - my_annet_generators.example
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+storage:
+  default:
+    adapter: annet.adapters.file.provider
+    params:
+      path: /path/to/file
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+context:
+  default:
+    connection: default
+    generators: default
+    storage: default
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+selected_context: default
+```
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+Environment variable `ANN_SELECTED_CONTEXT` can be used to override `selected_context` parameter.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+### Storages
 
-## License
-For open source projects, say how it is licensed.
+Storages provide information about devices like FQDN, interface and so on.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+#### Netbox storage
+
+Provide `NETBOX_URL` and `NETBOX_TOKEN` environment variable to setup data source.
+
+```shell
+export NETBOX_URL="https://demo.netbox.dev"
+export NETBOX_TOKEN="1234567890abcdef01234567890abcdef0123456"
+```
+
+#### File storage
+```yaml
+storage:
+  default:
+    adapter: annet.adapters.file.provider
+    params:
+      path: /path/to/file
+```
+
+cat /path/to/file:
+
+```yaml
+devices:
+  - fqdn: myhost.yndx.net
+    vendor: mikrotik
+    interfaces:
+      - name: eth0
+        description: test
+```
+
+## Extending
+
+Annet uses [Entry Points](https://setuptools.pypa.io/en/latest/userguide/entry_point.html) mechanism for customization.
+For example, you can implement the Storage interface on top of your favorite inventory system.

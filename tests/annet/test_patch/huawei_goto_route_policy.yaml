@@ -1,0 +1,15 @@
+vendor: Huawei
+diff: |
+  route-policy IMPORT_DIRECT permit node 3330
+    if-match interface Vlanif333
+    apply community 64496:3099
+    - goto next-node 1000
+    + goto next-node 2000
+
+patch: |
+  system-view
+  route-policy IMPORT_DIRECT permit node 3330
+    goto next-node 2000
+    quit
+  q
+  save

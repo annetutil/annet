@@ -1,0 +1,42 @@
+- vendor: Huawei
+  diff: |
+    - vlan 50
+      - description "vlan50"
+    - vlan 51
+      - description "vlan51"
+  patch: |
+    system-view
+    undo vlan 50
+    undo vlan 51
+    q
+    save
+- vendor: Huawei
+  diff: |
+    + vlan batch 51
+    - vlan 50
+      - description "vlan50"
+    - vlan 51
+      - description "vlan51"
+  patch: |
+    system-view
+    vlan batch 51
+    vlan 51
+      undo description
+      quit
+    undo vlan 50
+    q
+    save
+- vendor: Huawei
+  diff: |
+    - vlan batch 50 51
+    + vlan batch 50
+    + vlan 51
+      + description "vlan51"
+  patch: |
+    system-view
+    vlan 51
+      description "vlan51"
+      quit
+    undo vlan batch 51
+    q
+    save

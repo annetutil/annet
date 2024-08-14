@@ -1,0 +1,42 @@
+- vendor: Huawei
+  diff: |
+    bgp 1234
+      - maximum load-balancing eibgp 16
+      + maximum load-balancing 16
+  patch: |
+    system-view
+    bgp 1234
+      undo maximum load-balancing eibgp
+      maximum load-balancing 16
+      quit
+    q
+    save
+- vendor: Huawei
+  diff: |
+    bgp 1234
+      ipv4-family unicast
+        - maximum load-balancing ibgp 4
+        + maximum load-balancing 16
+  patch: |
+    system-view
+    bgp 1234
+      ipv4-family unicast
+        undo maximum load-balancing ibgp
+        maximum load-balancing 16
+        quit
+      quit
+    q
+    save
+- vendor: Huawei
+  diff: |
+    bgp 1234
+      - maximum load-balancing 16
+      + maximum load-balancing eibgp 16
+  patch: |
+    system-view
+    bgp 1234
+      undo maximum load-balancing
+      maximum load-balancing eibgp 16
+      quit
+    q
+    save

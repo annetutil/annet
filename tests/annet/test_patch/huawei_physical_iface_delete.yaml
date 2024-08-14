@@ -1,0 +1,17 @@
+- vendor: huawei
+  before: |
+    interface GE1/0/1
+      description some-description
+
+    interface GE1/0/2
+      description some-description
+  after: |
+    interface GE1/0/1
+      description some-description
+  patch: |
+    system-view
+    interface GE1/0/2
+      undo description
+      quit
+    q
+    save

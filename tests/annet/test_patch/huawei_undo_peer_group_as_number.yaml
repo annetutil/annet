@@ -1,0 +1,22 @@
+- vendor: Huawei
+  diff: |
+    bgp 64514.0
+      - peer CD_LU as-number 64514.2
+      ipv4-family vpn-instance EXAMPLE3
+        - peer CD_V4_EXAMPLE3 as-number 64514.2
+      ipv6-family vpn-instance EXAMPLE3
+        - peer CD_V6_EXAMPLE3 as-number 64514.2
+
+  patch: |
+    system-view
+    bgp 64514.0
+      ipv4-family vpn-instance EXAMPLE3
+        undo peer CD_V4_EXAMPLE3 as-number
+        quit
+      ipv6-family vpn-instance EXAMPLE3
+        undo peer CD_V6_EXAMPLE3 as-number
+        quit
+      undo peer CD_LU as-number
+      quit
+    q
+    save

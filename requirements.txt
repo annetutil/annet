@@ -1,0 +1,16 @@
+colorama>=0.4.6
+tabulate>=0.9.0
+jsonpatch>=1.33
+jsonpointer>=2.4
+PyYAML>=6.0.1
+Pygments>=2.14.0
+Mako>=1.2.4
+Jinja2>=3.1.2
+psutil>=5.8.0
+packaging>=23.2
+contextlog>=1.1
+valkit>=0.1.4
+aiohttp>=3.8.4
+yarl>=1.8.2
+adaptix==3.0.0b5
+dataclass-rest==0.4

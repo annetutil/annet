@@ -1,0 +1,72 @@
+- vendor: juniper
+  before: |-
+    interfaces {
+        et-0/0/0 {
+            unit 0 {
+                description "old description";
+            }
+        }
+    }
+  after: |-
+    interfaces {
+        et-0/0/0 {
+            unit 0 {
+                description "old description";
+                vlan-tags outer 6 inner 28;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    set interfaces et-0/0/0 unit 0 vlan-tags outer 6 inner 28
+    commit
+    exit
+
+- vendor: juniper
+  before: |-
+    interfaces {
+        et-0/0/0 {
+            unit 0 {
+                description "old description";
+                vlan-tags outer 6 inner 28;
+            }
+        }
+    }
+  after: |-
+    interfaces {
+        et-0/0/0 {
+            unit 0 {
+                description "old description";
+                vlan-tags outer 7 inner 29;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    set interfaces et-0/0/0 unit 0 vlan-tags outer 7 inner 29
+    commit
+    exit
+
+- vendor: juniper
+  before: |-
+    interfaces {
+        et-0/0/0 {
+            unit 0 {
+                description "old description";
+                vlan-tags outer 6 inner 28;
+            }
+        }
+    }
+  after: |-
+    interfaces {
+        et-0/0/0 {
+            unit 0 {
+                description "old description";
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete interfaces et-0/0/0 unit 0 vlan-tags
+    commit
+    exit

@@ -1,0 +1,11 @@
+- vendor: Huawei
+  diff: |
+    bgp 1234
+      - ipv6-family unicast
+  patch: |
+    system-view
+    bgp 1234
+      undo ipv6-family unicast
+      quit
+    q
+    save

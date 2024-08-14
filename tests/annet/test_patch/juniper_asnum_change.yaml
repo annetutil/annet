@@ -1,0 +1,43 @@
+- vendor: juniper
+  before: |
+    routing-options {
+        router-id 169.254.255.255;
+        autonomous-system 200355 independent-domain no-attrset;
+    }
+  after: |
+    routing-options {
+        router-id 169.254.255.255;
+        autonomous-system 200356 independent-domain no-attrset;
+    }
+  patch: |
+    configure exclusive
+    delete routing-options autonomous-system 200355
+    set routing-options autonomous-system 200356 independent-domain no-attrset
+    commit
+    exit
+
+- vendor: juniper
+  before: |
+    routing-instances {
+        bla-bla {
+            routing-options {
+                router-id 169.254.255.255;
+                autonomous-system 200355 independent-domain no-attrset;
+            }
+        }
+    }
+  after: |
+    routing-instances {
+        bla-bla {
+            routing-options {
+                router-id 169.254.255.255;
+                autonomous-system 200356 independent-domain no-attrset;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-instances bla-bla routing-options autonomous-system 200355
+    set routing-instances bla-bla routing-options autonomous-system 200356 independent-domain no-attrset
+    commit
+    exit

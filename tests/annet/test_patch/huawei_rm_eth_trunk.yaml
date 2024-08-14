@@ -1,0 +1,42 @@
+- vendor: huawei
+  before: |+
+    interface Eth-Trunk159
+     description dc21-s159 Eth-Trunk2
+     set flow-stat interval 10
+     port link-type trunk
+     undo port trunk allow-pass vlan 1
+     port trunk allow-pass vlan 3000 to 3100
+     stp edged-port enable
+     mode lacp-static
+     jumboframe enable 9712
+
+    interface 10GE1/0/30
+     eth-trunk 159
+     qos wfq 0 to 7
+     qos queue 0 wfq weight 30
+     qos queue 1 wfq weight 30
+     qos queue 2 wfq weight 10
+     qos queue 3 wfq weight 30
+     qos queue 4 wfq weight 5
+     qos queue 6 wfq weight 5
+     device transceiver 40GBASE-FIBER
+
+  after: |+
+    interface 10GE1/0/30
+     qos wfq 0 to 7
+     qos queue 0 wfq weight 30
+     qos queue 1 wfq weight 30
+     qos queue 2 wfq weight 10
+     qos queue 3 wfq weight 30
+     qos queue 4 wfq weight 5
+     qos queue 6 wfq weight 5
+     device transceiver 40GBASE-FIBER
+
+  patch: |
+    system-view
+    interface 10GE1/0/30
+      undo eth-trunk
+      quit
+    undo interface Eth-Trunk159
+    q
+    save

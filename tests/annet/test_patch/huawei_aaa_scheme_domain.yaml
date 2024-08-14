@@ -1,0 +1,58 @@
+- vendor: huawei
+  before: |
+    aaa
+      domain default
+      domain default_admin
+  after: |
+    aaa
+      undo local-user policy security-enhance
+      domain default
+      domain default_admin
+      domain localuser
+        authentication-scheme tacacs
+        authorization-scheme tacacs
+        accounting-scheme tacacs
+        hwtacacs-server tacacs
+      authentication-scheme default
+        authentication-mode local
+      authorization-scheme default
+        authorization-mode local
+      accounting-scheme default
+        accounting-mode none
+      authentication-scheme tacacs
+        authentication-mode local hwtacacs
+      authorization-scheme tacacs
+        authorization-mode local hwtacacs
+      accounting-scheme tacacs
+        accounting-mode hwtacacs
+  patch: |
+    system-view
+    aaa
+      undo local-user policy security-enhance
+      authentication-scheme default
+        authentication-mode local
+        quit
+      authorization-scheme default
+        authorization-mode local
+        quit
+      accounting-scheme default
+        accounting-mode none
+        quit
+      authentication-scheme tacacs
+        authentication-mode local hwtacacs
+        quit
+      authorization-scheme tacacs
+        authorization-mode local hwtacacs
+        quit
+      accounting-scheme tacacs
+        accounting-mode hwtacacs
+        quit
+      domain localuser
+        authentication-scheme tacacs
+        authorization-scheme tacacs
+        accounting-scheme tacacs
+        hwtacacs-server tacacs
+        quit
+      quit
+    q
+    save

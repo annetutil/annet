@@ -1,0 +1,9 @@
+/annet.egg-info
+__pycache__
+/.coverage
+/.idea/
+/.tox-logs/
+/coverage.xml
+
+venv
+.venv

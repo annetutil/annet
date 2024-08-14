@@ -1,0 +1,36 @@
+- vendor: Nexus
+  before: |
+    interface Ethernet1/58
+      switchport
+      switchport access vlan 10
+      mtu 9216
+
+  after: |
+    interface port-channel999
+      switchport
+      switchport access vlan 10
+      mtu 9216
+      no shutdown
+    interface Ethernet1/58
+      description test
+      lacp rate fast
+      switchport
+      switchport access vlan 10
+      mtu 9216
+      channel-group 999 mode active
+
+  patch: |
+    conf t
+    interface port-channel999
+      switchport
+      switchport access vlan 10
+      mtu 9216
+      no shutdown
+      exit
+    interface Ethernet1/58
+      description test
+      lacp rate fast
+      channel-group 999 mode active
+      exit
+    exit
+    copy running-config startup-config

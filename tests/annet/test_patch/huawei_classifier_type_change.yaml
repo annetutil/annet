@@ -1,0 +1,61 @@
+vendor: Huawei
+before: |
+  traffic classifier OR_AND type or
+    if-match mpls-exp 5
+    if-match vlan 123
+
+  traffic classifier AND_OR type and
+    if-match mpls-exp 5
+    if-match vlan 123
+
+  traffic classifier AND_AND type and
+    if-match mpls-exp 5
+    if-match vlan 123
+
+  traffic classifier OR_OR type or
+    if-match mpls-exp 5
+    if-match vlan 123
+after: |
+  traffic classifier OR_AND type and
+    if-match mpls-exp 5
+    if-match vlan 456
+
+  traffic classifier AND_OR type or
+    if-match mpls-exp 5
+    if-match vlan 456
+
+  traffic classifier AND_AND type and
+    if-match mpls-exp 5
+    if-match vlan 456
+
+  traffic classifier OR_OR type or
+    if-match mpls-exp 5
+    if-match vlan 456
+patch: |
+  system-view
+  traffic classifier OR_AND type or
+    undo if-match mpls-exp
+    undo if-match vlan 123
+    quit
+  traffic classifier OR_AND type and
+    if-match mpls-exp 5
+    if-match vlan 456
+    quit
+  traffic classifier AND_OR type and
+    undo if-match mpls-exp
+    undo if-match vlan 123
+    quit
+  traffic classifier AND_OR type or
+    if-match mpls-exp 5
+    if-match vlan 456
+    quit
+  traffic classifier AND_AND type and
+    undo if-match vlan 123
+    if-match vlan 456
+    quit
+  traffic classifier OR_OR type or
+    undo if-match vlan 123
+    if-match vlan 456
+    quit
+  q
+  save

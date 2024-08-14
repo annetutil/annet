@@ -1,0 +1,114 @@
+import re
+from abc import ABC
+from os import path
+from typing import Iterable, Union
+
+from annet.annlib.lib import mako_render
+from annet.annlib.rbparser.ordering import compile_ordering_text
+from annet.annlib.rbparser.platform import VENDOR_REVERSES
+
+from annet.connectors import CachedConnector
+from annet.rulebook.deploying import compile_deploying_text
+from annet.rulebook.patching import compile_patching_text
+
+
+class RulebookProvider(ABC):
+    def get_rulebook(self, hw):
+        raise NotImplementedError
+
+    def get_root_modules(self) -> Iterable[str]:
+        raise NotImplementedError
+
+
+class _RulebookProviderConnector(CachedConnector[RulebookProvider]):
+    name = "Rulebook provider"
+    ep_name = "rulebook"
+
+
+rulebook_provider_connector = _RulebookProviderConnector()
+
+
+def get_rulebook(hw):
+    return rulebook_provider_connector.get().get_rulebook(hw)
+
+
+class DefaultRulebookProvider(RulebookProvider):
+    root_dir = (path.dirname(__file__),)
+    root_modules = ("annet.rulebook",)
+
+    def __init__(self, root_dir: Union[str, Iterable[str], None] = None,
+                 root_modules: Union[str, Iterable[str], None] = None):
+        self._rulebook_cache = {}
+        self._render_rul_cache = {}
+        self._escaped_rul_cache = {}
+
+        if root_dir is None:
+            pass
+        elif isinstance(root_dir, str):
+            self.root_dir = (root_dir,)
+        else:
+            self.root_dir = tuple(root_dir)
+
+        if root_modules is None:
+            pass
+        elif isinstance(root_modules, str):
+            self.root_modules = (root_modules,)
+        else:
+            self.root_modules = tuple(root_modules)
+
+    def get_root_modules(self):
+        return self.root_modules
+
+    def get_rulebook(self, hw):
+        if hw in self._rulebook_cache:
+            return self._rulebook_cache[hw]
+
+        assert hw.vendor in VENDOR_REVERSES, "Unknown vendor: %s" % (hw.vendor)
+        patching = compile_patching_text(self._render_rul(hw.vendor + ".rul", hw), hw.vendor)
+
+        try:
+            ordering_text = self._render_rul(hw.vendor + ".order", hw)
+        except FileNotFoundError:
+            ordering_text = ""
+        ordering = compile_ordering_text(ordering_text, hw.vendor)
+
+        try:
+            deploying_text = self._render_rul(hw.vendor + ".deploy", hw)
+        except FileNotFoundError:
+            deploying_text = ""
+
+        deploying = compile_deploying_text(deploying_text, hw.vendor)
+
+        self._rulebook_cache[hw] = {
+            "patching": patching,
+            "ordering": ordering,
+            "deploying": deploying,
+        }
+        return self._rulebook_cache[hw]
+
+    def _render_rul(self, name, hw):
+        key = (name, hw)
+        if key not in self._render_rul_cache:
+            self._render_rul_cache[key] = mako_render(self._read_escaped_rul(name), hw=hw)
+        return self._render_rul_cache[key]
+
+    def _read_escaped_rul(self, name):
+        if name in self._escaped_rul_cache:
+            return self._escaped_rul_cache[name]
+        for root_dir in self.root_dir:
+            try:
+                with open(path.join(root_dir, "texts", name), "r") as f:
+                    self._escaped_rul_cache[name] = self._escape_mako(f.read())
+                    return self._escaped_rul_cache[name]
+            except FileNotFoundError:
+                pass
+
+        raise FileNotFoundError(f"Unable to find rul: {name}")
+
+    @staticmethod
+    def _escape_mako(text):
+        # Экранирование всего, что начинается на %, например %comment -> %%comment, чтобы он не интерпретировался
+        # как mako-оператор
+        text = re.sub(r"(?:^|\n)%((?!if\s*|elif\s*|else\s*|endif\s*|for\s*|endfor\s*))", "\n%%\\1", text)
+        text = re.sub(r"(?:^|\n)\s*#.*", "", text)
+        return text

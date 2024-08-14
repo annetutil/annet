@@ -1,0 +1,59 @@
+- vendor: Huawei
+  diff: '+ port split dimension interface 100GE1/0/1 100GE1/0/3 100GE1/0/5 100GE1/0/7
+    to 100GE1/0/10 100GE1/0/17 to 100GE1/0/24 100GE1/0/28 split-type 4*25GE
+
+    '
+  patch: |
+    system-view
+    port split dimension interface 100GE1/0/1 100GE1/0/3 100GE1/0/5 100GE1/0/7 to 100GE1/0/10 100GE1/0/17 to 100GE1/0/24 100GE1/0/28 split-type 4*25GE
+    port split refresh
+    q
+    save
+- vendor: Huawei
+  diff: '- port split dimension interface 100GE1/0/1 100GE1/0/3 100GE1/0/5 100GE1/0/7
+    to 100GE1/0/10 100GE1/0/17 to 100GE1/0/24 100GE1/0/28 split-type 4*25GE
+
+    '
+  patch: |
+    system-view
+    undo port split dimension interface 100GE1/0/1 100GE1/0/3 100GE1/0/5 100GE1/0/7 to 100GE1/0/10 100GE1/0/17 to 100GE1/0/24 100GE1/0/28 split-type 4*25GE
+    port split refresh
+    q
+    save
+- vendor: Huawei
+  diff: |
+    - port split dimension interface 100GE1/0/1 100GE1/0/3 100GE1/0/5 100GE1/0/7 to 100GE1/0/10 100GE1/0/17 to 100GE1/0/24 100GE1/0/28 split-type 4*25GE
+    + port split dimension interface 100GE1/0/1 100GE1/0/3 100GE1/0/5 100GE1/0/7 to 100GE1/0/10 100GE1/0/17 100GE1/0/19 to 100GE1/0/24 100GE1/0/28 split-type 4*25GE
+  patch: |
+    system-view
+    undo port split dimension interface 100GE1/0/18
+    port split refresh
+    q
+    save
+- vendor: Huawei
+  diff: |
+    - port split dimension interface 100GE1/0/1
+    + port split dimension interface 100GE1/0/2
+  patch: |
+    system-view
+    undo port split dimension interface 100GE1/0/1
+    port split dimension interface 100GE1/0/2
+    port split refresh
+    q
+    save
+- vendor: Huawei
+  before: |
+    port split dimension interface 100GE1/0/1
+    port split dimension interface 100GE2/0/1
+  after: |
+    port split dimension interface 100GE1/0/2
+    port split dimension interface 100GE2/0/2
+  patch: |
+    system-view
+    undo port split dimension interface 100GE1/0/1
+    undo port split dimension interface 100GE2/0/1
+    port split dimension interface 100GE1/0/2
+    port split dimension interface 100GE2/0/2
+    port split refresh
+    q
+    save

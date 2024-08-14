@@ -1,0 +1,66 @@
+- vendor: Huawei
+  diff: |
+    bgp 64215.89
+      ipv6-family vpn-instance Vpn1
+      - peer fe80::c1:d1 as-number 64496
+      - peer fe80::c1:d1 connect-interface 100GE1/0/1.3000
+      - peer fe80::c1:d1 group SPINE
+      - peer fe80::c1:d1 description dc1-5d1@et-9/0/9.3000 @ SPINE
+  patch: |
+    system-view
+    bgp 64215.89
+      undo peer fe80::c1:d1 description
+      undo peer fe80::c1:d1
+      quit
+    q
+    save
+- vendor: Huawei
+  diff: |
+    bgp 64215.89
+      ipv6-family vpn-instance Vpn1
+      - peer fe80::c1:d1 as-number 64496
+      - peer fe80::c1:d1 connect-interface 100GE1/0/1.3000
+      - peer fe80::c1:d1 bfd enable
+  patch: |
+    system-view
+    bgp 64215.89
+      undo peer fe80::c1:d1 bfd enable
+      undo peer fe80::c1:d1
+      quit
+    q
+    save
+- vendor: Huawei
+  diff: |
+    bgp 64215.89
+      ipv6-family vpn-instance Vpn1
+      - peer fe80::c1:d1 connect-interface 100GE1/0/1.3000
+      - peer fe80::c1:d1 group SPINE
+      - peer fe80::c1:d1 description dc1-5d1@et-9/0/9.3000 @ SPINE
+  patch: |
+    system-view
+    bgp 64215.89
+      undo peer fe80::c1:d1 description
+      undo peer fe80::c1:d1 group SPINE
+      undo peer fe80::c1:d1 connect-interface
+      quit
+    q
+    save
+- vendor: Huawei
+  diff: |
+    bgp 65000.65001
+      ipv6-family unicast
+        - peer fe80::e999:d1 enable
+        - peer fe80::e999:d1 group TOR
+      - peer fe80::e999:d1 as-number 111
+      - peer fe80::e999:d1 group TOR
+  patch: |
+    system-view
+    bgp 65000.65001
+      ipv6-family unicast
+        undo peer fe80::e999:d1 group TOR
+        undo peer fe80::e999:d1 enable
+        quit
+      undo peer fe80::e999:d1
+      quit
+    q
+    save

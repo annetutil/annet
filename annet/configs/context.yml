@@ -1,0 +1,25 @@
+connection:
+  default:
+    login: ~
+    passwords: ~
+    enable_ssh_conf: false
+    no_nocauth: false
+    ssh_forward_agent: ~
+    tunnel: ~
+generators:
+  default:
+    - annet_generators.example
+
+storage:
+  default:
+    adapter: annet.adapters.file.provider
+    params:
+      path: /path/to/file
+
+context:
+  default:
+    connection: default
+    generators: default
+    storage: default
+
+selected_context: default

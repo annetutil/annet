@@ -1,0 +1,42 @@
+- vendor: Huawei
+  before: ''
+  after: 'interface Loopback100
+
+    '
+  patch: |
+    system-view
+    interface Loopback100
+      quit
+    q
+    save
+- vendor: Huawei
+  before: 'interface Loopback100
+
+    '
+  after: ''
+  patch: |
+    system-view
+    undo interface Loopback100
+    q
+    save
+- vendor: Huawei
+  before: ''
+  after: 'interface LoopBack100
+
+    '
+  patch: |
+    system-view
+    interface LoopBack100
+      quit
+    q
+    save
+- vendor: Huawei
+  before: 'interface LoopBack100
+
+    '
+  after: ''
+  patch: |
+    system-view
+    undo interface LoopBack100
+    q
+    save

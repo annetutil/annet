@@ -1,0 +1,13 @@
+vendor: Huawei
+diff: |
+  route-policy RP permit node 10
+    if-match interface Vlanif802
+    apply community 64496:1013
+    - apply cost 10000
+patch: |
+  system-view
+  route-policy RP permit node 10
+    undo apply cost
+    quit
+  q
+  save

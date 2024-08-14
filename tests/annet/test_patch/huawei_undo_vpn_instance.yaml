@@ -1,0 +1,19 @@
+- vendor: Huawei
+  diff: |
+    - route-policy VRF_SomeVrf_EXPORT permit node 10
+    - ip vpn-instance SomeVrf
+      - ipv6-family
+        - route-distinguisher 10.5.226.96:1114
+        - export route-policy VRF_SomeVrf_EXPORT
+        - vpn-target 64496:1114 import-extcommunity
+    bgp 1234
+      - ipv6-family vpn-instance SomeVrf
+  patch: |
+    system-view
+    bgp 1234
+      undo ipv6-family vpn-instance SomeVrf
+      quit
+    undo ip vpn-instance SomeVrf
+    undo route-policy VRF_SomeVrf_EXPORT node 10
+    q
+    save

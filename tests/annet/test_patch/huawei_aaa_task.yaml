@@ -1,0 +1,19 @@
+- vendor: huawei
+  before: |
+    aaa
+      task-group user5
+        task interface-mgr read write execute
+        task vlan read write execute
+  after: |
+    aaa
+      task-group user5
+  patch: |
+    system-view
+    aaa
+      task-group user5
+        undo task interface-mgr
+        undo task vlan
+        quit
+      quit
+    q
+    save
