@@ -45,6 +45,8 @@ def get_breed(manufacturer: str, model: str):
         return "ios12"
     elif manufacturer == "Adva":
         return "adva8"
+    elif manufacturer == "B4com":
+        return "b4com"
     elif manufacturer == "Arista":
         return "eos4"
     raise ValueError(f"unsupported manufacturer {manufacturer}")
@@ -52,7 +54,7 @@ def get_breed(manufacturer: str, model: str):
 
 def is_supported(manufacturer: str) -> bool:
     if manufacturer not in (
-            "Huawei", "Mellanox", "Juniper", "Cisco", "Adva", "Arista",
+            "Huawei", "Mellanox", "Juniper", "Cisco", "Adva", "Arista", "B4com",
     ):
         logger.warning("Unsupported manufacturer `%s`", manufacturer)
         return False
