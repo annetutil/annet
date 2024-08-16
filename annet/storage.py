@@ -69,7 +69,7 @@ class Storage(abc.ABC):
 class StorageOpts(abc.ABC):
     @classmethod
     @abc.abstractmethod
-    def parse_params(cls, conf_params: Dict[str, str] | None, cli_opts: Any):
+    def parse_params(cls, conf_params: Optional[Dict[str, str]], cli_opts: Any):
         pass
 
 
