@@ -792,6 +792,7 @@ def guess_hw(config_text: str):
         metric = _count_pre_score(pre)
         scores[metric] = hw
     max_score = max(scores.keys())
+    print(scores)
     hw = scores[max_score]
     return hw, max_score
 

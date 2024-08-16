@@ -62,7 +62,7 @@ from annet import api
     ),
     pytest.param(
         # конфиги схожи
-        {"cisco", "nexus"},
+        {"cisco", "nexus", "b4com"},
         """
         interface port-channel2.3000
             encapsulation dot1q 3000
@@ -92,4 +92,5 @@ from annet import api
 def test_guess_hw(ann_connectors, vendors, config_text):
     config_text = dedent(config_text)
     hw, _ = api.guess_hw(config_text)
+    # {0.8571428571428572: Huawei, 0.9230769230769231: B4com, 0.6666666666666667: Ribbon, 0.8: Aruba}
     assert hw.vendor in vendors

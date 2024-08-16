@@ -643,6 +643,7 @@ def make_formatter(vendor, **kwargs):
         "juniper": JuniperFormatter,
         "cisco": CiscoFormatter,
         "nexus": CiscoFormatter,
+        "b4com": CiscoFormatter,
         "huawei": HuaweiFormatter,
         "arista": CiscoFormatter,
         "nokia": NokiaFormatter,
