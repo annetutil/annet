@@ -42,6 +42,7 @@ if jsonpickle:
 def make_hw_stub(vendor):
     return HardwareView({
         "cisco": "Cisco Catalyst",
+        "b4com": "B4com",
         "nexus": "Cisco Nexus",
         "asr": "Cisco ASR",
         "huawei": "Huawei",

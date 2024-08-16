@@ -344,6 +344,11 @@ def apply(hw, do_commit, do_finalize, **_):
         if do_commit:
             after.add_cmd(Command("commit", timeout=30))
         after.add_cmd(Command("exit"))
+    elif hw.B4com:
+        before.add_cmd(Command("conf t"))
+        after.add_cmd(Command("exit"))
+        if do_finalize:
+            after.add_cmd(Command("copy running-config startup-config", timeout=40))
     else:
         raise Exception("unknown hw %s" % hw)
 

@@ -20,6 +20,34 @@ class Lldp(PartialGenerator):
         if device.hw.CE:
             yield "lldp transmit interval 10"
 
+    def acl_b4com(self, device):
+        return """
+        lldp *
+        interface *
+         lldp-agent
+            *
+        """
+
+    def run_b4com(self, device):
+        yield """
+        lldp run
+        lldp tlv-select basic-mgmt port-description
+        lldp tlv-select basic-mgmt system-name
+        lldp tlv-select basic-mgmt system-capabilities
+        lldp tlv-select basic-mgmt system-description
+        lldp tlv-select basic-mgmt management-address
+        """
+        for iface in device.interfaces:
+            with self.multiblock(f"interface {iface.name}"):
+                with self.multiblock("lldp-agent"):
+                    yield """
+                    set lldp enable txrx
+                    set lldp chassis-id-tlv ip-address
+                    set lldp port-id-tlv if-name
+                    lldp tlv basic-mgmt system-name select
+                    lldp tlv basic-mgmt system-description select
+                    """
+
     def acl_nexus(self, device):
         return """
             feature lldp

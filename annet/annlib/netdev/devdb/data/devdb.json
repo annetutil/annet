@@ -120,6 +120,9 @@
 
     "RouterOS": "^([Rr]outer[Oo][Ss]|[Mm]ikro[Tt]ik)",
 
+    "B4com": "^[Bb]4com",
+    "B4com.CS4148Q": "^[Bb]4com B4T-CS4148Q.*",
+
     "Aruba": "^Aruba",
     "Aruba.AP": " I?AP-",
     "Aruba.AP.AP200": " AP-2\\d\\d",
