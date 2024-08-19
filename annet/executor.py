@@ -16,11 +16,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import colorama
 import psutil
 from annet.annlib.command import Command, CommandList, Question  # noqa: F401
-
-try:
-    from annet.storage import Device
-except ImportError:
-    from noc.annushka.annet.storage import Device  # noqa: F401
+from annet.storage import Device
 
 
 _logger = logging.getLogger(__name__)
