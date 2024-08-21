@@ -26,7 +26,7 @@ class Device:
         return hash((self.id, type(self)))
 
     def __eq__(self, other):
-        return type(self) is type(other) and self.url == other.url
+        return type(self) is type(other) and self.fqdn == other.fqdn and self.vendor == other.vendor
 
     def __post_init__(self):
         if not self.id:
