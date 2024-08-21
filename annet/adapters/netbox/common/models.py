@@ -2,14 +2,19 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional, Any, Dict
 
+from annet.annlib.netdev.views.dump import DumpableView
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.storage import Storage
 
 
 @dataclass
-class Entity:
+class Entity(DumpableView):
     id: int
     name: str
+
+    @property
+    def _dump__list_key(self):
+        return self.name
 
 
 @dataclass
@@ -32,15 +37,19 @@ class DeviceType:
 
 
 @dataclass
-class DeviceIp:
+class DeviceIp(DumpableView):
     id: int
     display: str
     address: str
     family: int
 
+    @property
+    def _dump__list_key(self):
+        return self.address
+
 
 @dataclass
-class Prefix:
+class Prefix(DumpableView):
     id: int
     prefix: str
     site: Entity | None
@@ -55,9 +64,13 @@ class Prefix:
     last_updated: datetime
     description: str | None = ""
 
+    @property
+    def _dump__list_key(self):
+        return self.prefix
+
 
 @dataclass
-class IpAddress:
+class IpAddress(DumpableView):
     id: int
     assigned_object_id: int
     display: str
@@ -69,6 +82,10 @@ class IpAddress:
     last_updated: datetime
     prefix: Optional[Prefix] = None
     vrf: Optional[Entity] = None
+
+    @property
+    def _dump__list_key(self):
+        return self.address
 
 
 @dataclass
