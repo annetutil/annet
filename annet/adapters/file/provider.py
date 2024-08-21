@@ -1,3 +1,4 @@
+from annet.annlib.netdev.views.dump import DumpableView
 from annet.storage import Query
 from dataclasses import dataclass, fields
 from typing import List, Iterable, Any
@@ -7,14 +8,18 @@ import yaml
 
 
 @dataclass
-class Interface:
+class Interface(DumpableView):
     name: str
     description: str
     enabled: bool = True
 
+    @property
+    def _dump__list_key(self):
+        return self.name
+
 
 @dataclass
-class Device:
+class Device(DumpableView):
     fqdn: str
     vendor: str
     hostname: str | None = None
