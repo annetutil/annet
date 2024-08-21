@@ -70,7 +70,13 @@ def get_loader(gen_args: cli_args.GenOptions, args: cli_args.QueryOptions):
         yield Loader(*storages, args=gen_args)
 
 
-@subcommand(cli_args.QueryOptions, cli_args.opt_config, cli_args.FileOutOptions)
+@subcommand(is_group=True)
+def show():
+    """ Группа команд для просмотра параметров/конфигураций/данных устройств и хранилищ """
+    pass
+
+
+@subcommand(cli_args.QueryOptions, cli_args.opt_config, cli_args.FileOutOptions, parent=show)
 def show_current(args: cli_args.QueryOptions, config, arg_out: cli_args.FileOutOptions) -> None:
     """ Показать текущий конфиг устройств """
     gen_args = cli_args.GenOptions(args, no_acl=True)
@@ -89,9 +95,9 @@ def show_current(args: cli_args.QueryOptions, config, arg_out: cli_args.FileOutO
         output_driver.write_output(arg_out, items, len(loader.devices))
 
 
-@subcommand(cli_args.QueryOptions, cli_args.FileOutOptions)
+@subcommand(cli_args.QueryOptions, cli_args.FileOutOptions, parent=show)
 def show_device_dump(args: cli_args.QueryOptions, arg_out: cli_args.FileOutOptions):
-    """ Показать дамп структуры NetDev """
+    """ Показать дамп структуры сетевого устройства """
     def _show_device_dump_items(devices):
         for device in devices:
             get_logger(host=device.hostname)  # add hostname into context
@@ -203,7 +209,7 @@ def file_patch(args: cli_args.FilePatchOptions):
     output_driver.write_output(args, out, len(out))
 
 
-@subcommand()
+@subcommand(is_group=True)
 def context():
     """ Операции для управления файлом контекста.
 
@@ -214,7 +220,7 @@ def context():
 
 @subcommand(parent=context)
 def context_touch():
-    """ Вывести путь к файлу контекста и, при отсутствии, создать его и наполнить данными (команда по-умолчанию) """
+    """ Вывести путь к файлу контекста и, при отсутствии, создать его и наполнить данными """
     print(get_context_path(touch=True))
 
 
