@@ -370,7 +370,7 @@ class ArgParser(argparse.ArgumentParser):
         yield from _get_meta(func).opts
 
 
-def subcommand(*arg_list: Union[Arg, Type[ArgGroup]], parent: Callable = None):
+def subcommand(*arg_list: Union[Arg, Type[ArgGroup]], parent: Callable = None, is_group: bool = False):
     """
     декоратор, задающий cli-аргументы подпрограммы
 
@@ -397,6 +397,10 @@ def subcommand(*arg_list: Union[Arg, Type[ArgGroup]], parent: Callable = None):
     """
     def _amend_func(func):
         meta = _get_meta(func)
+        if is_group:
+            @functools.wraps(func)
+            def func():
+                meta.parser.print_help()
         cmd_name = func.__name__
         if parent:
             parentprefix = parent.__name__ + "_"
