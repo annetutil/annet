@@ -89,6 +89,31 @@ def show_current(args: cli_args.QueryOptions, config, arg_out: cli_args.FileOutO
         output_driver.write_output(arg_out, items, len(loader.devices))
 
 
+@subcommand(cli_args.QueryOptions, cli_args.FileOutOptions)
+def show_device_dump(args: cli_args.QueryOptions, arg_out: cli_args.FileOutOptions):
+    """ Показать дамп структуры NetDev """
+    def _show_device_dump_items(devices):
+        for device in devices:
+            get_logger(host=device.hostname)  # add hostname into context
+            if hasattr(device, "dump"):
+                yield (
+                    device.hostname,
+                    "\n".join(device.dump("device")),
+                    False,
+                )
+            else:
+                get_logger().warning("method `dump` not implemented for %s", type(device))
+    arg_gens = cli_args.GenOptions(arg_out, args)
+    with get_loader(arg_gens, args) as loader:
+        if not loader.devices:
+            get_logger().error("No devices found for %s", args.query)
+        output_driver_connector.get().write_output(
+            arg_out,
+            _show_device_dump_items(loader.devices),
+            len(loader.device_ids),
+        )
+
+
 @subcommand(cli_args.ShowGenOptions)
 def gen(args: cli_args.ShowGenOptions):
     """ Сгенерировать конфиг для устройств """
@@ -216,7 +241,6 @@ def context_edit():
     Если переменная окружения EDITOR не задана,
     для Windows пытаемся открыть файл средствами ОС, для остальных случаев пытаемся открыть в vi
     """
-    editor = ""
     if e := os.getenv("EDITOR"):
         editor = e
     elif platform.system() == "Windows":
