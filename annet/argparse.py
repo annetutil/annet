@@ -370,7 +370,7 @@ class ArgParser(argparse.ArgumentParser):
         yield from _get_meta(func).opts
 
 
-def subcommand(*arg_list: Union[Arg, Type[ArgGroup]], parent: Callable = None):
+def subcommand(*arg_list: Union[Arg, Type[ArgGroup]], parent: Callable = None, is_group: bool = False):
     """
     декоратор, задающий cli-аргументы подпрограммы
 
@@ -382,7 +382,7 @@ def subcommand(*arg_list: Union[Arg, Type[ArgGroup]], parent: Callable = None):
     Связь аргументов происходит только по порядковому номеру, каждый аргумент subcommand становится аргументом функции.
     Функция вызывается только с позиционными аргументами, всегда с одним и тем же количеством аргументов.
 
-    Для создания более одного уровня команд используeтся агрумент parent
+    Для создания более одного уровня команд используется аргумент parent
 
     Пример: 'ann some thing' - вызовет some_thing()
 
@@ -397,6 +397,10 @@ def subcommand(*arg_list: Union[Arg, Type[ArgGroup]], parent: Callable = None):
     """
     def _amend_func(func):
         meta = _get_meta(func)
+        if is_group:
+            @functools.wraps(func)
+            def func():
+                meta.parser.print_help()
         cmd_name = func.__name__
         if parent:
             parentprefix = parent.__name__ + "_"
