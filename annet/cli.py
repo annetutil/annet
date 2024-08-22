@@ -72,13 +72,13 @@ def get_loader(gen_args: cli_args.GenOptions, args: cli_args.QueryOptions):
 
 @subcommand(is_group=True)
 def show():
-    """ Группа команд для просмотра параметров/конфигураций/данных устройств и хранилищ """
+    """ A group of commands for showing parameters/configurations/data from deivces and data sources """
     pass
 
 
 @subcommand(cli_args.QueryOptions, cli_args.opt_config, cli_args.FileOutOptions, parent=show)
 def show_current(args: cli_args.QueryOptions, config, arg_out: cli_args.FileOutOptions) -> None:
-    """ Показать текущий конфиг устройств """
+    """ Show current devices' configuration """
     gen_args = cli_args.GenOptions(args, no_acl=True)
     output_driver = output_driver_connector.get()
     with get_loader(gen_args, args) as loader:
@@ -97,7 +97,7 @@ def show_current(args: cli_args.QueryOptions, config, arg_out: cli_args.FileOutO
 
 @subcommand(cli_args.QueryOptions, cli_args.FileOutOptions, parent=show)
 def show_device_dump(args: cli_args.QueryOptions, arg_out: cli_args.FileOutOptions):
-    """ Показать дамп структуры сетевого устройства """
+    """ Show a dump of network devices' structure """
     def _show_device_dump_items(devices):
         for device in devices:
             get_logger(host=device.hostname)  # add hostname into context
@@ -122,7 +122,7 @@ def show_device_dump(args: cli_args.QueryOptions, arg_out: cli_args.FileOutOptio
 
 @subcommand(cli_args.ShowGenOptions)
 def gen(args: cli_args.ShowGenOptions):
-    """ Сгенерировать конфиг для устройств """
+    """ Generate configuration for devices """
     with get_loader(args, args) as loader:
         (success, fail) = api.gen(args, loader)
 
@@ -141,7 +141,7 @@ def gen(args: cli_args.ShowGenOptions):
 
 @subcommand(cli_args.ShowDiffOptions)
 def diff(args: cli_args.ShowDiffOptions):
-    """ Сгенерировать конфиг для устройств и показать дифф по рулбуку с текущим """
+    """ Generate configuration for devices and show a diff with current configuration using the rulebook """
     with get_loader(args, args) as loader:
         filterer = filtering.filterer_connector.get()
         device_ids = loader.device_ids
@@ -154,7 +154,7 @@ def diff(args: cli_args.ShowDiffOptions):
 
 @subcommand(cli_args.ShowPatchOptions)
 def patch(args: cli_args.ShowPatchOptions):
-    """ Сгенерировать конфиг для устройств и сформировать патч """
+    """ Generate configuration patch for devices """
     with get_loader(args, args) as loader:
         (success, fail) = api.patch(args, loader)
 
@@ -169,7 +169,7 @@ def patch(args: cli_args.ShowPatchOptions):
 
 @subcommand(cli_args.DeployOptions)
 def deploy(args: cli_args.DeployOptions):
-    """ Сгенерировать конфиг для устройств и задеплоить его """
+    """ Generate and deploy configuration for devices """
 
     deployer = Deployer(args)
     filterer = filtering.filterer_connector.get()
@@ -186,7 +186,7 @@ def deploy(args: cli_args.DeployOptions):
 
 @subcommand(cli_args.FileDiffOptions)
 def file_diff(args: cli_args.FileDiffOptions):
-    """ Показать дифф по рулбуку между файлами или каталогами """
+    """ Generate a diff between files or directories using the rulebook """
     (success, fail) = api.file_diff(args)
     out = []
     output_driver = output_driver_connector.get()
@@ -199,7 +199,7 @@ def file_diff(args: cli_args.FileDiffOptions):
 
 @subcommand(cli_args.FilePatchOptions)
 def file_patch(args: cli_args.FilePatchOptions):
-    """ Сформировать патч для файлов или каталогов """
+    """ Generate configuration patch for files or directories """
     (success, fail) = api.file_patch(args)
     out = []
     output_driver = output_driver_connector.get()
@@ -211,24 +211,25 @@ def file_patch(args: cli_args.FilePatchOptions):
 
 @subcommand(is_group=True)
 def context():
-    """ Операции для управления файлом контекста.
+    """ A group of commands for manipulating context.
 
-    По-умолчанию находится в '~/.annushka/context.yml', либо по пути в переменной окружения ANN_CONTEXT_CONFIG_PATH.
+    By default, the context file is located in '~/.annushka/context.yml',
+    but it can be set with the ANN_CONTEXT_CONFIG_PATH environment variable.
     """
     context_touch()
 
 
 @subcommand(parent=context)
 def context_touch():
-    """ Вывести путь к файлу контекста и, при отсутствии, создать его и наполнить данными """
+    """ Show the context file path, and if the file is not present, create it with the default configuration """
     print(get_context_path(touch=True))
 
 
 @subcommand(cli_args.SelectContext, parent=context)
 def context_set_context(args: cli_args.SelectContext):
-    """ Задать текущий активный контекст по имени в конфигурации
+    """ Set the current active context.
 
-    Выбранный контекст будет использоваться по-умолчанию при незаданной переменной окружения ANN_SELECTED_CONTEXT
+    The selected context is used by default unless the environment variable ANN_SELECTED_CONTEXT is set
     """
     with open(path := get_context_path(touch=True)) as f:
         data = yaml.safe_load(f)
@@ -242,10 +243,9 @@ def context_set_context(args: cli_args.SelectContext):
 
 @subcommand(parent=context)
 def context_edit():
-    """ Открыть файл конфигурации контекста в редакторе из переменной окружения EDITOR
+    """ Open the context file using an editor from the EDITOR environment variable.
 
-    Если переменная окружения EDITOR не задана,
-    для Windows пытаемся открыть файл средствами ОС, для остальных случаев пытаемся открыть в vi
+    If the EDITOR variable is not set, default variables are: "notepad.exe" for Windows and "vi" otherwise
     """
     if e := os.getenv("EDITOR"):
         editor = e
@@ -262,5 +262,5 @@ def context_edit():
 
 @subcommand(parent=context)
 def context_repair():
-    """ Попытаться исправить расхождения в формате файла контекста после изменении версии """
+    """ Try to fix the context file's structure if it was generated for the older versions of annet """
     repair_context_file()
