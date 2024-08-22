@@ -10,7 +10,7 @@ from annetbox.v37.client_sync import NetboxV37
 
 from annet.adapters.netbox.common import models
 from annet.adapters.netbox.common.manufacturer import (
-    is_supported, get_hw, get_breed,
+    get_hw, get_breed,
 )
 from annet.adapters.netbox.common.query import NetboxQuery
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
@@ -43,20 +43,25 @@ def extend_device(
         storage: Storage,
 ) -> models.NetboxDevice:
     platform_name: str = ""
+    breed: str = ""
+    hw = HardwareView("", "")
     if device.platform:
         platform_name = device.platform.name
-    res = extend_device_base(
-        device=device,
-        interfaces=interfaces,
-        breed=get_breed(
+    if device.device_type and device.device_type.manufacturer:
+        breed = get_breed(
             device.device_type.manufacturer.name,
             device.device_type.model,
-        ),
-        hw=get_hw(
+        )
+        hw = get_hw(
             device.device_type.manufacturer.name,
             device.device_type.model,
             platform_name,
-        ),
+        )
+    res = extend_device_base(
+        device=device,
+        interfaces=interfaces,
+        breed=breed,
+        hw=hw,
         storage=storage,
     )
     res.neighbours = neighbours
@@ -146,7 +151,6 @@ class NetboxStorageV37(Storage):
                 name__ic=query.globs,
             ).results
             if _match_query(query, device)
-            if is_supported(device.device_type.manufacturer.name)
         ]
 
     def _extend_interfaces(self, interfaces: List[models.Interface]) -> List[models.Interface]:

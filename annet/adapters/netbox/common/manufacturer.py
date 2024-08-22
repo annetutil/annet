@@ -25,8 +25,6 @@ def get_hw(manufacturer: str, model: str, platform_name: str):
         model = model.replace("MSN", "SN", 1)
     vendor = manufacturer + " " + model
     hw = HardwareView(_VENDORS.get(vendor.lower(), vendor), platform_name)
-    if not hw:
-        raise ValueError(f"unsupported manufacturer {manufacturer}")
     return hw
 
 
@@ -47,13 +45,4 @@ def get_breed(manufacturer: str, model: str):
         return "adva8"
     elif manufacturer == "Arista":
         return "eos4"
-    raise ValueError(f"unsupported manufacturer {manufacturer}")
-
-
-def is_supported(manufacturer: str) -> bool:
-    if manufacturer not in (
-            "Huawei", "Mellanox", "Juniper", "Cisco", "Adva", "Arista",
-    ):
-        logger.warning("Unsupported manufacturer `%s`", manufacturer)
-        return False
-    return True
+    return ""
