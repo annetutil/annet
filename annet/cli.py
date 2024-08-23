@@ -134,7 +134,7 @@ def show_generators(args: cli_args.ShowGeneratorsOptions):
         if len(devices) == 1:
             device = devices[0]
         elif len(devices) > 1:
-            get_logger().error("show-generators support only one device")
+            get_logger().error("cannot show generators for more than one device at once")
             sys.exit(1)
         elif len(devices) == 0 and not args.query.is_empty():
             # the error message will be logged in get_loader()
