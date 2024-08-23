@@ -21,3 +21,6 @@ class NetboxQuery(Query):
     def globs(self):
         # We process every query host as a glob
         return self.query
+
+    def is_empty(self) -> bool:
+        return len(self.query) == 0

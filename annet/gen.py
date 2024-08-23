@@ -888,3 +888,6 @@ class Loader:
 
     def resolve_gens(self, devices: Iterable[Device]) -> DeviceGenerators:
         return self._gens.for_devices(devices)
+
+    def iter_all_gens(self) -> Iterator[BaseGenerator]:
+        return self._gens.iter_gens()
