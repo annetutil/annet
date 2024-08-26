@@ -64,7 +64,7 @@ def _gen_current_items(
 
 
 @contextmanager
-def get_loader(gen_args: cli_args.GenOptions, args: cli_args.QueryOptions | cli_args.QueryOptionsOptional):
+def get_loader(gen_args: cli_args.GenOptions, args: cli_args.QueryOptionsBase):
     exit_stack = ExitStack()
     storages = []
     with exit_stack:
