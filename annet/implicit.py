@@ -132,6 +132,14 @@ def _implicit_tree(device):
                     !neighbor *
                         no shutdown
             """
+    elif device.hw.Cisco:
+        if device.hw.Cisco.Catalyst:
+            # this configuration is not visible in running-config when enabled
+            text += r"""
+                # line console aaa config
+                !line con 0
+                    authorization exec default
+            """
     return parse_text(text)
 
 
