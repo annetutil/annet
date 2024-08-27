@@ -31,7 +31,7 @@ def compile_row_regexp(row, flags=0):
         row = row[:-3]
     elif "~/" in row:
         # ~/{regex}/ -> {regex}, () не нужны поскольку уже (?:) - non-captured
-        row = re.sub(r"~/([^/]+)/", r"\1", row)
+        row = re.sub(r"~/(((?!~/).)+)/", r"\1", row)
     else:
         row += r"(?:\s|$)"
     row = re.sub(r"\s+", r"\\s+", row)
