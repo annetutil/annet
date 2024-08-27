@@ -1,25 +1,29 @@
 import argparse
+import itertools
+import json
 import operator
 import os
 import platform
 import subprocess
 import shutil
+import sys
 from contextlib import ExitStack, contextmanager
 from typing import Tuple, Iterable
 
+import tabulate
 import yaml
 from contextlog import get_logger
 from valkit.python import valid_logging_level
 
 from annet.deploy import driver_connector, fetcher_connector
-from annet import api, cli_args, filtering
+from annet import api, cli_args, filtering, generators
 from annet.api import collapse_texts, Deployer
 from annet.argparse import ArgParser, subcommand
 from annet.diff import gen_sort_diff
 from annet.gen import Loader, old_raw
 from annet.lib import get_context_path, repair_context_file
 from annet.output import output_driver_connector, OutputDriver
-from annet.storage import get_storage
+from annet.storage import get_storage, Device
 
 
 def fill_base_args(parser: ArgParser, pkg_name: str, logging_config: str):
@@ -60,14 +64,14 @@ def _gen_current_items(
 
 
 @contextmanager
-def get_loader(gen_args: cli_args.GenOptions, args: cli_args.QueryOptions):
+def get_loader(gen_args: cli_args.GenOptions, args: cli_args.QueryOptionsBase):
     exit_stack = ExitStack()
     storages = []
     with exit_stack:
         connector, connector_opts = get_storage()
         storage_opts = connector.opts().parse_params(connector_opts, args)
         storages.append(exit_stack.enter_context(connector.storage()(storage_opts)))
-        yield Loader(*storages, args=gen_args)
+        yield Loader(*storages, args=gen_args, no_empty_warning=args.query.is_empty())
 
 
 @subcommand(is_group=True)
@@ -118,6 +122,62 @@ def show_device_dump(args: cli_args.QueryOptions, arg_out: cli_args.FileOutOptio
             _show_device_dump_items(loader.devices),
             len(loader.device_ids),
         )
+
+
+@subcommand(cli_args.ShowGeneratorsOptions, parent=show)
+def show_generators(args: cli_args.ShowGeneratorsOptions):
+    """ List applicable generators (for a device if query is set) """
+    arg_gens = cli_args.GenOptions(args)
+    with get_loader(arg_gens, args) as loader:
+        device: Device | None = None
+        devices = loader.devices
+        if len(devices) == 1:
+            device = devices[0]
+        elif len(devices) > 1:
+            get_logger().error("cannot show generators for more than one device at once")
+            sys.exit(1)
+        elif len(devices) == 0 and not args.query.is_empty():
+            # the error message will be logged in get_loader()
+            sys.exit(1)
+
+        if not device:
+            found_generators = loader.iter_all_gens()
+        else:
+            found_generators = []
+            gens = loader.resolve_gens(loader.devices)
+            for g in gens.partial[device]:
+                acl_func = g.acl_safe if args.acl_safe else g.acl
+                if g.supports_device(device) and acl_func(device):
+                    found_generators.append(g)
+            for g in gens.entire[device]:
+                if g.supports_device(device) and g.path(device):
+                    found_generators.append(g)
+            for g in gens.json_fragment[device]:
+                if g.supports_device(device) and g.path(device) and g.acl(device):
+                    found_generators.append(g)
+
+    output_data = []
+    for g in found_generators:
+        output_data.append({
+            "name": g.__class__.__name__,
+            "type": g.TYPE,
+            "tags": g.TAGS,
+            "module": g.__class__.__module__,
+            "description": generators.get_description(g.__class__),
+        })
+
+    if args.format == "json":
+        print(json.dumps(output_data))
+
+    elif args.format == "text":
+        keyfunc = operator.itemgetter("type")
+        for gen_type, gens in itertools.groupby(sorted(output_data, key=keyfunc, reverse=True), keyfunc):
+            print(tabulate.tabulate(
+                [(g["name"], ", ".join(g["tags"]), g["module"],  g["description"]) for g in gens],
+                [f"{gen_type}-Class", "Tags", "Module", "Description"],
+                tablefmt="orgtbl",
+            ))
+            print()
 
 
 @subcommand(cli_args.ShowGenOptions)

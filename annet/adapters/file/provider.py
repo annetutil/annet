@@ -98,6 +98,9 @@ class Query(Query):
     def globs(self):
         return self.query
 
+    def is_empty(self) -> bool:
+        return len(self.query) == 0
+
 
 class StorageOpts:
     def __init__(self, path: str):

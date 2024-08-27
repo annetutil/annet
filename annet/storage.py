@@ -75,9 +75,12 @@ class StorageOpts(abc.ABC):
 
 class Query(abc.ABC):
     @classmethod
-    @abc.abstractclassmethod
+    @abc.abstractmethod
     def new(cls, query: Union[str, Iterable[str]], hosts_range: Optional[slice] = None) -> "Query":
         pass
+
+    def is_empty(self) -> bool:
+        return False
 
 
 class Device(Protocol):
