@@ -263,6 +263,10 @@ class HuaweiFormatter(BlockExitFormatter):
         yield from super().block_exit(context)
 
 
+class HuaweiDWDMFormatter(CommonFormatter):
+    pass
+
+
 class CiscoFormatter(BlockExitFormatter):
     def __init__(self, indent="  "):
         super().__init__("exit", indent)
@@ -644,6 +648,7 @@ def make_formatter(vendor, **kwargs):
         "cisco": CiscoFormatter,
         "nexus": CiscoFormatter,
         "huawei": HuaweiFormatter,
+        "huawei_dwdm": HuaweiDWDMFormatter,
         "arista": CiscoFormatter,
         "nokia": NokiaFormatter,
         "routeros": RosFormatter,

@@ -79,6 +79,8 @@ def hw_to_vendor(hw: HardwareView) -> Optional[str]:
         return "cisco"
     elif hw.Huawei:
         return "huawei"
+    elif hw.HuaweiDWDM:
+        return "huawei_dwdm"
     elif hw.Juniper:
         return "juniper"
     elif hw.Arista:
@@ -105,6 +107,7 @@ def vendor_to_hw(vendor):
             "catalyst": "Cisco Catalyst",
             "nexus": "Cisco Nexus",
             "huawei": "Huawei",
+            "huawei_dwdm": "HuaweiDWDM",
             "juniper": "Juniper",
             "arista": "Arista",
             "pc": "PC",
