@@ -282,7 +282,7 @@ class ApplyItem(typing.NamedTuple):
 
 def apply(hw, do_commit, do_finalize, **_):
     before, after = CommandList(), CommandList()
-    if hw.Huawei:
+    if hw.Huawei or hw.HuaweiDWDM:
         before.add_cmd(Command("system-view"))
         if do_commit and (hw.Huawei.CE or hw.Huawei.NE):
             after.add_cmd(Command("commit"))
