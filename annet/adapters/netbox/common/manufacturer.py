@@ -35,7 +35,7 @@ def get_breed(manufacturer: str, model: str):
         return "vrp85"
     elif manufacturer == "Huawei":
         return "vrp55"
-    elif manufacturer == "Mellanox":
+    elif manufacturer in ("Mellanox", "NVIDIA"):
         return "cuml2"
     elif manufacturer == "Juniper":
         return "jun10"
