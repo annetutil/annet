@@ -52,7 +52,8 @@ def make_hw_stub(vendor):
         "arista": "Arista",
         "nokia": "Nokia",
         "pc": "PC",
-        "ribbon": "Ribbon"
+        "ribbon": "Ribbon",
+        "huawei_dwdm": "Huawei DC908",
     }[vendor], None)
 
 
