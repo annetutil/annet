@@ -36,11 +36,7 @@
     "Cisco.Nexus.N9x.N9500": " 95\\d\\d",
     "Cisco.Nexus.N9x.N9364": " N9K-C9364",
 
-    "HuaweiDWDM": "^[Hh]uawei DC",
-    "HuaweiDWDM.DC": " DC\\d+",
-    "HuaweiDWDM.DC.DC908": " DC908",
-
-    "Huawei": "^[Hh]uawei(?! DC)",
+    "Huawei": "^[Hh]uawei",
     "Huawei.CE": " CE\\d+",
     "Huawei.CE.CE12800": " CE128\\d{2}",
     "Huawei.CE.CE5800": " CE58\\d\\d",
@@ -69,6 +65,9 @@
     "Huawei.EI": "-EI(-|$)",
     "Huawei.HI": "-HI(-|$)",
     "Huawei.SI": "-SI(-|$)",
+    "Huawei.OptiXtrans": " DC\\d+",
+    "Huawei.OptiXtrans.DC": " DC\\d+",
+    "Huawei.OptiXtrans.DC.DC908": " DC908",
 
     "Juniper": "^[Jj]uniper",
     "Juniper.MX": " MX",

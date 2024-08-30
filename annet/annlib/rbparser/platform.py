@@ -1,6 +1,6 @@
 VENDOR_REVERSES = {
     "huawei": "undo",
-    "huawei_dwdm": "undo",
+    "optixtrans": "undo",
     "cisco": "no",
     "nexus": "no",
     "juniper": "delete",
@@ -14,7 +14,7 @@ VENDOR_REVERSES = {
 
 VENDOR_DIFF = {
     "huawei": "common.default_diff",
-    "huawei_dwdm": "common.default_diff",
+    "optixtrans": "common.default_diff",
     "cisco": "common.default_diff",
     "nexus": "common.default_diff",
     "juniper": "juniper.default_diff",
@@ -28,7 +28,7 @@ VENDOR_DIFF = {
 
 VENDOR_DIFF_ORDERED = {
     "huawei": "common.ordered_diff",
-    "huawei_dwdm": "common.ordered_diff",
+    "optixtrans": "common.ordered_diff",
     "cisco": "common.ordered_diff",
     "nexus": "common.ordered_diff",
     "juniper": "juniper.ordered_diff",
@@ -42,7 +42,7 @@ VENDOR_DIFF_ORDERED = {
 
 VENDOR_EXIT = {
     "huawei": "quit",
-    "huawei_dwdm": "quit",
+    "optixtrans": "quit",
     "cisco": "exit",
     "nexus": "exit",
     "arista": "exit",

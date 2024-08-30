@@ -3,7 +3,7 @@ from annet.annlib.tabparser import (  # pylint: disable=unused-import
     CiscoFormatter,
     CommonFormatter,
     HuaweiFormatter,
-    HuaweiDWDMFormatter,
+    OptixtransFormatter,
     JuniperFormatter,
     JuniperList,
     NokiaFormatter,
@@ -15,10 +15,10 @@ from annet.annlib.tabparser import (  # pylint: disable=unused-import
 
 
 def make_formatter(hw, **kwargs):
-    if hw.Huawei:
+    if hw.OptiXtrans:
+        cls = OptixtransFormatter
+    elif hw.Huawei:
         cls = HuaweiFormatter
-    elif hw.HuaweiDWDM:
-        cls = HuaweiDWDMFormatter
     elif hw.Cisco.ASR or hw.Cisco.XRV:
         cls = AsrFormatter
     elif hw.Nexus or hw.Cisco or hw.Arista or hw.Aruba:

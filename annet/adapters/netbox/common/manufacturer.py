@@ -9,6 +9,7 @@ _VENDORS = {
     "catalyst": "Cisco Catalyst",
     "nexus": "Cisco Nexus",
     "huawei": "Huawei",
+    "optixtrans": "Huawei OptiXtrans",
     "juniper": "Juniper",
     "arista": "Arista",
     "pc": "PC",

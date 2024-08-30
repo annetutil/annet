@@ -263,7 +263,7 @@ class HuaweiFormatter(BlockExitFormatter):
         yield from super().block_exit(context)
 
 
-class HuaweiDWDMFormatter(CommonFormatter):
+class OptixtransFormatter(CommonFormatter):
     pass
 
 
@@ -648,7 +648,7 @@ def make_formatter(vendor, **kwargs):
         "cisco": CiscoFormatter,
         "nexus": CiscoFormatter,
         "huawei": HuaweiFormatter,
-        "huawei_dwdm": HuaweiDWDMFormatter,
+        "optixtrans": OptixtransFormatter,
         "arista": CiscoFormatter,
         "nokia": NokiaFormatter,
         "routeros": RosFormatter,
