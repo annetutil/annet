@@ -65,8 +65,8 @@
     "Huawei.EI": "-EI(-|$)",
     "Huawei.HI": "-HI(-|$)",
     "Huawei.SI": "-SI(-|$)",
-    "Huawei.OptiXtrans": " DC\\d+",
-    "Huawei.OptiXtrans.DC": " DC\\d+",
+    "Huawei.OptiXtrans": " OptiXtrans|DC",
+    "Huawei.OptiXtrans.DC": " DC",
     "Huawei.OptiXtrans.DC.DC908": " DC908",
 
     "Juniper": "^[Jj]uniper",

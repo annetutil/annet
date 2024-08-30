@@ -53,7 +53,7 @@ def make_hw_stub(vendor):
         "nokia": "Nokia",
         "pc": "PC",
         "ribbon": "Ribbon",
-        "optixtrans": "Huawei DC908",
+        "optixtrans": "Huawei DC",
     }[vendor], None)
 
 
