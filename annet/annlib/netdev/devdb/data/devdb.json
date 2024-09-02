@@ -119,7 +119,8 @@
     "PC.Whitebox.Asterfusion.CX.CX500.CX532P-N": " CX532P-N",
     "PC.Whitebox.Ufispace": "[Uu]fi[Ss]pace",
     "PC.Whitebox.Ufispace.S": " S",
-    "PC.Whitebox.Ufispace.S.S9110-32X": " S9110-32X",
+    "PC.Whitebox.Ufispace.S.S9100": " S91\\d\\d",
+    "PC.Whitebox.Ufispace.S.S9100.S9110_32X": " S9110-32X",
 
     "RouterOS": "^([Rr]outer[Oo][Ss]|[Mm]ikro[Tt]ik)",
 
