@@ -273,7 +273,7 @@ def file_patch(args: cli_args.FilePatchOptions):
 def context():
     """ A group of commands for manipulating context.
 
-    By default, the context file is located in '~/.annushka/context.yml',
+    By default, the context file is located in '~/.annet/context.yml',
     but it can be set with the ANN_CONTEXT_CONFIG_PATH environment variable.
     """
     context_touch()
