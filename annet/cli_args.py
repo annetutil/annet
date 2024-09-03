@@ -8,6 +8,7 @@ import os
 
 from valkit.common import valid_string_list
 
+import annet.lib
 from annet.argparse import Arg, ArgGroup, DefaultFromEnv
 from annet.hardware import hardware_connector
 from annet.storage import Query, get_storage
@@ -228,7 +229,7 @@ opt_log_json = Arg(
 )
 
 opt_log_dest = Arg(
-    "--log-dest", default="deploy/",
+    "--log-dest", default=annet.lib.get_default_log_dest,
     help="Log to a specified file, directory, or '-' (stdout)"
 )
 
