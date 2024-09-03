@@ -107,6 +107,8 @@ class Arg:
         default = self.kwargs.get("default", None)
         if isinstance(default, ConvertibleDefault) and "type" in self.kwargs:
             default = self.kwargs["default"] = default.convert(self.kwargs["type"])
+        elif isinstance(default, Callable):
+            default = self.kwargs["default"] = default()
         elif default is False and "action" not in self.kwargs:
             self.kwargs["action"] = "store_true"
         self.default = default
