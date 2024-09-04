@@ -1,5 +1,5 @@
 from logging import getLogger
-from typing import Optional, List, Union, Dict
+from typing import Any, Optional, List, Union, Dict
 from ipaddress import ip_interface
 from collections import defaultdict
 
@@ -145,6 +145,7 @@ class NetboxStorageV37(Storage):
     def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
         if not query.globs:
             return []
+        query = _hostname_dot_hack(query)
         return [
             device
             for device in self.netbox.dcim_all_devices(
@@ -223,3 +224,23 @@ def _match_query(query: NetboxQuery, device_data: api_models.Device) -> bool:
         if subquery.strip() in device_data.name:
             return True
     return False
+
+
+def _hostname_dot_hack(netbox_query: NetboxQuery) -> NetboxQuery:
+    # there is no proper way to lookup host by its hostname
+    # ie find "host" with fqdn "host.example.com"
+    # besides using name__ic (ie startswith)
+    # since there is no direct analogue for this field in netbox
+    # so we need to add a dot to hostnames (top-level fqdn part)
+    # so we would not receive devices with a common name prefix
+    def add_dot(raw_query: Any) -> Any:
+        if isinstance(raw_query, str) and "." not in raw_query:
+            raw_query = raw_query + "."
+        return raw_query
+
+    raw_query = netbox_query.query
+    if isinstance(raw_query, list):
+        for i, name in enumerate(raw_query):
+            raw_query[i] = add_dot(name)
+
+    return NetboxQuery(raw_query)
