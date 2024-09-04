@@ -97,13 +97,11 @@ class NetboxStorageV37(Storage):
         pass
 
     def resolve_object_ids_by_query(self, query: NetboxQuery):
-        query = _hostname_dot_hack(query)
         return [
             d.id for d in self._load_devices(query)
         ]
 
     def resolve_fdnds_by_query(self, query: NetboxQuery):
-        query = _hostname_dot_hack(query)
         return [
             d.name for d in self._load_devices(query)
         ]
@@ -118,7 +116,6 @@ class NetboxStorageV37(Storage):
     ) -> List[models.NetboxDevice]:
         if isinstance(query, list):
             query = NetboxQuery.new(query)
-        query = _hostname_dot_hack(query)
         device_ids = {
             device.id: extend_device(
                 device=device,
