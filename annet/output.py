@@ -24,6 +24,9 @@ from annet.connectors import Connector
 from annet.storage import Device, storage_connector
 
 
+BLACKBOX_FILENAME = "config.cfg"
+
+
 class _DriverConnector(Connector["OutputDriver"]):
     name = "OutputDriver"
     ep_name = "output"
@@ -77,7 +80,8 @@ class OutputDriverBasic(OutputDriver):
             yield from items_iter
 
         dest = arg_out.dest
-        dir_mode = dir_or_file_output(dest, query_result_count, suggest_dir=(os.sep in first_result[0]))
+        suggest_dir = arg_out.dest_force_create_dir or os.sep in first_result[0]
+        dir_mode = dir_or_file_output(dest, query_result_count, suggest_dir=suggest_dir)
         _reassembled_items = list(_reassemble_items())
 
         for output_no, (label, output, is_fail) in enumerate(_reassembled_items):
@@ -99,6 +103,9 @@ class OutputDriverBasic(OutputDriver):
                         print_label(label, back_color=label_color)
                     writer.write(sys.stdout)
             elif dir_mode:
+                if arg_out.dest_force_create_dir and os.sep not in label:
+                    label = os.path.join(label, BLACKBOX_FILENAME)
+
                 if label.startswith(LABEL_NEW_PREFIX):
                     label = label[len(LABEL_NEW_PREFIX):]
                 if label.startswith(os.sep):
@@ -114,7 +121,7 @@ class OutputDriverBasic(OutputDriver):
                     label = os.sep.join(parts[1:])
                     if not arg_out.expand_path:
                         label = os.path.basename(label)
-                    if query_result_count > 1:
+                    if query_result_count > 1 or arg_out.dest_force_create_dir:
                         label = os.path.join(hostname, label)
                 file_dest = os.path.join(dest, "errors") if is_fail else dest
                 out_file = os.path.normpath(os.path.join(file_dest, label))

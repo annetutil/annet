@@ -70,6 +70,11 @@ opt_expand_path = Arg(
     help="Use full paths of Entire-generators and no just names when writing them to the file system"
 )
 
+opt_dest_force_create_dir = Arg(
+    "--dest-force-create-dir", default=False,
+    help="Output generated data to dir, even for blackboxes"
+)
+
 opt_old = Arg(
     "old",
     help="A path to a file (or a directory with a batch of files) that contains the old config"
@@ -426,6 +431,7 @@ class FileOutOptions(ArgGroup):
     expand_path = opt_expand_path
     no_label = opt_no_label
     no_color = opt_no_color
+    dest_force_create_dir = opt_dest_force_create_dir
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
