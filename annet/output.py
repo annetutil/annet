@@ -24,6 +24,9 @@ from annet.connectors import Connector
 from annet.storage import Device, storage_connector
 
 
+BLACKBOX_FILENAME = "config.cfg"
+
+
 class _DriverConnector(Connector["OutputDriver"]):
     name = "OutputDriver"
     ep_name = "output"
@@ -101,7 +104,7 @@ class OutputDriverBasic(OutputDriver):
                     writer.write(sys.stdout)
             elif dir_mode:
                 if arg_out.dest_force_create_dir and os.sep not in label:
-                    label = os.path.join(label, arg_out.blackbox_config_filename)
+                    label = os.path.join(label, BLACKBOX_FILENAME)
 
                 if label.startswith(LABEL_NEW_PREFIX):
                     label = label[len(LABEL_NEW_PREFIX):]
