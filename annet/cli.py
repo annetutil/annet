@@ -15,7 +15,7 @@ import yaml
 from contextlog import get_logger
 from valkit.python import valid_logging_level
 
-from annet.deploy import driver_connector, fetcher_connector
+from annet.deploy import get_fetcher, get_deployer
 from annet import api, cli_args, filtering, generators
 from annet.api import collapse_texts, Deployer
 from annet.argparse import ArgParser, subcommand
@@ -233,8 +233,8 @@ def deploy(args: cli_args.DeployOptions):
 
     deployer = Deployer(args)
     filterer = filtering.filterer_connector.get()
-    fetcher = fetcher_connector.get()
-    deploy_driver = driver_connector.get()
+    fetcher = get_fetcher()
+    deploy_driver = get_deployer()
 
     with get_loader(args, args) as loader:
         return api.deploy(

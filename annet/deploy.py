@@ -6,7 +6,7 @@ import itertools
 import re
 from collections import namedtuple
 from contextlib import contextmanager
-from typing import Dict, List, Optional, Type, Any, OrderedDict
+from typing import Dict, List, Optional, Any, OrderedDict, Tuple
 
 from contextlog import get_logger
 
@@ -14,6 +14,7 @@ from annet import text_term_format
 from annet.annlib.command import Command, Question, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.rbparser.deploying import MakeMessageMatcher, Answer
+from annet.lib import get_context
 from annet.cli_args import DeployOptions
 from annet.connectors import Connector
 from annet.output import TextArgs
@@ -40,16 +41,10 @@ class _FetcherConnector(Connector["Fetcher"]):
     name = "Fetcher"
     ep_name = "deploy_fetcher"
 
-    def _get_default(self) -> Type["Fetcher"]:
-        return StubFetcher
-
 
 class _DriverConnector(Connector["DeployDriver"]):
     name = "DeployDriver"
     ep_name = "deploy_driver"
-
-    def _get_default(self) -> Type["DeployDriver"]:
-        return StubDeployDriver
 
 
 fetcher_connector = _FetcherConnector()
@@ -59,7 +54,7 @@ driver_connector = _DriverConnector()
 class Fetcher(abc.ABC):
     @abc.abstractmethod
     def fetch_packages(self, devices: List[Device],
-                       processes: int = 1, max_slots: int = 0):
+                       processes: int = 1, max_slots: int = 0) -> Tuple[Dict[Device, str], Dict[Device, Any]]:
         pass
 
     @abc.abstractmethod
@@ -69,15 +64,42 @@ class Fetcher(abc.ABC):
         pass
 
 
-class StubFetcher(Fetcher):
-    def fetch_packages(self, devices: List[Device],
-                       processes: int = 1, max_slots: int = 0):
-        raise NotImplementedError()
+class AdapterWithConfig(abc.ABC):
+    @abc.abstractmethod
+    def with_config(self, **kwargs: Dict[str, Any]) -> Fetcher:
+        pass
 
-    def fetch(self, devices: List[Device],
-              files_to_download: Dict[str, List[str]] = None,
-              processes: int = 1, max_slots: int = 0):
-        raise NotImplementedError()
+
+class AdapterWithName(abc.ABC):
+    @abc.abstractmethod
+    def name(self) -> str:
+        pass
+
+
+def get_fetcher() -> Fetcher:
+    connectors = fetcher_connector.get_all()
+    seen: list[str] = []
+    connector = connectors[0]
+    connector_params: Any = {}
+    if context_storage := get_context().get("fetcher"):
+        for con in connectors:
+            con_name = connector.__class__.__name__
+            if isinstance(con, AdapterWithName):
+                con_name = con.name()
+            seen.append(con_name)
+            if not(adapter := context_storage):
+                raise Exception("adapter is not set in %s" % context_storage)
+            if adapter["adapter"] == con_name:
+                connector = con
+                connector_params = adapter.get("params", {})
+                break
+        else:
+            raise Exception("unknown fetcher %s: seen %s" % (context_storage["adapter"], seen))
+    else:
+        connector = connectors[0]
+    if isinstance(connector, AdapterWithConfig):
+        connector = connector.with_config(**connector_params)
+    return connector
 
 
 class DeployDriver(abc.ABC):
@@ -86,11 +108,11 @@ class DeployDriver(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def apply_deploy_rulebook(self, hw, cmd_paths, do_finalize=True, do_commit=True):
+    def apply_deploy_rulebook(self, hw: HardwareView, cmd_paths, do_finalize=True, do_commit=True):
         pass
 
     @abc.abstractmethod
-    def build_configuration_cmdlist(self, hw, do_finalize=True, do_commit=True):
+    def build_configuration_cmdlist(self, hw: HardwareView, do_finalize=True, do_commit=True):
         pass
 
     @abc.abstractmethod
@@ -98,18 +120,30 @@ class DeployDriver(abc.ABC):
         pass
 
 
-class StubDeployDriver(DeployDriver):
-    async def bulk_deploy(self, deploy_cmds: dict, args: DeployOptions) -> DeployResult:
-        NotImplementedError()
-
-    def apply_deploy_rulebook(self, hw, cmd_paths, do_finalize=True, do_commit=True):
-        NotImplementedError()
-
-    def build_configuration_cmdlist(self, hw, do_finalize=True, do_commit=True):
-        NotImplementedError()
-
-    def build_exit_cmdlist(self, hw):
-        raise NotImplementedError()
+def get_deployer() -> DeployDriver:
+    connectors = driver_connector.get_all()
+    seen: list[str] = []
+    connector = connectors[0]
+    connector_params: Any = {}
+    if context_storage := get_context().get("deployer"):
+        for con in connectors:
+            con_name = connector.__class__.__name__
+            if isinstance(con, AdapterWithName):
+                con_name = con.name()
+            seen.append(con_name)
+            if not(adapter := context_storage):
+                raise Exception("adapter is not set in %s" % context_storage)
+            if adapter["adapter"] == con_name:
+                connector = con
+                connector_params = adapter.get("params", {})
+                break
+        else:
+            raise Exception("unknown deployer %s: seen %s" % (context_storage["adapter"], seen))
+    else:
+        connector = connectors[0]
+    if isinstance(connector, AdapterWithConfig):
+        connector = connector.with_config(**connector_params)
+    return connector
 
 
 # ===
