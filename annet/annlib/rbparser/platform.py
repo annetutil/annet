@@ -10,6 +10,7 @@ VENDOR_REVERSES = {
     "aruba": "no",
     "pc": "-",
     "ribbon": "delete",
+    "b4com": "no",
 }
 
 VENDOR_DIFF = {
@@ -24,6 +25,7 @@ VENDOR_DIFF = {
     "aruba": "aruba.default_diff",
     "pc": "common.default_diff",
     "ribbon": "ribbon.default_diff",
+    "b4com": "common.default_diff",
 }
 
 VENDOR_DIFF_ORDERED = {
@@ -38,6 +40,7 @@ VENDOR_DIFF_ORDERED = {
     "aruba": "common.ordered_diff",
     "pc": "common.ordered_diff",
     "ribbon": "ribbon.default_diff",
+    "b4com": "common.ordered_diff",
 }
 
 VENDOR_EXIT = {
@@ -52,4 +55,5 @@ VENDOR_EXIT = {
     "aruba": "exit",
     "pc": "",
     "ribbon": "exit",
+    "b4com": "exit",
 }

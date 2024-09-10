@@ -655,6 +655,7 @@ def make_formatter(vendor, **kwargs):
         "aruba": CiscoFormatter,
         "pc": CommonFormatter,
         "ribbon": RibbonFormatter,
+        "b4com": CiscoFormatter,
     }
     return formatters[vendor](**kwargs)
 

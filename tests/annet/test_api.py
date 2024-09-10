@@ -62,7 +62,7 @@ from annet import api
     ),
     pytest.param(
         # конфиги схожи
-        {"cisco", "nexus"},
+        {"cisco", "nexus", "b4com"},
         """
         interface port-channel2.3000
             encapsulation dot1q 3000
