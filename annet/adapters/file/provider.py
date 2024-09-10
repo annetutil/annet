@@ -71,7 +71,7 @@ class Device(DeviceCls, DumpableView):
         return hash((self.id, type(self)))
 
     def __eq__(self, other):
-        return type(self) is type(other) and self.url == other.url
+        return type(self) is type(other) and self.fqdn == other.fqdn and self.vendor == other.vendor
 
     def is_pc(self):
         return False
