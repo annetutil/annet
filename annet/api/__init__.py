@@ -346,7 +346,7 @@ def diff(
         device = res.device
         acl_rules = res.get_acl_rules(args.acl_safe)
         new_files = res.get_new_files(args.acl_safe)
-        new_json_fragment_files = res.get_new_file_fragments()
+        new_json_fragment_files = res.get_new_file_fragments(args.acl_safe)
 
         pc_diff_files = []
         if res.old_files or new_files:
@@ -792,7 +792,6 @@ def guess_hw(config_text: str):
         metric = _count_pre_score(pre)
         scores[metric] = hw
     max_score = max(scores.keys())
-    print(scores)
     hw = scores[max_score]
     return hw, max_score
 

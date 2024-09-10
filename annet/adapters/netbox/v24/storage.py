@@ -6,10 +6,11 @@ from annetbox.v24.client_sync import NetboxV24
 
 from annet.adapters.netbox.common import models
 from annet.adapters.netbox.common.manufacturer import (
-    is_supported, get_hw, get_breed,
+   get_hw, get_breed,
 )
 from annet.adapters.netbox.common.query import NetboxQuery
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
+from annet.annlib.netdev.views.hardware import HardwareView
 from annet.storage import Storage
 
 logger = getLogger(__name__)
@@ -162,7 +163,6 @@ class NetboxStorageV24(Storage):
             device
             for device in self.netbox.dcim_all_devices().results
             if _match_query(query, device)
-            if is_supported(device.device_type.manufacturer.name)
         ]
 
     def _load_interfaces(self, device_ids: List[int]) -> List[

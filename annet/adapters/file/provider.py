@@ -1,3 +1,4 @@
+from annet.annlib.netdev.views.dump import DumpableView
 from annet.storage import Query
 from dataclasses import dataclass, fields
 from typing import List, Iterable, Any
@@ -7,14 +8,18 @@ import yaml
 
 
 @dataclass
-class Interface:
+class Interface(DumpableView):
     name: str
     description: str
     enabled: bool = True
 
+    @property
+    def _dump__list_key(self):
+        return self.name
+
 
 @dataclass
-class Device:
+class Device(DumpableView):
     fqdn: str
     vendor: str
     hostname: str | None = None
@@ -26,7 +31,7 @@ class Device:
         return hash((self.id, type(self)))
 
     def __eq__(self, other):
-        return type(self) is type(other) and self.url == other.url
+        return type(self) is type(other) and self.fqdn == other.fqdn and self.vendor == other.vendor
 
     def __post_init__(self):
         if not self.id:
@@ -92,6 +97,9 @@ class Query(Query):
     @property
     def globs(self):
         return self.query
+
+    def is_empty(self) -> bool:
+        return len(self.query) == 0
 
 
 class StorageOpts:

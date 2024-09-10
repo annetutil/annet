@@ -27,5 +27,4 @@ patch: |
       exit
     exit
   exit
-  copy running-config startup-config
-
+  write

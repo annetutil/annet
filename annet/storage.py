@@ -1,5 +1,5 @@
 import abc
-from typing import Any, Iterable, Optional, Type, Union, Protocol
+from typing import Any, Iterable, Optional, Type, Union, Protocol, Dict
 from annet.connectors import Connector, get_context
 
 
@@ -69,15 +69,18 @@ class Storage(abc.ABC):
 class StorageOpts(abc.ABC):
     @classmethod
     @abc.abstractmethod
-    def parse_params(cls, conf_params: dict[str, str] | None, cli_opts: Any):
+    def parse_params(cls, conf_params: Optional[Dict[str, str]], cli_opts: Any):
         pass
 
 
 class Query(abc.ABC):
     @classmethod
-    @abc.abstractclassmethod
+    @abc.abstractmethod
     def new(cls, query: Union[str, Iterable[str]], hosts_range: Optional[slice] = None) -> "Query":
         pass
+
+    def is_empty(self) -> bool:
+        return False
 
 
 class Device(Protocol):
@@ -125,7 +128,7 @@ class Device(Protocol):
         pass
 
 
-def get_storage() -> (Storage, dict[str, Any]):
+def get_storage() -> (Storage, Dict[str, Any]):
     connectors = storage_connector.get_all()
     seen: list[str] = []
     if context_storage := get_context().get("storage"):

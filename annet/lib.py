@@ -37,8 +37,20 @@ from annet.annlib.lib import (  # pylint: disable=unused-import
 from contextlog import get_logger
 
 
-_TEMPLATE_CONTEXT_PATH: Optional[str] = None
-_DEFAULT_CONTEXT_PATH: Optional[str] = None
+_HOMEDIR_PATH: Optional[str] = None           # defaults to ~/.annet
+_TEMPLATE_CONTEXT_PATH: Optional[str] = None  # defaults to annet/configs/context.yml
+_DEFAULT_CONTEXT_PATH: Optional[str] = None   # defaults to ~/.annet/context.yml
+
+
+def get_homedir_path() -> str:
+    if _HOMEDIR_PATH is None:
+        set_homedir_path("~/.annet/")
+    return _HOMEDIR_PATH
+
+
+def set_homedir_path(path: str) -> None:
+    global _HOMEDIR_PATH  # pylint: disable=global-statement
+    _HOMEDIR_PATH = path
 
 
 def get_template_context_path() -> str:
@@ -61,6 +73,11 @@ def get_default_context_path() -> str:
 def set_default_context_path(path: str) -> None:
     global _DEFAULT_CONTEXT_PATH  # pylint: disable=global-statement
     _DEFAULT_CONTEXT_PATH = path
+
+
+def get_default_log_dest() -> str:
+    homedir = get_homedir_path()
+    return os.path.join(homedir, "deploy/")
 
 
 @lru_cache(maxsize=1)

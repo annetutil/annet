@@ -263,6 +263,10 @@ class HuaweiFormatter(BlockExitFormatter):
         yield from super().block_exit(context)
 
 
+class OptixtransFormatter(CommonFormatter):
+    pass
+
+
 class CiscoFormatter(BlockExitFormatter):
     def __init__(self, indent="  "):
         super().__init__("exit", indent)
@@ -643,14 +647,15 @@ def make_formatter(vendor, **kwargs):
         "juniper": JuniperFormatter,
         "cisco": CiscoFormatter,
         "nexus": CiscoFormatter,
-        "b4com": CiscoFormatter,
         "huawei": HuaweiFormatter,
+        "optixtrans": OptixtransFormatter,
         "arista": CiscoFormatter,
         "nokia": NokiaFormatter,
         "routeros": RosFormatter,
         "aruba": CiscoFormatter,
         "pc": CommonFormatter,
         "ribbon": RibbonFormatter,
+        "b4com": CiscoFormatter,
     }
     return formatters[vendor](**kwargs)
 

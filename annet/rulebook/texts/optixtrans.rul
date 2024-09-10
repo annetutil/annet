@@ -10,9 +10,4 @@
 #   %comment=...    Добавить коммент после строки который будет видно с опцией patch --add-comments
 #                   Сделано в основном для того чтобы генерировать специальные команды для наливки
 # -----
-# Physical
-interface */(ce|xe)[0-9\/]+$/     %logic=common.permanent %diff_logic=cisco.iface.diff
- ipv6 address *
- mtu *
- lldp-agent
-        ~              %rewrite %global
+clock timezone

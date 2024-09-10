@@ -77,8 +77,8 @@ def hw_to_vendor(hw: HardwareView) -> Optional[str]:
         return "nexus"
     elif hw.Cisco:
         return "cisco"
-    elif hw.B4com:
-        return "b4com"
+    elif hw.OptiXtrans:
+        return "optixtrans"
     elif hw.Huawei:
         return "huawei"
     elif hw.Juniper:
@@ -97,6 +97,8 @@ def hw_to_vendor(hw: HardwareView) -> Optional[str]:
         return "ribbon"
     elif hw.H3C:
         return "h3c"
+    elif hw.B4com:
+        return "b4com"
     return None
 
 
@@ -106,8 +108,8 @@ def vendor_to_hw(vendor):
             "cisco": "Cisco",
             "catalyst": "Cisco Catalyst",
             "nexus": "Cisco Nexus",
-            "b4com": "B4com",
             "huawei": "Huawei",
+            "optixtrans": "Huawei OptiXtrans",
             "juniper": "Juniper",
             "arista": "Arista",
             "pc": "PC",
@@ -116,6 +118,7 @@ def vendor_to_hw(vendor):
             "routeros": "RouterOS",
             "ribbon": "Ribbon",
             "h3c": "H3C",
+            "b4com": "B4com",
         }.get(vendor.lower(), vendor),
         None,
     )

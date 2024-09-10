@@ -73,6 +73,14 @@ class DumpableView:
 
         if isinstance(value, DumpableView):
             ret += value.dump(prefix, seen=seen)  # pylint: disable=no-member
+        elif isinstance(value, dict):
+            for k, v in value.items():
+                ret.extend(self.__dump_value(f"{prefix}[{repr(k)}]", v, seen))
+        elif isinstance(value, (list, tuple)):
+            for i, v in enumerate(value):
+                name = getattr(v, "_dump__list_key", None)
+                name = repr(name) if name is not None else str(i)
+                ret.extend(self.__dump_value(f"{prefix}[{name}]", v, seen))
         else:
             fmt = repr(value)
             vtype = type(value)

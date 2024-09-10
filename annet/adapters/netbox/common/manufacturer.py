@@ -9,6 +9,7 @@ _VENDORS = {
     "catalyst": "Cisco Catalyst",
     "nexus": "Cisco Nexus",
     "huawei": "Huawei",
+    "optixtrans": "Huawei OptiXtrans",
     "juniper": "Juniper",
     "arista": "Arista",
     "pc": "PC",
@@ -16,6 +17,7 @@ _VENDORS = {
     "aruba": "Aruba",
     "routeros": "RouterOS",
     "ribbon": "Ribbon",
+    "b4com": "B4com"
 }
 
 
@@ -25,8 +27,6 @@ def get_hw(manufacturer: str, model: str, platform_name: str):
         model = model.replace("MSN", "SN", 1)
     vendor = manufacturer + " " + model
     hw = HardwareView(_VENDORS.get(vendor.lower(), vendor), platform_name)
-    if not hw:
-        raise ValueError(f"unsupported manufacturer {manufacturer}")
     return hw
 
 
@@ -37,7 +37,7 @@ def get_breed(manufacturer: str, model: str):
         return "vrp85"
     elif manufacturer == "Huawei":
         return "vrp55"
-    elif manufacturer == "Mellanox":
+    elif manufacturer in ("Mellanox", "NVIDIA"):
         return "cuml2"
     elif manufacturer == "Juniper":
         return "jun10"
@@ -45,17 +45,8 @@ def get_breed(manufacturer: str, model: str):
         return "ios12"
     elif manufacturer == "Adva":
         return "adva8"
-    elif manufacturer == "B4com":
-        return "b4com"
     elif manufacturer == "Arista":
         return "eos4"
-    raise ValueError(f"unsupported manufacturer {manufacturer}")
-
-
-def is_supported(manufacturer: str) -> bool:
-    if manufacturer not in (
-            "Huawei", "Mellanox", "Juniper", "Cisco", "Adva", "Arista", "B4com",
-    ):
-        logger.warning("Unsupported manufacturer `%s`", manufacturer)
-        return False
-    return True
+    elif manufacturer == "B4com":
+        return "bcom-os"
+    return ""

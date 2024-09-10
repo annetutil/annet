@@ -1,16 +1,16 @@
 from logging import getLogger
-from typing import Optional, List, Union, Dict
+from typing import Any, Optional, List, Union, Dict
 from ipaddress import ip_interface
 from collections import defaultdict
 
 from adaptix import P
-from adaptix.conversion import impl_converter, link
+from adaptix.conversion import impl_converter, link, link_constant
 from annetbox.v37 import models as api_models
 from annetbox.v37.client_sync import NetboxV37
 
 from annet.adapters.netbox.common import models
 from annet.adapters.netbox.common.manufacturer import (
-    is_supported, get_hw, get_breed,
+    get_hw, get_breed,
 )
 from annet.adapters.netbox.common.query import NetboxQuery
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
@@ -24,13 +24,13 @@ logger = getLogger(__name__)
 @impl_converter(recipe=[
     link(P[api_models.Device].name, P[models.NetboxDevice].hostname),
     link(P[api_models.Device].name, P[models.NetboxDevice].fqdn),
+    link_constant(P[models.NetboxDevice].neighbours, value=None),
 ])
 def extend_device_base(
         device: api_models.Device,
         interfaces: List[models.Interface],
         hw: Optional[HardwareView],
         breed: str,
-        neighbours: Optional[List[models.NetboxDevice]],
         storage: Storage,
 ) -> models.NetboxDevice:
     ...
@@ -43,23 +43,29 @@ def extend_device(
         storage: Storage,
 ) -> models.NetboxDevice:
     platform_name: str = ""
+    breed: str = ""
+    hw = HardwareView("", "")
     if device.platform:
         platform_name = device.platform.name
-    return extend_device_base(
-        device=device,
-        interfaces=interfaces,
-        breed=get_breed(
+    if device.device_type and device.device_type.manufacturer:
+        breed = get_breed(
             device.device_type.manufacturer.name,
             device.device_type.model,
-        ),
-        hw=get_hw(
+        )
+        hw = get_hw(
             device.device_type.manufacturer.name,
             device.device_type.model,
             platform_name,
-        ),
-        neighbours=neighbours,
+        )
+    res = extend_device_base(
+        device=device,
+        interfaces=interfaces,
+        breed=breed,
+        hw=hw,
         storage=storage,
     )
+    res.neighbours = neighbours
+    return res
 
 
 @impl_converter
@@ -139,13 +145,13 @@ class NetboxStorageV37(Storage):
     def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
         if not query.globs:
             return []
+        query = _hostname_dot_hack(query)
         return [
             device
             for device in self.netbox.dcim_all_devices(
                 name__ic=query.globs,
             ).results
             if _match_query(query, device)
-            if is_supported(device.device_type.manufacturer.name)
         ]
 
     def _extend_interfaces(self, interfaces: List[models.Interface]) -> List[models.Interface]:
@@ -218,3 +224,23 @@ def _match_query(query: NetboxQuery, device_data: api_models.Device) -> bool:
         if subquery.strip() in device_data.name:
             return True
     return False
+
+
+def _hostname_dot_hack(netbox_query: NetboxQuery) -> NetboxQuery:
+    # there is no proper way to lookup host by its hostname
+    # ie find "host" with fqdn "host.example.com"
+    # besides using name__ic (ie startswith)
+    # since there is no direct analogue for this field in netbox
+    # so we need to add a dot to hostnames (top-level fqdn part)
+    # so we would not receive devices with a common name prefix
+    def add_dot(raw_query: Any) -> Any:
+        if isinstance(raw_query, str) and "." not in raw_query:
+            raw_query = raw_query + "."
+        return raw_query
+
+    raw_query = netbox_query.query
+    if isinstance(raw_query, list):
+        for i, name in enumerate(raw_query):
+            raw_query[i] = add_dot(name)
+
+    return NetboxQuery(raw_query)

@@ -34,7 +34,7 @@ class Connector(ABC, Generic[T]):
         res = self._classes[0]
         return res(*args, **kwargs)
 
-    def get_all(self, *args, **kwargs) -> list[T]:
+    def get_all(self, *args, **kwargs) -> List[T]:
         if self._classes is None:
             self._classes = self._entry_point or [self._get_default()]
 
