@@ -3,6 +3,7 @@ from annet.storage import Query
 from dataclasses import dataclass, fields
 from typing import List, Iterable, Any
 from annet.storage import StorageProvider, Storage
+from annet.storage import Device as DeviceCls
 from annet.annlib.netdev.views.hardware import vendor_to_hw
 import yaml
 
@@ -19,19 +20,14 @@ class Interface(DumpableView):
 
 
 @dataclass
-class Device(DumpableView):
+class DeviceStorage:
     fqdn: str
     vendor: str
     hostname: str | None = None
     serial: str | None = None
     id: str | None = None
     interfaces: list[Interface] | None = None
-
-    def __hash__(self):
-        return hash((self.id, type(self)))
-
-    def __eq__(self, other):
-        return type(self) is type(other) and self.fqdn == other.fqdn and self.vendor == other.vendor
+    storage: Storage | None = None
 
     def __post_init__(self):
         if not self.id:
@@ -51,8 +47,50 @@ class Device(DumpableView):
                     raise Exception("unable to parse %s as Interface %s" % (iface, e))
             self.interfaces = interfaces
 
+    def set_storage(self, storage: Storage):
+        self.storage = storage
+
+
+@dataclass
+class Device(DeviceCls, DumpableView):
+    dev: DeviceStorage
+
+    @property
+    def hostname(self):
+        return self.dev.hostname
+
+    @property
+    def fqdn(self):
+        return self.dev.fqdn
+
+    @property
+    def id(self):
+        return self.dev.id
+
+    def __hash__(self):
+        return hash((self.id, type(self)))
+
+    def __eq__(self, other):
+        return type(self) is type(other) and self.url == other.url
+
     def is_pc(self):
         return False
+
+    @property
+    def storage(self) -> Storage:
+        return self
+
+    @property
+    def hw(self):
+        return self.dev.hw
+
+    @property
+    def breed(self):
+        return self.dev.hw.vendor
+
+    @property
+    def neighbours_ids(self):
+        pass
 
 
 @dataclass
@@ -64,7 +102,7 @@ class Devices:
             devices = []
             for dev in self.devices:
                 try:
-                    devices.append(Device(**dev))
+                    devices.append(Device(dev=DeviceStorage(**dev)))
                 except Exception as e:
                     raise Exception("unable to parse %s as Device %s" % (dev, e))
             self.devices = devices
@@ -174,7 +212,7 @@ def read_inventory(path: str, storage: Storage) -> Devices:
     file_data = yaml.load(data, Loader=yaml.BaseLoader)
     res = dataclass_from_dict(Devices, file_data)
     for dev in res.devices:
-        dev.storage = storage
+        dev.dev.set_storage(storage)
     return res
 
 
