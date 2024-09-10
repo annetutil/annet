@@ -27,4 +27,5 @@ patch: |
       exit
     exit
   exit
+  commit
   write
