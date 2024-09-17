@@ -87,7 +87,7 @@ def get_fetcher() -> Fetcher:
             if isinstance(con, AdapterWithName):
                 con_name = con.name()
             seen.append(con_name)
-            if not(adapter := context_storage):
+            if not (adapter := context_storage):
                 raise Exception("adapter is not set in %s" % context_storage)
             if adapter["adapter"] == con_name:
                 connector = con
@@ -131,7 +131,7 @@ def get_deployer() -> DeployDriver:
             if isinstance(con, AdapterWithName):
                 con_name = con.name()
             seen.append(con_name)
-            if not(adapter := context_storage):
+            if not (adapter := context_storage):
                 raise Exception("adapter is not set in %s" % context_storage)
             if adapter["adapter"] == con_name:
                 connector = con
