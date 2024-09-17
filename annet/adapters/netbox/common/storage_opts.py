@@ -1,6 +1,7 @@
 import os
 from typing import Any
 
+DEFAULT_URL = "http://localhost"
 
 class NetboxStorageOpts:
     def __init__(self, url: str, token: str):
@@ -9,7 +10,6 @@ class NetboxStorageOpts:
 
     @classmethod
     def parse_params(cls, conf_params: dict[str, str] | None, cli_opts: Any):
-        return cls(
-            url=os.getenv("NETBOX_URL", "http://localhost"),
-            token=os.getenv("NETBOX_TOKEN", "").strip(),
-        )
+        url = os.getenv("NETBOX_URL") or conf_params.get("url") or DEFAULT_URL
+        token = os.getenv("NETBOX_TOKEN", "").strip() or conf_params.get("token") or ""
+        return cls(url=url, token=token)
