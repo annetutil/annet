@@ -260,7 +260,7 @@ def patch(args: cli_args.ShowPatchOptions, loader: ann_gen.Loader):
     """ Сгенерировать патч для устройств """
     global live_configs  # pylint: disable=global-statement
     if args.config == "running":
-        fetcher = annet.deploy.fetcher_connector.get()
+        fetcher = annet.deploy.get_fetcher()
         live_configs = fetcher.fetch(loader.devices, processes=args.parallel)
     stdin = args.stdin(filter_acl=args.filter_acl, config=args.config)
 
@@ -434,7 +434,7 @@ class CliDeployerJob(DeployerJob):
         self.cmd_lines.extend(["= %s " % device.hostname, ""])
         self.cmd_lines.extend(map(itemgetter(-1), cmds))
         self.cmd_lines.append("")
-        deployer_driver = annet.deploy.driver_connector.get()
+        deployer_driver = annet.deploy.get_deployer()
         self.deploy_cmds[device] = deployer_driver.apply_deploy_rulebook(
             device.hw, cmds,
             do_commit=not self.args.dont_commit
@@ -494,7 +494,7 @@ class PCDeployerJob(DeployerJob):
                 "generator_types": generator_types,
             }
             self.diffs[device] = upload_files
-            deployer_driver = annet.deploy.driver_connector.get()
+            deployer_driver = annet.deploy.get_deployer()
             before, after = deployer_driver.build_configuration_cmdlist(device.hw)
             for cmd in deployer_driver.build_exit_cmdlist(device.hw):
                 after.add_cmd(cmd)

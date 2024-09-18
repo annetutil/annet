@@ -30,7 +30,7 @@ from annet.annlib import jsontools
 from annet.annlib.rbparser import platform
 from annet.annlib.rbparser.acl import compile_acl_text
 from annet.cli_args import DeployOptions, GenOptions, ShowGenOptions
-from annet.deploy import fetcher_connector, scrub_config
+from annet.deploy import scrub_config, get_fetcher
 from annet.filtering import Filterer
 from annet.generators import (
     BaseGenerator,
@@ -407,7 +407,7 @@ def old_new(
     if do_files_download and config == "running":
         files_to_download = _get_files_to_download(devices, gens)
         devices_with_files = [device for device in devices if device in files_to_download]
-        fetcher = fetcher_connector.get()
+        fetcher = get_fetcher()
         fetched_packages, failed_packages = fetcher.fetch_packages(devices_with_files)
 
     ctx = OldNewDeviceContext(
@@ -808,7 +808,7 @@ def _old_resolve_running(config: str, devices: List[Device]) -> Tuple[Dict[Devic
         global live_configs  # pylint: disable=global-statement
         if live_configs is None:
             # предварительно прочесть все конфиги прямо по ssh
-            fetcher = fetcher_connector.get()
+            fetcher = get_fetcher()
             running, failed_running = fetcher.fetch(devices)
         else:
             running, failed_running = live_configs  # pylint: disable=unpacking-non-sequence
@@ -826,7 +826,7 @@ def _old_resolve_files(config: str,
         files_to_download = _get_files_to_download(devices, gens)
         devices_with_files = [device for device in devices if device in files_to_download]
         if devices_with_files:
-            fetcher = fetcher_connector.get()
+            fetcher = get_fetcher()
             downloaded_files, failed_files = fetcher.fetch(devices_with_files,
                                                            files_to_download=files_to_download)
     return downloaded_files, failed_files
