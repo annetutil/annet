@@ -3,6 +3,7 @@ from typing import Any
 
 DEFAULT_URL = "http://localhost"
 
+
 class NetboxStorageOpts:
     def __init__(self, url: str, token: str):
         self.url = url
