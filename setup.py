@@ -39,6 +39,9 @@ if __name__ == "__main__":
           "annet.connectors": [
             "storage = annet.adapters.netbox.provider:NetboxProvider",
           ],
+          "annet.connectors.storage": [
+            "file = annet.adapters.file.provider:Provider",
+          ],
         },
         python_requires=">=3.8",
         install_requires=requirements(),
