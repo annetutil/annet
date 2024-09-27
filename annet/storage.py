@@ -4,8 +4,9 @@ from annet.connectors import Connector, get_context
 
 
 class _StorageConnector(Connector["StorageProvider"]):
-    name = "Storage"
-    ep_name = "storage"
+    name = "Storage"  # legacy
+    ep_name = "storage"  # legacy
+    ep_by_group_only = "annet.connectors.storage"
 
 
 storage_connector = _StorageConnector()

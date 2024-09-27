@@ -7,6 +7,7 @@ from annet.connectors import Connector
 class _FiltererConnector(Connector["Filterer"]):
     name = "Filterer"
     ep_name = "filterer"
+    ep_by_group_only = "annet.connectors.filterer"
 
     def _get_default(self) -> Type["Filterer"]:
         return NopFilterer

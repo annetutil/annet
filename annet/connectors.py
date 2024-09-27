@@ -10,8 +10,11 @@ T = TypeVar("T")
 
 class Connector(ABC, Generic[T]):
     name: str
+    # legacy
     ep_name: str
     ep_group: str = "annet.connectors"
+    # right way just to use ep groups
+    ep_by_group_only: str = ""
     _classes: Optional[List[Type[T]]] = None
 
     def _get_default(self) -> Type[T]:
@@ -19,7 +22,10 @@ class Connector(ABC, Generic[T]):
 
     @cached_property
     def _entry_point(self) -> List[Type[T]]:
-        return load_entry_point(self.ep_group, self.ep_name)
+        ep = load_entry_point(self.ep_group, self.ep_name)
+        if self.ep_by_group_only:
+            ep.extend(load_entry_point_new(self.ep_by_group_only))
+        return ep
 
     def get(self, *args, **kwargs) -> T:
         if self._classes is None:
@@ -74,5 +80,15 @@ def load_entry_point(group: str, name: str):
     else:
         ep = entry_points(group=group, name=name)  # pylint: disable=unexpected-keyword-arg
     if not ep:
-        return None
+        return []
+    return [item.load() for item in ep]
+
+
+def load_entry_point_new(group: str) -> List:
+    if sys.version_info < (3, 10):
+        ep = [item for item in entry_points().get(group, [])]
+    else:
+        ep = entry_points(group=group)  # pylint: disable=unexpected-keyword-arg
+    if not ep:
+        return []
     return [item.load() for item in ep]

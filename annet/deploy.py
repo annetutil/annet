@@ -40,11 +40,13 @@ class DeployResult(_DeployResultBase):  # noqa: E302
 class _FetcherConnector(Connector["Fetcher"]):
     name = "Fetcher"
     ep_name = "deploy_fetcher"
+    ep_by_group_only = "annet.connectors.fetcher"
 
 
 class _DriverConnector(Connector["DeployDriver"]):
     name = "DeployDriver"
     ep_name = "deploy_driver"
+    ep_by_group_only = "annet.connectors.deployer"
 
 
 fetcher_connector = _FetcherConnector()
