@@ -4,16 +4,7 @@ from typing import Protocol, TypeVar
 from .basemodel import merge
 from .models import GlobalOptionsDTO, PeerDTO
 from .registry import MeshRulesRegistry, GlobalOptions, DirectPeer, Session, IndirectPeer
-
-
-class Device(Protocol):
-    @property
-    def fqdn(self) -> str:
-        raise NotImplementedError
-
-    @property
-    def neighbors(self) -> list[str]:
-        raise NotImplementedError
+from ..storage import Device
 
 
 @dataclass
@@ -42,7 +33,9 @@ class MeshExecutor:
     ) -> PeerDTO:
         left = PeerDTO()
 
-        for rule in self._registry.lookup_direct(device.fqdn, device.neighbors):
+        neighbors = [n.fqdn for n in device.neighbours]
+
+        for rule in self._registry.lookup_direct(device.fqdn, neighbors):
             if rule.direct_order:
                 rule_left = DirectPeer(rule.matched_left, device, [])
                 rule_right = DirectPeer(rule.matched_right, all_devices[rule.name_right], [])

@@ -43,6 +43,10 @@ class Storage(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def resolve_all_fdnds(self) -> list[str]:
+        pass
+
+    @abc.abstractmethod
     def resolve_fdnds_by_query(self, query: Any):
         pass
 

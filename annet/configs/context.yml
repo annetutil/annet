@@ -9,10 +9,11 @@ connection:
 generators:
   default:
     - annet_generators.example
+    - annet_generators.mesh_example
 
 storage:
   default:
-    adapter: annet.adapters.file.provider
+    adapter: netbox
     params:
       path: /path/to/file
 

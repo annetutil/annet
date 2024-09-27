@@ -106,6 +106,11 @@ class NetboxStorageV37(Storage):
             d.name for d in self._load_devices(query)
         ]
 
+    def resolve_all_fdnds(self) -> list[str]:
+        return [
+            d.name for d in self.netbox.dcim_all_devices_brief()
+        ]
+
     def make_devices(
             self,
             query: Union[NetboxQuery, list],
