@@ -128,6 +128,11 @@ class Device(Protocol):
 
     @property
     @abc.abstractmethod
+    def neighbours(self) -> list["Device"]:
+        pass
+
+    @property
+    @abc.abstractmethod
     def breed(self):
         pass
 

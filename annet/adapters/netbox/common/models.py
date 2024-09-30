@@ -159,6 +159,9 @@ class NetboxDevice(Entity):
     neighbours: Optional[List["NetboxDevice"]]
 
     # compat
+    @property
+    def neighbours_ids(self):
+        return [dev.id for dev in self.neighbours]
 
     def __hash__(self):
         return hash((self.id, type(self)))

@@ -15,8 +15,8 @@ class Bgp(PartialGenerator):
         """
 
     def run_huawei(self, device: Device):
-        executor = MeshExecutor(registry)
-        res = executor.execute_for(device, {device.fqdn: device})
+        executor = MeshExecutor(registry, device.storage)
+        res = executor.execute_for(device)
         yield f"bgp {res.global_options.local_as}"
 
 

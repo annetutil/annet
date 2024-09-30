@@ -4,7 +4,7 @@ from typing import Protocol, TypeVar
 from .basemodel import merge
 from .models import GlobalOptionsDTO, PeerDTO
 from .registry import MeshRulesRegistry, GlobalOptions, DirectPeer, Session, IndirectPeer
-from ..storage import Device
+from annet.storage import Device, Storage
 
 
 @dataclass
@@ -17,8 +17,13 @@ T = TypeVar('T')
 
 
 class MeshExecutor:
-    def __init__(self, registry: MeshRulesRegistry):
+    def __init__(
+            self,
+            registry: MeshRulesRegistry,
+            storage: Storage,
+    ):
         self._registry = registry
+        self._storage = storage
 
     def _execute_globals(self, device: Device) -> GlobalOptionsDTO:
         global_opts = GlobalOptionsDTO()
@@ -28,54 +33,50 @@ class MeshExecutor:
             global_opts = merge(global_opts, rule_global_opts)
         return merge(GlobalOptionsDTO.default(), global_opts)
 
-    def _execute_direct(
-            self, device: Device, all_devices: dict[str, Device],
-    ) -> PeerDTO:
-        left = PeerDTO()
+    def _execute_direct(self, device: Device) -> PeerDTO:
+        result = PeerDTO()
 
-        neighbors = [n.fqdn for n in device.neighbours]
-
-        for rule in self._registry.lookup_direct(device.fqdn, neighbors):
+        neighbors = {n.fqdn: n for n in device.neighbours}
+        for rule in self._registry.lookup_direct(device.fqdn, list(neighbors)):
+            # TODO find matched ports
             if rule.direct_order:
-                rule_left = DirectPeer(rule.matched_left, device, [])
-                rule_right = DirectPeer(rule.matched_right, all_devices[rule.name_right], [])
-                rule_session = Session()
-                rule.handler(rule_left, rule_right, rule_session)
-                left = merge(left, rule_left, rule_session)
+                peer_left = DirectPeer(rule.matched_left, device, [])
+                peer_right = DirectPeer(rule.matched_right, neighbors[rule.name_right], [])
             else:
-                rule_left = DirectPeer(rule.matched_left, all_devices[rule.name_left], [])
-                rule_right = DirectPeer(rule.matched_right, device, [])
-                rule_session = Session()
-                rule.handler(rule_left, rule_right, rule_session)
-                left = merge(left, rule_left, rule_session)
-        return left
+                peer_left = DirectPeer(rule.matched_left, neighbors[rule.name_left], [])
+                peer_right = DirectPeer(rule.matched_right, device, [])
+            rule_session = Session()
+            rule.handler(peer_left, peer_right, rule_session)
+            result = merge(result, peer_left, rule_session)
+        return result
 
     def _execute_indirect(
-            self, device: Device, all_devices: dict[str, Device],
+            self, device: Device, all_fqdns: list[str],
     ) -> PeerDTO:
-        left = PeerDTO()
+        result = PeerDTO()
 
-        for rule in self._registry.lookup_indirect(device.fqdn, list(all_devices)):
+        for rule in self._registry.lookup_indirect(device.fqdn,all_fqdns):
             if rule.direct_order:
-                rule_left = IndirectPeer(rule.matched_left, device)
-                rule_right = IndirectPeer(rule.matched_right, all_devices[rule.name_right])
-                rule_session = Session()
-                rule.handler(rule_left, rule_right, rule_session)
-                left = merge(left, rule_left, rule_session)
+                connected_device = self._storage.make_devices(rule.name_right)[0]
+                peer_left = IndirectPeer(rule.matched_left, device)
+                peer_right = IndirectPeer(rule.matched_right, connected_device)
             else:
-                rule_left = IndirectPeer(rule.matched_left, all_devices[rule.name_left])
-                rule_right = IndirectPeer(rule.matched_right, device)
-                rule_session = Session()
-                rule.handler(rule_left, rule_right, rule_session)
-                left = merge(left, rule_left, rule_session)
-        return left
+                connected_device = self._storage.make_devices(rule.name_left)[0]
+                peer_left = IndirectPeer(rule.matched_left, connected_device)
+                peer_right = IndirectPeer(rule.matched_right, device)
 
-    def execute_for(self, device: Device, all_devices: dict[str, Device]) -> MeshExecutionResult:
+            session = Session()
+            rule.handler(peer_left, peer_right, session)
+            result = merge(result, peer_left, session)
+        return result
+
+    def execute_for(self, device: Device) -> MeshExecutionResult:
+        all_fqdns = self._storage.resolve_all_fdnds()
         return MeshExecutionResult(
             self._execute_globals(device),
             merge(
-                self._execute_direct(device, all_devices),
-                self._execute_indirect(device, all_devices),
+                self._execute_direct(device),
+                self._execute_indirect(device, all_fqdns),
                 # TODO merge default
             )
         )

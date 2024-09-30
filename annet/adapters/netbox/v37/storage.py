@@ -108,7 +108,7 @@ class NetboxStorageV37(Storage):
 
     def resolve_all_fdnds(self) -> list[str]:
         return [
-            d.name for d in self.netbox.dcim_all_devices_brief()
+            d.name for d in self.netbox.dcim_all_devices_brief().results
         ]
 
     def make_devices(
