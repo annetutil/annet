@@ -27,7 +27,7 @@ def storage_factory(opts: NetboxStorageOpts) -> Storage:
 
 
 class NetboxProvider(StorageProvider, AdapterWithName, AdapterWithConfig):
-    def __init__(self, url:Optional[str] = None, token: Optional[str] = None):
+    def __init__(self, url: Optional[str] = None, token: Optional[str] = None):
         self.url = url
         self.token = token
 
