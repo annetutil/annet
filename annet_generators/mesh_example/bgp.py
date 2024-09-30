@@ -11,13 +11,16 @@ class Bgp(PartialGenerator):
 
     def acl_huawei(self, device):
         return """
-            bgp
+        bgp
+            peer
         """
 
     def run_huawei(self, device: Device):
         executor = MeshExecutor(registry, device.storage)
         res = executor.execute_for(device)
         yield f"bgp {res.global_options.local_as}"
+        for peer in res.peers:
+            yield f" peer {peer.addr}"
 
 
 def get_generators(store: Storage) -> List[BaseGenerator]:
