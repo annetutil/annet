@@ -1,6 +1,9 @@
+from typing import Dict, Any, Optional
+
 from dataclass_rest.exceptions import ClientError
 
 from annet.storage import StorageProvider, Storage
+from annet.connectors import AdapterWithName, AdapterWithConfig, T
 from .common.status_client import NetboxStatusClient
 from .common.storage_opts import NetboxStorageOpts
 from .common.query import NetboxQuery
@@ -23,7 +26,14 @@ def storage_factory(opts: NetboxStorageOpts) -> Storage:
         raise ValueError(f"Unsupported version: {status.netbox_version}")
 
 
-class NetboxProvider(StorageProvider):
+class NetboxProvider(StorageProvider, AdapterWithName, AdapterWithConfig):
+    def __init__(self, url:Optional[str]=None,token:Optional[str]=None):
+        self.url = url
+        self.token = token
+
+    def with_config(self, **kwargs: Dict[str, Any]) -> T:
+        return NetboxProvider(**kwargs)
+
     def storage(self):
         return storage_factory
 

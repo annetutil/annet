@@ -68,8 +68,8 @@ def get_loader(gen_args: cli_args.GenOptions, args: cli_args.QueryOptionsBase):
     exit_stack = ExitStack()
     storages = []
     with exit_stack:
-        connector, connector_opts = get_storage()
-        storage_opts = connector.opts().parse_params(connector_opts, args)
+        connector, conf_params = get_storage()
+        storage_opts = connector.opts().parse_params(conf_params, args)
         storages.append(exit_stack.enter_context(connector.storage()(storage_opts)))
         yield Loader(*storages, args=gen_args, no_empty_warning=args.query.is_empty())
 

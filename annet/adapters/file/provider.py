@@ -3,6 +3,7 @@ from annet.storage import Query
 from dataclasses import dataclass, fields
 from typing import List, Iterable, Any
 from annet.storage import StorageProvider, Storage
+from annet.connectors import AdapterWithName
 from annet.storage import Device as DeviceCls
 from annet.annlib.netdev.views.hardware import vendor_to_hw
 import yaml
@@ -108,7 +109,7 @@ class Devices:
             self.devices = devices
 
 
-class Provider(StorageProvider):
+class Provider(StorageProvider, AdapterWithName):
     def storage(self):
         return storage_factory
 
