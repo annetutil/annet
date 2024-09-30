@@ -20,7 +20,7 @@ class Bgp(PartialGenerator):
         res = executor.execute_for(device)
         yield f"bgp {res.global_options.local_as}"
         for peer in res.peers:
-            yield f" peer {peer.addr}"
+            yield f"   peer {peer.addr} {peer.group.name}"
 
 
 def get_generators(store: Storage) -> List[BaseGenerator]:

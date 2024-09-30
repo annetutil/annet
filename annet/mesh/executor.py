@@ -5,7 +5,7 @@ from .basemodel import merge
 from .models import GlobalOptionsDTO, PeerDTO
 from .registry import MeshRulesRegistry, GlobalOptions, DirectPeer, Session, IndirectPeer
 from annet.storage import Device, Storage
-from annet.bgp_models import Peer
+from annet.bgp_models import Peer, PeerGroup, ASN
 
 
 @dataclass
@@ -82,7 +82,14 @@ class MeshExecutor:
             import_policy=None,
             update_source=None,
             addr=peer.addr,
-            group=None,
+            group=PeerGroup(
+                name=peer.group.name,
+                internal_name="",
+                update_source="",
+                remote_as=ASN(peer.group.remote_as),
+                description="",
+                connect_retry=False,
+            )if peer.group else None,
         )
 
     def execute_for(self, device: Device) -> MeshExecutionResult:
