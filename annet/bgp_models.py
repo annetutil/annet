@@ -190,8 +190,15 @@ class FamilyOptions:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class VrfOptions:
-    family: Family
+class _FamiliesMixin:
+    ipv4_unicast: FamilyOptions | None = None
+    ipv6_unicast: FamilyOptions | None = None
+    ipv4_labeled_unicast: FamilyOptions | None = None
+    ipv6_labeled_unicast: FamilyOptions | None = None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class VrfOptions(_FamiliesMixin):
     vrf_name: str
     vrf_name_global: str | None = None
     import_policy: str | None = None
@@ -206,8 +213,9 @@ class VrfOptions:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class GlobalOptions:
-    local_as: ASN
-    loops: int
-    multipath: int
-    router_id: str
+class GlobalOptions(_FamiliesMixin):
+    local_as: ASN = ASN(None)
+    loops: int = 0
+    multipath: int = 0
+    router_id: str = ""
+    vrf: dict[str, VrfOptions] = field(default_factory=dict)

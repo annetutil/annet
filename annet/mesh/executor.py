@@ -1,16 +1,15 @@
 from dataclasses import dataclass
-from typing import Protocol, TypeVar
 
 from .basemodel import merge
 from .models import GlobalOptionsDTO, PeerDTO
-from .registry import MeshRulesRegistry, GlobalOptions, DirectPeer, Session, IndirectPeer
+from .registry import MeshRulesRegistry, GlobalOptions as MeshGloabalsOptions, DirectPeer, Session, IndirectPeer
 from annet.storage import Device, Storage
-from annet.bgp_models import Peer, PeerGroup, ASN
+from annet.bgp_models import Peer, PeerGroup, ASN, GlobalOptions
 
 
 @dataclass
 class MeshExecutionResult:
-    global_options: GlobalOptionsDTO
+    global_options: GlobalOptions
     peers: list[Peer]
 
 
@@ -26,7 +25,7 @@ class MeshExecutor:
     def _execute_globals(self, device: Device) -> GlobalOptionsDTO:
         global_opts = GlobalOptionsDTO()
         for rule in self._registry.lookup_global(device.fqdn):
-            rule_global_opts = GlobalOptions(rule.matched, device)
+            rule_global_opts = MeshGloabalsOptions(rule.matched, device)
             rule.handler(rule_global_opts)
             global_opts = merge(global_opts, rule_global_opts)
         return merge(GlobalOptionsDTO.default(), global_opts)
@@ -89,7 +88,16 @@ class MeshExecutor:
                 remote_as=ASN(peer.group.remote_as),
                 description="",
                 connect_retry=False,
-            )if peer.group else None,
+            ) if peer.group else None,
+        )
+
+    def _to_bgp_global(self, global_options: GlobalOptionsDTO) -> GlobalOptions:
+        return GlobalOptions(
+            local_as=ASN(global_options.local_as),
+            loops=global_options.loops,
+            multipath=global_options.multipath,
+            router_id=global_options.router_id,
+            vrf={},
         )
 
     def execute_for(self, device: Device) -> MeshExecutionResult:
@@ -99,7 +107,8 @@ class MeshExecutor:
             result.append(self._to_bgp_peer(neighbor))
         for connected in self._execute_indirect(device, all_fqdns):
             result.append(self._to_bgp_peer(connected))
+
         return MeshExecutionResult(
-            global_options=self._execute_globals(device),
+            global_options=self._to_bgp_global(self._execute_globals(device)),
             peers=result,
         )
