@@ -6,7 +6,7 @@ import itertools
 import re
 from collections import namedtuple
 from contextlib import contextmanager
-from typing import Dict, List, Optional, Any, OrderedDict, Tuple
+from typing import Dict, List, Optional, Any, OrderedDict, Tuple, Type
 
 from contextlog import get_logger
 
@@ -14,9 +14,8 @@ from annet import text_term_format
 from annet.annlib.command import Command, Question, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.rbparser.deploying import MakeMessageMatcher, Answer
-from annet.lib import get_context
 from annet.cli_args import DeployOptions
-from annet.connectors import Connector
+from annet.connectors import Connector, get_connector_from_config
 from annet.output import TextArgs
 from annet.rulebook import get_rulebook, deploying
 from annet.storage import Device
@@ -40,11 +39,23 @@ class DeployResult(_DeployResultBase):  # noqa: E302
 class _FetcherConnector(Connector["Fetcher"]):
     name = "Fetcher"
     ep_name = "deploy_fetcher"
+    ep_by_group_only = "annet.connectors.fetcher"
+
+    def _get_default(self) -> Type["Fetcher"]:
+        # if entry points are broken, try to use direct import
+        import annet.adapters.fetchers.stub.fetcher as stub_fetcher
+        return stub_fetcher.StubFetcher
 
 
 class _DriverConnector(Connector["DeployDriver"]):
     name = "DeployDriver"
     ep_name = "deploy_driver"
+    ep_by_group_only = "annet.connectors.deployer"
+
+    def _get_default(self) -> Type["DeployDriver"]:
+        # if entry points are broken, try to use direct import
+        import annet.adapters.deployers.stub.deployer as stub_deployer
+        return stub_deployer.StubDeployDriver
 
 
 fetcher_connector = _FetcherConnector()
@@ -64,42 +75,10 @@ class Fetcher(abc.ABC):
         pass
 
 
-class AdapterWithConfig(abc.ABC):
-    @abc.abstractmethod
-    def with_config(self, **kwargs: Dict[str, Any]) -> Fetcher:
-        pass
-
-
-class AdapterWithName(abc.ABC):
-    @abc.abstractmethod
-    def name(self) -> str:
-        pass
-
-
 def get_fetcher() -> Fetcher:
     connectors = fetcher_connector.get_all()
-    seen: list[str] = []
-    connector = connectors[0]
-    connector_params: Any = {}
-    if context_storage := get_context().get("fetcher"):
-        for con in connectors:
-            con_name = connector.__class__.__name__
-            if isinstance(con, AdapterWithName):
-                con_name = con.name()
-            seen.append(con_name)
-            if not (adapter := context_storage):
-                raise Exception("adapter is not set in %s" % context_storage)
-            if adapter["adapter"] == con_name:
-                connector = con
-                connector_params = adapter.get("params", {})
-                break
-        else:
-            raise Exception("unknown fetcher %s: seen %s" % (context_storage["adapter"], seen))
-    else:
-        connector = connectors[0]
-    if isinstance(connector, AdapterWithConfig):
-        connector = connector.with_config(**connector_params)
-    return connector
+    fetcher, _ = get_connector_from_config("fetcher", connectors)
+    return fetcher
 
 
 class DeployDriver(abc.ABC):
@@ -121,29 +100,9 @@ class DeployDriver(abc.ABC):
 
 
 def get_deployer() -> DeployDriver:
-    connectors = driver_connector.get_all()
-    seen: list[str] = []
-    connector = connectors[0]
-    connector_params: Any = {}
-    if context_storage := get_context().get("deployer"):
-        for con in connectors:
-            con_name = connector.__class__.__name__
-            if isinstance(con, AdapterWithName):
-                con_name = con.name()
-            seen.append(con_name)
-            if not (adapter := context_storage):
-                raise Exception("adapter is not set in %s" % context_storage)
-            if adapter["adapter"] == con_name:
-                connector = con
-                connector_params = adapter.get("params", {})
-                break
-        else:
-            raise Exception("unknown deployer %s: seen %s" % (context_storage["adapter"], seen))
-    else:
-        connector = connectors[0]
-    if isinstance(connector, AdapterWithConfig):
-        connector = connector.with_config(**connector_params)
-    return connector
+    connectors = fetcher_connector.get_all()
+    deployer, _ = get_connector_from_config("deployer", connectors)
+    return deployer
 
 
 # ===

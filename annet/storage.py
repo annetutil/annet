@@ -1,11 +1,12 @@
 import abc
 from typing import Any, Iterable, Optional, Type, Union, Protocol, Dict
-from annet.connectors import Connector, get_context
+from annet.connectors import Connector, get_connector_from_config
 
 
 class _StorageConnector(Connector["StorageProvider"]):
-    name = "Storage"
-    ep_name = "storage"
+    name = "Storage"  # legacy
+    ep_name = "storage"  # legacy
+    ep_by_group_only = "annet.connectors.storage"
 
 
 storage_connector = _StorageConnector()
@@ -128,18 +129,6 @@ class Device(Protocol):
         pass
 
 
-def get_storage() -> (Storage, Dict[str, Any]):
+def get_storage() -> tuple[StorageProvider, Dict[str, Any]]:
     connectors = storage_connector.get_all()
-    seen: list[str] = []
-    if context_storage := get_context().get("storage"):
-        for connector in connectors:
-            con_name = connector.name()
-            seen.append(con_name)
-            if "adapter" not in context_storage:
-                raise Exception("adapter is not set in %s" % context_storage)
-            if context_storage["adapter"] == con_name:
-                return connector, context_storage.get("params", {})
-        else:
-            raise Exception("unknown storage %s: seen %s" % (context_storage["adapter"], seen))
-    else:
-        return connectors[0], {}
+    return get_connector_from_config("storage", connectors)

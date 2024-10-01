@@ -218,8 +218,8 @@ def log_host_progress_cb(pool: Parallel, task_result: TaskResult):
         stacklevel=2,
     )
     args = cast(cli_args.QueryOptions, pool.args[0])
-    connector, connector_opts = get_storage()
-    storage_opts = connector.opts().parse_params(connector_opts, args)
+    connector = get_storage()
+    storage_opts = connector.opts().parse_params({}, args)
     with connector.storage()(storage_opts) as storage:
         fqdns = storage.resolve_fdnds_by_query(args.query)
     PoolProgressLogger(device_fqdns=fqdns)(pool, task_result)
