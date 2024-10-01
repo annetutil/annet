@@ -12,14 +12,24 @@ class BFDTimers:
     multiplier: int = 4
 
 
-@dataclass
-class PeerGroup:
+class PeerGroup(BaseMeshModel):
     name: str
     remote_as: int = 0
     internal_name: str = ""
-    update_source: str | None = None
-    connect_retry: bool | None = None  # ???
-    description: str | None = None
+    update_source: str | None
+    connect_retry: bool | None
+    description: str | None
+
+    @classmethod
+    def default(cls):
+        return cls(
+            name="",
+            remote_as=0,
+            internal_name="",
+            update_source=None,
+            connect_retry=None,
+            description=None,
+        )
 
 
 class SessionDTO(BaseMeshModel):

@@ -13,10 +13,11 @@ def foo(global_opts: GlobalOptions):
 def foo(device: DirectPeer, neighbor: DirectPeer, session: Session):
     neighbor.addr = f"127.0.0.{neighbor.matched.x}"
 
+
 @registry.direct("{name:.*}", "m9-sgw{x}.{domain:.*}")
 def foo(device: DirectPeer, neighbor: DirectPeer, session: Session):
     neighbor.group = PeerGroup(
-        "GROUP_NAME",
+        name="GROUP_NAME",
         update_source="",
         remote_as=12345,
     )
