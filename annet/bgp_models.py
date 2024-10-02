@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Literal
 
 
 class ASN(int):
@@ -69,11 +70,7 @@ class BFDTimers:
     multiplier: int
 
 
-class Family(Enum):
-    IPV4_UNICAST = "IPV4_UNICAST"
-    IPV6_UNICAST = "IPV6_UNICAST"
-    IPV4_LABELED = "IPV4_LABELED"
-    IPV6_LABELED = "IPV6_LABELED"
+Family = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled", "ipv6_labeled"]
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -126,12 +123,12 @@ class PeerOptions:
     mtu: int = 0
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class PeerGroup:
     name: str
+    remote_as: ASN = ASN(None)
     internal_name: str
     description: str | None
-    remote_as: ASN
     update_source: str | None
     connect_retry: bool | None
 
@@ -152,7 +149,7 @@ class Peer:
     hostname: str = ""
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class Aggregate:
     policy: str = ""
     routes: tuple[str, ...] = ()  # "182.168.1.0/24",
@@ -164,13 +161,13 @@ class Aggregate:
     as_set: bool = False
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class Redistribute:
     protocol: str
     policy: str | None = None  # TODO
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True)
 class FamilyOptions:
     family: Family
     vrf_name: str
@@ -189,7 +186,7 @@ class FamilyOptions:
     advertise_bgp_static: bool = False
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True)
 class _FamiliesMixin:
     ipv4_unicast: FamilyOptions | None = None
     ipv6_unicast: FamilyOptions | None = None
@@ -197,7 +194,7 @@ class _FamiliesMixin:
     ipv6_labeled_unicast: FamilyOptions | None = None
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True)
 class VrfOptions(_FamiliesMixin):
     vrf_name: str
     vrf_name_global: str | None = None
@@ -212,7 +209,7 @@ class VrfOptions(_FamiliesMixin):
     static_label: int | None = None  # FIXME: str?
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True)
 class GlobalOptions(_FamiliesMixin):
     local_as: ASN = ASN(None)
     loops: int = 0

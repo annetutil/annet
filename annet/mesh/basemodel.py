@@ -38,6 +38,17 @@ class Forbid(Merger):
         raise ValueError(f"Override is forbidden for field {name}")
 
 
+class ForbidChange(Merger):
+    def _merge(self, name: str, x: T, y: T) -> T:
+        if x == y:
+            return x
+        raise ValueError(
+            f"Override with different value is forbidden for field {name}:\n"
+            f"Old: {x}\n"
+            f"New: {y}"
+        )
+
+
 class Concat(Merger):
     def _merge(self, name: str, x: T, y: T) -> T:
         return x + y
@@ -74,12 +85,11 @@ class ApplyFunc(Merger):
 
 def _get_merger(hint: Any):
     if get_origin(hint) is not Annotated:
-        return UseLast()
+        return ForbidChange()
     for arg in get_args(hint):
-
         if isinstance(arg, Merger):
             return arg
-    return UseLast()
+    return ForbidChange()
 
 
 class BaseMeshModel:
@@ -103,6 +113,28 @@ class BaseMeshModel:
         }
 
 
+class WithDefaults:
+    """
+    Proxy to store new attributes in one object,
+    but which allows to read from another if they are not set in first one
+    """
+    def __init__(self, container: BaseMeshModel, defaults: object) -> None:
+        self.__container = container
+        self.__defaults = defaults
+
+    def __setattr__(self, key, value) -> None:
+        if key.startswith("__"):
+            super().__setattr__(key, value)
+        setattr(self.__container, key, value)
+
+    def __getattr__(self, item) -> Any:
+        if (res := getattr(self.__container, item, Special.NOT_SET)) is not Special.NOT_SET:
+            return res
+        if (res := getattr(self.__defaults, item)) is not Special.NOT_SET:
+            return res
+        raise AttributeError(f"{self.__container.__class__.__name__} has no attribute {item}")
+
+
 def _merge(a: T, b: T) -> T:
     result = copy(a)
     for attr_name, merger in a._field_mergers.items():
@@ -116,7 +148,11 @@ def _merge(a: T, b: T) -> T:
     return result
 
 
-def merge(first: T, *others: T) -> T:
+def merge(first: T | Special, *others: T) -> T:
+    if first is Special.NOT_SET:
+        if not others:
+            return Special.NOT_SET
+        return merge(*others)
     for second in others:
         first = _merge(first, second)
     return first

@@ -89,6 +89,7 @@ class NetboxStorageV37(Storage):
             url=opts.url,
             token=opts.token,
         )
+        self._all_fqdns: list[str]| None = None
 
     def __enter__(self):
         return self
@@ -107,9 +108,12 @@ class NetboxStorageV37(Storage):
         ]
 
     def resolve_all_fdnds(self) -> list[str]:
-        return [
-            d.name for d in self.netbox.dcim_all_devices_brief().results
-        ]
+        if self._all_fqdns is None:
+            self._all_fqdns = [
+                d.name
+                for d in self.netbox.dcim_all_devices().results
+            ]
+        return self._all_fqdns
 
     def make_devices(
             self,

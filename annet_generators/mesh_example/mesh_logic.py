@@ -1,4 +1,4 @@
-from annet.mesh.models import PeerGroup
+from annet.mesh.peer_models import MeshPeerGroup
 from annet.mesh.registry import MeshRulesRegistry, GlobalOptions, Session, DirectPeer
 
 registry = MeshRulesRegistry()
@@ -16,7 +16,7 @@ def foo(device: DirectPeer, neighbor: DirectPeer, session: Session):
 
 @registry.direct("{name:.*}", "m9-sgw{x}.{domain:.*}")
 def foo(device: DirectPeer, neighbor: DirectPeer, session: Session):
-    neighbor.group = PeerGroup(
+    neighbor.group = MeshPeerGroup(
         name="GROUP_NAME",
         update_source="",
         remote_as=12345,

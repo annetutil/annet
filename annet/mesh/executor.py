@@ -1,10 +1,12 @@
 from dataclasses import dataclass
 
-from .basemodel import merge
-from .models import GlobalOptionsDTO, PeerDTO
-from .registry import MeshRulesRegistry, GlobalOptions as MeshGloabalsOptions, DirectPeer, Session, IndirectPeer
+from annet.bgp_models import Peer, GlobalOptions
 from annet.storage import Device, Storage
-from annet.bgp_models import Peer, PeerGroup, ASN, GlobalOptions
+from .basemodel import merge
+from .device_models import GlobalOptionsDTO
+from .models_converter import to_bgp_global_options, to_bgp_peer
+from .peer_models import PeerDTO
+from .registry import MeshRulesRegistry, GlobalOptions as MeshGloabalsOptions, DirectPeer, Session, IndirectPeer
 
 
 @dataclass
@@ -28,7 +30,7 @@ class MeshExecutor:
             rule_global_opts = MeshGloabalsOptions(rule.matched, device)
             rule.handler(rule_global_opts)
             global_opts = merge(global_opts, rule_global_opts)
-        return merge(GlobalOptionsDTO.default(), global_opts)
+        return global_opts
 
     def _execute_direct(self, device: Device) -> list[PeerDTO]:
         neighbors = {n.fqdn: n for n in device.neighbours}
@@ -69,36 +71,10 @@ class MeshExecutor:
         return list(connected_peers.values())
 
     def _to_bgp_peer(self, peer: PeerDTO) -> Peer:
-        return Peer(
-            name=None,
-            description="",
-            family=None,
-            options=None,
-            hostname="",
-            remote_as=None,
-            vrf_name=None,
-            export_policy=None,
-            import_policy=None,
-            update_source=None,
-            addr=peer.addr,
-            group=PeerGroup(
-                name=peer.group.name,
-                internal_name="",
-                update_source="",
-                remote_as=ASN(peer.group.remote_as),
-                description="",
-                connect_retry=False,
-            ) if peer.group else None,
-        )
+        return to_bgp_peer(peer)
 
     def _to_bgp_global(self, global_options: GlobalOptionsDTO) -> GlobalOptions:
-        return GlobalOptions(
-            local_as=ASN(global_options.local_as),
-            loops=global_options.loops,
-            multipath=global_options.multipath,
-            router_id=global_options.router_id,
-            vrf={},
-        )
+        return to_bgp_global_options(global_options)
 
     def execute_for(self, device: Device) -> MeshExecutionResult:
         all_fqdns = self._storage.resolve_all_fdnds()

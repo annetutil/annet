@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal, Annotated
 
-from .basemodel import BaseMeshModel, Merge, DictMerge, Forbid
+from .basemodel import BaseMeshModel, Merge, Concat
 
 FamilyName = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled", "ipv6_labeled"]
 
@@ -12,7 +12,7 @@ class BFDTimers:
     multiplier: int = 4
 
 
-class PeerGroup(BaseMeshModel):
+class MeshPeerGroup(BaseMeshModel):
     name: str
     remote_as: int = 0
     internal_name: str = ""
@@ -37,7 +37,7 @@ class SessionDTO(BaseMeshModel):
     vrf: str
     name: str
     families: Annotated[list[FamilyName], Merge()]
-    group: PeerGroup
+    group: MeshPeerGroup
 
     subif: str
     bmp_monitor: bool
@@ -59,32 +59,7 @@ class SessionDTO(BaseMeshModel):
 class PeerDTO(SessionDTO):
     pod: int
     addr: str
-    families: Annotated[list[FamilyName], Merge()]
+    families: Annotated[set[FamilyName], Concat()]
 
     import_policy: str
     export_policy: str
-
-
-class VrfOptions(BaseMeshModel):
-    vrf_name_global: str | None = None
-
-
-class GlobalOptionsDTO(BaseMeshModel):
-    local_as: int
-    loops: int
-    multipath: int
-    router_id: str
-    vrf: Annotated[dict[str, VrfOptions], DictMerge(Forbid)]
-
-    @classmethod
-    def default(cls):
-        return GlobalOptionsDTO(
-            local_as=0,
-            loops=0,
-            multipath=0,
-            router_id="",
-            vrf={},
-        )
-
-
-assert not GlobalOptionsDTO.default().unset_attrs()

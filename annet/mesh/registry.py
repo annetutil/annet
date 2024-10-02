@@ -3,7 +3,8 @@ from typing import Callable, Any
 
 from .match_args import MatchExpr, PairMatcher, SingleMatcher
 from .match_args import MatchedArgs
-from .models import GlobalOptionsDTO, PeerDTO, SessionDTO
+from .device_models import GlobalOptionsDTO
+from .peer_models import PeerDTO, SessionDTO
 
 
 class DirectPeer(PeerDTO):
