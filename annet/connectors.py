@@ -59,7 +59,7 @@ class Connector(ABC, Generic[T]):
         self._classes = list(classes)
 
     def is_default(self) -> bool:
-        return self._classes is self._entry_point is None
+        return self._classes is None and not self._entry_point
 
 
 class CachedConnector(Connector[T], ABC):
