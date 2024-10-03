@@ -6,7 +6,7 @@ import sys
 import time
 import warnings
 from collections import OrderedDict as odict
-from itertools import groupby
+from itertools import groupby, chain
 from operator import itemgetter
 from typing import (
     Any,
@@ -35,6 +35,7 @@ from annet import diff as ann_diff
 from annet import filtering
 from annet import gen as ann_gen
 from annet import patching, rulebook, tabparser, tracing
+from annet.rulebook import deploying
 from annet.filtering import Filterer
 from annet.hardware import hardware_connector
 from annet.output import (
@@ -499,10 +500,13 @@ class PCDeployerJob(DeployerJob):
             for cmd in deployer_driver.build_exit_cmdlist(device.hw):
                 after.add_cmd(cmd)
             cmds_pre_files = {}
-            for file in self.deploy_cmds[device]["files"]:
-                if before:
-                    cmds_pre_files[file] = "\n".join(map(str, before)).encode(encoding="utf-8")
-                self.deploy_cmds[device]["cmds"][file] += "\n".join(map(str, after)).encode(encoding="utf-8")
+            rules = rulebook.get_rulebook(device.hw)["deploying"]
+            for file, content in self.deploy_cmds[device]["files"].items():
+                rule = deploying.match_deploy_rule(rules, [file], content)
+                before_more, after_more = annet.deploy.make_apply_commands(rule, res.device.hw, do_commit=True, do_finalize=True, path=file)
+
+                cmds_pre_files[file] = "\n".join(map(str, chain(before, before_more))).encode(encoding="utf-8")
+                self.deploy_cmds[device]["cmds"][file] += "\n".join(map(str, chain(after, after_more))).encode(encoding="utf-8")
             self.deploy_cmds[device]["cmds_pre_files"] = cmds_pre_files
 
 
