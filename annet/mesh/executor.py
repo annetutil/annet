@@ -3,7 +3,7 @@ from typing import Annotated
 
 from annet.bgp_models import Peer, GlobalOptions
 from annet.storage import Device, Storage
-from .basemodel import merge, BaseMeshModel, Merge
+from .basemodel import merge, BaseMeshModel, Merge, UseLast
 from .device_models import GlobalOptionsDTO
 from .models_converter import to_bgp_global_options, to_bgp_peer
 from .peer_models import PeerDTO
@@ -19,6 +19,7 @@ class MeshExecutionResult:
 class Pair(BaseMeshModel):
     local: Annotated[PeerDTO, Merge()]
     connected: Annotated[PeerDTO, Merge()]
+    device: Annotated[Device, UseLast()]
 
 
 class MeshExecutor:
@@ -58,9 +59,10 @@ class MeshExecutor:
                 peer_device = DirectPeer(rule.matched_right, device, [])
                 rule.handler(peer_neighbor, peer_device, session)
 
+            # TODO log merge error with handlers
             neighbor_dto = merge(PeerDTO(), peer_neighbor, session)
             device_dto = merge(PeerDTO(), peer_device, session)
-            pair = Pair(local=device_dto, connected=neighbor_dto)
+            pair = Pair(local=device_dto, connected=neighbor_dto, device=neighbor_device)
             if neighbor_device.fqdn in neighbor_peers:
                 pair = merge(neighbor_peers[neighbor_device.fqdn], pair)
             neighbor_peers[neighbor_device.fqdn] = pair
@@ -83,9 +85,10 @@ class MeshExecutor:
                 peer_device = IndirectPeer(rule.matched_right, device)
                 rule.handler(peer_connected, peer_device, session)
 
+            # TODO log merge error with handlers
             connected_dto = merge(PeerDTO(), peer_connected, session)
             device_dto = merge(PeerDTO(), peer_device, session)
-            pair = Pair(local=device_dto, connected=connected_dto)
+            pair = Pair(local=device_dto, connected=connected_dto, device=connected_device)
             if connected_device.fqdn in connected_peers:
                 pair = merge(connected_peers[connected_device.fqdn], pair)
             connected_peers[connected_device.fqdn] = pair
@@ -93,7 +96,7 @@ class MeshExecutor:
         return list(connected_peers.values())  # FIXME
 
     def _to_bgp_peer(self, pair: Pair) -> Peer:
-        return to_bgp_peer(pair.local, pair.connected)
+        return to_bgp_peer(pair.local, pair.connected, pair.device)
 
     def _to_bgp_global(self, global_options: GlobalOptionsDTO) -> GlobalOptions:
         return to_bgp_global_options(global_options)

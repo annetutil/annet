@@ -133,11 +133,11 @@ class PeerGroup:
     connect_retry: bool | None
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True)
 class Peer:
     addr: str
     remote_as: ASN
-    family: Family
+    families: set[Family]
     name: str = ""
     description: str = ""
     vrf_name: str = ""

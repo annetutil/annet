@@ -138,7 +138,7 @@ class MeshRulesRegistry:
                         matched_left=args[0],
                         matched_right=args[1],
                     ))
-                if args := rule.matcher.match_pair(device, neighbor):
+                if args := rule.matcher.match_pair(neighbor, device):
                     found.append(MatchedDirectPair(
                         handler=rule.handler,
                         direct_order=False,
@@ -164,7 +164,7 @@ class MeshRulesRegistry:
                         matched_left=args[0],
                         matched_right=args[1],
                     ))
-                if args := rule.matcher.match_pair(device, other_device):
+                if args := rule.matcher.match_pair(other_device, device):
                     found.append(MatchedIndirectPair(
                         handler=rule.handler,
                         direct_order=False,
