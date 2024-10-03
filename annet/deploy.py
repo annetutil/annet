@@ -100,7 +100,7 @@ class DeployDriver(abc.ABC):
 
 
 def get_deployer() -> DeployDriver:
-    connectors = fetcher_connector.get_all()
+    connectors = driver_connector.get_all()
     deployer, _ = get_connector_from_config("deployer", connectors)
     return deployer
 
