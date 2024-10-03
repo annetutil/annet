@@ -30,7 +30,7 @@ retort = Retort(
 to_bgp_global_options = retort.get_loader(GlobalOptions)
 
 
-def to_bgp_peer(peer: PeerDTO) -> Peer:
+def to_bgp_peer(local: PeerDTO, connected: PeerDTO) -> Peer:
     return Peer(
         name=None,
         description="",
@@ -42,13 +42,13 @@ def to_bgp_peer(peer: PeerDTO) -> Peer:
         export_policy=None,
         import_policy=None,
         update_source=None,
-        addr=peer.addr,
+        addr=connected.addr,
         group=PeerGroup(
-            name=peer.group.name,
+            name=local.group.name,
             internal_name="",
             update_source="",
-            remote_as=ASN(peer.group.remote_as),
+            remote_as=ASN(local.group.remote_as),
             description="",
             connect_retry=False,
-        ) if peer.group else None,
+        ) if local.group else None,
     )
