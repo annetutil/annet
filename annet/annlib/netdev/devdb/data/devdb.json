@@ -156,5 +156,10 @@
 
     "H3C": "^[Hh]3[Cc]",
     "H3C.S12500": " S125\\d{2}",
-    "H3C.S12500.S12500R": " S12500R"
+    "H3C.S12500.S12500R": " S12500R",
+
+    "B4com": "^[Bb]4com",
+    "B4com.CS2148P": "^[Bb]4com B4T-CS2148P.*",
+    "B4com.CS4148Q": "^[Bb]4com B4T-CS4148Q.*",
+    "B4com.CS4146U": "^[Bb]4com B4T-CS4146U.*"
 }
