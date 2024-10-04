@@ -112,6 +112,11 @@ class BaseMeshModel:
             for field, hint in get_type_hints(cls, include_extras=True).items()
         }
 
+    def __setattr__(self, key, value):
+        if key not in self._field_mergers:
+            raise AttributeError(f"{self.__class__.__name__} has no field merger")
+        super().__setattr__(key, value)
+
 
 class WithDefaults:
     """
