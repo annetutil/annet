@@ -57,6 +57,11 @@ class PeerDTO(SessionDTO):
     # for lagg validation
     peers_min: int
     parallel: int  # ????
+    lagg: int
+    lagg_remote: int
+    peer_name: str
+    lagg_links_min: int
+
 
     # for peer options
     unnumbered: bool

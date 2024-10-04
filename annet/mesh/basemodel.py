@@ -114,7 +114,7 @@ class BaseMeshModel:
 
     def __setattr__(self, key, value):
         if key not in self._field_mergers:
-            raise AttributeError(f"{self.__class__.__name__} has no field merger")
+            raise AttributeError(f"{self.__class__.__name__} has no field {key}")
         super().__setattr__(key, value)
 
 

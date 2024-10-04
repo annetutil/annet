@@ -8,6 +8,10 @@ from .peer_models import PeerDTO, SessionDTO
 
 
 class DirectPeer(PeerDTO):
+    matched: MatchedArgs
+    device: Any
+    ports: list[str]
+
     def __init__(self, matched: MatchedArgs, device: Any, ports: list[str]) -> None:
         super().__init__()
         self.matched = matched
@@ -16,6 +20,9 @@ class DirectPeer(PeerDTO):
 
 
 class IndirectPeer(PeerDTO):
+    matched: MatchedArgs
+    device: Any
+
     def __init__(self, matched: MatchedArgs, device: Any) -> None:
         super().__init__()
         self.matched = matched
@@ -27,6 +34,9 @@ class Session(SessionDTO):
 
 
 class GlobalOptions(GlobalOptionsDTO):
+    matched: MatchedArgs
+    device: Any
+
     def __init__(self, matched: MatchedArgs, device: Any) -> None:
         super().__init__()
         self.matched = matched

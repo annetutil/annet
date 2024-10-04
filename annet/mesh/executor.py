@@ -52,12 +52,29 @@ class MeshExecutor:
                 neighbor_device = neighbors[rule.name_right]
                 peer_device = DirectPeer(rule.matched_left, device, [])
                 peer_neighbor = DirectPeer(rule.matched_right, neighbor_device, [])
-                rule.handler(peer_device, peer_neighbor, session)
             else:
                 neighbor_device = neighbors[rule.name_left]
                 peer_neighbor = DirectPeer(rule.matched_left, neighbor_device, [])
                 peer_device = DirectPeer(rule.matched_right, device, [])
+
+            # TODO split
+            for interface in device.interfaces:
+                if not interface.connected_endpoints:
+                    continue
+                for endpoint in interface.connected_endpoints:
+                    if endpoint.device.id == neighbor_device.id:
+                        for remote_port in neighbor_device.interfaces:
+                            if remote_port.name == endpoint.name:
+                                peer_device.ports.append(interface)
+                                peer_neighbor.ports.append(remote_port)
+                                break
+
+            if rule.direct_order:
+                rule.handler(peer_device, peer_neighbor, session)
+            else:
                 rule.handler(peer_neighbor, peer_device, session)
+
+
 
             # TODO log merge error with handlers
             neighbor_dto = merge(PeerDTO(), peer_neighbor, session)
