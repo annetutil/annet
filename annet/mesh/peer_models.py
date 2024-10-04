@@ -1,6 +1,6 @@
 from typing import Literal, Annotated
 
-from .basemodel import BaseMeshModel, Merge
+from .basemodel import BaseMeshModel, Merge, Concat
 from ..bgp_models import BFDTimers
 
 FamilyName = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled", "ipv6_labeled"]
@@ -30,7 +30,7 @@ class SessionDTO(BaseMeshModel):
     asnum: str
     vrf: str
     name: str
-    families: Annotated[list[FamilyName], Merge()]
+    families: Annotated[set[FamilyName], Concat()]
     group: MeshPeerGroup
 
     subif: str  # TODO: ????
