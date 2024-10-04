@@ -39,6 +39,7 @@ to_bgp_global_options = retort.get_loader(GlobalOptions)
 
 def to_bgp_peer(local: PeerDTO, connected: PeerDTO, connected_device: Device) -> Peer:
     options = retort.load(local, PeerOptions)
+    # TODO validate `lagg_links` before conversion
     result = Peer(
         addr=str(ip_interface(connected.addr).ip),
         remote_as=ASN(connected.asnum),
@@ -46,6 +47,7 @@ def to_bgp_peer(local: PeerDTO, connected: PeerDTO, connected_device: Device) ->
         families=connected.families,
         hostname=connected_device.hostname,
         options=options,
+        # TODO update_source
     )
     # connected
     result.vrf_name = getattr(connected, "vrf", result.vrf_name)

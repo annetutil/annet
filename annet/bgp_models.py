@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Literal
 
 
@@ -66,8 +65,8 @@ class ASN(int):
 
 @dataclass(frozen=True, slots=True)
 class BFDTimers:
-    minimum_interval: int
-    multiplier: int
+    minimum_interval: int = 500
+    multiplier: int = 4
 
 
 Family = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled", "ipv6_labeled"]
@@ -100,11 +99,11 @@ class PeerOptions:
     af_no_install: bool = False
     bfd: bool = False
     rib: bool = False
-    bfd_timers: BFDTimers | None = None,
+    bfd_timers: BFDTimers | None = None
     resolve_vpn: bool = False
-    af_rib_group: str | None = None,
-    af_loops: int = 0,
-    hold_time: int = 0,
+    af_rib_group: str | None = None
+    af_loops: int = 0
+    hold_time: int = 0
     listen_network: bool = False
     remove_private: bool = False
     as_override: bool = False
