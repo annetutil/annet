@@ -110,12 +110,12 @@ class Device(Protocol):
 
     @property
     @abc.abstractmethod
-    def fqdn(self):
+    def fqdn(self) -> str:
         pass
 
     @property
     @abc.abstractmethod
-    def hostname(self):
+    def hostname(self) -> str:
         pass
 
     @property
@@ -125,7 +125,7 @@ class Device(Protocol):
 
     @property
     @abc.abstractmethod
-    def breed(self):
+    def breed(self) -> str:
         pass
 
 
