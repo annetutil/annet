@@ -5,7 +5,7 @@ from typing import List, Iterable, Any
 from annet.storage import StorageProvider, Storage
 from annet.connectors import AdapterWithName
 from annet.storage import Device as DeviceCls
-from annet.annlib.netdev.views.hardware import vendor_to_hw
+from annet.annlib.netdev.views.hardware import vendor_to_hw, HardwareView
 import yaml
 
 
@@ -74,7 +74,7 @@ class Device(DeviceCls, DumpableView):
     def __eq__(self, other):
         return type(self) is type(other) and self.fqdn == other.fqdn and self.vendor == other.vendor
 
-    def is_pc(self):
+    def is_pc(self) -> bool:
         return False
 
     @property
@@ -82,11 +82,11 @@ class Device(DeviceCls, DumpableView):
         return self
 
     @property
-    def hw(self):
+    def hw(self) -> HardwareView:
         return self.dev.hw
 
     @property
-    def breed(self):
+    def breed(self) -> str:
         return self.dev.hw.vendor
 
     @property
@@ -119,7 +119,8 @@ class Provider(StorageProvider, AdapterWithName):
     def query(self):
         return Query
 
-    def name(self) -> str:
+    @classmethod
+    def name(cls) -> str:
         return "file"
 
 
