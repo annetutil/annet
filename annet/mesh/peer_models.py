@@ -1,69 +1,45 @@
 from typing import Literal, Annotated
 
-from .basemodel import BaseMeshModel, Merge, Concat
+from .basemodel import BaseMeshModel, Concat
 from ..bgp_models import BFDTimers
 
 FamilyName = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled", "ipv6_labeled"]
 
 
-class MeshPeerGroup(BaseMeshModel):
-    name: str
-    remote_as: int = 0
-    internal_name: str = ""
-    update_source: str | None
-    connect_retry: bool | None
-    description: str | None
-
-    @classmethod
-    def default(cls):
-        return cls(
-            name="",
-            remote_as=0,
-            internal_name="",
-            update_source=None,
-            connect_retry=None,
-            description=None,
-        )
-
-
-class SessionDTO(BaseMeshModel):
-    asnum: str
-    vrf: str
-    name: str
-    families: Annotated[set[FamilyName], Concat()]
-    group: MeshPeerGroup
-
-    subif: str  # TODO: ????
-    bmp_monitor: bool
+class _SharedOptionsDTO(BaseMeshModel):
+    """
+    Options which can be set on connected pair or group of peers
+    """
     add_path: bool
     multipath: bool
     advertise_irb: bool
     send_labeled: bool
     send_community: bool
-    lagg_links: int  # used to validate lagg members
-
-    import_policy: str
-    export_policy: str
-
     bfd: bool
     bfd_timers: BFDTimers
 
 
-class PeerDTO(SessionDTO):
-    pod: int
-    addr: str
-    description: str
+class SessionDTO(_SharedOptionsDTO):
+    """
+    Options which are set on connected pair
+    """
+    asnum: str
+    vrf: str
+    name: str
+    families: Annotated[set[FamilyName], Concat()]
+    group_name: str
 
-    # for lagg validation
-    peers_min: int
-    parallel: int  # ????
-    lagg: int
-    lagg_remote: int
-    peer_name: str
-    lagg_links_min: int
+    subif: str  # TODO: ????
+    bmp_monitor: bool
+
+    import_policy: str
+    export_policy: str
 
 
-    # for peer options
+class _OptionsDTO(_SharedOptionsDTO):
+    """
+    Options which can be set on group of peers or peer itself
+    """
     unnumbered: bool
     rr_client: bool
     next_hop_self: bool
@@ -101,3 +77,22 @@ class PeerDTO(SessionDTO):
     soft_reconfiguration_inbound: bool
     not_active: bool
     mtu: int
+
+
+class PeerDTO(SessionDTO, _OptionsDTO):
+    pod: int
+    addr: str
+    description: str
+
+    lagg: int
+    lagg_links_min: int
+
+    group_name: str
+
+
+class MeshPeerGroup(_OptionsDTO):
+    name: str
+    remote_as: int
+    internal_name: str
+    update_source: str | None
+    description: str | None

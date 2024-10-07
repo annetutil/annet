@@ -122,16 +122,6 @@ class PeerOptions:
     mtu: int = 0
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
-class PeerGroup:
-    name: str
-    remote_as: ASN = ASN(None)
-    internal_name: str
-    description: str | None
-    update_source: str | None
-    connect_retry: bool | None
-
-
 @dataclass(slots=True, kw_only=True)
 class Peer:
     addr: str
@@ -140,11 +130,11 @@ class Peer:
     name: str = ""
     description: str = ""
     vrf_name: str = ""
+    group_name: str = ""
     import_policy: str = ""
     export_policy: str = ""
     update_source: str | None = None  # interface name
     options: PeerOptions | None = None
-    group: PeerGroup | None = None
     hostname: str = ""
 
 
@@ -185,12 +175,24 @@ class FamilyOptions:
     advertise_bgp_static: bool = False
 
 
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class PeerGroup(PeerOptions):
+    name: str
+    remote_as: ASN = ASN(None)
+    internal_name: str = ""
+    description: str | None = None
+    update_source: str | None = None
+
+
 @dataclass(slots=True, kw_only=True)
 class _FamiliesMixin:
     ipv4_unicast: FamilyOptions | None = None
     ipv6_unicast: FamilyOptions | None = None
     ipv4_labeled_unicast: FamilyOptions | None = None
     ipv6_labeled_unicast: FamilyOptions | None = None
+    groups: list[PeerGroup] = field(default_factory=list)
 
 
 @dataclass(slots=True, kw_only=True)

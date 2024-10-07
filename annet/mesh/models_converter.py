@@ -30,7 +30,11 @@ retort = Retort(
         loader(PeerOptions, ObjMapping, Chain.FIRST),
         name_mapping(PeerOptions, map={
             "local_as": "asnum",
-        })
+        }),
+        loader(PeerGroup, ObjMapping, Chain.FIRST),
+        name_mapping(PeerGroup, map={
+            "local_as": "asnum",
+        }),
     ]
 )
 
@@ -51,6 +55,7 @@ def to_bgp_peer(local: PeerDTO, connected: PeerDTO, connected_device: Device) ->
     )
     # connected
     result.vrf_name = getattr(connected, "vrf", result.vrf_name)
+    result.group_name = getattr(connected, "group_name", result.group_name)
     result.description = getattr(connected, "description", result.description)
     # local
     result.import_policy = getattr(connected, "import_policy", result.import_policy)
