@@ -28,6 +28,7 @@ def mocks():
     orig_output_driver_connector_classes = annet.output.output_driver_connector._classes
     orig_storage_connector_classes = annet.storage.storage_connector._classes
     orig_rulebook_provider_classes = annet.rulebook.rulebook_provider_connector._classes
+    orig_rulebook_provider_cache = annet.rulebook.rulebook_provider_connector._cache
 
     ret = mock.Mock(
         deploy_fetcher=mock.MagicMock(spec=Fetcher),
@@ -35,12 +36,14 @@ def mocks():
         output_driver=mock.MagicMock(spec=OutputDriver),
         storage_provider=mock.MagicMock(spec=annet.storage.StorageProvider),
     )
+    ret.deploy_driver().build_configuration_cmdlist.return_value=(CommandList(), CommandList())
 
     annet.deploy.fetcher_connector._classes = [ret.deploy_fetcher]
     annet.deploy.driver_connector._classes = [ret.deploy_driver]
     annet.output.output_driver_connector._classes = [ret.output_driver]
     annet.storage.storage_connector._classes = [ret.storage_provider]
     annet.rulebook.rulebook_provider_connector._classes = [MockDefaultRulebookProvider]
+    annet.rulebook.rulebook_provider_connector._cache = None
 
     yield ret
 
@@ -49,6 +52,7 @@ def mocks():
     annet.output.output_driver_connector._classes = orig_output_driver_connector_classes
     annet.storage.storage_connector._classes = orig_storage_connector_classes
     annet.rulebook.rulebook_provider_connector._classes = orig_rulebook_provider_classes
+    annet.rulebook.rulebook_provider_connector._cache = orig_rulebook_provider_cache
 
 
 @pytest.fixture
@@ -57,8 +61,6 @@ def device():
 
 
 def test_pc_deployer_rulebooks(device: Device, mocks):
-    mocks.deploy_driver().build_configuration_cmdlist = mock.Mock(return_value=(CommandList(), CommandList()))
-
     opts = mock.Mock()
     path = "/etc/sonic/config_db.json"
     commands = "commands"
@@ -77,5 +79,6 @@ def test_pc_deployer_rulebooks(device: Device, mocks):
     job = DeployerJob.from_device(res.device, opts)
     job.parse_result(res)
 
+    assert mocks.deploy_driver().build_configuration_cmdlist.call_args_list == [mock.call(device.hw)]
     assert job.deploy_cmds[device]["cmds_pre_files"][path] == before.encode()
     assert job.deploy_cmds[device]["cmds"][path] == "\n".join((commands, after)).encode()
