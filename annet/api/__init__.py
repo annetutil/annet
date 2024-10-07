@@ -506,7 +506,9 @@ class PCDeployerJob(DeployerJob):
                 before_more, after_more = annet.deploy.make_apply_commands(rule, res.device.hw, do_commit=True, do_finalize=True, path=file)
 
                 cmds_pre_files[file] = "\n".join(map(str, chain(before, before_more))).encode(encoding="utf-8")
-                self.deploy_cmds[device]["cmds"][file] += "\n".join(map(str, chain(after, after_more))).encode(encoding="utf-8")
+                after_cmds = "\n".join(map(str, chain(after, after_more))).encode(encoding="utf-8")
+                if after_cmds:
+                    self.deploy_cmds[device]["cmds"][file] += b"\n" + after_cmds
             self.deploy_cmds[device]["cmds_pre_files"] = cmds_pre_files
 
 
