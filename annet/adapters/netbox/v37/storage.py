@@ -227,6 +227,20 @@ class NetboxStorageV37(Storage):
     def flush_perf(self):
         pass
 
+    def search_connections(
+            self, device: models.NetboxDevice, neighbor: models.NetboxDevice,
+    ) -> list[tuple[models.Interface, models.Interface]]:
+        res = []
+        for local_port in device.interfaces:
+            if not local_port.connected_endpoints:
+                continue
+            for endpoint in local_port.connected_endpoints:
+                if endpoint.device.id == neighbor.id:
+                    for remote_port in neighbor.interfaces:
+                        if remote_port.name == endpoint.name:
+                            res.append((local_port, remote_port))
+                            break
+        return res
 
 def _match_query(query: NetboxQuery, device_data: api_models.Device) -> bool:
     for subquery in query.globs:

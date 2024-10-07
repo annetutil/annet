@@ -1,5 +1,5 @@
 import abc
-from typing import Any, Iterable, Optional, Type, Union, Protocol, Dict
+from typing import Any, Iterable, Optional, Type, Union, Protocol, Dict, Sequence
 from annet.connectors import Connector, get_context
 
 
@@ -69,6 +69,12 @@ class Storage(abc.ABC):
     def flush_perf(self):
         pass
 
+    def make_lagg(self, device: "Device", links: Sequence[str], lagg_min_links: int | None):
+        pass
+
+    def search_connections(self, device: "Device", neighbor: "Device") -> list[tuple["Interface", "Interface"]]:
+        pass
+
 
 class StorageOpts(abc.ABC):
     @classmethod
@@ -85,6 +91,34 @@ class Query(abc.ABC):
 
     def is_empty(self) -> bool:
         return False
+
+
+class Interface(Protocol):
+    @property
+    @abc.abstractmethod
+    def name(self) -> str:
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def lagg_links_min(self):
+        raise NotImplementedError
+
+    @lagg_links_min.setter
+    @abc.abstractmethod
+    def lagg_links_min(self, num: int):
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def lagg_parent(self) -> str | None:
+        raise NotImplementedError
+
+    @lagg_parent.setter
+    @abc.abstractmethod
+    def lagg_parent(self, num: int):
+        raise NotImplementedError
+
 
 
 class Device(Protocol):

@@ -57,24 +57,15 @@ class MeshExecutor:
                 peer_neighbor = DirectPeer(rule.matched_left, neighbor_device, [])
                 peer_device = DirectPeer(rule.matched_right, device, [])
 
-            # TODO split
-            for interface in device.interfaces:
-                if not interface.connected_endpoints:
-                    continue
-                for endpoint in interface.connected_endpoints:
-                    if endpoint.device.id == neighbor_device.id:
-                        for remote_port in neighbor_device.interfaces:
-                            if remote_port.name == endpoint.name:
-                                peer_device.ports.append(interface)
-                                peer_neighbor.ports.append(remote_port)
-                                break
+            interfaces = self._storage.search_connections(device, neighbor_device)
+            for local_port, remote_port in interfaces:
+                peer_device.ports.append(local_port.name)
+                peer_neighbor.ports.append(remote_port.name)
 
             if rule.direct_order:
                 rule.handler(peer_device, peer_neighbor, session)
             else:
                 rule.handler(peer_neighbor, peer_device, session)
-
-
 
             # TODO log merge error with handlers
             neighbor_dto = merge(PeerDTO(), peer_neighbor, session)
@@ -116,6 +107,7 @@ class MeshExecutor:
         return to_bgp_peer(pair.local, pair.connected, pair.device)
 
     def _to_bgp_global(self, global_options: GlobalOptionsDTO) -> GlobalOptions:
+        # TODO group options defaults
         return to_bgp_global_options(global_options)
 
     def execute_for(self, device: Device) -> MeshExecutionResult:
