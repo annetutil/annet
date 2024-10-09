@@ -29,7 +29,6 @@ class SessionDTO(_SharedOptionsDTO):
     families: Annotated[set[FamilyName], Concat()]
     group_name: str
 
-    subif: str  # TODO: ????
     bmp_monitor: bool
 
     import_policy: str
@@ -84,8 +83,10 @@ class PeerDTO(SessionDTO, _OptionsDTO):
     addr: str
     description: str
 
+    subif: int
     lag: int | None
-    lag_links_min: int
+    lag_links_min: int | None
+    svi: int | None
 
     group_name: str
 

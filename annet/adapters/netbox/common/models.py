@@ -180,27 +180,49 @@ class NetboxDevice(Entity):
     def is_pc(self):
         return self.device_type.manufacturer.name == "Mellanox"
 
-    def make_lag(self, lagg: int, ports: Sequence[str], lag_min_links: int | None) -> str:
-        new_name = f"lag{lagg}"  # TODO vendor specific
-        lag_interface = Interface(
-            name=new_name,
+    def _make_interface(self, name: str, type: InterfaceType) -> Interface:
+        return Interface(
+            name=name,
             device=self,
             enabled=True,
             description="",
-            type=InterfaceType(value="lag", label="Link Aggregation Group (LAG)"),
+            type=type,
             id=0,
             vrf=None,
-            display=new_name,
+            display=name,
             untagged_vlan=None,
             tagged_vlans=[],
             ip_addresses=[],
             connected_endpoints=[],
             mode=None,
-            lag_min_links=lag_min_links,
         )
+
+    def make_lag(self, lagg: int, ports: Sequence[str], lag_min_links: int | None) -> str:
+        new_name = f"lag{lagg}"  # TODO vendor specific
+        lag_interface = self._make_interface(
+            name=new_name,
+            type=InterfaceType(value="lag", label="Link Aggregation Group (LAG)"),
+        )
+        lag_interface.lag_min_links = lag_min_links
         for interface in self.interfaces:
             if interface.name in ports:
                 interface.lag = lag_interface
         self.interfaces.append(lag_interface)
         return new_name
+
+    def add_svi(self, svi: int) -> str:
+        interface = self._make_interface(
+            name=f"Vlan{svi}",
+            type=InterfaceType("virtual", "Virtual")
+        )
+        self.interfaces.append(interface)
+        return interface.name
+
+    def add_subif(self, interface: str, subif: int) -> str:
+        interface = self._make_interface(
+            name=f"{interface}.{subif}",
+            type=InterfaceType("virtual", "Virtual")
+        )
+        self.interfaces.append(interface)
+        return interface.name
 

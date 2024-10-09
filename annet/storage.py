@@ -166,6 +166,15 @@ class Device(Protocol):
         raise NotImplementedError
 
 
+    @abc.abstractmethod
+    def add_svi(self, svi: int) -> str:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def add_subif(self, interface: str, subif: int) -> str:
+        raise NotImplementedError
+
+
 def get_storage() -> (Storage, Dict[str, Any]):
     connectors = storage_connector.get_all()
     seen: list[str] = []

@@ -1,9 +1,8 @@
-from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Annotated, Protocol, Sequence
+from typing import Annotated
 
 from annet.bgp_models import Peer, GlobalOptions
-from annet.storage import Device, Storage, Interface
+from annet.storage import Device, Storage
 from .basemodel import merge, BaseMeshModel, Merge, UseLast
 from .device_models import GlobalOptionsDTO
 from .models_converter import to_bgp_global_options, to_bgp_peer
@@ -112,13 +111,37 @@ class MeshExecutor:
         return to_bgp_global_options(global_options)
 
     def _process_neighbor(self, device: Device, neighbor: Device, local: PeerDTO) -> None:
-        if local.lag is not None:
-            port_pairs = self._storage.search_connections(device, neighbor)
-            device.make_lag(
-                lagg=local.lag,
+        lag = getattr(local, "lag", None)
+        lag_links_min = getattr(local, "lag_links_min", None)
+        svi = getattr(local, "svi", None)
+        subif = getattr(local, "subif", None)
+
+        port_pairs = self._storage.search_connections(device, neighbor)
+        if lag is not None and svi is not None:
+            raise ValueError("Cannot use LAG and SVI together")
+        if svi is not None and subif is not None:
+            raise ValueError("Cannot use Subif and SVI together")
+
+        if len(port_pairs) > 1:
+            if lag is svi is None:
+                raise ValueError(
+                    f"Multiple connections found between {device.fqdn} and {neighbor.fqdn}."
+                    "Specify LAG or SVI"
+                )
+        if lag is not None:
+            lag_name = device.make_lag(
+                lagg=lag,
                 ports=[local_port.name for local_port, remote_port in port_pairs],
-                lag_min_links=local.lag_links_min,
+                lag_min_links=lag_links_min,
             )
+            if subif is not None:
+                device.add_subif(lag_name, subif)
+        elif subif is not None:
+            # single connection
+            local_port, remote_port = port_pairs[0]
+            device.add_subif(local_port.name, subif)
+        elif svi is not None:
+            device.add_svi(svi)
 
     def execute_for(self, device: Device) -> MeshExecutionResult:
         all_fqdns = self._storage.resolve_all_fdnds()

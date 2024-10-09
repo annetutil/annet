@@ -24,6 +24,7 @@ def bar(device: DirectPeer, neighbor: DirectPeer, session: Session):
     session.asnum = 12345
     device.lag = 1
     device.lag_links_min = neighbor.matched.x
+    device.subif = 100
     neighbor.name = "NEIGHBOR"
     neighbor.families = {"ipv4-unicast"}
     neighbor.group_name = "GROUP_NAME"
