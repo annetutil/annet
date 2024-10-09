@@ -166,5 +166,5 @@ class NetboxDevice(Entity):
     def __eq__(self, other):
         return type(self) is type(other) and self.url == other.url
 
-    def is_pc(self):
+    def is_pc(self) -> bool:
         return self.device_type.manufacturer.name == "Mellanox"
