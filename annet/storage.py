@@ -1,6 +1,7 @@
 import abc
 from typing import Any, Iterable, Optional, Type, Union, Protocol, Dict
 from annet.connectors import Connector, get_connector_from_config
+from annet.annlib.netdev.views.hardware import HardwareView
 
 
 class _StorageConnector(Connector["StorageProvider"]):
@@ -95,12 +96,12 @@ class Device(Protocol):
         pass
 
     @abc.abstractmethod
-    def is_pc(self):
+    def is_pc(self) -> bool:
         pass
 
     @property
     @abc.abstractmethod
-    def hw(self):
+    def hw(self) -> HardwareView:
         pass
 
     @property
@@ -110,12 +111,12 @@ class Device(Protocol):
 
     @property
     @abc.abstractmethod
-    def fqdn(self):
+    def fqdn(self) -> str:
         pass
 
     @property
     @abc.abstractmethod
-    def hostname(self):
+    def hostname(self) -> str:
         pass
 
     @property
@@ -125,7 +126,7 @@ class Device(Protocol):
 
     @property
     @abc.abstractmethod
-    def breed(self):
+    def breed(self) -> str:
         pass
 
 
