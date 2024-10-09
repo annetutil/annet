@@ -1,13 +1,14 @@
+from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, Protocol, Sequence
 
 from annet.bgp_models import Peer, GlobalOptions
-from annet.storage import Device, Storage
+from annet.storage import Device, Storage, Interface
 from .basemodel import merge, BaseMeshModel, Merge, UseLast
 from .device_models import GlobalOptionsDTO
 from .models_converter import to_bgp_global_options, to_bgp_peer
 from .peer_models import PeerDTO
-from .registry import MeshRulesRegistry, GlobalOptions as MeshGloabalsOptions, DirectPeer, Session, IndirectPeer
+from .registry import MeshRulesRegistry, GlobalOptions as MeshGlobalOptions, DirectPeer, Session, IndirectPeer
 
 
 @dataclass
@@ -34,7 +35,7 @@ class MeshExecutor:
     def _execute_globals(self, device: Device) -> GlobalOptionsDTO:
         global_opts = GlobalOptionsDTO()
         for rule in self._registry.lookup_global(device.fqdn):
-            rule_global_opts = MeshGloabalsOptions(rule.matched, device)
+            rule_global_opts = MeshGlobalOptions(rule.matched, device)
             rule.handler(rule_global_opts)
             global_opts = merge(global_opts, rule_global_opts)
         return global_opts
@@ -110,11 +111,23 @@ class MeshExecutor:
         # TODO group options defaults
         return to_bgp_global_options(global_options)
 
+    def _process_neighbor(self, device: Device, neighbor: Device, local: PeerDTO) -> None:
+        if local.lag is not None:
+            port_pairs = self._storage.search_connections(device, neighbor)
+            device.make_lag(
+                lagg=local.lag,
+                ports=[local_port.name for local_port, remote_port in port_pairs],
+                lag_min_links=local.lag_links_min,
+            )
+
     def execute_for(self, device: Device) -> MeshExecutionResult:
         all_fqdns = self._storage.resolve_all_fdnds()
         result = []
+
         for neighbor in self._execute_direct(device):
             result.append(self._to_bgp_peer(neighbor))
+            self._process_neighbor(device, neighbor.device, neighbor.local)
+
         for connected in self._execute_indirect(device, all_fqdns):
             result.append(self._to_bgp_peer(connected))
 

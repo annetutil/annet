@@ -1,5 +1,6 @@
 from typing import List
 
+from annet.adapters.netbox.common.models import NetboxDevice
 from annet.generators import PartialGenerator, BaseGenerator
 from annet.mesh.executor import MeshExecutor
 from annet.storage import Device, Storage
@@ -15,7 +16,7 @@ class Bgp(PartialGenerator):
             peer
         """
 
-    def run_huawei(self, device: Device):
+    def run_huawei(self, device: NetboxDevice):
         executor = MeshExecutor(registry, device.storage)
         res = executor.execute_for(device)
         yield f"bgp {res.global_options.local_as}"
@@ -24,6 +25,8 @@ class Bgp(PartialGenerator):
                 yield f"   peer {peer.addr} {peer.group_name}"
         for group in res.global_options.groups:
             yield f"   peer {group.name} remote-as {group.remote_as}"
+        for interface in device.interfaces:
+            print(interface.name, interface.lag_min_links, interface.lag.name if interface.lag else None)
 
 
 def get_generators(store: Storage) -> List[BaseGenerator]:

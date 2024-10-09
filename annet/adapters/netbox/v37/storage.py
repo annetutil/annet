@@ -68,7 +68,9 @@ def extend_device(
     return res
 
 
-@impl_converter
+@impl_converter(
+    recipe=[link_constant(P[models.Interface].lag_min_links, value=None)],
+)
 def extend_interface(
         interface: api_models.Interface,
         ip_addresses: List[models.IpAddress],

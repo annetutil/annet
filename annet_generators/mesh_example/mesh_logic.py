@@ -22,6 +22,8 @@ def foo(device: DirectPeer, neighbor: DirectPeer, session: Session):
 @registry.direct("{name:.*}", "m9-sgw{x}.{domain:.*}")
 def bar(device: DirectPeer, neighbor: DirectPeer, session: Session):
     session.asnum = 12345
+    device.lag = 1
+    device.lag_links_min = neighbor.matched.x
     neighbor.name = "NEIGHBOR"
     neighbor.families = {"ipv4-unicast"}
     neighbor.group_name = "GROUP_NAME"

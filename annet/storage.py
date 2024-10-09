@@ -69,9 +69,6 @@ class Storage(abc.ABC):
     def flush_perf(self):
         pass
 
-    def make_lagg(self, device: "Device", links: Sequence[str], lagg_min_links: int | None):
-        pass
-
     def search_connections(self, device: "Device", neighbor: "Device") -> list[tuple["Interface", "Interface"]]:
         pass
 
@@ -101,24 +98,18 @@ class Interface(Protocol):
 
     @property
     @abc.abstractmethod
-    def lagg_links_min(self):
+    def lag_links_min(self) -> int | None:
         raise NotImplementedError
 
-    @lagg_links_min.setter
+    @lag_links_min.setter
     @abc.abstractmethod
-    def lagg_links_min(self, num: int):
+    def lag_links_min(self, num: int) -> None:
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def lagg_parent(self) -> str | None:
+    def lag_parent(self) -> str | None:
         raise NotImplementedError
-
-    @lagg_parent.setter
-    @abc.abstractmethod
-    def lagg_parent(self, num: int):
-        raise NotImplementedError
-
 
 
 class Device(Protocol):
@@ -169,6 +160,10 @@ class Device(Protocol):
     @abc.abstractmethod
     def breed(self):
         pass
+
+    @abc.abstractmethod
+    def make_lag(self, lagg: int, ports: Sequence[str], lag_min_links: int | None) -> str:
+        raise NotImplementedError
 
 
 def get_storage() -> (Storage, Dict[str, Any]):

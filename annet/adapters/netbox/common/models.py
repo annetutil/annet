@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any, Dict, Sequence
 
 from annet.annlib.netdev.views.dump import DumpableView
 from annet.annlib.netdev.views.hardware import HardwareView
@@ -123,6 +123,14 @@ class Interface(Entity):
     display: str = ""
     ip_addresses: List[IpAddress] = field(default_factory=list)
     vrf: Optional[Entity] = None
+    lag: Entity | None = None
+    lag_min_links: int | None = None
+
+    @property
+    def lag_parent(self):
+        if self.lag:
+            return self.lag.name
+        return None
 
 
 @dataclass
@@ -171,3 +179,28 @@ class NetboxDevice(Entity):
 
     def is_pc(self):
         return self.device_type.manufacturer.name == "Mellanox"
+
+    def make_lag(self, lagg: int, ports: Sequence[str], lag_min_links: int | None) -> str:
+        new_name = f"lag{lagg}"  # TODO vendor specific
+        lag_interface = Interface(
+            name=new_name,
+            device=self,
+            enabled=True,
+            description="",
+            type=InterfaceType(value="lag", label="Link Aggregation Group (LAG)"),
+            id=0,
+            vrf=None,
+            display=new_name,
+            untagged_vlan=None,
+            tagged_vlans=[],
+            ip_addresses=[],
+            connected_endpoints=[],
+            mode=None,
+            lag_min_links=lag_min_links,
+        )
+        for interface in self.interfaces:
+            if interface.name in ports:
+                interface.lag = lag_interface
+        self.interfaces.append(lag_interface)
+        return new_name
+

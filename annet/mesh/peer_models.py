@@ -84,8 +84,8 @@ class PeerDTO(SessionDTO, _OptionsDTO):
     addr: str
     description: str
 
-    lagg: int
-    lagg_links_min: int
+    lag: int | None
+    lag_links_min: int
 
     group_name: str
 
