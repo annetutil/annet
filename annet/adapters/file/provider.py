@@ -57,11 +57,11 @@ class Device(DeviceCls, DumpableView):
     dev: DeviceStorage
 
     @property
-    def hostname(self):
+    def hostname(self) -> str:
         return self.dev.hostname
 
     @property
-    def fqdn(self):
+    def fqdn(self) -> str:
         return self.dev.fqdn
 
     @property
@@ -119,8 +119,7 @@ class Provider(StorageProvider, AdapterWithName):
     def query(self):
         return Query
 
-    @classmethod
-    def name(cls) -> str:
+    def name(self) -> str:
         return "file"
 
 
