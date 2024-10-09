@@ -481,9 +481,9 @@ def make_cmd_params(rule: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def make_apply_commands(rule, hw, do_commit, do_finalize):
+def make_apply_commands(rule: dict, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str | None = None):
     apply_logic = rule["attrs"]["apply_logic"]
-    before, after = apply_logic(hw, do_commit=do_commit, do_finalize=do_finalize)
+    before, after = apply_logic(hw, do_commit=do_commit, do_finalize=do_finalize, path=path)
     return before, after
 
 
