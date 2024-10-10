@@ -1,7 +1,7 @@
 from annet.annlib.netdev.views.dump import DumpableView
 from annet.storage import Query
 from dataclasses import dataclass, fields
-from typing import List, Iterable, Any
+from typing import List, Iterable, Optional, Any
 from annet.storage import StorageProvider, Storage
 from annet.connectors import AdapterWithName
 from annet.storage import Device as DeviceCls
@@ -24,11 +24,11 @@ class Interface(DumpableView):
 class DeviceStorage:
     fqdn: str
     vendor: str
-    hostname: str | None = None
-    serial: str | None = None
-    id: str | None = None
-    interfaces: list[Interface] | None = None
-    storage: Storage | None = None
+    hostname: Optional[str] = None
+    serial: Optional[str] = None
+    id: Optional[str] = None
+    interfaces: Optional[list[Interface]] = None
+    storage: Optional[Storage] = None
 
     def __post_init__(self):
         if not self.id:
@@ -128,7 +128,7 @@ class Query(Query):
     query: List[str]
 
     @classmethod
-    def new(cls, query: str | Iterable[str], hosts_range: slice | None = None) -> "Query":
+    def new(cls, query: str | Iterable[str], hosts_range: Optional[slice] = None) -> "Query":
         if hosts_range is not None:
             raise ValueError("host_range is not supported")
         return cls(query=list(query))
@@ -146,7 +146,7 @@ class StorageOpts:
         self.path = path
 
     @classmethod
-    def parse_params(cls, conf_params: dict[str, str] | None, cli_opts: Any):
+    def parse_params(cls, conf_params: Optional[dict[str, str]], cli_opts: Any):
         path = conf_params.get("path")
         if not path:
             raise Exception("empty path")
