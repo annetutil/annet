@@ -24,7 +24,7 @@ def bar(device: DirectPeer, neighbor: DirectPeer, session: Session):
     session.asnum = 12345
     device.addr = "192.168.1.254/24"
     device.lag = 1
-    device.lag_links_min = neighbor.matched.x
+    device.lag_links_min = int(neighbor.matched.x)
     device.subif = 100
     neighbor.name = "NEIGHBOR"
     neighbor.families = {"ipv4-unicast"}

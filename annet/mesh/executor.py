@@ -5,7 +5,7 @@ from annet.bgp_models import Peer, GlobalOptions
 from annet.storage import Device, Storage
 from .basemodel import merge, BaseMeshModel, Merge, UseLast
 from .device_models import GlobalOptionsDTO
-from .models_converter import to_bgp_global_options, to_bgp_peer
+from .models_converter import to_bgp_global_options, to_bgp_peer, InterfaceChanges, to_interface_changes
 from .peer_models import PeerDTO
 from .registry import MeshRulesRegistry, GlobalOptions as MeshGlobalOptions, DirectPeer, Session, IndirectPeer
 
@@ -110,45 +110,31 @@ class MeshExecutor:
         # TODO group options defaults
         return to_bgp_global_options(global_options)
 
-    def _process_neighbor(self, device: Device, neighbor: Device, local: PeerDTO) -> None:
-        lag = getattr(local, "lag", None)
-        lag_links_min = getattr(local, "lag_links_min", None)
-        svi = getattr(local, "svi", None)
-        subif = getattr(local, "subif", None)
-        vrf = getattr(local, "vrf", None)
-        addr = getattr(local, "addr", None)
-        if not addr:
-            raise ValueError(f"addr was not found for device {device.fqdn}")
-
+    def _apply_interface_changes(self, device: Device, neighbor: Device, changes: InterfaceChanges) -> None:
         port_pairs = self._storage.search_connections(device, neighbor)
-        if lag is not None and svi is not None:
-            raise ValueError("Cannot use LAG and SVI together")
-        if svi is not None and subif is not None:
-            raise ValueError("Cannot use Subif and SVI together")
-
         if len(port_pairs) > 1:
-            if lag is svi is None:
+            if changes.lag is changes.svi is None:
                 raise ValueError(
                     f"Multiple connections found between {device.fqdn} and {neighbor.fqdn}."
                     "Specify LAG or SVI"
                 )
-        if lag is not None:
+        if changes.lag is not None:
             target_interface = device.make_lag(
-                lagg=lag,
+                lag=changes.lag,
                 ports=[local_port.name for local_port, remote_port in port_pairs],
-                lag_min_links=lag_links_min,
+                lag_min_links=changes.lag_links_min,
             )
-            if subif is not None:
-                target_interface = device.add_subif(target_interface.name, subif)
-        elif subif is not None:
+            if changes.subif is not None:
+                target_interface = device.add_subif(target_interface.name, changes.subif)
+        elif changes.subif is not None:
             # single connection
             local_port, remote_port = port_pairs[0]
-            target_interface = device.add_subif(local_port.name, subif)
-        elif svi is not None:
-            target_interface = device.add_svi(svi)
+            target_interface = device.add_subif(local_port.name, changes.subif)
+        elif changes.svi is not None:
+            target_interface = device.add_svi(changes.svi)
         else:
             target_interface, _ = port_pairs[0]
-        target_interface.add_addr(addr, vrf)
+        target_interface.add_addr(changes.addr, changes.vrf)
 
     def execute_for(self, device: Device) -> MeshExecutionResult:
         all_fqdns = self._storage.resolve_all_fdnds()
@@ -156,7 +142,7 @@ class MeshExecutor:
 
         for neighbor in self._execute_direct(device):
             result.append(self._to_bgp_peer(neighbor))
-            self._process_neighbor(device, neighbor.device, neighbor.local)
+            self._apply_interface_changes(device, neighbor.device, to_interface_changes(neighbor.local))
 
         for connected in self._execute_indirect(device, all_fqdns):
             result.append(self._to_bgp_peer(connected))

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from ipaddress import ip_interface
 
 from adaptix import Retort, loader, Chain, name_mapping
@@ -5,6 +6,22 @@ from adaptix import Retort, loader, Chain, name_mapping
 from .peer_models import PeerDTO
 from ..bgp_models import GlobalOptions, VrfOptions, FamilyOptions, Peer, PeerGroup, ASN, PeerOptions
 from ..storage import Device
+
+
+@dataclass
+class InterfaceChanges:
+    addr: str
+    lag: int | None = None
+    lag_links_min: int | None = None
+    svi: int | None = None
+    subif: int | None = None
+    vrf: str | None = None
+
+    def __post_init__(self):
+        if self.lag is not None and self.svi is not None:
+            raise ValueError("Cannot use LAG and SVI together")
+        if self.svi is not None and self.subif is not None:
+            raise ValueError("Cannot use Subif and SVI together")
 
 
 class ObjMapping:
@@ -23,6 +40,7 @@ class ObjMapping:
 
 retort = Retort(
     recipe=[
+        loader(InterfaceChanges, ObjMapping, Chain.FIRST),
         loader(ASN, ASN),
         loader(GlobalOptions, ObjMapping, Chain.FIRST),
         loader(VrfOptions, ObjMapping, Chain.FIRST),
@@ -39,6 +57,7 @@ retort = Retort(
 )
 
 to_bgp_global_options = retort.get_loader(GlobalOptions)
+to_interface_changes = retort.get_loader(InterfaceChanges)
 
 
 def to_bgp_peer(local: PeerDTO, connected: PeerDTO, connected_device: Device) -> Peer:

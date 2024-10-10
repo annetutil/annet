@@ -151,7 +151,7 @@ class Device(Protocol):
         pass
 
     @abc.abstractmethod
-    def make_lag(self, lagg: int, ports: Sequence[str], lag_min_links: int | None) -> Interface:
+    def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: int | None) -> Interface:
         raise NotImplementedError
 
     @abc.abstractmethod
