@@ -1,7 +1,9 @@
-"""Support JSON patch (RFC 6902) and JSON Pointer (RFC 6901)."""
+"""Support JSON patch (RFC 6902) and JSON Pointer (RFC 6901) with globs."""
 
 import copy
+import fnmatch
 import json
+from collections.abc import Mapping, Sequence
 from typing import Any, Dict, List, Optional
 
 import jsonpatch
@@ -23,24 +25,21 @@ def apply_json_fragment(
     """
     full_new_config = copy.deepcopy(old)
     for acl_item in acl:
-        pointer = jsonpointer.JsonPointer(acl_item)
+        new_pointers = _resolve_json_pointers(acl_item, new_fragment)
+        old_pointers = _resolve_json_pointers(acl_item, full_new_config)
 
-        try:
+        for pointer in new_pointers:
             new_value = pointer.get(new_fragment)
-        except jsonpointer.JsonPointerException:
-            # no value found in new_fragment by the pointer,
-            # try to delete it from the new config
-            try:
-                doc, part = pointer.to_last(full_new_config)
-                if isinstance(doc, dict) and isinstance(part, str):
-                    doc.pop(part, None)
-            except jsonpointer.JsonPointerException:
-                # not found in the old config either
-                pass
-            continue
+            _ensure_pointer_exists(full_new_config, pointer)
+            pointer.set(full_new_config, new_value)
 
-        _ensure_pointer_exists(full_new_config, pointer)
-        pointer.set(full_new_config, new_value)
+        # delete matched parts in old config whicn are not present in the new
+        paths = {p.path for p in new_pointers}
+        to_delete = [p for p in old_pointers if p.path not in paths]
+        for pointer in to_delete:
+            doc, part = pointer.to_last(full_new_config)
+            if isinstance(doc, dict) and isinstance(part, str):
+                doc.pop(part, None)
 
     return full_new_config
 
@@ -104,9 +103,8 @@ def apply_acl_filters(content: Dict[str, Any], filters: List[str]) -> Dict[str, 
         if not filter_text:
             continue
 
-        pointer = jsonpointer.JsonPointer(filter_text)
-
-        try:
+        pointers = _resolve_json_pointers(filter_text, content)
+        for pointer in pointers:
             part = pointer.get(copy.deepcopy(content))
 
             sub_tree = result
@@ -115,10 +113,70 @@ def apply_acl_filters(content: Dict[str, Any], filters: List[str]) -> Dict[str, 
                     sub_tree[i] = {}
                 sub_tree = sub_tree[i]
 
-            patch = jsonpatch.JsonPatch([{"op": "add", "path": filter_text, "value": part}])
+            patch = jsonpatch.JsonPatch([{"op": "add", "path": pointer.path, "value": part}])
             result = patch.apply(result)
-        except jsonpointer.JsonPointerException:
-            # no value found in content by the pointer, skip the ACL item
-            continue
 
     return result
+
+
+def _resolve_json_pointers(pattern: str, content: Dict[str, Any]) -> List[jsonpointer.JsonPointer]:
+    """
+    Resolve globbed json pointer pattern to a list of actual pointers, existing in the document.
+
+    For example, given the following document:
+
+    {
+        "foo": {
+            "bar": {
+                "baz": [1, 2]
+            },
+            "qux": {
+                "baz": [3, 4]
+            },
+        }
+    }
+
+    Pattern "/f*/*/baz" will resolve to:
+
+    [
+        "/foo/bar/baz"",
+        "/foo/qux/baz",
+    ]
+
+    Pattern "/f*/q*/baz/*" will resolve to:
+
+    [
+        "/foo/qux/baz/0",
+        "/foo/qux/baz/1",
+    ]
+
+    Pattern "/*" will resolve to:
+
+    [
+        "/foo"
+    ]
+    """
+    parts = jsonpointer.JsonPointer(pattern).parts
+    matched = [([], content)]
+    for part in parts:
+        new_matched = []
+        for matched_parts, doc in matched:
+            keys_and_docs = []
+            if isinstance(doc, Mapping):
+                keys_and_docs = [
+                    (key, doc[key]) for key in doc.keys()
+                    if fnmatch.fnmatchcase(key, part)
+                ]
+            elif isinstance(doc, Sequence):
+                keys_and_docs = [
+                    (str(i), doc[i]) for i in range(len(doc))
+                    if fnmatch.fnmatchcase(str(i), part)
+                ]
+            for key, sub_doc in keys_and_docs:
+                new_matched.append((matched_parts + [key], sub_doc))
+        matched = new_matched
+
+    ret: List[jsonpointer.JsonPointer] = []
+    for matched_parts, _ in matched:
+        ret.append(jsonpointer.JsonPointer("/" + "/".join(matched_parts)))
+    return ret
