@@ -8,7 +8,7 @@ import subprocess
 import shutil
 import sys
 from contextlib import ExitStack, contextmanager
-from typing import Tuple, Iterable
+from typing import Optional, Tuple, Iterable
 
 import tabulate
 import yaml
@@ -129,7 +129,7 @@ def show_generators(args: cli_args.ShowGeneratorsOptions):
     """ List applicable generators (for a device if query is set) """
     arg_gens = cli_args.GenOptions(args)
     with get_loader(arg_gens, args) as loader:
-        device: Device | None = None
+        device: Optional[Device] = None
         devices = loader.devices
         if len(devices) == 1:
             device = devices[0]
