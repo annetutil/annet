@@ -52,17 +52,17 @@ class DeviceIp(DumpableView):
 class Prefix(DumpableView):
     id: int
     prefix: str
-    site: Entity | None
-    vrf: Entity | None
-    tenant: Entity | None
-    vlan: Entity | None
-    role: Entity | None
+    site: Optional[Entity]
+    vrf: Optional[Entity]
+    tenant: Optional[Entity]
+    vlan: Optional[Entity]
+    role: Optional[Entity]
     status: Label
     is_pool: bool
     custom_fields: dict[str, Any]
     created: datetime
     last_updated: datetime
-    description: str | None = ""
+    description: Optional[str] = ""
 
     @property
     def _dump__list_key(self):
