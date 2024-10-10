@@ -3,6 +3,7 @@ import annet
 
 from os import path
 from unittest import mock
+from unittest.mock import MagicMock
 
 from annet.api import DeployerJob, Device
 from annet.gen import OldNewResult
@@ -11,6 +12,11 @@ from annet.output import OutputDriver
 from annet.rulebook import DefaultRulebookProvider
 
 from .. import MockDevice
+
+
+class DeployerMock:
+    def __new__(cls, *args, **kwargs):
+        return mock.MagicMock(spec=DeployDriver)
 
 
 class MockDefaultRulebookProvider(DefaultRulebookProvider):
@@ -29,10 +35,11 @@ def mocks():
     orig_storage_connector_classes = annet.storage.storage_connector._classes
     orig_rulebook_provider_classes = annet.rulebook.rulebook_provider_connector._classes
     orig_rulebook_provider_cache = annet.rulebook.rulebook_provider_connector._cache
+    deploy_driver = DeployerMock
 
     ret = mock.Mock(
         deploy_fetcher=mock.MagicMock(spec=Fetcher),
-        deploy_driver=mock.MagicMock(spec=DeployDriver),
+        deploy_driver=deploy_driver,
         output_driver=mock.MagicMock(spec=OutputDriver),
         storage_provider=mock.MagicMock(spec=annet.storage.StorageProvider),
     )
