@@ -16,12 +16,13 @@ def foo(global_opts: GlobalOptions):
 @registry.direct("{name:.*}", "m9-sgw{x}.{domain:.*}")
 def foo(device: DirectPeer, neighbor: DirectPeer, session: Session):
     session.asnum = 12345
-    neighbor.addr = f"127.0.0.{neighbor.matched.x}"
+    neighbor.addr = f"192.168.1.{neighbor.matched.x}"
 
 
 @registry.direct("{name:.*}", "m9-sgw{x}.{domain:.*}")
 def bar(device: DirectPeer, neighbor: DirectPeer, session: Session):
     session.asnum = 12345
+    device.addr = "192.168.1.254/24"
     device.lag = 1
     device.lag_links_min = neighbor.matched.x
     device.subif = 100

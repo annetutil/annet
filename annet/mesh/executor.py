@@ -115,6 +115,10 @@ class MeshExecutor:
         lag_links_min = getattr(local, "lag_links_min", None)
         svi = getattr(local, "svi", None)
         subif = getattr(local, "subif", None)
+        vrf = getattr(local, "vrf", None)
+        addr = getattr(local, "addr", None)
+        if not addr:
+            raise ValueError(f"addr was not found for device {device.fqdn}")
 
         port_pairs = self._storage.search_connections(device, neighbor)
         if lag is not None and svi is not None:
@@ -129,19 +133,22 @@ class MeshExecutor:
                     "Specify LAG or SVI"
                 )
         if lag is not None:
-            lag_name = device.make_lag(
+            target_interface = device.make_lag(
                 lagg=lag,
                 ports=[local_port.name for local_port, remote_port in port_pairs],
                 lag_min_links=lag_links_min,
             )
             if subif is not None:
-                device.add_subif(lag_name, subif)
+                target_interface = device.add_subif(target_interface.name, subif)
         elif subif is not None:
             # single connection
             local_port, remote_port = port_pairs[0]
-            device.add_subif(local_port.name, subif)
+            target_interface = device.add_subif(local_port.name, subif)
         elif svi is not None:
-            device.add_svi(svi)
+            target_interface = device.add_svi(svi)
+        else:
+            target_interface, _ = port_pairs[0]
+        target_interface.add_addr(addr, vrf)
 
     def execute_for(self, device: Device) -> MeshExecutionResult:
         all_fqdns = self._storage.resolve_all_fdnds()

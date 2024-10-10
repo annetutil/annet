@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
+from ipaddress import ip_interface, IPv6Interface
 from typing import List, Optional, Any, Dict, Sequence
 
 from annet.annlib.netdev.views.dump import DumpableView
@@ -126,11 +127,30 @@ class Interface(Entity):
     lag: Entity | None = None
     lag_min_links: int | None = None
 
-    @property
-    def lag_parent(self):
-        if self.lag:
-            return self.lag.name
-        return None
+    def add_addr(self, address_mask: str, vrf: str | None) -> None:
+        addr = ip_interface(address_mask)
+        if vrf is None:
+            vrf_obj = None
+        else:
+            vrf_obj = Entity(id=0, name=vrf)
+
+        if isinstance(addr, IPv6Interface):
+            family = IpFamily(value=6, label="IPv6")
+        else:
+            family = IpFamily(value=4, label="IPv4")
+        self.ip_addresses.append(IpAddress(
+            id=0,
+            display=address_mask,
+            address=address_mask,
+            vrf=vrf_obj,
+            prefix=None,
+            family=family,
+            created=datetime.now(timezone.utc),
+            last_updated=datetime.now(timezone.utc),
+            tags=[],
+            status=Label(value="active", label="Active"),
+            assigned_object_id=self.id,
+        ))
 
 
 @dataclass
@@ -197,7 +217,7 @@ class NetboxDevice(Entity):
             mode=None,
         )
 
-    def make_lag(self, lagg: int, ports: Sequence[str], lag_min_links: int | None) -> str:
+    def make_lag(self, lagg: int, ports: Sequence[str], lag_min_links: int | None) -> Interface:
         new_name = f"lag{lagg}"  # TODO vendor specific
         lag_interface = self._make_interface(
             name=new_name,
@@ -208,21 +228,28 @@ class NetboxDevice(Entity):
             if interface.name in ports:
                 interface.lag = lag_interface
         self.interfaces.append(lag_interface)
-        return new_name
+        return lag_interface
 
-    def add_svi(self, svi: int) -> str:
+    def add_svi(self, svi: int) -> Interface:
+        name = f"Vlan{svi}"
+        for interface in self.interfaces:
+            if interface.name == name:
+                return interface
         interface = self._make_interface(
-            name=f"Vlan{svi}",
+            name=name,
             type=InterfaceType("virtual", "Virtual")
         )
         self.interfaces.append(interface)
-        return interface.name
+        return interface
 
-    def add_subif(self, interface: str, subif: int) -> str:
+    def add_subif(self, interface: str, subif: int) -> Interface:
+        name = f"{interface}.{subif}"
+        for interface in self.interfaces:
+            if interface.name == name:
+                return interface
         interface = self._make_interface(
-            name=f"{interface}.{subif}",
+            name=name,
             type=InterfaceType("virtual", "Virtual")
         )
         self.interfaces.append(interface)
-        return interface.name
-
+        return interface

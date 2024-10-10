@@ -26,7 +26,12 @@ class Bgp(PartialGenerator):
         for group in res.global_options.groups:
             yield f"   peer {group.name} remote-as {group.remote_as}"
         for interface in device.interfaces:
-            print(interface.name, interface.lag_min_links, interface.lag.name if interface.lag else None)
+            print(
+                interface.name,
+                interface.lag_min_links,
+                interface.lag.name if interface.lag else None,
+                interface.ip_addresses,
+            )
 
 
 def get_generators(store: Storage) -> List[BaseGenerator]:

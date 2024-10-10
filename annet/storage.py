@@ -96,19 +96,8 @@ class Interface(Protocol):
     def name(self) -> str:
         raise NotImplementedError
 
-    @property
     @abc.abstractmethod
-    def lag_links_min(self) -> int | None:
-        raise NotImplementedError
-
-    @lag_links_min.setter
-    @abc.abstractmethod
-    def lag_links_min(self, num: int) -> None:
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def lag_parent(self) -> str | None:
+    def add_addr(self, address_mask: str, vrf: str | None) -> None:
         raise NotImplementedError
 
 
@@ -162,16 +151,17 @@ class Device(Protocol):
         pass
 
     @abc.abstractmethod
-    def make_lag(self, lagg: int, ports: Sequence[str], lag_min_links: int | None) -> str:
-        raise NotImplementedError
-
-
-    @abc.abstractmethod
-    def add_svi(self, svi: int) -> str:
+    def make_lag(self, lagg: int, ports: Sequence[str], lag_min_links: int | None) -> Interface:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def add_subif(self, interface: str, subif: int) -> str:
+    def add_svi(self, svi: int) -> Interface:
+        """Add SVI interface or return existing one"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def add_subif(self, interface: str, subif: int) -> Interface:
+        """Add sub interface or return existing one"""
         raise NotImplementedError
 
 
