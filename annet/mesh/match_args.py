@@ -102,20 +102,21 @@ class PeerNameTemplate:
         return None
 
 
-def match_safe(matcher: MatchExpr | None, value: Any) -> bool:
-    if matcher is None:
-        return True
-    try:
-        return bool(matcher.expr(value))
-    except (TypeError, ValueError, AttributeError, KeyError, IndexError):
-        return False
+def match_safe(match_expressions: tuple[MatchExpr, ...], value: Any) -> bool:
+    for matcher in match_expressions:
+        try:
+            if not bool(matcher.expr(value)):
+                return False
+        except (TypeError, ValueError, AttributeError, KeyError, IndexError):
+            return False
+    return True
 
 
 @dataclass
 class SingleMatcher:
-    def __init__(self, rule: str, match_expr: MatchExpr | None):
+    def __init__(self, rule: str, match_expressions: tuple[MatchExpr, ...]):
         self.rule = PeerNameTemplate(rule)
-        self.match_expr = match_expr
+        self.match_expressions = match_expressions
 
     def _match_host(self, rule: PeerNameTemplate, host) -> MatchedArgs | None:
         data = rule.match(host)
@@ -127,17 +128,17 @@ class SingleMatcher:
         args = self._match_host(self.rule, host)
         if args is None:
             return None
-        if not match_safe(self.match_expr, (args,)):
+        if not match_safe(self.match_expressions, (args,)):
             return None
         return args
 
 
 @dataclass
 class PairMatcher:
-    def __init__(self, left_rule: str, right_rule: str, match_expr: MatchExpr | None):
+    def __init__(self, left_rule: str, right_rule: str, match_expressions: tuple[MatchExpr, ...]):
         self.left_rule = PeerNameTemplate(left_rule)
         self.right_rule = PeerNameTemplate(right_rule)
-        self.match_expr = match_expr
+        self.match_expressions = match_expressions
 
     def match_pair(self, left, right) -> tuple[MatchedArgs, MatchedArgs] | None:
         left_args = self._match_host(self.left_rule, left)
@@ -146,7 +147,7 @@ class PairMatcher:
         right_args = self._match_host(self.right_rule, right)
         if right_args is None:
             return None
-        if not match_safe(self.match_expr, (left_args, right_args)):
+        if not match_safe(self.match_expressions, (left_args, right_args)):
             return None
         return left_args, right_args
 

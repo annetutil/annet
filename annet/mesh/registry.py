@@ -104,7 +104,7 @@ class MeshRulesRegistry:
     def include(self, nested_registry: "MeshRulesRegistry") -> None:
         self.nested.append(nested_registry)
 
-    def device(self, peer_mask: str, match: MatchExpr | None = None) -> Callable[[GlobalHandler], GlobalHandler]:
+    def device(self, peer_mask: str, *match: MatchExpr) -> Callable[[GlobalHandler], GlobalHandler]:
         matcher = SingleMatcher(peer_mask, match)
 
         def register(handler: GlobalHandler) -> GlobalHandler:
@@ -114,7 +114,7 @@ class MeshRulesRegistry:
         return register
 
     def direct(
-            self, left_mask: str, right_mask: str, match: MatchExpr | None = None,
+            self, left_mask: str, right_mask: str, *match: MatchExpr,
     ) -> Callable[[DirectHandler], DirectHandler]:
         matcher = PairMatcher(left_mask, right_mask, match)
 
@@ -125,7 +125,7 @@ class MeshRulesRegistry:
         return register
 
     def indirect(
-            self, left_mask: str, right_mask: str, match: MatchExpr | None = None,
+            self, left_mask: str, right_mask: str, *match: MatchExpr,
     ) -> Callable[[IndirectHandler], IndirectHandler]:
         matcher = PairMatcher(left_mask, right_mask, match)
 
