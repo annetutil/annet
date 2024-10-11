@@ -4,6 +4,10 @@ from enum import Enum
 from typing import TypeVar, Any, Annotated, get_origin, get_type_hints, get_args, Callable
 
 
+class MergeForbiddenError(Exception):
+    pass
+
+
 class Special(Enum):
     NOT_SET = "<NOT SET>"
 
@@ -35,14 +39,14 @@ class UseLast(Merger):
 
 class Forbid(Merger):
     def _merge(self, name: str, x: T, y: T) -> T:
-        raise ValueError(f"Override is forbidden for field {name}")
+        raise MergeForbiddenError(f"Override is forbidden for field {name}")
 
 
 class ForbidChange(Merger):
     def _merge(self, name: str, x: T, y: T) -> T:
         if x == y:
             return x
-        raise ValueError(
+        raise MergeForbiddenError(
             f"Override with different value is forbidden for field {name}:\n"
             f"Old: {x}\n"
             f"New: {y}"
@@ -116,28 +120,6 @@ class BaseMeshModel:
         if key not in self._field_mergers:
             raise AttributeError(f"{self.__class__.__name__} has no field {key}")
         super().__setattr__(key, value)
-
-
-class WithDefaults:
-    """
-    Proxy to store new attributes in one object,
-    but which allows to read from another if they are not set in first one
-    """
-    def __init__(self, container: BaseMeshModel, defaults: object) -> None:
-        self.__container = container
-        self.__defaults = defaults
-
-    def __setattr__(self, key, value) -> None:
-        if key.startswith("__"):
-            super().__setattr__(key, value)
-        setattr(self.__container, key, value)
-
-    def __getattr__(self, item) -> Any:
-        if (res := getattr(self.__container, item, Special.NOT_SET)) is not Special.NOT_SET:
-            return res
-        if (res := getattr(self.__defaults, item)) is not Special.NOT_SET:
-            return res
-        raise AttributeError(f"{self.__container.__class__.__name__} has no attribute {item}")
 
 
 def _merge(a: T, b: T) -> T:
