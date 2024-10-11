@@ -1,3 +1,4 @@
+from annet.mesh.match_args import Right
 from annet.mesh.peer_models import MeshPeerGroup
 from annet.mesh.registry import MeshRulesRegistry, GlobalOptions, Session, DirectPeer
 
@@ -19,12 +20,12 @@ def foo(device: DirectPeer, neighbor: DirectPeer, session: Session):
     neighbor.addr = f"192.168.1.{neighbor.matched.x}"
 
 
-@registry.direct("{name:.*}", "m9-sgw{x}.{domain:.*}")
+@registry.direct("{name:.*}", "m9-sgw{x}.{domain:.*}", Right.x.in_([0, 1]))
 def bar(device: DirectPeer, neighbor: DirectPeer, session: Session):
     session.asnum = 12345
     device.addr = "192.168.1.254/24"
     device.lag = 1
-    device.lag_links_min = int(neighbor.matched.x)
+    device.lag_links_min = neighbor.matched.x
     device.subif = 100
     neighbor.name = "NEIGHBOR"
     neighbor.families = {"ipv4-unicast"}

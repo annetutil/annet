@@ -14,6 +14,9 @@ class MatchExpr:
     def __getattr__(self, item: str):
         return MatchExpr(lambda x: getattr(self.expr(x), item))
 
+    def __getitem__(self, item: str):
+        return MatchExpr(lambda x: self.expr(x)[item])
+
     def __eq__(self, other) -> "MatchExpr":
         if isinstance(other, MatchExpr):
             return MatchExpr(lambda x: self.expr(x) == other.expr(x))
@@ -53,6 +56,12 @@ class MatchExpr:
     def cast_(self, type_: Callable[[Any], Any]) -> "MatchExpr":
         return MatchExpr(lambda x: type_(self.expr(x)))
 
+    def in_(self, value: Any) -> "MatchExpr":
+        if isinstance(value, MatchExpr):
+            return MatchExpr(lambda x: self.expr(x) in value.expr(x))
+        else:
+            return MatchExpr(lambda x: self.expr(x) in value)
+
 
 Left = MatchExpr(lambda x: x[0])
 Right = MatchExpr(lambda x: x[1])
@@ -61,13 +70,14 @@ Right = MatchExpr(lambda x: x[1])
 class PeerNameTemplate:
     def __init__(self, raw_str):
         self._str = str(raw_str)
-        self._regex = self._compile(self._str)
+        self._regex, self._types = self._compile(self._str)
 
     def __str__(self):
         return self._str
 
     @staticmethod
-    def _compile(value: str):
+    def _compile(value: str) -> tuple[re.Pattern[str], dict[str, type]]:
+        int_groups = re.findall(r'{(?P<group_name>\w+)}', value)
         # '{name}'  -> (?P<name>\d+)
         regex_string = re.sub(r"{(?P<group_name>\w+)}", r"(?P<\g<group_name>>\\d+)", value)
         # '{name:regex}' -> (?P<name>regex)
@@ -75,13 +85,30 @@ class PeerNameTemplate:
             r"{(?P<group_name>\w+):(?P<custom_regex>.*?)}", r"(?P<\g<group_name>>\g<custom_regex>)",
             regex_string
         )
-        return re.compile(regex_string)
+        pattern = re.compile(regex_string)
+        types = {
+            name: (int if name in int_groups else str)
+            for name in pattern.groupindex
+        }
+        return pattern, types
 
     def match(self, hostname: str) -> dict[str, str] | None:
         reg_match = self._regex.match(hostname)
         if reg_match:
-            return reg_match.groupdict()
+            return {
+                key: self._types[key](value)
+                for key, value in reg_match.groupdict().items()
+            }
         return None
+
+
+def match_safe(matcher: MatchExpr | None, value: Any) -> bool:
+    if matcher is None:
+        return True
+    try:
+        return bool(matcher.expr(value))
+    except (TypeError, ValueError, AttributeError, KeyError, IndexError):
+        return False
 
 
 @dataclass
@@ -98,9 +125,9 @@ class SingleMatcher:
 
     def match_one(self, host) -> MatchedArgs | None:
         args = self._match_host(self.rule, host)
-        if not args:
+        if args is None:
             return None
-        if self.match_expr and not self.match_expr.expr((args,)):
+        if not match_safe(self.match_expr, (args,)):
             return None
         return args
 
@@ -114,12 +141,12 @@ class PairMatcher:
 
     def match_pair(self, left, right) -> tuple[MatchedArgs, MatchedArgs] | None:
         left_args = self._match_host(self.left_rule, left)
-        if not left_args:
+        if left_args is None:
             return None
         right_args = self._match_host(self.right_rule, right)
-        if not right_args:
+        if right_args is None:
             return None
-        if self.match_expr and not self.match_expr.expr((left_args, right_args)):
+        if not match_safe(self.match_expr, (left_args, right_args)):
             return None
         return left_args, right_args
 

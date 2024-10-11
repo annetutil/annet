@@ -23,6 +23,9 @@ class Bgp(PartialGenerator):
         for peer in res.peers:
             if peer.group_name:
                 yield f"   peer {peer.addr} {peer.group_name}"
+                if peer.remote_as is not None:
+                    yield f"   peer {peer.addr} remote-as {peer.remote_as}"
+
         for group in res.global_options.groups:
             yield f"   peer {group.name} remote-as {group.remote_as}"
         for interface in device.interfaces:
