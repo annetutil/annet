@@ -1,4 +1,6 @@
-from annet.mesh.match_args import MatchExpr, match_safe
+from typing import Any
+
+from annet.mesh.match_args import MatchExpr, match_safe, PeerNameTemplate
 
 F = MatchExpr(lambda x: x)
 
@@ -40,3 +42,23 @@ def test_match_expr():
 
     assert match(F.cast_(str) == "1", 1)
     assert match(F.cast_(int) == 1, "1")
+
+
+def match_name(template: str, name: str) -> dict[str, Any] | None:
+    res = PeerNameTemplate(template).match(name)
+    if res is None:
+        return None
+    return dict(res)
+
+
+def test_peer_name_template():
+    assert match_name("{x}", "12") == {"x": 12}
+    assert match_name("{x}.example.com", "12.example.com") == {"x": 12}
+    assert match_name("{x}", "12.example.com") is None
+    assert match_name("{x}-{y}", "12-2") == {"x": 12, "y": 2}
+
+    assert match_name("{x:.*}", "12") == {"x": "12"}
+    assert match_name(".{x:(a|b)}.", ".a.") == {"x": "a"}
+    assert match_name(".{x:(a|b)}.", ".x.") is None
+    assert match_name(".{x:(a|b)}.", ".aa.") is None
+    assert match_name(".{x:(a|b)+}.", ".aa.") == {"x": "aa"}

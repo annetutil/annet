@@ -99,7 +99,7 @@ class PeerNameTemplate:
         return pattern, types
 
     def match(self, hostname: str) -> dict[str, str] | None:
-        reg_match = self._regex.match(hostname)
+        reg_match = self._regex.fullmatch(hostname)
         if reg_match:
             return {
                 key: self._types[key](value)
@@ -124,16 +124,11 @@ class SingleMatcher:
         self.rule = PeerNameTemplate(rule)
         self.match_expressions = match_expressions
 
-    def _match_host(self, rule: PeerNameTemplate, host) -> MatchedArgs | None:
-        data = rule.match(host)
+    def match_one(self, host: str) -> MatchedArgs | None:
+        data = self.rule.match(host)
         if data is None:
             return None
-        return MatchedArgs(**data)
-
-    def match_one(self, host) -> MatchedArgs | None:
-        args = self._match_host(self.rule, host)
-        if args is None:
-            return None
+        args = MatchedArgs(**data)
         if not match_safe(self.match_expressions, (args,)):
             return None
         return args
@@ -146,7 +141,7 @@ class PairMatcher:
         self.right_rule = PeerNameTemplate(right_rule)
         self.match_expressions = match_expressions
 
-    def match_pair(self, left, right) -> tuple[MatchedArgs, MatchedArgs] | None:
+    def match_pair(self, left: str, right: str) -> tuple[MatchedArgs, MatchedArgs] | None:
         left_args = self._match_host(self.left_rule, left)
         if left_args is None:
             return None
@@ -157,7 +152,7 @@ class PairMatcher:
             return None
         return left_args, right_args
 
-    def _match_host(self, rule: PeerNameTemplate, host) -> MatchedArgs | None:
+    def _match_host(self, rule: PeerNameTemplate, host: str) -> MatchedArgs | None:
         data = rule.match(host)
         if data is None:
             return None

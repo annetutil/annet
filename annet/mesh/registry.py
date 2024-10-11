@@ -95,11 +95,17 @@ class MatchedIndirectPair:
 
 
 class MeshRulesRegistry:
-    def __init__(self):
+    def __init__(self, match_short_name: bool=False):
         self.direct_rules: list[DirectRule] = []
         self.indirect_rules: list[IndirectRule] = []
         self.global_rules: list[GlobalRule] = []
         self.nested: list[MeshRulesRegistry] = []
+        self.match_short_name = match_short_name
+
+    def _normalize_host(self, host: str) -> str:
+        if self.match_short_name:
+            return host.split(".", maxsplit=1)[0]
+        return host
 
     def include(self, nested_registry: "MeshRulesRegistry") -> None:
         self.nested.append(nested_registry)
@@ -137,7 +143,9 @@ class MeshRulesRegistry:
 
     def lookup_direct(self, device: str, neighbors: list[str]) -> list[MatchedDirectPair]:
         found = []
+        device = self._normalize_host(device)
         for neighbor in neighbors:
+            neighbor = self._normalize_host(neighbor)
             for rule in self.direct_rules:
                 if args := rule.matcher.match_pair(device, neighbor):
                     found.append(MatchedDirectPair(
@@ -163,7 +171,9 @@ class MeshRulesRegistry:
 
     def lookup_indirect(self, device: str, devices: list[str]) -> list[MatchedIndirectPair]:
         found = []
+        device = self._normalize_host(device)
         for other_device in devices:
+            other_device = self._normalize_host(other_device)
             for rule in self.indirect_rules:
                 if args := rule.matcher.match_pair(device, other_device):
                     found.append(MatchedIndirectPair(
@@ -189,6 +199,7 @@ class MeshRulesRegistry:
 
     def lookup_global(self, device: str) -> list[MatchedGlobal]:
         found = []
+        device = self._normalize_host(device)
         for rule in self.global_rules:
             if args := rule.matcher.match_one(device):
                 found.append(MatchedGlobal(
