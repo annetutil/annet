@@ -85,3 +85,25 @@ def test_indirect(short):
         assert short_found == found
     else:
         assert short_found == []
+
+
+def test_include():
+    registry = MeshRulesRegistry()
+    registry.device("left1-{x}")(foo)
+    registry.direct("left1-{x}", "right1-{x}")(foo)
+    registry.indirect("left1-{x}", "right1-{x}")(foo)
+    main_registry = MeshRulesRegistry()
+    main_registry.include(registry)
+
+    found = registry.lookup_global("left1-1")
+    assert len(found) == 1
+    found = registry.lookup_indirect(
+        "left1-1",
+        ["right1-2", "right2"],
+    )
+    assert len(found) == 1
+    found = registry.lookup_indirect(
+        "left1-1",
+        ["right1-2", "right2"],
+    )
+    assert len(found) == 1
