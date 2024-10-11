@@ -69,6 +69,7 @@ class Storage(abc.ABC):
     def flush_perf(self):
         pass
 
+    @abc.abstractmethod
     def search_connections(self, device: "Device", neighbor: "Device") -> list[tuple["Interface", "Interface"]]:
         pass
 
