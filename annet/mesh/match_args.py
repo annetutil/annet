@@ -2,13 +2,17 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Sequence
 
 MatchedArgs = SimpleNamespace
 
 
+def identity(x: Any) -> Any:
+    return x
+
+
 class MatchExpr:
-    def __init__(self, expr: Callable):
+    def __init__(self, expr: Callable[[Any], Any] = identity):
         self.expr = expr
 
     def __getattr__(self, item: str):
@@ -69,8 +73,9 @@ class MatchExpr:
             return MatchExpr(lambda x: self.expr(x) in value)
 
 
-Left = MatchExpr(lambda x: x[0])
-Right = MatchExpr(lambda x: x[1])
+Match = MatchExpr()[0]
+Left = MatchExpr()[0]
+Right = MatchExpr()[1]
 
 
 class PeerNameTemplate:
@@ -108,19 +113,20 @@ class PeerNameTemplate:
         return None
 
 
-def match_safe(match_expressions: tuple[MatchExpr, ...], value: Any) -> bool:
+def match_safe(match_expressions: Sequence[MatchExpr], value: Any) -> bool:
     for matcher in match_expressions:
         try:
-            if not bool(matcher.expr(value)):
+            res = matcher.expr(value)
+            if not bool(res):
                 return False
-        except (TypeError, ValueError, AttributeError, KeyError, IndexError):
+        except (TypeError, ValueError, AttributeError, KeyError, IndexError) as e:
             return False
     return True
 
 
 @dataclass
 class SingleMatcher:
-    def __init__(self, rule: str, match_expressions: tuple[MatchExpr, ...]):
+    def __init__(self, rule: str, match_expressions: Sequence[MatchExpr]):
         self.rule = PeerNameTemplate(rule)
         self.match_expressions = match_expressions
 
@@ -136,7 +142,7 @@ class SingleMatcher:
 
 @dataclass
 class PairMatcher:
-    def __init__(self, left_rule: str, right_rule: str, match_expressions: tuple[MatchExpr, ...]):
+    def __init__(self, left_rule: str, right_rule: str, match_expressions: Sequence[MatchExpr]):
         self.left_rule = PeerNameTemplate(left_rule)
         self.right_rule = PeerNameTemplate(right_rule)
         self.match_expressions = match_expressions

@@ -1,8 +1,9 @@
 from typing import Any
 
-from annet.mesh.match_args import MatchExpr, match_safe, PeerNameTemplate
+from annet.mesh.match_args import MatchExpr, match_safe, PeerNameTemplate, SingleMatcher, Left, Match, Right, \
+    PairMatcher
 
-F = MatchExpr(lambda x: x)
+F = MatchExpr()
 
 
 class A:
@@ -43,6 +44,11 @@ def test_match_expr():
     assert match(F.cast_(str) == "1", 1)
     assert match(F.cast_(int) == 1, "1")
 
+    assert match(F[0]["x"] > 1, [{"x": 2}])
+    assert not match(F[1]["x"] > 1, [{"x": 2}])
+    assert match(F.one < F.two, A())
+    assert not match(F.one > F.two, A())
+
 
 def match_name(template: str, name: str) -> dict[str, Any] | None:
     res = PeerNameTemplate(template).match(name)
@@ -62,3 +68,21 @@ def test_peer_name_template():
     assert match_name(".{x:(a|b)}.", ".x.") is None
     assert match_name(".{x:(a|b)}.", ".aa.") is None
     assert match_name(".{x:(a|b)+}.", ".aa.") == {"x": "aa"}
+
+
+def test_single_matcher():
+    matcher = SingleMatcher("{x}.example.com", [Match.x < 5])
+    assert matcher.match_one("1.example.com")
+    assert matcher.match_one("4.example.com")
+    assert not matcher.match_one("6.example.com")
+    assert not matcher.match_one("xxx.example.com")
+    assert not matcher.match_one("invalid")
+
+
+def test_pair_matcher():
+    matcher = PairMatcher("{x}.example.com", "{x}.example.com", [Left.x < Right.x])
+    assert matcher.match_pair("1.example.com", "2.example.com")
+    assert not matcher.match_pair("100.example.com", "2.example.com")
+    assert matcher.match_pair("100.example.com", "200.example.com")
+    assert not matcher.match_pair("1.example.com", "xxx.example.com")
+    assert not matcher.match_pair("xxx.example.com", "2.example.com")
