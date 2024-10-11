@@ -17,10 +17,10 @@ def baz(*args, **kwargs) -> None:
 def test_global():
     registry = MeshRulesRegistry()
     registry.device("left1-{x}")(foo)
-    registry.device("left1-{x}", Left.x.cast_(int) > 1)(bar)
+    registry.device("left1-{x}", Left.x > 1)(bar)
     registry.device("left2-{x}")(baz)
 
     found = registry.lookup_global("left1-1")
     assert len(found) == 1
     assert found[0].handler is foo
-    assert found[0].matched.x == '1'
+    assert found[0].matched.x == 1

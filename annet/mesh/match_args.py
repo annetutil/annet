@@ -14,7 +14,7 @@ class MatchExpr:
     def __getattr__(self, item: str):
         return MatchExpr(lambda x: getattr(self.expr(x), item))
 
-    def __getitem__(self, item: str):
+    def __getitem__(self, item: Any):
         return MatchExpr(lambda x: self.expr(x)[item])
 
     def __eq__(self, other) -> "MatchExpr":
@@ -22,6 +22,12 @@ class MatchExpr:
             return MatchExpr(lambda x: self.expr(x) == other.expr(x))
         else:
             return MatchExpr(lambda x: self.expr(x) == other)
+
+    def __ne__(self, other) -> "MatchExpr":
+        if isinstance(other, MatchExpr):
+            return MatchExpr(lambda x: self.expr(x) != other.expr(x))
+        else:
+            return MatchExpr(lambda x: self.expr(x) != other)
 
     def __lt__(self, other) -> "MatchExpr":
         if isinstance(other, MatchExpr):
