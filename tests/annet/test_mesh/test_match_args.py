@@ -57,6 +57,12 @@ def match_name(template: str, name: str) -> dict[str, Any] | None:
     return dict(res)
 
 
+def test_peer_name_template_type_cast():
+    assert match_name("{x}", "12") == {"x": 12}
+    assert match_name("{x:.*}", "12") == {"x": "12"}
+    assert match_name(r"{x:\d+}", "12") == {"x": "12"}
+
+
 def test_peer_name_template():
     assert match_name("{x}", "12") == {"x": 12}
     assert match_name("{x}.example.com", "12.example.com") == {"x": 12}
