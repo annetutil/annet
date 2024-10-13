@@ -35,23 +35,24 @@ def mocks():
     orig_storage_connector_classes = annet.storage.storage_connector._classes
     orig_rulebook_provider_classes = annet.rulebook.rulebook_provider_connector._classes
     orig_rulebook_provider_cache = annet.rulebook.rulebook_provider_connector._cache
-    deploy_driver = DeployerMock
+    orig_get_deployer = annet.deploy.get_deployer
 
-    ret = mock.Mock(
-        deploy_fetcher=mock.MagicMock(spec=Fetcher),
-        deploy_driver=deploy_driver,
-        output_driver=mock.MagicMock(spec=OutputDriver),
-        storage_provider=mock.MagicMock(spec=annet.storage.StorageProvider),
-    )
-    ret.deploy_driver().build_configuration_cmdlist.return_value=(CommandList(), CommandList())
+    fetcher_connector = mock.MagicMock(spec=Fetcher)
+    output_driver = mock.MagicMock(spec=OutputDriver)
+    storage_provider = mock.MagicMock(spec=annet.storage.StorageProvider)
 
-    annet.deploy.fetcher_connector._classes = [ret.deploy_fetcher]
-    annet.deploy.driver_connector._classes = [ret.deploy_driver]
-    annet.output.output_driver_connector._classes = [ret.output_driver]
-    annet.storage.storage_connector._classes = [ret.storage_provider]
+    annet.deploy.fetcher_connector._classes = [fetcher_connector]
+    annet.output.output_driver_connector._classes = [output_driver]
+    annet.storage.storage_connector._classes = [storage_provider]
     annet.rulebook.rulebook_provider_connector._classes = [MockDefaultRulebookProvider]
     annet.rulebook.rulebook_provider_connector._cache = None
-
+    deployer = mock.MagicMock(spec=DeployDriver)
+    deployer.build_configuration_cmdlist.return_value = (CommandList(), CommandList())
+    annet.deploy.get_deployer = mock.MagicMock(spec=annet.deploy.get_deployer)
+    annet.deploy.get_deployer.return_value = deployer
+    ret = mock.Mock(
+        deployer=deployer,
+    )
     yield ret
 
     annet.deploy.fetcher_connector._classes = orig_fetcher_connector_classes
@@ -60,6 +61,7 @@ def mocks():
     annet.storage.storage_connector._classes = orig_storage_connector_classes
     annet.rulebook.rulebook_provider_connector._classes = orig_rulebook_provider_classes
     annet.rulebook.rulebook_provider_connector._cache = orig_rulebook_provider_cache
+    annet.deploy.get_deployer = orig_get_deployer
 
 
 @pytest.fixture
@@ -86,6 +88,6 @@ def test_pc_deployer_rulebooks(device: Device, mocks):
     job = DeployerJob.from_device(res.device, opts)
     job.parse_result(res)
 
-    assert mocks.deploy_driver().build_configuration_cmdlist.call_args_list == [mock.call(device.hw)]
+    assert mocks.deployer.build_configuration_cmdlist.call_args_list == [mock.call(device.hw)]
     assert job.deploy_cmds[device]["cmds_pre_files"][path] == before.encode()
     assert job.deploy_cmds[device]["cmds"][path] == "\n".join((commands, after)).encode()
