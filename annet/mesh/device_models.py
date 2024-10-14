@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from .basemodel import BaseMeshModel, Concat, DictMerge, Merge, Merger, T
+from .basemodel import BaseMeshModel, Concat, DictMerge, Merge, Merger, T, KeyDefaultDict
 from .peer_models import MeshPeerGroup
 from ..bgp_models import Family, Aggregate, Redistribute, ASN
 
@@ -30,18 +30,9 @@ class _FamiliesMixin:
     ipv6_labeled_unicast: FamilyOptions | None
 
 
-class _GroupListMerge(Merger):
-    _dict_merger = DictMerge(Merge())
-
-    def _merge(self, name: str, x: list[MeshPeerGroup], y: list[MeshPeerGroup]) -> list[MeshPeerGroup]:
-        xdict = {g.name: g for g in x}
-        ydict = {g.name: g for g in y}
-        return list(self._dict_merger(name, xdict, ydict).values())
-
-
 class VrfOptions(BaseMeshModel, _FamiliesMixin):
     def __init__(self, **kwargs):
-        kwargs.setdefault('groups', [])
+        kwargs.setdefault('groups', KeyDefaultDict(lambda x: MeshPeerGroup(name=x)))
         super().__init__(**kwargs)
 
     vrf_name: str
@@ -55,13 +46,13 @@ class VrfOptions(BaseMeshModel, _FamiliesMixin):
     route_distinguisher: str | None
     auto_export: bool  # TODO: None?
     static_label: int | None  # FIXME: str?
-    groups: Annotated[list[MeshPeerGroup], _GroupListMerge()]
+    groups: Annotated[dict[str, MeshPeerGroup], DictMerge(Merge())]
 
 
 class GlobalOptionsDTO(BaseMeshModel, _FamiliesMixin):
     def __init__(self, **kwargs):
-        kwargs.setdefault('groups', [])
-        kwargs.setdefault('vrf', {})
+        kwargs.setdefault('groups', KeyDefaultDict(lambda x: MeshPeerGroup(name=x)))
+        kwargs.setdefault('vrf', KeyDefaultDict(lambda x: VrfOptions(vrf_name=x)))
         super().__init__(**kwargs)
 
     local_as: ASN
@@ -69,4 +60,4 @@ class GlobalOptionsDTO(BaseMeshModel, _FamiliesMixin):
     multipath: int
     router_id: str
     vrf: Annotated[dict[str, VrfOptions], DictMerge(Merge())]
-    groups: Annotated[list[MeshPeerGroup], _GroupListMerge()]
+    groups: Annotated[dict[str, MeshPeerGroup], DictMerge(Merge())]

@@ -143,3 +143,13 @@ def merge(first: T | Special, *others: T) -> T:
     for second in others:
         first = _merge(first, second)
     return first
+
+
+class KeyDefaultDict(dict):
+    def __init__(self, factory: Callable[[str], Any]):
+        super().__init__()
+        self.factory = factory
+
+    def __missing__(self, key):
+        x = self[key] = self.factory(key)
+        return x

@@ -1,18 +1,22 @@
 import pytest
 
+from annet.mesh.device_models import MeshPeerGroup
 from annet.mesh.executor import MeshExecutor
-from annet.mesh.registry import MeshRulesRegistry
+from annet.mesh.registry import MeshRulesRegistry, GlobalOptions
 from .fakes import FakeStorage, FakeDevice, FakeInterface
 
+VRF = "testvrf"
+GROUP = "test_group"
 
-def on_device_x(device):
-    pass
+def on_device_x(device: GlobalOptions):
+    device.vrf[VRF].groups[GROUP].mtu = 1499
+    print(device.matched.x)
 
 
 @pytest.fixture
 def registry():
     r = MeshRulesRegistry()
-    r.device("{x}")(on_device_x)
+    r.device("{x:.*}")(on_device_x)
     return r
 
 
