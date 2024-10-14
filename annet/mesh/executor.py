@@ -43,17 +43,15 @@ class MeshExecutor:
         # we can have multiple rules for the same pair
         # we merge them according to remote fqdn
         neighbor_peers: dict[str, Pair] = {}
-
-        neighbors = {n.fqdn: n for n in device.neighbours}
-        for rule in self._registry.lookup_direct(device.fqdn, list(neighbors)):
-            # TODO find matched ports
+        # TODO batch resolve
+        for rule in self._registry.lookup_direct(device.fqdn, device.neighbours_fqdns):
             session = Session()
             if rule.direct_order:
-                neighbor_device = neighbors[rule.name_right]
+                neighbor_device = self._storage.make_devices(rule.name_right)[0]
                 peer_device = DirectPeer(rule.matched_left, device, [])
                 peer_neighbor = DirectPeer(rule.matched_right, neighbor_device, [])
             else:
-                neighbor_device = neighbors[rule.name_left]
+                neighbor_device = self._storage.make_devices(rule.name_left)[0]
                 peer_neighbor = DirectPeer(rule.matched_left, neighbor_device, [])
                 peer_device = DirectPeer(rule.matched_right, device, [])
 

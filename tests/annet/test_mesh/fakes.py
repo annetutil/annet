@@ -4,10 +4,25 @@ from annet.mesh.executor import Device
 from annet.storage import Storage, Interface
 
 
-class FakeDevice(Device):
-    def __init__(self, name: str, neigbors: list[Device]):
+class FakeInterface(Interface):
+    def __init__(self, name: str, neighbor_fqdn: str | None, neighbor_port: str | None):
         self._name = name
-        self._neighbors = neigbors
+        self.addrs = []
+        self.neighbor_fqdn = neighbor_fqdn
+        self.neighbor_port = neighbor_port
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def add_addr(self, address_mask: str, vrf: str | None) -> None:
+        self.addrs.append((address_mask, vrf))
+
+
+class FakeDevice(Device):
+    def __init__(self, name: str, interfaces: list[FakeInterface]) -> None:
+        self._name = name
+        self.interfaces = interfaces
         self._storage = None
 
     @property
@@ -41,25 +56,40 @@ class FakeDevice(Device):
         pass
 
     @property
-    def neighbours_ids(self):
-        return [n.id for n in self._neighbors]
+    def neighbours_ids(self) -> list["str"]:
+        return [n.neighbor_fqdn for n in self.interfaces]
 
     @property
-    def neighbours(self) -> list["Device"]:
-        return self._neighbors
+    def neighbours_fqdns(self) -> list["str"]:
+        return [n.neighbor_fqdn for n in self.interfaces]
 
     @property
     def breed(self):
         pass
 
     def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: int | None) -> Interface:
-        pass
+        self.interfaces.append(FakeInterface(
+            name=f"Trunk{lag}",
+            neighbor_port=None,
+            neighbor_fqdn=None,
+        ))
+        return self.interfaces[-1]
 
     def add_svi(self, svi: int) -> Interface:
-        pass
+        self.interfaces.append(FakeInterface(
+            name=f"Vlan{svi}",
+            neighbor_port=None,
+            neighbor_fqdn=None,
+        ))
+        return self.interfaces[-1]
 
     def add_subif(self, interface: str, subif: int) -> Interface:
-        pass
+        self.interfaces.append(FakeInterface(
+            name=f"{interface}.{subif}",
+            neighbor_port=None,
+            neighbor_fqdn=None,
+        ))
+        return self.interfaces[-1]
 
 
 class FakeStorage(Storage):

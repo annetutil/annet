@@ -188,6 +188,10 @@ class NetboxDevice(Entity):
 
     # compat
     @property
+    def neighbours_fqdns(self) -> list["str"]:
+        return [dev.fqdn for dev in self.neighbours]
+
+    @property
     def neighbours_ids(self):
         return [dev.id for dev in self.neighbours]
 

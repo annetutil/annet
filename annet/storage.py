@@ -138,12 +138,12 @@ class Device(Protocol):
 
     @property
     @abc.abstractmethod
-    def neighbours_ids(self):
+    def neighbours_ids(self) -> list["str"]:
         pass
 
     @property
     @abc.abstractmethod
-    def neighbours(self) -> list["Device"]:
+    def neighbours_fqdns(self) -> list["str"]:
         pass
 
     @property
