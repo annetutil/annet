@@ -85,6 +85,13 @@ Note, that is only applied for specific registry and does not affect others, eve
 Accessing captured variables
 ------------------------------
 
+Variables captured from hostname are available via ``.match`` attribute for ``GlobalOptions``, ``DirectPeer`` and ``IndirectPeer`` objects.
+
+.. code-block:: python
+
+    @registry.device("host-{num}.{domain:.*}", Match.num<100)
+    def foo(global_opts: GlobalOptions):
+        print(global_opts.match.num)
 
 
 Accessing mesh data from generators
