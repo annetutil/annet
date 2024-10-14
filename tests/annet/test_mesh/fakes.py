@@ -127,5 +127,11 @@ class FakeStorage(Storage):
     def flush_perf(self):
         pass
 
-    def search_connections(self, device: "Device", neighbor: "Device") -> list[tuple["Interface", "Interface"]]:
-        return []
+    def search_connections(
+        self, device: "FakeDevice", neighbor: "FakeDevice",
+    ) -> list[tuple["FakeInterface", "FakeInterface"]]:
+        res = []
+        for local_port in device.interfaces:
+            if local_port.neighbor_fqdn == neighbor.fqdn:
+                res.append((local_port.name, local_port.neighbor_port))
+        return res

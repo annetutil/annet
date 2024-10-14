@@ -47,11 +47,11 @@ class MeshExecutor:
         for rule in self._registry.lookup_direct(device.fqdn, device.neighbours_fqdns):
             session = Session()
             if rule.direct_order:
-                neighbor_device = self._storage.make_devices(rule.name_right)[0]
+                neighbor_device = self._storage.make_devices([rule.name_right])[0]
                 peer_device = DirectPeer(rule.matched_left, device, [])
                 peer_neighbor = DirectPeer(rule.matched_right, neighbor_device, [])
             else:
-                neighbor_device = self._storage.make_devices(rule.name_left)[0]
+                neighbor_device = self._storage.make_devices([rule.name_left])[0]
                 peer_neighbor = DirectPeer(rule.matched_left, neighbor_device, [])
                 peer_device = DirectPeer(rule.matched_right, device, [])
 
@@ -81,12 +81,12 @@ class MeshExecutor:
         for rule in self._registry.lookup_indirect(device.fqdn, all_fqdns):
             session = Session()
             if rule.direct_order:
-                connected_device = self._storage.make_devices(rule.name_right)[0]
+                connected_device = self._storage.make_devices([rule.name_right])[0]
                 peer_device = IndirectPeer(rule.matched_left, device)
                 peer_connected = IndirectPeer(rule.matched_right, connected_device)
                 rule.handler(peer_device, peer_connected, session)
             else:
-                connected_device = self._storage.make_devices(rule.name_left)[0]
+                connected_device = self._storage.make_devices([rule.name_left])[0]
                 peer_connected = IndirectPeer(rule.matched_left, connected_device)
                 peer_device = IndirectPeer(rule.matched_right, device)
                 rule.handler(peer_connected, peer_device, session)
