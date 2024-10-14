@@ -490,10 +490,11 @@ class RosFormatter(CommonFormatter):
                 rows.append((row, None, row_context))
 
         prev_prow = None
+        prev_prow_context = {}
         for sub_config, row_group in itertools.groupby(rows, lambda x: x[1]):
             if sub_config is None:
                 if prev_prow:
-                    yield prev_prow
+                    yield prev_prow, prev_prow_context
                     yield BlockBegin, None
                 for row, _, row_context in row_group:
                     yield row, row_context
@@ -502,7 +503,7 @@ class RosFormatter(CommonFormatter):
             else:
                 for row, _, row_context in row_group:
                     if context and context.parent and context.parent.row:
-                        prev_prow = context.parent.row
+                        prev_prow, prev_prow_context = context.parent.current
                         prow = f"{context.parent.row} {row}"
                     else:
                         prow = row
@@ -655,6 +656,7 @@ def make_formatter(vendor, **kwargs):
         "aruba": CiscoFormatter,
         "pc": CommonFormatter,
         "ribbon": RibbonFormatter,
+        "b4com": CiscoFormatter,
     }
     return formatters[vendor](**kwargs)
 

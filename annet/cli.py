@@ -8,7 +8,7 @@ import subprocess
 import shutil
 import sys
 from contextlib import ExitStack, contextmanager
-from typing import Tuple, Iterable
+from typing import Optional, Tuple, Iterable
 
 import tabulate
 import yaml
@@ -68,8 +68,8 @@ def get_loader(gen_args: cli_args.GenOptions, args: cli_args.QueryOptionsBase):
     exit_stack = ExitStack()
     storages = []
     with exit_stack:
-        connector, connector_opts = get_storage()
-        storage_opts = connector.opts().parse_params(connector_opts, args)
+        connector, conf_params = get_storage()
+        storage_opts = connector.opts().parse_params(conf_params, args)
         storages.append(exit_stack.enter_context(connector.storage()(storage_opts)))
         yield Loader(*storages, args=gen_args, no_empty_warning=args.query.is_empty())
 
@@ -129,7 +129,7 @@ def show_generators(args: cli_args.ShowGeneratorsOptions):
     """ List applicable generators (for a device if query is set) """
     arg_gens = cli_args.GenOptions(args)
     with get_loader(arg_gens, args) as loader:
-        device: Device | None = None
+        device: Optional[Device] = None
         devices = loader.devices
         if len(devices) == 1:
             device = devices[0]

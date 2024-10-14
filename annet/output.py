@@ -30,6 +30,7 @@ BLACKBOX_FILENAME = "config.cfg"
 class _DriverConnector(Connector["OutputDriver"]):
     name = "OutputDriver"
     ep_name = "output"
+    ep_by_group_only = "annet.connectors.output"
 
     def _get_default(self) -> Type["OutputDriver"]:
         return OutputDriverBasic

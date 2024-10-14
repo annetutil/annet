@@ -15,6 +15,7 @@ except ImportError:
 class _HardwareConnector(Connector["HarwareProvider"]):
     name = "Hardware"
     ep_name = "hardware"
+    ep_by_group_only = "annet.connectors.hardware"
 
 
 hardware_connector = _HardwareConnector()

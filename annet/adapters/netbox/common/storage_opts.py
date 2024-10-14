@@ -1,5 +1,5 @@
 import os
-from typing import Any
+from typing import Any, Optional
 
 DEFAULT_URL = "http://localhost"
 
@@ -10,7 +10,7 @@ class NetboxStorageOpts:
         self.token = token
 
     @classmethod
-    def parse_params(cls, conf_params: dict[str, str] | None, cli_opts: Any):
+    def parse_params(cls, conf_params: Optional[dict[str, str]], cli_opts: Any):
         url = os.getenv("NETBOX_URL") or conf_params.get("url") or DEFAULT_URL
         token = os.getenv("NETBOX_TOKEN", "").strip() or conf_params.get("token") or ""
         return cls(url=url, token=token)

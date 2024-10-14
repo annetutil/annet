@@ -1,10 +1,6 @@
-import re
 import pytest
 from typing import Dict, Any
 
-from annet.types import PCDiff
-from annet.cli_args import GenOptions
-from annet.gen import OldNewDeviceContext
 from annet.api import _json_fragment_diff
 import annet.annlib.jsontools as jsontools
 
@@ -122,6 +118,31 @@ def filter3_result():
                 "default_local_preference": "100"
             }
         }
+    }
+
+
+@pytest.fixture()
+def acl_filter4() -> str:
+    return """/ACL_*LE/*/I*"""
+
+
+@pytest.fixture()
+def filter4_result() -> Dict[str, Any]:
+    return {
+        "ACL_RULE": {
+            "YATTL|RETRANSMIT_RX_klg-10d8-2_0": {
+                "IN_PORT": "Ethernet328",
+                "IP_TYPE": "IPV6ANY",
+            },
+            "YATTL|RETRANSMIT_RX_klg-10d8-2_17": {
+                "IN_PORT": "Ethernet328",
+                "IP_TYPE": "IPV6ANY",
+            },
+            "YATTL|RETRANSMIT_RX_klg-10d8-2_25": {
+                "IN_PORT": "Ethernet328",
+                "IP_TYPE": "IPV6ANY",
+            },
+        },
     }
 
 
@@ -294,6 +315,13 @@ def test_acl_filter_wrong_filters_skip(edgecore_json_config, acl_filter3, filter
     result = jsontools.apply_acl_filters(edgecore_json_config, filters)
 
     assert result == filter3_result
+
+
+def test_acl_filter_wildcards(edgecore_json_config, acl_filter4, filter4_result):
+    filters = acl_filter4.split("\n")
+    result = jsontools.apply_acl_filters(edgecore_json_config, filters)
+
+    assert result == filter4_result
 
 
 def test_diff(diff_old, edgecore_json_config, diff_result):

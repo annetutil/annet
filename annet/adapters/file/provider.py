@@ -1,10 +1,11 @@
 from annet.annlib.netdev.views.dump import DumpableView
 from annet.storage import Query
 from dataclasses import dataclass, fields
-from typing import List, Iterable, Any
+from typing import List, Iterable, Optional, Any
 from annet.storage import StorageProvider, Storage
+from annet.connectors import AdapterWithName
 from annet.storage import Device as DeviceCls
-from annet.annlib.netdev.views.hardware import vendor_to_hw
+from annet.annlib.netdev.views.hardware import vendor_to_hw, HardwareView
 import yaml
 
 
@@ -23,11 +24,11 @@ class Interface(DumpableView):
 class DeviceStorage:
     fqdn: str
     vendor: str
-    hostname: str | None = None
-    serial: str | None = None
-    id: str | None = None
-    interfaces: list[Interface] | None = None
-    storage: Storage | None = None
+    hostname: Optional[str] = None
+    serial: Optional[str] = None
+    id: Optional[str] = None
+    interfaces: Optional[list[Interface]] = None
+    storage: Optional[Storage] = None
 
     def __post_init__(self):
         if not self.id:
@@ -56,11 +57,11 @@ class Device(DeviceCls, DumpableView):
     dev: DeviceStorage
 
     @property
-    def hostname(self):
+    def hostname(self) -> str:
         return self.dev.hostname
 
     @property
-    def fqdn(self):
+    def fqdn(self) -> str:
         return self.dev.fqdn
 
     @property
@@ -73,7 +74,7 @@ class Device(DeviceCls, DumpableView):
     def __eq__(self, other):
         return type(self) is type(other) and self.fqdn == other.fqdn and self.vendor == other.vendor
 
-    def is_pc(self):
+    def is_pc(self) -> bool:
         return False
 
     @property
@@ -81,11 +82,11 @@ class Device(DeviceCls, DumpableView):
         return self
 
     @property
-    def hw(self):
+    def hw(self) -> HardwareView:
         return self.dev.hw
 
     @property
-    def breed(self):
+    def breed(self) -> str:
         return self.dev.hw.vendor
 
     @property
@@ -108,7 +109,7 @@ class Devices:
             self.devices = devices
 
 
-class Provider(StorageProvider):
+class Provider(StorageProvider, AdapterWithName):
     def storage(self):
         return storage_factory
 
@@ -127,7 +128,7 @@ class Query(Query):
     query: List[str]
 
     @classmethod
-    def new(cls, query: str | Iterable[str], hosts_range: slice | None = None) -> "Query":
+    def new(cls, query: str | Iterable[str], hosts_range: Optional[slice] = None) -> "Query":
         if hosts_range is not None:
             raise ValueError("host_range is not supported")
         return cls(query=list(query))
@@ -145,7 +146,7 @@ class StorageOpts:
         self.path = path
 
     @classmethod
-    def parse_params(cls, conf_params: dict[str, str] | None, cli_opts: Any):
+    def parse_params(cls, conf_params: Optional[dict[str, str]], cli_opts: Any):
         path = conf_params.get("path")
         if not path:
             raise Exception("empty path")

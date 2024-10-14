@@ -1,11 +1,14 @@
 import abc
-from typing import Any, Iterable, Optional, Type, Union, Protocol, Dict, Sequence
-from annet.connectors import Connector, get_context
+from collections.abc import Sequence
+from typing import Any, Iterable, Optional, Type, Union, Protocol, Dict
+from annet.connectors import Connector, get_connector_from_config
+from annet.annlib.netdev.views.hardware import HardwareView
 
 
 class _StorageConnector(Connector["StorageProvider"]):
-    name = "Storage"
-    ep_name = "storage"
+    name = "Storage"  # legacy
+    ep_name = "storage"  # legacy
+    ep_by_group_only = "annet.connectors.storage"
 
 
 storage_connector = _StorageConnector()
@@ -43,11 +46,15 @@ class Storage(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def resolve_fdnds_by_query(self, query: Any):
+        pass
+
+    @abc.abstractmethod
     def resolve_all_fdnds(self) -> list[str]:
         pass
 
     @abc.abstractmethod
-    def resolve_fdnds_by_query(self, query: Any):
+    def search_connections(self, device: "Device", neighbor: "Device") -> list[tuple["Interface", "Interface"]]:
         pass
 
     @abc.abstractmethod
@@ -67,10 +74,6 @@ class Storage(abc.ABC):
 
     @abc.abstractmethod
     def flush_perf(self):
-        pass
-
-    @abc.abstractmethod
-    def search_connections(self, device: "Device", neighbor: "Device") -> list[tuple["Interface", "Interface"]]:
         pass
 
 
@@ -113,12 +116,12 @@ class Device(Protocol):
         pass
 
     @abc.abstractmethod
-    def is_pc(self):
+    def is_pc(self) -> bool:
         pass
 
     @property
     @abc.abstractmethod
-    def hw(self):
+    def hw(self) -> HardwareView:
         pass
 
     @property
@@ -128,27 +131,22 @@ class Device(Protocol):
 
     @property
     @abc.abstractmethod
-    def fqdn(self):
+    def fqdn(self) -> str:
         pass
 
     @property
     @abc.abstractmethod
-    def hostname(self):
+    def hostname(self) -> str:
         pass
 
     @property
     @abc.abstractmethod
-    def neighbours_ids(self) -> list["str"]:
+    def neighbours_ids(self):
         pass
 
     @property
     @abc.abstractmethod
-    def neighbours_fqdns(self) -> list["str"]:
-        pass
-
-    @property
-    @abc.abstractmethod
-    def breed(self):
+    def breed(self) -> str:
         pass
 
     @abc.abstractmethod
@@ -166,18 +164,6 @@ class Device(Protocol):
         raise NotImplementedError
 
 
-def get_storage() -> (Storage, Dict[str, Any]):
+def get_storage() -> tuple[StorageProvider, Dict[str, Any]]:
     connectors = storage_connector.get_all()
-    seen: list[str] = []
-    if context_storage := get_context().get("storage"):
-        for connector in connectors:
-            con_name = connector.name()
-            seen.append(con_name)
-            if "adapter" not in context_storage:
-                raise Exception("adapter is not set in %s" % context_storage)
-            if context_storage["adapter"] == con_name:
-                return connector, context_storage.get("params", {})
-        else:
-            raise Exception("unknown storage %s: seen %s" % (context_storage["adapter"], seen))
-    else:
-        return connectors[0], {}
+    return get_connector_from_config("storage", connectors)

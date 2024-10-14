@@ -56,6 +56,6 @@ def init(options: Namespace):
 
 
 def assert_python_version():
-    if sys.version_info < (3, 8, 0):
-        sys.stderr.write("Error: you need python 3.8.0 or higher\n")
+    if sys.version_info < (3, 9, 0):
+        sys.stderr.write("Error: you need python 3.9.0 or higher\n")
         sys.exit(1)
