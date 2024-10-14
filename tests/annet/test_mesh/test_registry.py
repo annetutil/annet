@@ -26,7 +26,7 @@ def test_global(short):
     found = registry.lookup_global("left1-1")
     assert len(found) == 1
     assert found[0].handler is foo
-    assert found[0].matched.x == 1
+    assert found[0].match.x == 1
 
     short_found = registry.lookup_global("left1-1.example.com")
     if short:
@@ -48,8 +48,8 @@ def test_direct(short):
     )
     assert len(found) == 1
     assert found[0].handler is foo
-    assert found[0].matched_left.x == 1
-    assert found[0].matched_right.x == 2
+    assert found[0].match_left.x == 1
+    assert found[0].match_right.x == 2
 
     short_found = registry.lookup_direct(
         "left1-1.example.com",
@@ -74,8 +74,8 @@ def test_indirect(short):
     )
     assert len(found) == 1
     assert found[0].handler is foo
-    assert found[0].matched_left.x == 1
-    assert found[0].matched_right.x == 2
+    assert found[0].match_left.x == 1
+    assert found[0].match_right.x == 2
 
     short_found = registry.lookup_indirect(
         "left1-1.example.com",

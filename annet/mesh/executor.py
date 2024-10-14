@@ -34,7 +34,7 @@ class MeshExecutor:
     def _execute_globals(self, device: Device) -> GlobalOptionsDTO:
         global_opts = GlobalOptionsDTO()
         for rule in self._registry.lookup_global(device.fqdn):
-            rule_global_opts = MeshGlobalOptions(rule.matched, device)
+            rule_global_opts = MeshGlobalOptions(rule.match, device)
             rule.handler(rule_global_opts)
             global_opts = merge(global_opts, rule_global_opts)
         return global_opts
@@ -48,12 +48,12 @@ class MeshExecutor:
             session = MeshSession()
             if rule.direct_order:
                 neighbor_device = self._storage.make_devices([rule.name_right])[0]
-                peer_device = DirectPeer(rule.matched_left, device, [])
-                peer_neighbor = DirectPeer(rule.matched_right, neighbor_device, [])
+                peer_device = DirectPeer(rule.match_left, device, [])
+                peer_neighbor = DirectPeer(rule.match_right, neighbor_device, [])
             else:
                 neighbor_device = self._storage.make_devices([rule.name_left])[0]
-                peer_neighbor = DirectPeer(rule.matched_left, neighbor_device, [])
-                peer_device = DirectPeer(rule.matched_right, device, [])
+                peer_neighbor = DirectPeer(rule.match_left, neighbor_device, [])
+                peer_device = DirectPeer(rule.match_right, device, [])
 
             interfaces = self._storage.search_connections(device, neighbor_device)
             for local_port, remote_port in interfaces:
@@ -82,13 +82,13 @@ class MeshExecutor:
             session = MeshSession()
             if rule.direct_order:
                 connected_device = self._storage.make_devices([rule.name_right])[0]
-                peer_device = IndirectPeer(rule.matched_left, device)
-                peer_connected = IndirectPeer(rule.matched_right, connected_device)
+                peer_device = IndirectPeer(rule.match_left, device)
+                peer_connected = IndirectPeer(rule.match_right, connected_device)
                 rule.handler(peer_device, peer_connected, session)
             else:
                 connected_device = self._storage.make_devices([rule.name_left])[0]
-                peer_connected = IndirectPeer(rule.matched_left, connected_device)
-                peer_device = IndirectPeer(rule.matched_right, device)
+                peer_connected = IndirectPeer(rule.match_left, connected_device)
+                peer_device = IndirectPeer(rule.match_right, device)
                 rule.handler(peer_connected, peer_device, session)
 
             # TODO log merge error with handlers
