@@ -30,3 +30,11 @@ Usage help can be obtained by calling ``annet -h`` or for a specific command, su
    :caption: Extending:
 
    mesh/index.rst
+
+
+.. toctree::
+    :hidden:
+    :caption: Project Links
+
+    GitHub <https://github.com/annetutil/annet>
+    PyPI <https://pypi.org/project/annet>
