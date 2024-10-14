@@ -12,7 +12,7 @@ def foo(global_opts: GlobalOptions):
 @registry.direct("{name:.*}", "m9-sgw{x}.{domain:.*}")
 def foo(device: DirectPeer, neighbor: DirectPeer, session: MeshSession):
     session.asnum = 12345
-    neighbor.addr = f"192.168.1.{neighbor.matched.x}"
+    neighbor.addr = f"192.168.1.{neighbor.match.x}"
 
 
 @registry.direct("{name:.*}", "m9-sgw{x}.{domain:.*}", Right.x.in_([0, 1]))
@@ -20,7 +20,7 @@ def bar(device: DirectPeer, neighbor: DirectPeer, session: MeshSession):
     session.asnum = 12345
     device.addr = "192.168.1.254/24"
     device.lag = 1
-    device.lag_links_min = neighbor.matched.x
+    device.lag_links_min = neighbor.match.x
     device.subif = 100
     neighbor.name = "NEIGHBOR"
     neighbor.families = {"ipv4-unicast"}

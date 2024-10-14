@@ -11,7 +11,7 @@ GROUP = "test_group"
 
 def on_device_x(device: GlobalOptions):
     device.vrf[VRF].groups[GROUP].mtu = 1499
-    print(device.matched.x)
+    print(device.match.x)
 
 
 def on_direct(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):

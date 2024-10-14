@@ -8,34 +8,34 @@ from .peer_models import PeerDTO, MeshSession
 
 
 class DirectPeer(PeerDTO):
-    matched: MatchedArgs
+    match: MatchedArgs
     device: Any
     ports: list[str]
 
-    def __init__(self, matched: MatchedArgs, device: Any, ports: list[str]) -> None:
+    def __init__(self, match: MatchedArgs, device: Any, ports: list[str]) -> None:
         super().__init__()
-        self.matched = matched
+        self.match = match
         self.device = device
         self.ports = ports
 
 
 class IndirectPeer(PeerDTO):
-    matched: MatchedArgs
+    match: MatchedArgs
     device: Any
 
-    def __init__(self, matched: MatchedArgs, device: Any) -> None:
+    def __init__(self, match: MatchedArgs, device: Any) -> None:
         super().__init__()
-        self.matched = matched
+        self.match = match
         self.device = device
 
 
 class GlobalOptions(GlobalOptionsDTO):
-    matched: MatchedArgs
+    match: MatchedArgs
     device: Any
 
-    def __init__(self, matched: MatchedArgs, device: Any) -> None:
+    def __init__(self, match: MatchedArgs, device: Any) -> None:
         super().__init__()
-        self.matched = matched
+        self.match = match
         self.device = device
 
 
@@ -67,7 +67,7 @@ class IndirectRule:
 @dataclass(slots=True)
 class MatchedGlobal:
     handler: GlobalHandler
-    matched: MatchedArgs
+    match: MatchedArgs
 
 
 @dataclass(slots=True)
@@ -76,8 +76,8 @@ class MatchedDirectPair:
     direct_order: bool
     name_left: str
     name_right: str
-    matched_left: MatchedArgs
-    matched_right: MatchedArgs
+    match_left: MatchedArgs
+    match_right: MatchedArgs
 
 
 @dataclass(slots=True)
@@ -86,8 +86,8 @@ class MatchedIndirectPair:
     direct_order: bool
     name_left: str
     name_right: str
-    matched_left: MatchedArgs
-    matched_right: MatchedArgs
+    match_left: MatchedArgs
+    match_right: MatchedArgs
 
 
 class MeshRulesRegistry:
@@ -149,8 +149,8 @@ class MeshRulesRegistry:
                         direct_order=True,
                         name_left=device,
                         name_right=neighbor,
-                        matched_left=args[0],
-                        matched_right=args[1],
+                        match_left=args[0],
+                        match_right=args[1],
                     ))
                 if args := rule.matcher.match_pair(neighbor, device):
                     found.append(MatchedDirectPair(
@@ -158,8 +158,8 @@ class MeshRulesRegistry:
                         direct_order=False,
                         name_left=neighbor,
                         name_right=device,
-                        matched_left=args[0],
-                        matched_right=args[1],
+                        match_left=args[0],
+                        match_right=args[1],
                     ))
         for registry in self.nested:
             found.extend(registry.lookup_direct(device, neighbors))
@@ -177,8 +177,8 @@ class MeshRulesRegistry:
                         direct_order=True,
                         name_left=device,
                         name_right=other_device,
-                        matched_left=args[0],
-                        matched_right=args[1],
+                        match_left=args[0],
+                        match_right=args[1],
                     ))
                 if args := rule.matcher.match_pair(other_device, device):
                     found.append(MatchedIndirectPair(
@@ -186,8 +186,8 @@ class MeshRulesRegistry:
                         direct_order=False,
                         name_left=other_device,
                         name_right=device,
-                        matched_left=args[0],
-                        matched_right=args[1],
+                        match_left=args[0],
+                        match_right=args[1],
                     ))
         for registry in self.nested:
             found.extend(registry.lookup_indirect(device, devices))
@@ -200,7 +200,7 @@ class MeshRulesRegistry:
             if args := rule.matcher.match_one(device):
                 found.append(MatchedGlobal(
                     handler=rule.handler,
-                    matched=args,
+                    match=args,
                 ))
         for registry in self.nested:
             found.extend(registry.lookup_global(device))
