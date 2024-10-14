@@ -4,7 +4,7 @@ from typing import Callable, Any
 from .match_args import MatchExpr, PairMatcher, SingleMatcher
 from .match_args import MatchedArgs
 from .device_models import GlobalOptionsDTO
-from .peer_models import PeerDTO, SessionDTO
+from .peer_models import PeerDTO, MeshSession
 
 
 class DirectPeer(PeerDTO):
@@ -29,10 +29,6 @@ class IndirectPeer(PeerDTO):
         self.device = device
 
 
-class Session(SessionDTO):
-    pass
-
-
 class GlobalOptions(GlobalOptionsDTO):
     matched: MatchedArgs
     device: Any
@@ -52,8 +48,8 @@ class GlobalRule:
     handler: GlobalHandler
 
 
-DirectHandler = Callable[[DirectPeer, DirectPeer, Session], None]
-IndirectHandler = Callable[[IndirectPeer, IndirectPeer, Session], None]
+DirectHandler = Callable[[DirectPeer, DirectPeer, MeshSession], None]
+IndirectHandler = Callable[[IndirectPeer, IndirectPeer, MeshSession], None]
 
 
 @dataclass(slots=True)

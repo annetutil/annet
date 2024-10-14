@@ -1,22 +1,34 @@
+from pprint import pprint
+
 import pytest
 
-from annet.mesh.device_models import MeshPeerGroup
-from annet.mesh.executor import MeshExecutor
-from annet.mesh.registry import MeshRulesRegistry, GlobalOptions
+from annet.mesh import MeshExecutor, MeshRulesRegistry, GlobalOptions, DirectPeer, MeshSession
 from .fakes import FakeStorage, FakeDevice, FakeInterface
 
 VRF = "testvrf"
 GROUP = "test_group"
+
 
 def on_device_x(device: GlobalOptions):
     device.vrf[VRF].groups[GROUP].mtu = 1499
     print(device.matched.x)
 
 
+def on_direct(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):
+    local.addr = "192.168.1.254"
+    neighbor.addr = "192.168.1.1"
+    neighbor.name = "XXX"
+    local.mtu = 1501
+    neighbor.mtu = 1502
+    session.asnum = 12345
+    session.families = {"ipv4_unicast"}
+
+
 @pytest.fixture
 def registry():
     r = MeshRulesRegistry()
     r.device("{x:.*}")(on_device_x)
+    r.direct("dev{num}.example.com", "{x:.*}")(on_direct)
     return r
 
 
@@ -34,7 +46,7 @@ def device1():
 
 @pytest.fixture()
 def device2():
-    return FakeDevice("dev1", [
+    return FakeDevice(DEV2, [
         FakeInterface("if20", None, None),
     ])
 
@@ -46,7 +58,7 @@ def device_neighbor(device1):
         neighbor_fqdn=DEV_NEIGHBOR,
         neighbor_port="if10"
     ))
-    return FakeDevice("dev_neighbor", [
+    return FakeDevice(DEV_NEIGHBOR, [
         FakeInterface(
             name="if10",
             neighbor_fqdn=DEV1,
@@ -67,5 +79,5 @@ def storage(device1, device2, device_neighbor):
 def test_storage(registry, storage, device1):
     r = MeshExecutor(registry, storage)
     res = r.execute_for(device1)
-    print(res)
+    pprint(res)
     assert False

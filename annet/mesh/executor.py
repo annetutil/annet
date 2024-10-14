@@ -7,7 +7,7 @@ from .basemodel import merge, BaseMeshModel, Merge, UseLast
 from .device_models import GlobalOptionsDTO
 from .models_converter import to_bgp_global_options, to_bgp_peer, InterfaceChanges, to_interface_changes
 from .peer_models import PeerDTO
-from .registry import MeshRulesRegistry, GlobalOptions as MeshGlobalOptions, DirectPeer, Session, IndirectPeer
+from .registry import MeshRulesRegistry, GlobalOptions as MeshGlobalOptions, DirectPeer, MeshSession, IndirectPeer
 
 
 @dataclass
@@ -45,7 +45,7 @@ class MeshExecutor:
         neighbor_peers: dict[str, Pair] = {}
         # TODO batch resolve
         for rule in self._registry.lookup_direct(device.fqdn, device.neighbours_fqdns):
-            session = Session()
+            session = MeshSession()
             if rule.direct_order:
                 neighbor_device = self._storage.make_devices([rule.name_right])[0]
                 peer_device = DirectPeer(rule.matched_left, device, [])
@@ -79,7 +79,7 @@ class MeshExecutor:
         # we merge them according to remote fqdn
         connected_peers: dict[str, Pair] = {}
         for rule in self._registry.lookup_indirect(device.fqdn, all_fqdns):
-            session = Session()
+            session = MeshSession()
             if rule.direct_order:
                 connected_device = self._storage.make_devices([rule.name_right])[0]
                 peer_device = IndirectPeer(rule.matched_left, device)

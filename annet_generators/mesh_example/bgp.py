@@ -2,8 +2,8 @@ from typing import List
 
 from annet.adapters.netbox.common.models import NetboxDevice
 from annet.generators import PartialGenerator, BaseGenerator
-from annet.mesh.executor import MeshExecutor
-from annet.storage import Device, Storage
+from annet.mesh import MeshExecutor
+from annet.storage import Storage
 from .mesh_logic import registry
 
 

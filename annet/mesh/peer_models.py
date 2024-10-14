@@ -19,7 +19,7 @@ class _SharedOptionsDTO(BaseMeshModel):
     bfd_timers: BFDTimers
 
 
-class SessionDTO(_SharedOptionsDTO):
+class MeshSession(_SharedOptionsDTO):
     """
     Options which are set on connected pair
     """
@@ -78,7 +78,7 @@ class _OptionsDTO(_SharedOptionsDTO):
     mtu: int
 
 
-class PeerDTO(SessionDTO, _OptionsDTO):
+class PeerDTO(MeshSession, _OptionsDTO):
     pod: int
     addr: str
     description: str

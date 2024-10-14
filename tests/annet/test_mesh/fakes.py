@@ -57,11 +57,11 @@ class FakeDevice(Device):
 
     @property
     def neighbours_ids(self) -> list["str"]:
-        return [n.neighbor_fqdn for n in self.interfaces]
+        return [n.neighbor_fqdn for n in self.interfaces if n.neighbor_fqdn]
 
     @property
     def neighbours_fqdns(self) -> list["str"]:
-        return [n.neighbor_fqdn for n in self.interfaces]
+        return [n.neighbor_fqdn for n in self.interfaces if n.neighbor_fqdn]
 
     @property
     def breed(self):
@@ -106,23 +106,29 @@ class FakeStorage(Storage):
         pass
 
     def resolve_object_ids_by_query(self, query: Any):
-        pass
+        return [
+            d.id for d in self.devices
+            if d.fqdn in query
+        ]
 
     def resolve_all_fdnds(self) -> list[str]:
         return [d.fqdn for d in self.devices]
 
     def resolve_fdnds_by_query(self, query: Any):
-        pass
+        return [
+            d.fqdn for d in self.devices
+            if d.fqdn in query
+        ]
 
     def make_devices(self, query: Any, preload_neighbors: bool = False, use_mesh: bool = None,
                      preload_extra_fields=False, **kwargs):
         return [
             d for d in self.devices
-            if d.fqdn == query
+            if d.fqdn in query
         ]
 
     def get_device(self, obj_id, preload_neighbors=False, use_mesh=None, **kwargs) -> "Device":
-        raise NotImplementedError()
+        return next(d for d in self.devices if d.id == obj_id)
 
     def flush_perf(self):
         pass
@@ -133,5 +139,7 @@ class FakeStorage(Storage):
         res = []
         for local_port in device.interfaces:
             if local_port.neighbor_fqdn == neighbor.fqdn:
-                res.append((local_port.name, local_port.neighbor_port))
+                for remote_port in neighbor.interfaces:
+                    if remote_port.name == local_port.neighbor_port:
+                        res.append((local_port, remote_port))
         return res
