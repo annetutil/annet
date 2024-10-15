@@ -187,7 +187,7 @@ pip install -r requirements-doc.txt
 2. Build
 
 ```shell
-sphinx-multiversion docs docs-build
+sphinx-build -M html docs docs-build
 ```
 
 3. Open rendered html in browser [docs-build/html/index.html](docs-build/html/index.html)
