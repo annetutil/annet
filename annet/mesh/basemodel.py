@@ -1,7 +1,7 @@
 from abc import ABC
 from copy import copy
 from enum import Enum
-from typing import TypeVar, Any, Annotated, get_origin, get_type_hints, get_args, Callable
+from typing import TypeVar, Any, Annotated, get_origin, get_type_hints, get_args, Callable, Protocol
 
 
 class MergeForbiddenError(Exception):
@@ -12,11 +12,11 @@ class Special(Enum):
     NOT_SET = "<NOT SET>"
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class Merger(ABC):
-    def __call__(self, name: str, x: T | Special, y: T | Special) -> T:
+    def __call__(self, name: str, x: T | Special, y: T | Special) -> T | Special:
         if x is Special.NOT_SET:
             return y
         if y is Special.NOT_SET:
@@ -81,9 +81,11 @@ class ApplyFunc(Merger):
     def __init__(self, func: Callable):
         self.func = func
 
-    def __call__(self, name: str, x: T | Special, y: T | Special) -> T:
+    def __call__(self, name: str, x: T | Special, y: T | Special) -> T | Special:
         if x is Special.NOT_SET:
             return y
+        if y is Special.NOT_SET:
+            return x
         return self.func(x, y)
 
 
