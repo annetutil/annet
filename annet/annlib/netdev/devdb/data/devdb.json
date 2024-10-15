@@ -52,6 +52,7 @@
     "Huawei.CE.CE8800": " CE88\\d\\d",
     "Huawei.CE.CE8800.CE8850": " CE8850",
     "Huawei.CE.CE8800.CE8851": " CE8851",
+    "Huawei.CE.CE8800.CE8855": " CE8855",
     "Huawei.CE.CE9800": " CE98\\d\\d",
     "Huawei.Quidway": " (LS-)?S",
     "Huawei.Quidway.S2x": "2\\d{3}",
