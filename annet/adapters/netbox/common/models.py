@@ -124,6 +124,7 @@ class Interface(Entity):
     display: str = ""
     ip_addresses: List[IpAddress] = field(default_factory=list)
     vrf: Optional[Entity] = None
+    mtu: int | None = None
     lag: Entity | None = None
     lag_min_links: int | None = None
 

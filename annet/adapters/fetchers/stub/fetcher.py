@@ -4,8 +4,9 @@ from annet.storage import Device
 
 
 class StubFetcher(Fetcher, AdapterWithConfig):
-    def with_config(self, **kwargs: Dict[str, Any]) -> Fetcher:
-        return self
+    @classmethod
+    def with_config(cls, **kwargs: Dict[str, Any]) -> Fetcher:
+        return cls(**kwargs)
 
     def fetch_packages(self, devices: List[Device],
                        processes: int = 1, max_slots: int = 0):

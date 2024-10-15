@@ -42,11 +42,11 @@ class Connector(ABC, Generic[T]):
         res = self._classes[0]
         return res(*args, **kwargs)
 
-    def get_all(self, *args, **kwargs) -> List[T]:
+    def get_all(self) -> List[T]:
         if self._classes is None:
             self._classes = self._entry_point or [self._get_default()]
 
-        return [cls(*args, **kwargs) for cls in self._classes]
+        return self._classes.copy()
 
     def set(self, cls: Type[T]):
         if self._classes is not None:
@@ -97,18 +97,20 @@ def load_entry_point_new(group: str) -> List:
 
 
 class AdapterWithConfig(ABC, Generic[T]):
+    @classmethod
     @abstractmethod
-    def with_config(self, **kwargs: Dict[str, Any]) -> T:
+    def with_config(cls, **kwargs: Dict[str, Any]) -> T:
         pass
 
 
 class AdapterWithName(ABC):
+    @classmethod
     @abstractmethod
-    def name(self) -> str:
+    def name(cls) -> str:
         pass
 
 
-def get_connector_from_config(config_key: str, connectors: List[Connector]) -> Tuple[Connector, Dict[str, Any]]:
+def get_connector_from_config(config_key: str, connectors: List[Type[Connector]]) -> Tuple[Connector, Dict[str, Any]]:
     seen: list[str] = []
     if not connectors:
         raise Exception("empty connectors")
@@ -119,8 +121,8 @@ def get_connector_from_config(config_key: str, connectors: List[Connector]) -> T
         connector_params = context_storage.get("params", {})
         if adapter_name:
             for con in connectors:
-                con_name = connector.__class__.__name__
-                if isinstance(con, AdapterWithName):
+                con_name = connector.__name__
+                if issubclass(con, AdapterWithName):
                     con_name = con.name()
                 seen.append(con_name)
                 if adapter_name == con_name:
@@ -136,8 +138,10 @@ def get_connector_from_config(config_key: str, connectors: List[Connector]) -> T
         connector = connectors[0]
         if len(connectors) > 1:
             warnings.warn(f"Please specify '{config_key}'. Found more than one classes {connectors}", UserWarning)
-    if isinstance(connector, AdapterWithConfig):
-        connector = connector.with_config(**connector_params)
+    if issubclass(connector, AdapterWithConfig):
+        connector_ins = connector.with_config(**connector_params)
+    else:
+        connector_ins = connector()
     # return connector_params only for storage
     # TODO: switch storage interface to AdapterWithConfig
-    return connector, connector_params
+    return connector_ins, connector_params
