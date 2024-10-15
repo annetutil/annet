@@ -123,6 +123,7 @@ class Interface(Entity):
     display: str = ""
     ip_addresses: List[IpAddress] = field(default_factory=list)
     vrf: Optional[Entity] = None
+    mtu: int | None = None
 
 
 @dataclass
