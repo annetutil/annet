@@ -119,7 +119,8 @@ class Provider(StorageProvider, AdapterWithName):
     def query(self):
         return Query
 
-    def name(self) -> str:
+    @classmethod
+    def name(cls) -> str:
         return "file"
 
 
