@@ -31,8 +31,9 @@ class NetboxProvider(StorageProvider, AdapterWithName, AdapterWithConfig):
         self.url = url
         self.token = token
 
-    def with_config(self, **kwargs: Dict[str, Any]) -> T:
-        return NetboxProvider(**kwargs)
+    @classmethod
+    def with_config(cls, **kwargs: Dict[str, Any]) -> T:
+        return cls(**kwargs)
 
     def storage(self):
         return storage_factory
@@ -43,5 +44,6 @@ class NetboxProvider(StorageProvider, AdapterWithName, AdapterWithConfig):
     def query(self):
         return NetboxQuery
 
-    def name(self) -> str:
+    @classmethod
+    def name(cls) -> str:
         return "netbox"
