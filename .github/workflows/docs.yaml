@@ -1,0 +1,36 @@
+name: Docs
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+    branches:
+      - "main"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  github_pages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+      - name: Build docs
+        run: |
+          pip install -r requirements-doc.txt
+          sphinx-multiversion docs docs-build
+          cp docs/_templates/gh-pages-redirect.html docs-build/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'docs-build'
+      - uses: actions/deploy-pages@v4
