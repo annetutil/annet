@@ -1,0 +1,31 @@
+name: Docs
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  github_pages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+      - name: Build docs
+        run: |
+          pip install -r requirements-doc.txt
+          sphinx-multiversion docs docs-build
+      - uses: actions/configure-pages@v3
+      - uses: actions/upload-pages-artifact@v2
+        with:
+          path: 'docs-build'
+      - uses: actions/deploy-pages@v2
