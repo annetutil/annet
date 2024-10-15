@@ -14,11 +14,6 @@ from annet.rulebook import DefaultRulebookProvider
 from .. import MockDevice
 
 
-class DeployerMock:
-    def __new__(cls, *args, **kwargs):
-        return mock.MagicMock(spec=DeployDriver)
-
-
 class MockDefaultRulebookProvider(DefaultRulebookProvider):
     def __init__(self):
         super().__init__(
