@@ -14,8 +14,6 @@ generators:
 storage:
   default:
     adapter: netbox
-    params:
-      path: /path/to/file
 
 context:
   default:
