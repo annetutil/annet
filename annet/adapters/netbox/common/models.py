@@ -189,11 +189,15 @@ class NetboxDevice(Entity):
 
     # compat
     @property
-    def neighbours_fqdns(self) -> list["str"]:
+    def neighbours_fqdns(self) -> list[str]:
+        if not self.neighbours:
+            return []
         return [dev.fqdn for dev in self.neighbours]
 
     @property
     def neighbours_ids(self):
+        if not self.neighbours:
+            return []
         return [dev.id for dev in self.neighbours]
 
     def __hash__(self):
