@@ -15,8 +15,7 @@ from annet.adapters.netbox.common.manufacturer import (
 from annet.adapters.netbox.common.query import NetboxQuery
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.storage import Storage
-
+from annet.storage import Storage, Device, Interface
 
 logger = getLogger(__name__)
 
@@ -229,9 +228,12 @@ class NetboxStorageV37(Storage):
     def flush_perf(self):
         pass
 
-    def search_connections(
-            self, device: models.NetboxDevice, neighbor: models.NetboxDevice,
-    ) -> list[tuple[models.Interface, models.Interface]]:
+    def search_connections(self, device: Device, neighbor: Device) -> list[tuple[Interface, Interface]]:
+        if device.storage is not self:
+            raise ValueError("device does not belong to this storage")
+        if neighbor.storage is not self:
+            raise ValueError("neighbor does not belong to this storage")
+        # both devices are NetboxDevice if they are loaded from this storage
         res = []
         for local_port in device.interfaces:
             if not local_port.connected_endpoints:

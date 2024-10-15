@@ -253,12 +253,12 @@ class NetboxDevice(Entity):
 
     def add_subif(self, interface: str, subif: int) -> Interface:
         name = f"{interface}.{subif}"
-        for interface in self.interfaces:
-            if interface.name == name:
-                return interface
-        interface = self._make_interface(
+        for target_port in self.interfaces:
+            if target_port.name == name:
+                return target_port
+        target_port = self._make_interface(
             name=name,
             type=InterfaceType("virtual", "Virtual")
         )
-        self.interfaces.append(interface)
-        return interface
+        self.interfaces.append(target_port)
+        return target_port
