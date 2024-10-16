@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Literal, Union
+from typing import Literal, Union, Optional
 
 
 class ASN(int):
@@ -61,7 +61,7 @@ class ASN(int):
         return f"{self.__class__.__name__}({srepr})"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class BFDTimers:
     minimum_interval: int = 500
     multiplier: int = 4
@@ -70,58 +70,58 @@ class BFDTimers:
 Family = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled", "ipv6_labeled"]
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True)
 class PeerOptions:
     """The same options as for group but any field is optional"""
-    local_as: ASN | None = None
-    unnumbered: bool | None = None
-    rr_client: bool | None = None
-    next_hop_self: bool | None = None
-    extended_next_hop: bool | None = None
-    send_community: bool | None = None
-    send_lcommunity: bool | None = None
-    send_extcommunity: bool | None = None
-    send_labeled: bool | None = None
-    import_limit: bool | None = None
-    teardown_timeout: bool | None = None
-    redistribute: bool | None = None
-    passive: bool | None = None
-    mtu_discovery: bool | None = None
-    advertise_inactive: bool | None = None
-    advertise_bgp_static: bool | None = None
-    allowas_in: bool | None = None
-    auth_key: bool | None = None
-    add_path: bool | None = None
-    multipath: bool | None = None
-    multihop: bool | None = None
-    multihop_no_nexthop_change: bool | None = None
-    af_no_install: bool | None = None
-    bfd: bool | None = None
-    rib: bool | None = None
-    bfd_timers: BFDTimers | None = None
-    resolve_vpn: bool | None = None
-    af_rib_group: str | None = None
-    af_loops: int | None = None
-    hold_time: int | None = None
-    listen_network: bool | None = None
-    remove_private: bool | None = None
-    as_override: bool | None = None
-    aigp: bool | None = None
-    bmp_monitor: bool | None = None
-    no_prepend: bool | None = None
-    no_explicit_null: bool | None = None
-    uniq_iface: bool | None = None
-    advertise_peer_as: bool | None = None
-    connect_retry: bool | None = None
-    advertise_external: bool | None = None
-    advertise_irb: bool | None = None
-    listen_only: bool | None = None
-    soft_reconfiguration_inbound: bool | None = None
-    not_active: bool | None = None
-    mtu: int | None = None
+    local_as: Optional[ASN] = None
+    unnumbered: Optional[bool] = None
+    rr_client: Optional[bool] = None
+    next_hop_self: Optional[bool] = None
+    extended_next_hop: Optional[bool] = None
+    send_community: Optional[bool] = None
+    send_lcommunity: Optional[bool] = None
+    send_extcommunity: Optional[bool] = None
+    send_labeled: Optional[bool] = None
+    import_limit: Optional[bool] = None
+    teardown_timeout: Optional[bool] = None
+    redistribute: Optional[bool] = None
+    passive: Optional[bool] = None
+    mtu_discovery: Optional[bool] = None
+    advertise_inactive: Optional[bool] = None
+    advertise_bgp_static: Optional[bool] = None
+    allowas_in: Optional[bool] = None
+    auth_key: Optional[bool] = None
+    add_path: Optional[bool] = None
+    multipath: Optional[bool] = None
+    multihop: Optional[bool] = None
+    multihop_no_nexthop_change: Optional[bool] = None
+    af_no_install: Optional[bool] = None
+    bfd: Optional[bool] = None
+    rib: Optional[bool] = None
+    bfd_timers: Optional[BFDTimers] = None
+    resolve_vpn: Optional[bool] = None
+    af_rib_group: Optional[str] = None
+    af_loops: Optional[int] = None
+    hold_time: Optional[int] = None
+    listen_network: Optional[bool] = None
+    remove_private: Optional[bool] = None
+    as_override: Optional[bool] = None
+    aigp: Optional[bool] = None
+    bmp_monitor: Optional[bool] = None
+    no_prepend: Optional[bool] = None
+    no_explicit_null: Optional[bool] = None
+    uniq_iface: Optional[bool] = None
+    advertise_peer_as: Optional[bool] = None
+    connect_retry: Optional[bool] = None
+    advertise_external: Optional[bool] = None
+    advertise_irb: Optional[bool] = None
+    listen_only: Optional[bool] = None
+    soft_reconfiguration_inbound: Optional[bool] = None
+    not_active: Optional[bool] = None
+    mtu: Optional[int] = None
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True)
 class Peer:
     addr: str
     remote_as: ASN
@@ -132,12 +132,12 @@ class Peer:
     group_name: str = ""
     import_policy: str = ""
     export_policy: str = ""
-    update_source: str | None = None  # interface name
-    options: PeerOptions | None = None
+    update_source: Optional[str] = None  # interface name
+    options: Optional[PeerOptions] = None
     hostname: str = ""
 
 
-@dataclass(slots=True)
+@dataclass
 class Aggregate:
     policy: str = ""
     routes: tuple[str, ...] = ()  # "182.168.1.0/24",
@@ -149,13 +149,13 @@ class Aggregate:
     as_set: bool = False
 
 
-@dataclass(slots=True)
+@dataclass
 class Redistribute:
     protocol: str
-    policy: str | None = None  # TODO
+    policy: Optional[str] = None  # TODO
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True)
 class FamilyOptions:
     family: Family
     vrf_name: str
@@ -174,13 +174,13 @@ class FamilyOptions:
     advertise_bgp_static: bool = False
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True)
 class PeerGroup:
     name: str
     remote_as: ASN = ASN(None)
     internal_name: str = ""
-    description: str | None = None
-    update_source: str | None = None
+    description: Optional[str] = None
+    update_source: Optional[str] = None
 
     # more strict version of PeerOptions
     local_as: ASN = ASN(None)
@@ -208,9 +208,9 @@ class PeerGroup:
     af_no_install: bool = False
     bfd: bool = False
     rib: bool = False
-    bfd_timers: BFDTimers | None = None
+    bfd_timers: Optional[BFDTimers] = None
     resolve_vpn: bool = False
-    af_rib_group: str | None = None
+    af_rib_group: Optional[str] = None
     af_loops: int = 0
     hold_time: int = 0
     listen_network: bool = False
@@ -231,31 +231,31 @@ class PeerGroup:
     mtu: int = 0
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True)
 class _FamiliesMixin:
-    ipv4_unicast: FamilyOptions | None = None
-    ipv6_unicast: FamilyOptions | None = None
-    ipv4_labeled_unicast: FamilyOptions | None = None
-    ipv6_labeled_unicast: FamilyOptions | None = None
+    ipv4_unicast: Optional[FamilyOptions] = None
+    ipv6_unicast: Optional[FamilyOptions] = None
+    ipv4_labeled_unicast: Optional[FamilyOptions] = None
+    ipv6_labeled_unicast: Optional[FamilyOptions] = None
     groups: list[PeerGroup] = field(default_factory=list)
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True)
 class VrfOptions(_FamiliesMixin):
     vrf_name: str
-    vrf_name_global: str | None = None
-    import_policy: str | None = None
-    export_policy: str | None = None
+    vrf_name_global: Optional[str] = None
+    import_policy: Optional[str] = None
+    export_policy: Optional[str] = None
     rt_import: list[str] = field(default_factory=list)
     rt_export: list[str] = field(default_factory=list)
     rt_import_v4: list[str] = field(default_factory=list)
     rt_export_v4: list[str] = field(default_factory=list)
-    route_distinguisher: str | None = None
+    route_distinguisher: Optional[str] = None
     auto_export: bool = False  # TODO: None?
-    static_label: int | None = None  # FIXME: str?
+    static_label: Optional[int] = None  # FIXME: str?
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True)
 class GlobalOptions(_FamiliesMixin):
     local_as: ASN = ASN(None)
     loops: int = 0
