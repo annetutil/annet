@@ -1,5 +1,3 @@
-from pprint import pprint
-
 import pytest
 
 from annet.mesh import MeshExecutor, MeshRulesRegistry, GlobalOptions, DirectPeer, MeshSession, IndirectPeer
@@ -90,7 +88,6 @@ def storage(device1, device2, device_neighbor):
 def test_storage(registry, storage, device1):
     r = MeshExecutor(registry, storage)
     res = r.execute_for(device1)
-    pprint(res)
 
     assert res.global_options.groups == []
     assert res.global_options.vrf.keys() == {VRF}
