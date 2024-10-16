@@ -72,7 +72,6 @@ def to_bgp_peer(local: PeerDTO, connected: PeerDTO, connected_device: Device) ->
         families=connected.families,
         hostname=connected_device.hostname,
         options=options,
-        # TODO update_source
     )
     # connected
     result.vrf_name = getattr(connected, "vrf", result.vrf_name)
@@ -81,6 +80,7 @@ def to_bgp_peer(local: PeerDTO, connected: PeerDTO, connected_device: Device) ->
     # local
     result.import_policy = getattr(connected, "import_policy", result.import_policy)
     result.export_policy = getattr(connected, "export_policy", result.export_policy)
+    result.update_source = getattr(connected, "update_source", result.update_source)
 
     if hasattr(local, "group"):
         result.group = PeerGroup(

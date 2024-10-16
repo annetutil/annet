@@ -132,7 +132,7 @@ class Peer:
     group_name: str = ""
     import_policy: str = ""
     export_policy: str = ""
-    update_source: Optional[str] = None  # interface name
+    update_source: Optional[str] = None
     options: Optional[PeerOptions] = None
     hostname: str = ""
 
