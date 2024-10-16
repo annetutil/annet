@@ -44,7 +44,6 @@ class VrfOptions(BaseMeshModel, _FamiliesMixin):
     rt_import_v4: Annotated[tuple[str, ...], Concat()]
     rt_export_v4: Annotated[tuple[str, ...], Concat()]
     route_distinguisher: Optional[str]
-    auto_export: bool  # TODO: None?
     static_label: Optional[int]  # FIXME: str?
     groups: Annotated[dict[str, MeshPeerGroup], DictMerge(Merge())]
 

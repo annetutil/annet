@@ -152,7 +152,7 @@ class Aggregate:
 @dataclass
 class Redistribute:
     protocol: str
-    policy: Optional[str] = None  # TODO
+    policy: str = ""
 
 
 @dataclass(kw_only=True)
@@ -251,7 +251,6 @@ class VrfOptions(_FamiliesMixin):
     rt_import_v4: list[str] = field(default_factory=list)
     rt_export_v4: list[str] = field(default_factory=list)
     route_distinguisher: Optional[str] = None
-    auto_export: bool = False  # TODO: None?
     static_label: Optional[int] = None  # FIXME: str?
 
 
