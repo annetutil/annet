@@ -1,13 +1,17 @@
 from dataclasses import dataclass
-from typing import Annotated
+from logging import getLogger
+from typing import Annotated, Callable
 
 from annet.bgp_models import Peer, GlobalOptions
 from annet.storage import Device, Storage
-from .basemodel import merge, BaseMeshModel, Merge, UseLast
+from .basemodel import merge, BaseMeshModel, Merge, UseLast, MergeForbiddenError
 from .device_models import GlobalOptionsDTO
 from .models_converter import to_bgp_global_options, to_bgp_peer, InterfaceChanges, to_interface_changes
 from .peer_models import PeerDTO
 from .registry import MeshRulesRegistry, GlobalOptions as MeshGlobalOptions, DirectPeer, MeshSession, IndirectPeer
+
+
+logger = getLogger(__name__)
 
 
 @dataclass
@@ -34,10 +38,24 @@ class MeshExecutor:
     def _execute_globals(self, device: Device) -> GlobalOptionsDTO:
         global_opts = GlobalOptionsDTO()
         for rule in self._registry.lookup_global(device.fqdn):
+            handler_name = self._handler_name(rule.handler)
             rule_global_opts = MeshGlobalOptions(rule.match, device)
+            logger.debug("Running device handler: %s", handler_name)
             rule.handler(rule_global_opts)
-            global_opts = merge(global_opts, rule_global_opts)
+            try:
+                global_opts = merge(global_opts, rule_global_opts)
+            except MergeForbiddenError as e:
+                raise ValueError(
+                    f"Handler `{handler_name}` global options conflicting with "
+                    f"previously loaded for device `{device.fqdn}`:\n" + str(e)
+                ) from e
         return global_opts
+
+    def _handler_name(self, handler: Callable) -> str:
+        try:
+            return f"{handler.__module__}.{handler.__qualname__}"
+        except AttributeError:
+            return str(handler)
 
     def _execute_direct(self, device: Device) -> list[Pair]:
         # we can have multiple rules for the same pair
@@ -46,6 +64,8 @@ class MeshExecutor:
         # TODO batch resolve
         for rule in self._registry.lookup_direct(device.fqdn, device.neighbours_fqdns):
             session = MeshSession()
+            handler_name = self._handler_name(rule.handler)
+            logger.debug("Running direct handler: %s", handler_name)
             if rule.direct_order:
                 neighbor_device = self._storage.make_devices([rule.name_right])[0]
                 peer_device = DirectPeer(rule.match_left, device, [])
@@ -65,12 +85,33 @@ class MeshExecutor:
             else:
                 rule.handler(peer_neighbor, peer_device, session)
 
-            # TODO log merge error with handlers
-            neighbor_dto = merge(PeerDTO(), peer_neighbor, session)
-            device_dto = merge(PeerDTO(), peer_device, session)
-            pair = Pair(local=device_dto, connected=neighbor_dto, device=neighbor_device)
-            if neighbor_device.fqdn in neighbor_peers:
-                pair = merge(neighbor_peers[neighbor_device.fqdn], pair)
+            try:
+                neighbor_dto = merge(PeerDTO(), peer_neighbor, session)
+            except MergeForbiddenError as e:
+                raise ValueError(
+                    f"Handler `{handler_name}` provided session data conflicting with "
+                    f"peer data for device `{neighbor_device.fqdn}`:\n" + str(e)
+                ) from e
+            try:
+                device_dto = merge(PeerDTO(), peer_device, session)
+            except MergeForbiddenError as e:
+                raise ValueError(
+                    f"Handler `{handler_name}` provided session data conflicting with "
+                    f"peer data for device `{device.fqdn}`:\n" + str(e)
+                ) from e
+            try:
+                pair = Pair(local=device_dto, connected=neighbor_dto, device=neighbor_device)
+                if neighbor_device.fqdn in neighbor_peers:
+                    pair = merge(neighbor_peers[neighbor_device.fqdn], pair)
+            except MergeForbiddenError as e:
+                if rule.direct_order:
+                    pair_names = device.fqdn, neighbor_device.fqdn
+                else:
+                    pair_names = neighbor_device.fqdn, device.fqdn
+                raise ValueError(
+                    f"Handler `{handler_name}` provides data conflicting with "
+                    f"previously loaded for device pair {pair_names}:\n" + str(e)
+                ) from e
             neighbor_peers[neighbor_device.fqdn] = pair
         return list(neighbor_peers.values())
 
@@ -80,6 +121,8 @@ class MeshExecutor:
         connected_peers: dict[str, Pair] = {}
         for rule in self._registry.lookup_indirect(device.fqdn, all_fqdns):
             session = MeshSession()
+            handler_name = self._handler_name(rule.handler)
+            logger.debug("Running indirect handler: %s", handler_name)
             if rule.direct_order:
                 connected_device = self._storage.make_devices([rule.name_right])[0]
                 peer_device = IndirectPeer(rule.match_left, device)
@@ -91,12 +134,33 @@ class MeshExecutor:
                 peer_device = IndirectPeer(rule.match_right, device)
                 rule.handler(peer_connected, peer_device, session)
 
-            # TODO log merge error with handlers
-            connected_dto = merge(PeerDTO(), peer_connected, session)
-            device_dto = merge(PeerDTO(), peer_device, session)
-            pair = Pair(local=device_dto, connected=connected_dto, device=connected_device)
-            if connected_device.fqdn in connected_peers:
-                pair = merge(connected_peers[connected_device.fqdn], pair)
+            try:
+                connected_dto = merge(PeerDTO(), peer_connected, session)
+            except MergeForbiddenError as e:
+                raise ValueError(
+                    f"Handler `{handler_name}` provided session data conflicting with "
+                    f"peer data for device `{connected_device.fqdn}`:\n" + str(e)
+                ) from e
+            try:
+                device_dto = merge(PeerDTO(), peer_device, session)
+            except MergeForbiddenError as e:
+                raise ValueError(
+                    f"Handler `{handler_name}` provided session data conflicting with "
+                    f"peer data for device `{device.fqdn}`:\n" + str(e)
+                ) from e
+            try:
+                pair = Pair(local=device_dto, connected=connected_dto, device=connected_device)
+                if connected_device.fqdn in connected_peers:
+                    pair = merge(connected_peers[connected_device.fqdn], pair)
+            except MergeForbiddenError as e:
+                if rule.direct_order:
+                    pair_names = device.fqdn, connected_device.fqdn
+                else:
+                    pair_names = connected_device.fqdn, device.fqdn
+                raise ValueError(
+                    f"Handler `{handler_name}` provides data conflicting with "
+                    f"previously loaded for device pair {pair_names}:\n" + str(e)
+                ) from e
             connected_peers[connected_device.fqdn] = pair
 
         return list(connected_peers.values())  # FIXME
@@ -105,7 +169,6 @@ class MeshExecutor:
         return to_bgp_peer(pair.local, pair.connected, pair.device)
 
     def _to_bgp_global(self, global_options: GlobalOptionsDTO) -> GlobalOptions:
-        # TODO group options defaults
         return to_bgp_global_options(global_options)
 
     def _apply_interface_changes(self, device: Device, neighbor: Device, changes: InterfaceChanges) -> None:
@@ -136,16 +199,17 @@ class MeshExecutor:
 
     def execute_for(self, device: Device) -> MeshExecutionResult:
         all_fqdns = self._storage.resolve_all_fdnds()
-        result = []
 
-        for neighbor in self._execute_direct(device):
-            result.append(self._to_bgp_peer(neighbor))
-            self._apply_interface_changes(device, neighbor.device, to_interface_changes(neighbor.local))
+        global_options = self._to_bgp_global(self._execute_globals(device))
 
-        for connected in self._execute_indirect(device, all_fqdns):
-            result.append(self._to_bgp_peer(connected))
+        peers = []
+        for direct_pair in self._execute_direct(device):
+            peers.append(self._to_bgp_peer(direct_pair))
+            self._apply_interface_changes(device, direct_pair.device, to_interface_changes(direct_pair.local))
+        for connected_pair in self._execute_indirect(device, all_fqdns):
+            peers.append(self._to_bgp_peer(connected_pair))
 
         return MeshExecutionResult(
-            global_options=self._to_bgp_global(self._execute_globals(device)),
-            peers=result,
+            global_options=global_options,
+            peers=peers,
         )
