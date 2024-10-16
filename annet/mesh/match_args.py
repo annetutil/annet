@@ -2,7 +2,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, Sequence
+from typing import Any, Sequence, Optional
 
 MatchedArgs = SimpleNamespace
 
@@ -103,7 +103,7 @@ class PeerNameTemplate:
         }
         return pattern, types
 
-    def match(self, hostname: str) -> dict[str, str] | None:
+    def match(self, hostname: str) -> Optional[dict[str, str]]:
         reg_match = self._regex.fullmatch(hostname)
         if reg_match:
             return {
@@ -130,7 +130,7 @@ class SingleMatcher:
         self.rule = PeerNameTemplate(rule)
         self.match_expressions = match_expressions
 
-    def match_one(self, host: str) -> MatchedArgs | None:
+    def match_one(self, host: str) -> Optional[MatchedArgs]:
         data = self.rule.match(host)
         if data is None:
             return None

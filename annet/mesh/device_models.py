@@ -1,8 +1,8 @@
-from typing import Annotated
+from typing import Annotated, Optional, Union
 
-from .basemodel import BaseMeshModel, Concat, DictMerge, Merge, Merger, T, KeyDefaultDict
+from annet.bgp_models import Family, Aggregate, Redistribute
+from .basemodel import BaseMeshModel, Concat, DictMerge, Merge, KeyDefaultDict
 from .peer_models import MeshPeerGroup
-from ..bgp_models import Family, Aggregate, Redistribute, ASN
 
 
 class FamilyOptions(BaseMeshModel):
@@ -24,10 +24,10 @@ class FamilyOptions(BaseMeshModel):
 
 
 class _FamiliesMixin:
-    ipv4_unicast: FamilyOptions | None
-    ipv6_unicast: FamilyOptions | None
-    ipv4_labeled_unicast: FamilyOptions | None
-    ipv6_labeled_unicast: FamilyOptions | None
+    ipv4_unicast: Optional[FamilyOptions]
+    ipv6_unicast: Optional[FamilyOptions]
+    ipv4_labeled_unicast: Optional[FamilyOptions]
+    ipv6_labeled_unicast: Optional[FamilyOptions]
 
 
 class VrfOptions(BaseMeshModel, _FamiliesMixin):
@@ -36,16 +36,16 @@ class VrfOptions(BaseMeshModel, _FamiliesMixin):
         super().__init__(**kwargs)
 
     vrf_name: str
-    vrf_name_global: str | None
-    import_policy: str | None
-    export_policy: str | None
+    vrf_name_global: Optional[str]
+    import_policy: Optional[str]
+    export_policy: Optional[str]
     rt_import: Annotated[tuple[str, ...], Concat()]
     rt_export: Annotated[tuple[str, ...], Concat()]
     rt_import_v4: Annotated[tuple[str, ...], Concat()]
     rt_export_v4: Annotated[tuple[str, ...], Concat()]
-    route_distinguisher: str | None
+    route_distinguisher: Optional[str]
     auto_export: bool  # TODO: None?
-    static_label: int | None  # FIXME: str?
+    static_label: Optional[int]  # FIXME: str?
     groups: Annotated[dict[str, MeshPeerGroup], DictMerge(Merge())]
 
 
@@ -55,7 +55,7 @@ class GlobalOptionsDTO(BaseMeshModel, _FamiliesMixin):
         kwargs.setdefault("vrf", KeyDefaultDict(lambda x: VrfOptions(vrf_name=x)))
         super().__init__(**kwargs)
 
-    local_as: int | str
+    local_as: Union[int, str]
     loops: int
     multipath: int
     router_id: str

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from ipaddress import ip_interface
+from typing import Optional
 
 from adaptix import Retort, loader, Chain, name_mapping
 
@@ -11,11 +12,11 @@ from ..storage import Device
 @dataclass
 class InterfaceChanges:
     addr: str
-    lag: int | None = None
-    lag_links_min: int | None = None
-    svi: int | None = None
-    subif: int | None = None
-    vrf: str | None = None
+    lag: Optional[int] = None
+    lag_links_min: Optional[int] = None
+    svi: Optional[int] = None
+    subif: Optional[int] = None
+    vrf: Optional[str] = None
 
     def __post_init__(self):
         if self.lag is not None and self.svi is not None:

@@ -101,7 +101,7 @@ class Interface(Protocol):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def add_addr(self, address_mask: str, vrf: str | None) -> None:
+    def add_addr(self, address_mask: str, vrf: Optional[str]) -> None:
         raise NotImplementedError
 
 
@@ -146,11 +146,16 @@ class Device(Protocol):
 
     @property
     @abc.abstractmethod
+    def neighbours_fqdns(self):
+        pass
+
+    @property
+    @abc.abstractmethod
     def breed(self) -> str:
         pass
 
     @abc.abstractmethod
-    def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: int | None) -> Interface:
+    def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: Optional[int]) -> Interface:
         raise NotImplementedError
 
     @abc.abstractmethod

@@ -1,4 +1,4 @@
-from typing import Literal, Annotated
+from typing import Literal, Annotated, Union, Optional
 
 from .basemodel import BaseMeshModel, Concat
 from ..bgp_models import BFDTimers
@@ -23,7 +23,7 @@ class MeshSession(_SharedOptionsDTO):
     """
     Options which are set on connected pair
     """
-    asnum: int | str
+    asnum: Union[int, str]
     vrf: str
     name: str
     families: Annotated[set[FamilyName], Concat()]
@@ -59,7 +59,7 @@ class _OptionsDTO(_SharedOptionsDTO):
     af_no_install: bool
     rib: bool
     resolve_vpn: bool
-    af_rib_group: str | None
+    af_rib_group: Optional[str]
     af_loops: int
     hold_time: int
     listen_network: bool
@@ -84,16 +84,16 @@ class PeerDTO(MeshSession, _OptionsDTO):
     description: str
 
     subif: int
-    lag: int | None
-    lag_links_min: int | None
-    svi: int | None
+    lag: Optional[int]
+    lag_links_min: Optional[int]
+    svi: Optional[int]
 
     group_name: str
 
 
 class MeshPeerGroup(_OptionsDTO):
     name: str
-    remote_as: int | str
+    remote_as: Union[int, str]
     internal_name: str
-    update_source: str | None
-    description: str | None
+    update_source: Optional[str]
+    description: Optional[str]
