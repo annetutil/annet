@@ -11,6 +11,6 @@ __all__ = [
 ]
 
 from .executor import MeshExecutor
-from .registry import MeshRulesRegistry
-from .registry import DirectPeer, IndirectPeer, MeshSession, GlobalOptions
 from .match_args import Left, Right, Match
+from .registry import DirectPeer, IndirectPeer, MeshSession, GlobalOptions
+from .registry import MeshRulesRegistry

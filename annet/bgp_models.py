@@ -174,8 +174,6 @@ class FamilyOptions:
     advertise_bgp_static: bool = False
 
 
-
-
 @dataclass(frozen=True, slots=True, kw_only=True)
 class PeerGroup:
     name: str

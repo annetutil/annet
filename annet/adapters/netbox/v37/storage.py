@@ -90,7 +90,7 @@ class NetboxStorageV37(Storage):
             url=opts.url,
             token=opts.token,
         )
-        self._all_fqdns: list[str]| None = None
+        self._all_fqdns: Optional[list[str]] = None
 
     def __enter__(self):
         return self
@@ -245,6 +245,7 @@ class NetboxStorageV37(Storage):
                             res.append((local_port, remote_port))
                             break
         return res
+
 
 def _match_query(query: NetboxQuery, device_data: api_models.Device) -> bool:
     for subquery in query.globs:

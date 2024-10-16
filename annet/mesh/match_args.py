@@ -88,7 +88,7 @@ class PeerNameTemplate:
 
     @staticmethod
     def _compile(value: str) -> tuple[re.Pattern[str], dict[str, type]]:
-        int_groups = re.findall(r'{(?P<group_name>\w+)}', value)
+        int_groups = re.findall(r"{(?P<group_name>\w+)}", value)
         # '{name}'  -> (?P<name>\d+)
         regex_string = re.sub(r"{(?P<group_name>\w+)}", r"(?P<\g<group_name>>\\d+)", value)
         # '{name:regex}' -> (?P<name>regex)
@@ -119,7 +119,7 @@ def match_safe(match_expressions: Sequence[MatchExpr], value: Any) -> bool:
             res = matcher.expr(value)
             if not bool(res):
                 return False
-        except (TypeError, ValueError, AttributeError, KeyError, IndexError) as e:
+        except (TypeError, ValueError, AttributeError, KeyError, IndexError):
             return False
     return True
 

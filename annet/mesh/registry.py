@@ -91,7 +91,7 @@ class MatchedIndirectPair:
 
 
 class MeshRulesRegistry:
-    def __init__(self, match_short_name: bool=False):
+    def __init__(self, match_short_name: bool = False):
         self.direct_rules: list[DirectRule] = []
         self.indirect_rules: list[IndirectRule] = []
         self.global_rules: list[GlobalRule] = []

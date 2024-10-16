@@ -1,7 +1,7 @@
 from abc import ABC
 from copy import copy
 from enum import Enum
-from typing import TypeVar, Any, Annotated, get_origin, get_type_hints, get_args, Callable, Protocol
+from typing import TypeVar, Any, Annotated, get_origin, get_type_hints, get_args, Callable
 
 
 class MergeForbiddenError(Exception):

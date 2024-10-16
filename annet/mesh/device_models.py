@@ -32,7 +32,7 @@ class _FamiliesMixin:
 
 class VrfOptions(BaseMeshModel, _FamiliesMixin):
     def __init__(self, **kwargs):
-        kwargs.setdefault('groups', KeyDefaultDict(lambda x: MeshPeerGroup(name=x)))
+        kwargs.setdefault("groups", KeyDefaultDict(lambda x: MeshPeerGroup(name=x)))
         super().__init__(**kwargs)
 
     vrf_name: str
@@ -51,8 +51,8 @@ class VrfOptions(BaseMeshModel, _FamiliesMixin):
 
 class GlobalOptionsDTO(BaseMeshModel, _FamiliesMixin):
     def __init__(self, **kwargs):
-        kwargs.setdefault('groups', KeyDefaultDict(lambda x: MeshPeerGroup(name=x)))
-        kwargs.setdefault('vrf', KeyDefaultDict(lambda x: VrfOptions(vrf_name=x)))
+        kwargs.setdefault("groups", KeyDefaultDict(lambda x: MeshPeerGroup(name=x)))
+        kwargs.setdefault("vrf", KeyDefaultDict(lambda x: VrfOptions(vrf_name=x)))
         super().__init__(**kwargs)
 
     local_as: int | str
