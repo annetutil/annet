@@ -42,7 +42,7 @@ class GlobalOptions(GlobalOptionsDTO):
 GlobalHandler = Callable[[GlobalOptions], None]
 
 
-@dataclass(slots=True)
+@dataclass
 class GlobalRule:
     matcher: SingleMatcher
     handler: GlobalHandler
@@ -52,26 +52,30 @@ DirectHandler = Callable[[DirectPeer, DirectPeer, MeshSession], None]
 IndirectHandler = Callable[[IndirectPeer, IndirectPeer, MeshSession], None]
 
 
-@dataclass(slots=True)
+@dataclass
 class DirectRule:
+    __slots__ = ("matcher", "handler")
     matcher: PairMatcher
     handler: DirectHandler
 
 
-@dataclass(slots=True)
+@dataclass
 class IndirectRule:
+    __slots__ = ("matcher", "handler")
     matcher: PairMatcher
     handler: IndirectHandler
 
 
-@dataclass(slots=True)
+@dataclass
 class MatchedGlobal:
-    handler: GlobalHandler
+    __slots__ = ("match", "handler")
     match: MatchedArgs
+    handler: GlobalHandler
 
 
-@dataclass(slots=True)
+@dataclass
 class MatchedDirectPair:
+    __slots__ = ("handler", "direct_order", "name_left", "name_right", "match_left", "match_right")
     handler: DirectHandler
     direct_order: bool
     name_left: str
@@ -80,8 +84,9 @@ class MatchedDirectPair:
     match_right: MatchedArgs
 
 
-@dataclass(slots=True)
+@dataclass
 class MatchedIndirectPair:
+    __slots__ = ("handler", "direct_order", "name_left", "name_right", "match_left", "match_right")
     handler: IndirectHandler
     direct_order: bool
     name_left: str
