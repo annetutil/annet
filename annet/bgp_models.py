@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, Union
 
 
 class ASN(int):
@@ -10,14 +10,12 @@ class ASN(int):
     """
     PLAIN_MAX = 0x10000
 
-    def __new__(cls, asn):
+    def __new__(cls, asn: Union[int, str, None, "ASN"]):
         if isinstance(asn, ASN):
             return asn
         elif asn is None:
             asn = 0
         elif not isinstance(asn, int):
-            if isinstance(asn, float):
-                asn = str(asn)
             if isinstance(asn, str) and "." in asn:
                 high, low = [int(token) for token in asn.split(".")]
                 if not (0 <= high < ASN.PLAIN_MAX and 0 <= low < ASN.PLAIN_MAX):
@@ -28,35 +26,35 @@ class ASN(int):
             raise ValueError("Invalid ASN asn %r" % asn)
         return int.__new__(cls, asn)
 
-    def __add__(self, other):
+    def __add__(self, other: int):
         return ASN(super().__add__(other))
 
-    def __sub__(self, other):
+    def __sub__(self, other: int):
         return ASN(super().__sub__(other))
 
-    def __mul__(self, other):
+    def __mul__(self, other: int):
         return ASN(super().__mul__(other))
 
-    def is_plain(self):
+    def is_plain(self) -> bool:
         return self < ASN.PLAIN_MAX
 
-    def asdot(self):
+    def asdot(self) -> str:
         if not self.is_plain():
             return "%d.%d" % (self // ASN.PLAIN_MAX, self % ASN.PLAIN_MAX)
         return "%d" % self
 
-    def asplain(self):
+    def asplain(self) -> str:
         return "%d" % self
 
-    def asdot_high(self):
+    def asdot_high(self) -> int:
         return self // ASN.PLAIN_MAX
 
-    def asdot_low(self):
+    def asdot_low(self) -> int:
         return self % ASN.PLAIN_MAX
 
     __str__ = asdot
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         srepr = str(self)
         if "." in srepr:
             srepr = repr(srepr)

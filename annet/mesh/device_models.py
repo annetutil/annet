@@ -55,7 +55,7 @@ class GlobalOptionsDTO(BaseMeshModel, _FamiliesMixin):
         kwargs.setdefault('vrf', KeyDefaultDict(lambda x: VrfOptions(vrf_name=x)))
         super().__init__(**kwargs)
 
-    local_as: ASN
+    local_as: int | str
     loops: int
     multipath: int
     router_id: str

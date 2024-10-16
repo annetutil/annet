@@ -23,7 +23,7 @@ class MeshSession(_SharedOptionsDTO):
     """
     Options which are set on connected pair
     """
-    asnum: str
+    asnum: int | str
     vrf: str
     name: str
     families: Annotated[set[FamilyName], Concat()]
@@ -93,7 +93,7 @@ class PeerDTO(MeshSession, _OptionsDTO):
 
 class MeshPeerGroup(_OptionsDTO):
     name: str
-    remote_as: int
+    remote_as: int | str
     internal_name: str
     update_source: str | None
     description: str | None
