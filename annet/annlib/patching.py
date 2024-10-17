@@ -500,18 +500,20 @@ def _select_match(matches, rules):
 
     # Мерджим всех потомков которые заматчились
     local_children = odict()
+    global_children = odict()
     if is_f_cr_allowed:
         for (rule, is_cr_allowed) in map(operator.itemgetter(0), matches):
             if is_cr_allowed:
                 local_children = merge_dicts(local_children, rule["children"]["local"])
             # optional break on is_cr_allowed==False?
 
+                global_children = merge_dicts(global_children, rule["children"]["global"])
+
+    global_children = merge_dicts(global_children, rules["global"])
+
     children_rules = {
         "local": local_children,
-        "global": odict(
-            (list(f_rule["children"]["global"].items()) if is_f_cr_allowed else [])
-            + list(rules["global"].items()),
-        ),
+        "global": global_children,
     }
 
     match = {"attrs": f_rule["attrs"]}
