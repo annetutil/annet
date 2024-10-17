@@ -59,9 +59,8 @@ def diff_cmp(diff_l, diff_r):
     (op_l, line_l, _, _) = diff_l
     (op_r, line_r, _, _) = diff_r
 
-    cmp_line = (line_l > line_r) - (line_l < line_r)
     cmp_op = ops_order[op_l] - ops_order[op_r]
-    if cmp_line == 0:
+    if line_l == line_r:
         # При равенстве строк порядок определяется операцией
         return cmp_op
 
@@ -101,9 +100,7 @@ def diff_cmp(diff_l, diff_r):
             else:
                 continue
             break
-    if res != 0:
-        return res
-    return cmp_line
+    return res
 
 
 def resort_diff(diff: Diff) -> Diff:
