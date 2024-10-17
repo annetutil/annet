@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import List, Optional, Any, Dict
+from datetime import datetime, timezone
+from ipaddress import ip_interface, IPv6Interface
+from typing import List, Optional, Any, Dict, Sequence, Callable
 
 from annet.annlib.netdev.views.dump import DumpableView
 from annet.annlib.netdev.views.hardware import HardwareView
@@ -124,6 +125,33 @@ class Interface(Entity):
     ip_addresses: List[IpAddress] = field(default_factory=list)
     vrf: Optional[Entity] = None
     mtu: int | None = None
+    lag: Entity | None = None
+    lag_min_links: int | None = None
+
+    def add_addr(self, address_mask: str, vrf: str | None) -> None:
+        addr = ip_interface(address_mask)
+        if vrf is None:
+            vrf_obj = None
+        else:
+            vrf_obj = Entity(id=0, name=vrf)
+
+        if isinstance(addr, IPv6Interface):
+            family = IpFamily(value=6, label="IPv6")
+        else:
+            family = IpFamily(value=4, label="IPv4")
+        self.ip_addresses.append(IpAddress(
+            id=0,
+            display=address_mask,
+            address=address_mask,
+            vrf=vrf_obj,
+            prefix=None,
+            family=family,
+            created=datetime.now(timezone.utc),
+            last_updated=datetime.now(timezone.utc),
+            tags=[],
+            status=Label(value="active", label="Active"),
+            assigned_object_id=self.id,
+        ))
 
 
 @dataclass
@@ -160,6 +188,17 @@ class NetboxDevice(Entity):
     neighbours: Optional[List["NetboxDevice"]]
 
     # compat
+    @property
+    def neighbours_fqdns(self) -> list[str]:
+        if not self.neighbours:
+            return []
+        return [dev.fqdn for dev in self.neighbours]
+
+    @property
+    def neighbours_ids(self):
+        if not self.neighbours:
+            return []
+        return [dev.id for dev in self.neighbours]
 
     def __hash__(self):
         return hash((self.id, type(self)))
@@ -169,3 +208,57 @@ class NetboxDevice(Entity):
 
     def is_pc(self) -> bool:
         return self.device_type.manufacturer.name == "Mellanox"
+
+    def _make_interface(self, name: str, type: InterfaceType) -> Interface:
+        return Interface(
+            name=name,
+            device=self,
+            enabled=True,
+            description="",
+            type=type,
+            id=0,
+            vrf=None,
+            display=name,
+            untagged_vlan=None,
+            tagged_vlans=[],
+            ip_addresses=[],
+            connected_endpoints=[],
+            mode=None,
+        )
+
+    def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: int | None) -> Interface:
+        new_name = f"lag{lag}"  # TODO vendor specific
+        lag_interface = self._make_interface(
+            name=new_name,
+            type=InterfaceType(value="lag", label="Link Aggregation Group (LAG)"),
+        )
+        lag_interface.lag_min_links = lag_min_links
+        for interface in self.interfaces:
+            if interface.name in ports:
+                interface.lag = lag_interface
+        self.interfaces.append(lag_interface)
+        return lag_interface
+
+    def add_svi(self, svi: int) -> Interface:
+        name = f"Vlan{svi}"
+        for interface in self.interfaces:
+            if interface.name == name:
+                return interface
+        interface = self._make_interface(
+            name=name,
+            type=InterfaceType("virtual", "Virtual")
+        )
+        self.interfaces.append(interface)
+        return interface
+
+    def add_subif(self, interface: str, subif: int) -> Interface:
+        name = f"{interface}.{subif}"
+        for target_port in self.interfaces:
+            if target_port.name == name:
+                return target_port
+        target_port = self._make_interface(
+            name=name,
+            type=InterfaceType("virtual", "Virtual")
+        )
+        self.interfaces.append(target_port)
+        return target_port

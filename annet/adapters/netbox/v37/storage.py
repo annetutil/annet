@@ -15,8 +15,7 @@ from annet.adapters.netbox.common.manufacturer import (
 from annet.adapters.netbox.common.query import NetboxQuery
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.storage import Storage
-
+from annet.storage import Storage, Device, Interface
 
 logger = getLogger(__name__)
 
@@ -68,7 +67,9 @@ def extend_device(
     return res
 
 
-@impl_converter
+@impl_converter(
+    recipe=[link_constant(P[models.Interface].lag_min_links, value=None)],
+)
 def extend_interface(
         interface: api_models.Interface,
         ip_addresses: List[models.IpAddress],
@@ -89,6 +90,7 @@ class NetboxStorageV37(Storage):
             url=opts.url,
             token=opts.token,
         )
+        self._all_fqdns: Optional[list[str]] = None
 
     def __enter__(self):
         return self
@@ -105,6 +107,14 @@ class NetboxStorageV37(Storage):
         return [
             d.name for d in self._load_devices(query)
         ]
+
+    def resolve_all_fdnds(self) -> list[str]:
+        if self._all_fqdns is None:
+            self._all_fqdns = [
+                d.name
+                for d in self.netbox.dcim_all_devices().results
+            ]
+        return self._all_fqdns
 
     def make_devices(
             self,
@@ -217,6 +227,24 @@ class NetboxStorageV37(Storage):
 
     def flush_perf(self):
         pass
+
+    def search_connections(self, device: Device, neighbor: Device) -> list[tuple[Interface, Interface]]:
+        if device.storage is not self:
+            raise ValueError("device does not belong to this storage")
+        if neighbor.storage is not self:
+            raise ValueError("neighbor does not belong to this storage")
+        # both devices are NetboxDevice if they are loaded from this storage
+        res = []
+        for local_port in device.interfaces:
+            if not local_port.connected_endpoints:
+                continue
+            for endpoint in local_port.connected_endpoints:
+                if endpoint.device.id == neighbor.id:
+                    for remote_port in neighbor.interfaces:
+                        if remote_port.name == endpoint.name:
+                            res.append((local_port, remote_port))
+                            break
+        return res
 
 
 def _match_query(query: NetboxQuery, device_data: api_models.Device) -> bool:
