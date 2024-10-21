@@ -15,7 +15,6 @@ def on_device_x(device: GlobalOptions):
 def on_direct(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):
     local.addr = "192.168.1.254"
     neighbor.addr = "192.168.1.1"
-    neighbor.name = "XXX"
     local.mtu = 1501
     neighbor.mtu = 1502
     session.asnum = 12345
@@ -25,7 +24,6 @@ def on_direct(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):
 def on_indirect(local: IndirectPeer, neighbor: IndirectPeer, session: MeshSession):
     local.addr = "192.168.1.254"
     neighbor.addr = "192.168.1.10"
-    neighbor.name = "YYY"
     local.mtu = 1505
     neighbor.mtu = 1506
     session.asnum = 12340
@@ -99,14 +97,12 @@ def test_storage(registry, storage, device1):
     assert vrf.groups[0].name == GROUP
 
     peer_direct, peer_indirect = res.peers
-    assert peer_direct.name == "XXX"
     assert peer_direct.addr == "192.168.1.1"
     assert peer_direct.options.mtu == 1501
     assert peer_direct.families == {"ipv4_unicast"}
     assert peer_direct.remote_as == 12345
     assert peer_direct.description == ""
 
-    assert peer_indirect.name == "YYY"
     assert peer_indirect.addr == "192.168.1.10"
     assert peer_indirect.options.mtu == 1505
     assert peer_indirect.families == {"ipv6_unicast"}

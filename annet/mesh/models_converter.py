@@ -68,7 +68,6 @@ def to_bgp_peer(local: PeerDTO, connected: PeerDTO, connected_device: Device) ->
     result = Peer(
         addr=str(ip_interface(connected.addr).ip),
         remote_as=ASN(connected.asnum),
-        name=connected.name,
         families=connected.families,
         hostname=connected_device.hostname,
         options=options,

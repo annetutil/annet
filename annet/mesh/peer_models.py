@@ -25,7 +25,6 @@ class MeshSession(_SharedOptionsDTO):
     """
     asnum: Union[int, str]
     vrf: str
-    name: str
     families: Annotated[set[FamilyName], Concat()]
     group_name: str
 

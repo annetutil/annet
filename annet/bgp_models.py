@@ -126,7 +126,6 @@ class Peer:
     addr: str
     remote_as: ASN
     families: set[Family]
-    name: str = ""
     description: str = ""
     vrf_name: str = ""
     group_name: str = ""
