@@ -180,6 +180,9 @@ class Orderer:
         return (f_order or 0), cmd_direct, odict(children), f_rule
 
     def order_config(self, config):
+        if self.vendor not in platform.VENDOR_REVERSES:
+            return config
+
         ordered = []
         reverse_prefix = platform.VENDOR_REVERSES[self.vendor]
         if not config:
