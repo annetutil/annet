@@ -12,6 +12,7 @@ def device_handler(global_opts: GlobalOptions):
 @registry.direct("{name:.*}", "m9-sgw{x}.{domain:.*}")
 def direct_handler(device: DirectPeer, neighbor: DirectPeer, session: MeshSession):
     session.asnum = 12345
+    device.addr = "192.168.1.254"
     neighbor.addr = f"192.168.1.{neighbor.match.x}"
 
 
@@ -24,4 +25,4 @@ def direct_handler2(device: DirectPeer, neighbor: DirectPeer, session: MeshSessi
     device.subif = 100
     neighbor.families = {"ipv4-unicast"}
     neighbor.group_name = "GROUP_NAME"
-
+    neighbor.addr = "192.168.1.200/24"

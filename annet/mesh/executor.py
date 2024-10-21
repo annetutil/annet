@@ -20,6 +20,13 @@ class MeshExecutionResult:
     peers: list[Peer]
 
 
+@dataclass(frozen=True)
+class PeerKey:
+    fqdn: str
+    addr: str
+    vrf: str
+
+
 class Pair(BaseMeshModel):
     local: Annotated[PeerDTO, Merge()]
     connected: Annotated[PeerDTO, Merge()]
@@ -60,7 +67,7 @@ class MeshExecutor:
     def _execute_direct(self, device: Device) -> list[Pair]:
         # we can have multiple rules for the same pair
         # we merge them according to remote fqdn
-        neighbor_peers: dict[str, Pair] = {}
+        neighbor_peers: dict[PeerKey, Pair] = {}
         # TODO batch resolve
         for rule in self._registry.lookup_direct(device.fqdn, device.neighbours_fqdns):
             session = MeshSession()
@@ -99,10 +106,19 @@ class MeshExecutor:
                     f"Handler `{handler_name}` provided session data conflicting with "
                     f"peer data for device `{device.fqdn}`:\n" + str(e)
                 ) from e
+
+            pair = Pair(local=device_dto, connected=neighbor_dto, device=neighbor_device)
+            addr = getattr(neighbor_dto, "addr", None)
+            if addr is None:
+                raise ValueError(f"Handler `{handler_name}` returned no peer addr")
+            peer_key = PeerKey(
+                fqdn=neighbor_device.fqdn,
+                addr=addr,
+                vrf=getattr(neighbor_dto, "vrf", "")
+            )
             try:
-                pair = Pair(local=device_dto, connected=neighbor_dto, device=neighbor_device)
-                if neighbor_device.fqdn in neighbor_peers:
-                    pair = merge(neighbor_peers[neighbor_device.fqdn], pair)
+                if peer_key in neighbor_peers:
+                    pair = merge(neighbor_peers[peer_key], pair)
             except MergeForbiddenError as e:
                 if rule.direct_order:
                     pair_names = device.fqdn, neighbor_device.fqdn
@@ -110,15 +126,16 @@ class MeshExecutor:
                     pair_names = neighbor_device.fqdn, device.fqdn
                 raise ValueError(
                     f"Handler `{handler_name}` provides data conflicting with "
-                    f"previously loaded for device pair {pair_names}:\n" + str(e)
+                    f"previously loaded for device pair {pair_names} "
+                    f"with addr={peer_key.addr}, vrf{peer_key.vrf}:\n" + str(e)
                 ) from e
-            neighbor_peers[neighbor_device.fqdn] = pair
+            neighbor_peers[peer_key] = pair
         return list(neighbor_peers.values())
 
     def _execute_indirect(self, device: Device, all_fqdns: list[str]) -> list[Pair]:
         # we can have multiple rules for the same pair
         # we merge them according to remote fqdn
-        connected_peers: dict[str, Pair] = {}
+        connected_peers: dict[PeerKey, Pair] = {}
         for rule in self._registry.lookup_indirect(device.fqdn, all_fqdns):
             session = MeshSession()
             handler_name = self._handler_name(rule.handler)
@@ -148,10 +165,19 @@ class MeshExecutor:
                     f"Handler `{handler_name}` provided session data conflicting with "
                     f"peer data for device `{device.fqdn}`:\n" + str(e)
                 ) from e
+
+            pair = Pair(local=device_dto, connected=connected_dto, device=connected_device)
+            addr = getattr(connected_dto, "addr", None)
+            if addr is None:
+                raise ValueError(f"Handler `{handler_name}` returned no peer addr")
+            peer_key = PeerKey(
+                fqdn=connected_device.fqdn,
+                addr=addr,
+                vrf=getattr(connected_dto, "vrf", "")
+            )
             try:
-                pair = Pair(local=device_dto, connected=connected_dto, device=connected_device)
-                if connected_device.fqdn in connected_peers:
-                    pair = merge(connected_peers[connected_device.fqdn], pair)
+                if peer_key in connected_peers:
+                    pair = merge(connected_peers[peer_key], pair)
             except MergeForbiddenError as e:
                 if rule.direct_order:
                     pair_names = device.fqdn, connected_device.fqdn
@@ -159,9 +185,10 @@ class MeshExecutor:
                     pair_names = connected_device.fqdn, device.fqdn
                 raise ValueError(
                     f"Handler `{handler_name}` provides data conflicting with "
-                    f"previously loaded for device pair {pair_names}:\n" + str(e)
+                    f"previously loaded for device pair {pair_names} "
+                    f"with addr={peer_key.addr}, vrf{peer_key.vrf}:\n" + str(e)
                 ) from e
-            connected_peers[connected_device.fqdn] = pair
+            connected_peers[peer_key] = pair
 
         return list(connected_peers.values())  # FIXME
 

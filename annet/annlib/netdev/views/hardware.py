@@ -149,6 +149,7 @@ def lag_name(hw: HardwareView, nlagg: int) -> str:
         return f"lagg-{nlagg}"
     raise NotImplementedError(hw)
 
+
 def svi_name(hw: HardwareView, num: int) -> str:
     if hw.Juniper:
         return f"irb.{num}"

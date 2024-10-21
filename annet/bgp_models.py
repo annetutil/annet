@@ -125,7 +125,7 @@ class PeerOptions:
 class Peer:
     addr: str
     remote_as: ASN
-    families: set[Family]
+    families: set[Family] = field(default_factory=set)
     description: str = ""
     vrf_name: str = ""
     group_name: str = ""

@@ -68,7 +68,6 @@ def to_bgp_peer(local: PeerDTO, connected: PeerDTO, connected_device: Device) ->
     result = Peer(
         addr=str(ip_interface(connected.addr).ip),
         remote_as=ASN(connected.asnum),
-        families=connected.families,
         hostname=connected_device.hostname,
         options=options,
     )
@@ -76,6 +75,7 @@ def to_bgp_peer(local: PeerDTO, connected: PeerDTO, connected_device: Device) ->
     result.vrf_name = getattr(connected, "vrf", result.vrf_name)
     result.group_name = getattr(connected, "group_name", result.group_name)
     result.description = getattr(connected, "description", result.description)
+    result.families = getattr(connected, "families", result.families)
     # local
     result.import_policy = getattr(connected, "import_policy", result.import_policy)
     result.export_policy = getattr(connected, "export_policy", result.export_policy)
