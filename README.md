@@ -174,3 +174,20 @@ devices:
 
 Annet uses [Entry Points](https://setuptools.pypa.io/en/latest/userguide/entry_point.html) mechanism for customization.
 For example, you can implement the Storage interface on top of your favorite inventory system.
+
+
+## Building doc
+
+1. Install dependencies:
+
+```shell
+pip install -r requirements-doc.txt
+```
+
+2. Build
+
+```shell
+sphinx-build -M html docs docs-build
+```
+
+3. Open rendered html in browser [docs-build/html/index.html](docs-build/html/index.html)
