@@ -4,7 +4,7 @@ from ipaddress import ip_interface, IPv6Interface
 from typing import List, Optional, Any, Dict, Sequence, Callable
 
 from annet.annlib.netdev.views.dump import DumpableView
-from annet.annlib.netdev.views.hardware import HardwareView
+from annet.annlib.netdev.views.hardware import HardwareView, lag_name, svi_name
 from annet.storage import Storage
 
 
@@ -226,8 +226,11 @@ class NetboxDevice(Entity):
             mode=None,
         )
 
+    def _lag_name(self, lag: int) -> str:
+        return lag_name(self.hw, lag)
+
     def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: int | None) -> Interface:
-        new_name = f"lag{lag}"  # TODO vendor specific
+        new_name = self._lag_name(lag)
         lag_interface = self._make_interface(
             name=new_name,
             type=InterfaceType(value="lag", label="Link Aggregation Group (LAG)"),
@@ -239,8 +242,11 @@ class NetboxDevice(Entity):
         self.interfaces.append(lag_interface)
         return lag_interface
 
+    def _svi_name(self, svi: int) -> str:
+        return svi_name(self.hw, svi)
+
     def add_svi(self, svi: int) -> Interface:
-        name = f"Vlan{svi}"
+        name = self._svi_name(svi)
         for interface in self.interfaces:
             if interface.name == name:
                 return interface
@@ -251,8 +257,11 @@ class NetboxDevice(Entity):
         self.interfaces.append(interface)
         return interface
 
+    def _subif_name(self, interface: str, subif: int) -> str:
+        return f"{interface}.{subif}"
+
     def add_subif(self, interface: str, subif: int) -> Interface:
-        name = f"{interface}.{subif}"
+        name = self._subif_name(interface, subif)
         for target_port in self.interfaces:
             if target_port.name == name:
                 return target_port
