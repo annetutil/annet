@@ -359,8 +359,14 @@ def diff(
             pc_diff_files.sort(key=lambda f: f.label)
             ret[device] = PCDiff(hostname=device.hostname, diff_files=pc_diff_files)
         elif old is not None:
+            orderer = patching.Orderer.from_hw(device.hw)
             rb = rulebook.get_rulebook(device.hw)
-            diff_tree = patching.make_diff(old, new, rb, [acl_rules, res.filter_acl_rules])
+            diff_tree = patching.make_diff(
+                old,
+                orderer.order_config(new),
+                rb,
+                [acl_rules, res.filter_acl_rules],
+            )
             diff_tree = patching.strip_unchanged(diff_tree)
             ret[device] = diff_tree
 

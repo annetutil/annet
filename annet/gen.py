@@ -27,7 +27,6 @@ from contextlog import get_logger
 
 from annet import generators, implicit, patching, tabparser, tracing
 from annet.annlib import jsontools
-from annet.annlib.rbparser import platform
 from annet.annlib.rbparser.acl import compile_acl_text
 from annet.cli_args import DeployOptions, GenOptions, ShowGenOptions
 from annet.deploy import scrub_config, get_fetcher
@@ -512,12 +511,11 @@ def worker(device_id, args: ShowGenOptions, stdin, loader: "Loader", filterer: F
         for (path, (data, _)) in sorted(new_file_fragments.items(), key=itemgetter(0)):
             dumped_data = json.dumps(data, indent=4, sort_keys=True, ensure_ascii=False)
             yield (output_driver.entire_config_dest_path(device, path), dumped_data, False)
-
         # Consider result of partial run empty and create an empty dest file
         # only if there are some acl rules that has been matched.
         # Otherwise treat it as if no supported generators have been found.
         acl_rules = res.get_acl_rules(args.acl_safe)
-        if device.hw.vendor in platform.VENDOR_REVERSES and acl_rules:
+        if acl_rules:
             orderer = patching.Orderer.from_hw(device.hw)
             yield (output_driver.cfg_file_names(device)[0],
                    format_config_blocks(
