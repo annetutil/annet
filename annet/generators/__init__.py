@@ -385,6 +385,8 @@ def _get_generators(module_paths: Union[List[str], dict], storage, device=None):
             seen = set()
             for prop, prop_modules in module_paths.get("per_device_property", {}).items():
                 if getattr(device, prop, False) is True:
+                    if modules:
+                        raise GeneratorError(f"Multiple generators for device {device}")
                     for module in prop_modules:
                         if module not in seen:
                             modules.append(module)
