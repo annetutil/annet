@@ -141,4 +141,11 @@ def repair_context_file() -> None:
 
 
 def do_async(coro: Awaitable):
-    return asyncio.run(coro)
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    with asyncio.Runner(loop_factory=lambda: loop) as runner:
+        return runner.run(coro)
