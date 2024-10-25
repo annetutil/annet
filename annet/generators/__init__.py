@@ -383,8 +383,15 @@ def _get_generators(module_paths: Union[List[str], dict], storage, device=None):
         else:
             modules = []
             seen = set()
+            matched_property = None
             for prop, prop_modules in module_paths.get("per_device_property", {}).items():
                 if getattr(device, prop, False) is True:
+                    if matched_property is not None:
+                        raise RuntimeError(
+                            f"Device {device.hostname} is matched by more than one "
+                            f"per_device_property: {matched_property} and {prop}"
+                        )
+                    matched_property = prop
                     for module in prop_modules:
                         if module not in seen:
                             modules.append(module)
