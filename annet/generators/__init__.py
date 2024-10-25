@@ -383,10 +383,12 @@ def _get_generators(module_paths: Union[List[str], dict], storage, device=None):
         else:
             modules = []
             seen = set()
+            matched_property = None
             for prop, prop_modules in module_paths.get("per_device_property", {}).items():
                 if getattr(device, prop, False) is True:
-                    if modules:
-                        raise GeneratorError(f"Multiple generators for device {device}")
+                    if matched_property is not None:
+                        raise GeneratorError(f"Device: {device.fqdn} already has a conflict due to property: {matched_property}, conflicting with: {prop}")
+                    matched_property = prop
                     for module in prop_modules:
                         if module not in seen:
                             modules.append(module)
