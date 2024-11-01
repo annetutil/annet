@@ -52,8 +52,6 @@ spanning-tree
 no system jumbomtu %order_reverse
 system jumbomtu
 
-route-map
-
 service dhcp
 ip dhcp relay
 ipv6 dhcp relay
@@ -73,6 +71,8 @@ interface *
     channel-group
 
 interface */\S+\.\d+/
+
+route-map
 
 # удалять eth-trunk можно только после того, как вычистим member interfaces
 undo interface */port-channel\d+/  %order_reverse
