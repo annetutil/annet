@@ -77,6 +77,9 @@ route-map
 # удалять eth-trunk можно только после того, как вычистим member interfaces
 undo interface */port-channel\d+/  %order_reverse
 
+# remote as of neighbors should be assigned before peer-group, the rule is applied to neighbors, not peer-groups
 router bgp
+    neighbor */[\da-f\.\:]+/ remote-as
+    neighbor */[\da-f\.\:]+/ peer-group
 
 line
