@@ -1,0 +1,23 @@
+- vendor: Cisco
+  diff: |
+    interface GigabitEthernet1/0
+      + ip address 192.168.21.1 255.255.255.0
+  patch: |
+    conf t
+    interface GigabitEthernet1/0
+      ip address 192.168.21.1 255.255.255.0
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: Cisco
+  diff: |
+    interface GigabitEthernet1/0
+      - ip address 192.168.11.2 255.255.255.0
+  patch: |
+    conf t
+    interface GigabitEthernet1/0
+      no ip address 192.168.11.2 255.255.255.0
+      exit
+    exit
+    copy running-config startup-config

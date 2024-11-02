@@ -133,6 +133,11 @@ def _implicit_tree(device):
                         no shutdown
             """
     elif device.hw.Cisco:
+        text += r"""
+            !interface
+                no shutdown
+                no ip address
+        """
         if device.hw.Cisco.Catalyst:
             # this configuration is not visible in running-config when enabled
             text += r"""
