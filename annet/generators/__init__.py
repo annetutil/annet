@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import importlib
+import importlib.machinery
 import os
 import textwrap
 from collections import OrderedDict as odict
@@ -379,7 +380,7 @@ def _run_json_fragment_generator(
 def _get_generators(module_paths: Union[List[str], dict], storage, device=None):
     if isinstance(module_paths, dict):
         if device is None:
-            module_paths = module_paths.get("default")
+            module_paths = module_paths.get("default", [])
         else:
             modules = []
             seen = set()
@@ -396,14 +397,25 @@ def _get_generators(module_paths: Union[List[str], dict], storage, device=None):
                         if module not in seen:
                             modules.append(module)
                             seen.add(module)
-            module_paths = modules or module_paths.get("default")
+            module_paths = modules or module_paths.get("default", [])
     res_generators = []
     for module_path in module_paths:
-        module = importlib.import_module(module_path)
+        module = _load_gen_module(module_path)
         if hasattr(module, "get_generators"):
             generators: List[BaseGenerator] = module.get_generators(storage)
             res_generators += generators
     return res_generators
+
+
+def _load_gen_module(module_path: str):
+    try:
+        module = importlib.import_module(module_path)
+    except ModuleNotFoundError as e:
+        try:  # maybe it's a path to module
+            module = importlib.machinery.SourceFileLoader(module_path.replace("/", "_"), module_path).load_module()
+        except ModuleNotFoundError:
+            raise e
+    return module
 
 
 def _get_ref_generators(module_paths: List[str], storage, device):
@@ -411,7 +423,7 @@ def _get_ref_generators(module_paths: List[str], storage, device):
         module_paths = module_paths.get("default")
     res_generators = []
     for module_path in module_paths:
-        module = importlib.import_module(module_path)
+        module = _load_gen_module(module_path)
         if hasattr(module, "get_ref_generators"):
             res_generators += module.get_ref_generators(storage)
     return res_generators
