@@ -231,6 +231,9 @@ class NetboxDevice(Entity):
 
     def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: int | None) -> Interface:
         new_name = self._lag_name(lag)
+        for target_interface in self.interfaces:
+            if target_interface.name == new_name:
+                return target_interface
         lag_interface = self._make_interface(
             name=new_name,
             type=InterfaceType(value="lag", label="Link Aggregation Group (LAG)"),

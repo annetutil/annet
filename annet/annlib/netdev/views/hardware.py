@@ -133,10 +133,7 @@ def lag_name(hw: HardwareView, nlagg: int) -> str:
     if hw.Nexus:
         return f"port-channel{nlagg}"
     if hw.Arista:
-        # We are using some ranges starting with 0, for example in spine planes.
-        # Arista, however, can't have Port-Channel0 interface, valid range is 1 - 999999.
-        # So we compensate here by adding 100.
-        return f"Port-Channel{nlagg + 100}"
+        return f"Port-Channel{nlagg}"
     if hw.Juniper:
         return f"ae{nlagg}"
     if hw.Nokia:
