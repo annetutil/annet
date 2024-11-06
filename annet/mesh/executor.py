@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Annotated, Callable
+from typing import Annotated, Callable, Optional
 
 from annet.bgp_models import Peer, GlobalOptions
 from annet.storage import Device, Storage
@@ -192,13 +192,13 @@ class MeshExecutor:
 
         return list(connected_peers.values())  # FIXME
 
-    def _to_bgp_peer(self, pair: Pair) -> Peer:
-        return to_bgp_peer(pair.local, pair.connected, pair.device)
+    def _to_bgp_peer(self, pair: Pair, interface: Optional[str]) -> Peer:
+        return to_bgp_peer(pair.local, pair.connected, pair.device, interface)
 
     def _to_bgp_global(self, global_options: GlobalOptionsDTO) -> GlobalOptions:
         return to_bgp_global_options(global_options)
 
-    def _apply_interface_changes(self, device: Device, neighbor: Device, changes: InterfaceChanges) -> None:
+    def _apply_interface_changes(self, device: Device, neighbor: Device, changes: InterfaceChanges) -> str:
         port_pairs = self._storage.search_connections(device, neighbor)
         if len(port_pairs) > 1:
             if changes.lag is changes.svi is None:
@@ -223,6 +223,7 @@ class MeshExecutor:
         else:
             target_interface, _ = port_pairs[0]
         target_interface.add_addr(changes.addr, changes.vrf)
+        return target_interface.name
 
     def execute_for(self, device: Device) -> MeshExecutionResult:
         all_fqdns = self._storage.resolve_all_fdnds()
@@ -231,10 +232,15 @@ class MeshExecutor:
 
         peers = []
         for direct_pair in self._execute_direct(device):
-            peers.append(self._to_bgp_peer(direct_pair))
-            self._apply_interface_changes(device, direct_pair.device, to_interface_changes(direct_pair.local))
+            target_interface = self._apply_interface_changes(
+                device,
+                direct_pair.device,
+                to_interface_changes(direct_pair.local),
+            )
+            peers.append(self._to_bgp_peer(direct_pair, target_interface))
+
         for connected_pair in self._execute_indirect(device, all_fqdns):
-            peers.append(self._to_bgp_peer(connected_pair))
+            peers.append(self._to_bgp_peer(connected_pair, None))
 
         return MeshExecutionResult(
             global_options=global_options,

@@ -124,6 +124,7 @@ class PeerOptions:
 @dataclass
 class Peer:
     addr: str
+    interface: Optional[str]
     remote_as: ASN
     families: set[Family] = field(default_factory=set)
     description: str = ""

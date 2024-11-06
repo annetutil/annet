@@ -121,21 +121,25 @@ def test_storage(registry, storage, device1):
     assert peer_direct.families == {"ipv4_unicast"}
     assert peer_direct.remote_as == 12345
     assert peer_direct.description == ""
+    assert peer_direct.interface == "if1"
 
     assert peer_direct_alt.addr == "192.168.1.2"
     assert peer_direct_alt.options.mtu == 1501
     assert peer_direct_alt.families == {"ipv4_labeled"}
     assert peer_direct_alt.remote_as == 12345
     assert peer_direct_alt.description == ""
+    assert peer_direct_alt.interface == "if1"
 
     assert peer_indirect.addr == "192.168.1.10"
     assert peer_indirect.options.mtu == 1505
     assert peer_indirect.families == {"ipv6_unicast"}
     assert peer_indirect.remote_as == 12340
     assert peer_indirect.description == ""
+    assert peer_indirect.interface is None
 
     assert peer_indirect_alt.addr == "192.168.1.11"
     assert peer_indirect_alt.options.mtu == 1506
     assert peer_indirect_alt.families == {"ipv6_unicast"}
     assert peer_indirect_alt.remote_as == 12340
     assert peer_indirect_alt.description == ""
+    assert peer_indirect_alt.interface is None
