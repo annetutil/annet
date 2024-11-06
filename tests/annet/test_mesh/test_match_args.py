@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from annet.mesh.match_args import MatchExpr, match_safe, PeerNameTemplate, SingleMatcher, Left, Match, Right, \
     PairMatcher
@@ -50,7 +50,7 @@ def test_match_expr():
     assert not match(F.one > F.two, A())
 
 
-def match_name(template: str, name: str) -> dict[str, Any] | None:
+def match_name(template: str, name: str) -> Optional[dict[str, Any]]:
     res = PeerNameTemplate(template).match(name)
     if res is None:
         return None

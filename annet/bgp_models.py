@@ -70,7 +70,7 @@ class BFDTimers:
 Family = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled", "ipv6_labeled"]
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True)
 class PeerOptions:
     """The same options as for group but any field is optional"""
     local_as: Optional[ASN] = None
@@ -121,7 +121,7 @@ class PeerOptions:
     mtu: Optional[int] = None
 
 
-@dataclass(kw_only=True)
+@dataclass
 class Peer:
     addr: str
     remote_as: ASN
@@ -154,7 +154,7 @@ class Redistribute:
     policy: str = ""
 
 
-@dataclass(kw_only=True)
+@dataclass
 class FamilyOptions:
     family: Family
     vrf_name: str
@@ -173,7 +173,7 @@ class FamilyOptions:
     advertise_bgp_static: bool = False
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True)
 class PeerGroup:
     name: str
     remote_as: ASN = ASN(None)
@@ -230,17 +230,8 @@ class PeerGroup:
     mtu: int = 0
 
 
-@dataclass(kw_only=True)
-class _FamiliesMixin:
-    ipv4_unicast: Optional[FamilyOptions] = None
-    ipv6_unicast: Optional[FamilyOptions] = None
-    ipv4_labeled_unicast: Optional[FamilyOptions] = None
-    ipv6_labeled_unicast: Optional[FamilyOptions] = None
-    groups: list[PeerGroup] = field(default_factory=list)
-
-
-@dataclass(kw_only=True)
-class VrfOptions(_FamiliesMixin):
+@dataclass
+class VrfOptions:
     vrf_name: str
     vrf_name_global: Optional[str] = None
     import_policy: Optional[str] = None
@@ -252,11 +243,23 @@ class VrfOptions(_FamiliesMixin):
     route_distinguisher: Optional[str] = None
     static_label: Optional[int] = None  # FIXME: str?
 
+    ipv4_unicast: Optional[FamilyOptions] = None
+    ipv6_unicast: Optional[FamilyOptions] = None
+    ipv4_labeled_unicast: Optional[FamilyOptions] = None
+    ipv6_labeled_unicast: Optional[FamilyOptions] = None
+    groups: list[PeerGroup] = field(default_factory=list)
 
-@dataclass(kw_only=True)
-class GlobalOptions(_FamiliesMixin):
+
+@dataclass
+class GlobalOptions:
     local_as: ASN = ASN(None)
     loops: int = 0
     multipath: int = 0
     router_id: str = ""
     vrf: dict[str, VrfOptions] = field(default_factory=dict)
+
+    ipv4_unicast: Optional[FamilyOptions] = None
+    ipv6_unicast: Optional[FamilyOptions] = None
+    ipv4_labeled_unicast: Optional[FamilyOptions] = None
+    ipv6_labeled_unicast: Optional[FamilyOptions] = None
+    groups: list[PeerGroup] = field(default_factory=list)

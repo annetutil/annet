@@ -1,11 +1,11 @@
-from typing import Any, Sequence
+from typing import Any, Optional, Sequence
 
 from annet.mesh.executor import Device
 from annet.storage import Storage, Interface
 
 
 class FakeInterface(Interface):
-    def __init__(self, name: str, neighbor_fqdn: str | None, neighbor_port: str | None):
+    def __init__(self, name: str, neighbor_fqdn: Optional[str], neighbor_port: Optional[str]):
         self._name = name
         self.addrs = []
         self.neighbor_fqdn = neighbor_fqdn
@@ -15,7 +15,7 @@ class FakeInterface(Interface):
     def name(self) -> str:
         return self._name
 
-    def add_addr(self, address_mask: str, vrf: str | None) -> None:
+    def add_addr(self, address_mask: str, vrf: Optional[str]) -> None:
         self.addrs.append((address_mask, vrf))
 
 
@@ -67,7 +67,7 @@ class FakeDevice(Device):
     def breed(self):
         pass
 
-    def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: int | None) -> Interface:
+    def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: Optional[int]) -> Interface:
         self.interfaces.append(FakeInterface(
             name=f"Trunk{lag}",
             neighbor_port=None,

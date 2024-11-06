@@ -147,7 +147,7 @@ class PairMatcher:
         self.right_rule = PeerNameTemplate(right_rule)
         self.match_expressions = match_expressions
 
-    def match_pair(self, left: str, right: str) -> tuple[MatchedArgs, MatchedArgs] | None:
+    def match_pair(self, left: str, right: str) -> Optional[tuple[MatchedArgs, MatchedArgs]]:
         left_args = self._match_host(self.left_rule, left)
         if left_args is None:
             return None
@@ -158,7 +158,7 @@ class PairMatcher:
             return None
         return left_args, right_args
 
-    def _match_host(self, rule: PeerNameTemplate, host: str) -> MatchedArgs | None:
+    def _match_host(self, rule: PeerNameTemplate, host: str) -> Optional[MatchedArgs]:
         data = rule.match(host)
         if data is None:
             return None
