@@ -19,7 +19,7 @@ class Rule:
     _order: Optional[int]
     _action: Action = Action.SKIP
     _added_as_path: list[int] = field(default_factory=list)
-    _replaced_community: list[str] = field(default_factory=list)
+    _replaced_community: Optional[list[str]] = None
     _added_community: list[str] = field(default_factory=list)
     _removed_community: list[str] = field(default_factory=list)
     local_pref: Optional[int] = None
@@ -49,14 +49,15 @@ class Rule:
         for c in community:
             while c in self._removed_community:
                 self._removed_community.remove(c)
-            if c not in self._removed_community and c not in self._replaced_community:
+            if c not in self._removed_community and (not self._removed_community or c not in self._replaced_community):
                 self._added_community.append(c)
         return self
 
     def remove_community(self, *community: str) -> "Rule":
         for c in community:
-            while c in self._replaced_community:
-                self._replaced_community.remove(c)
+            if self._replaced_community:
+                while c in self._replaced_community:
+                    self._replaced_community.remove(c)
             while c in self._added_community:
                 self._added_community.remove(c)
             if c not in self._removed_community:
