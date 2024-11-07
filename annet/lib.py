@@ -44,7 +44,7 @@ _DEFAULT_CONTEXT_PATH: Optional[str] = None   # defaults to ~/.annet/context.yml
 
 def get_homedir_path() -> str:
     if _HOMEDIR_PATH is None:
-        set_homedir_path("~/.annet/")
+        set_homedir_path(os.path.expanduser("~/.annet/"))
     return _HOMEDIR_PATH
 
 
