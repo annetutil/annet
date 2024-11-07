@@ -7,6 +7,7 @@ formatters:
         style: "{"
         datefmt: "%H:%M:%S"
         format: "[{asctime}] {log_color}{levelname:>7}{reset} {processName} - {pathname}:{lineno} - {message} -- {cyan}{_extra}{reset}"
+        max_vars_lines: 20
     host_progress:
         (): contextlog.SmartFormatter
         style: "{"
