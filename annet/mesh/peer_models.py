@@ -77,7 +77,7 @@ class _OptionsDTO(_SharedOptionsDTO):
     mtu: int
 
 
-class PeerDTO(MeshSession, _OptionsDTO):
+class DirectPeerDTO(MeshSession, _OptionsDTO):
     pod: int
     addr: str
     description: str
@@ -87,7 +87,24 @@ class PeerDTO(MeshSession, _OptionsDTO):
     lag_links_min: Optional[int]
     svi: Optional[int]
 
-    group_name: str
+
+class IndirectPeerDTO(MeshSession, _OptionsDTO):
+    pod: int
+    addr: str
+    description: str
+
+
+class VirtualLocalDTO:
+    pod: int
+    addr: str
+    description: str
+
+    svi: Optional[int]
+
+
+class VirtualPeerDTO(MeshSession, _OptionsDTO):
+    addr: str
+    description: str
 
 
 class MeshPeerGroup(_OptionsDTO):

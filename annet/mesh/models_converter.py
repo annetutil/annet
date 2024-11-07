@@ -1,12 +1,15 @@
 from dataclasses import dataclass
 from ipaddress import ip_interface
-from typing import Optional
+from typing import Optional, Union
 
 from adaptix import Retort, loader, Chain, name_mapping
 
-from .peer_models import PeerDTO
+from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO
 from ..bgp_models import GlobalOptions, VrfOptions, FamilyOptions, Peer, PeerGroup, ASN, PeerOptions
 from ..storage import Device
+
+
+PeerDTO = Union[DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO]
 
 
 @dataclass

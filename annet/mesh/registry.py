@@ -1,13 +1,13 @@
 from dataclasses import dataclass
-from typing import Callable, Any
+from typing import Callable, Any, Sequence
 
 from .match_args import MatchExpr, PairMatcher, SingleMatcher
 from .match_args import MatchedArgs
 from .device_models import GlobalOptionsDTO
-from .peer_models import PeerDTO, MeshSession
+from .peer_models import MeshSession, IndirectPeerDTO, VirtualLocalDTO, VirtualPeerDTO, DirectPeerDTO
 
 
-class DirectPeer(PeerDTO):
+class DirectPeer(DirectPeerDTO):
     match: MatchedArgs
     device: Any
     ports: list[str]
@@ -19,7 +19,7 @@ class DirectPeer(PeerDTO):
         self.ports = ports
 
 
-class IndirectPeer(PeerDTO):
+class IndirectPeer(IndirectPeerDTO):
     match: MatchedArgs
     device: Any
 
@@ -27,6 +27,14 @@ class IndirectPeer(PeerDTO):
         super().__init__()
         self.match = match
         self.device = device
+
+
+class VirtualLocal(VirtualLocalDTO):
+    device: Any
+
+
+class VirtualPeer(VirtualPeerDTO):
+    num: int
 
 
 class GlobalOptions(GlobalOptionsDTO):
@@ -50,6 +58,7 @@ class GlobalRule:
 
 DirectHandler = Callable[[DirectPeer, DirectPeer, MeshSession], None]
 IndirectHandler = Callable[[IndirectPeer, IndirectPeer, MeshSession], None]
+VirtualHandler = Callable[[VirtualLocal, VirtualPeer, MeshSession], None]
 
 
 @dataclass
@@ -64,6 +73,14 @@ class IndirectRule:
     __slots__ = ("matcher", "handler")
     matcher: PairMatcher
     handler: IndirectHandler
+
+
+@dataclass
+class VirtualRule:
+    __slots__ = ("matcher", "num", "handler")
+    matcher: SingleMatcher
+    num: Sequence[int]
+    handler: VirtualHandler
 
 
 @dataclass
@@ -95,11 +112,20 @@ class MatchedIndirectPair:
     match_right: MatchedArgs
 
 
+@dataclass
+class MatchedVirtualPair:
+    __slots__ = ("match", "num", "handler")
+    match: MatchedArgs
+    num: Sequence[int]
+    handler: VirtualHandler
+
+
 class MeshRulesRegistry:
     def __init__(self, match_short_name: bool = False):
         self.direct_rules: list[DirectRule] = []
         self.indirect_rules: list[IndirectRule] = []
         self.global_rules: list[GlobalRule] = []
+        self.virtual_rules: list[VirtualRule] = []
         self.nested: list[MeshRulesRegistry] = []
         self.match_short_name = match_short_name
 
@@ -138,6 +164,17 @@ class MeshRulesRegistry:
 
         def register(handler: IndirectHandler) -> IndirectHandler:
             self.indirect_rules.append(IndirectRule(matcher, handler))
+            return handler
+
+        return register
+
+    def virtual(
+            self, peer_mask: str, num: Sequence[int], *match: MatchExpr,
+    ) -> Callable[[VirtualHandler], VirtualHandler]:
+        matcher = SingleMatcher(peer_mask, match)
+
+        def register(handler: VirtualHandler) -> VirtualHandler:
+            self.virtual_rules.append(VirtualRule(matcher, num, handler))
             return handler
 
         return register
@@ -196,6 +233,20 @@ class MeshRulesRegistry:
                     ))
         for registry in self.nested:
             found.extend(registry.lookup_indirect(device, devices))
+        return found
+
+    def lookup_virtual(self, device: str) -> list[MatchedVirtualPair]:
+        found = []
+        device = self._normalize_host(device)
+        for rule in self.virtual_rules:
+            if args := rule.matcher.match_one(device):
+                found.append(MatchedVirtualPair(
+                    handler=rule.handler,
+                    match=args,
+                    num=rule.num,
+                ))
+        for registry in self.nested:
+            found.extend(registry.lookup_virtual(device))
         return found
 
     def lookup_global(self, device: str) -> list[MatchedGlobal]:

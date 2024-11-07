@@ -7,7 +7,7 @@ from annet.storage import Device, Storage
 from .basemodel import merge, BaseMeshModel, Merge, UseLast, MergeForbiddenError
 from .device_models import GlobalOptionsDTO
 from .models_converter import to_bgp_global_options, to_bgp_peer, InterfaceChanges, to_interface_changes
-from .peer_models import PeerDTO
+from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualLocalDTO, VirtualPeerDTO
 from .registry import MeshRulesRegistry, GlobalOptions as MeshGlobalOptions, DirectPeer, MeshSession, IndirectPeer
 
 
@@ -28,8 +28,8 @@ class PeerKey:
 
 
 class Pair(BaseMeshModel):
-    local: Annotated[PeerDTO, Merge()]
-    connected: Annotated[PeerDTO, Merge()]
+    local: Annotated[DirectPeerDTO | IndirectPeerDTO, Merge()]
+    connected: Annotated[DirectPeerDTO | IndirectPeerDTO, Merge()]
     device: Annotated[Device, UseLast()]
 
 
@@ -93,14 +93,14 @@ class MeshExecutor:
                 rule.handler(peer_neighbor, peer_device, session)
 
             try:
-                neighbor_dto = merge(PeerDTO(), peer_neighbor, session)
+                neighbor_dto = merge(DirectPeerDTO(), peer_neighbor, session)
             except MergeForbiddenError as e:
                 raise ValueError(
                     f"Handler `{handler_name}` provided session data conflicting with "
                     f"peer data for device `{neighbor_device.fqdn}`:\n" + str(e)
                 ) from e
             try:
-                device_dto = merge(PeerDTO(), peer_device, session)
+                device_dto = merge(DirectPeerDTO(), peer_device, session)
             except MergeForbiddenError as e:
                 raise ValueError(
                     f"Handler `{handler_name}` provided session data conflicting with "
@@ -152,14 +152,14 @@ class MeshExecutor:
                 rule.handler(peer_connected, peer_device, session)
 
             try:
-                connected_dto = merge(PeerDTO(), peer_connected, session)
+                connected_dto = merge(IndirectPeerDTO(), peer_connected, session)
             except MergeForbiddenError as e:
                 raise ValueError(
                     f"Handler `{handler_name}` provided session data conflicting with "
                     f"peer data for device `{connected_device.fqdn}`:\n" + str(e)
                 ) from e
             try:
-                device_dto = merge(PeerDTO(), peer_device, session)
+                device_dto = merge(IndirectPeerDTO(), peer_device, session)
             except MergeForbiddenError as e:
                 raise ValueError(
                     f"Handler `{handler_name}` provided session data conflicting with "
