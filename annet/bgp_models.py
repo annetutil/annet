@@ -179,8 +179,8 @@ class PeerGroup:
     name: str
     remote_as: ASN = ASN(None)
     internal_name: str = ""
-    description: Optional[str] = None
-    update_source: Optional[str] = None
+    description: str = ""
+    update_source: str = ""
 
     # more strict version of PeerOptions
     local_as: ASN = ASN(None)

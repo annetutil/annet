@@ -81,14 +81,4 @@ def to_bgp_peer(local: PeerDTO, connected: PeerDTO, connected_device: Device, in
     result.import_policy = getattr(connected, "import_policy", result.import_policy)
     result.export_policy = getattr(connected, "export_policy", result.export_policy)
     result.update_source = getattr(connected, "update_source", result.update_source)
-
-    if hasattr(local, "group"):
-        result.group = PeerGroup(
-            name=local.group.name,
-            internal_name="",
-            update_source="",
-            remote_as=ASN(local.group.remote_as),
-            description="",
-            connect_retry=False,
-        )
     return result

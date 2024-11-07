@@ -94,5 +94,5 @@ class MeshPeerGroup(_OptionsDTO):
     name: str
     remote_as: Union[int, str]
     internal_name: str
-    update_source: Optional[str]
-    description: Optional[str]
+    update_source: str
+    description: str
