@@ -21,13 +21,13 @@ class MatchExpr:
     def __getitem__(self, item: Any):
         return MatchExpr(lambda x: self.expr(x)[item])
 
-    def __eq__(self, other) -> "MatchExpr":
+    def __eq__(self, other) -> "MatchExpr":  # type: ignore[override]  # https://github.com/python/mypy/issues/5951
         if isinstance(other, MatchExpr):
             return MatchExpr(lambda x: self.expr(x) == other.expr(x))
         else:
             return MatchExpr(lambda x: self.expr(x) == other)
 
-    def __ne__(self, other) -> "MatchExpr":
+    def __ne__(self, other) -> "MatchExpr":  # type: ignore[override]  # https://github.com/python/mypy/issues/5951
         if isinstance(other, MatchExpr):
             return MatchExpr(lambda x: self.expr(x) != other.expr(x))
         else:
@@ -97,7 +97,7 @@ class PeerNameTemplate:
             regex_string
         )
         pattern = re.compile(regex_string)
-        types = {
+        types: dict[str, type] = {
             name: (int if name in int_groups else str)
             for name in pattern.groupindex
         }

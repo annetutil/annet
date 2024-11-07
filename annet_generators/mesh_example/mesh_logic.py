@@ -23,6 +23,6 @@ def direct_handler2(device: DirectPeer, neighbor: DirectPeer, session: MeshSessi
     device.lag = 1
     device.lag_links_min = neighbor.match.x
     device.subif = 100
-    neighbor.families = {"ipv4-unicast"}
+    neighbor.families = {"ipv4_unicast"}
     neighbor.group_name = "GROUP_NAME"
     neighbor.addr = "192.168.1.200/24"

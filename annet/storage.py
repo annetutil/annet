@@ -62,8 +62,8 @@ class Storage(abc.ABC):
         self,
         query: Any,
         preload_neighbors: bool = False,
-        use_mesh: bool = None,
-        preload_extra_fields=False,
+        use_mesh: Optional[bool] = None,
+        preload_extra_fields: bool = False,
         **kwargs,
     ):
         pass

@@ -7,7 +7,7 @@ from annet.storage import Storage, Interface
 class FakeInterface(Interface):
     def __init__(self, name: str, neighbor_fqdn: Optional[str], neighbor_port: Optional[str]):
         self._name = name
-        self.addrs = []
+        self.addrs: list[tuple[str, Optional[str]]] = []
         self.neighbor_fqdn = neighbor_fqdn
         self.neighbor_port = neighbor_port
 
@@ -120,7 +120,7 @@ class FakeStorage(Storage):
             if d.fqdn in query
         ]
 
-    def make_devices(self, query: Any, preload_neighbors: bool = False, use_mesh: bool = None,
+    def make_devices(self, query: Any, preload_neighbors: bool = False, use_mesh: Optional[bool] = None,
                      preload_extra_fields=False, **kwargs):
         return [
             d for d in self.devices

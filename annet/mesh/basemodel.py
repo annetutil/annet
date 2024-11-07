@@ -1,7 +1,9 @@
 from abc import ABC
 from copy import copy
 from enum import Enum
-from typing import TypeVar, Any, Annotated, get_origin, get_type_hints, get_args, Callable, Union
+from typing import (
+    TypeVar, Any, Annotated, get_origin, get_type_hints, get_args, Callable, Union, ClassVar, overload,
+)
 
 
 class MergeForbiddenError(Exception):
@@ -55,19 +57,19 @@ class ForbidChange(Merger):
 
 class Concat(Merger):
     def _merge(self, name: str, x: T, y: T) -> T:
-        return x + y
+        return x + y  # type: ignore[operator]
 
 
 class Merge(Merger):
-    def _merge(self, name: str, x: T, y: T) -> T:
+    def _merge(self, name: str, x: "ModelT", y: "ModelT") -> "ModelT":  # type: ignore[override]
         return merge(x, y)
 
 
 class DictMerge(Merger):
-    def __init__(self, value_merger: Merger = Forbid):
+    def __init__(self, value_merger: Merger = Forbid()):
         self.value_merger = value_merger
 
-    def _merge(self, name: str, x: T, y: T) -> T:
+    def _merge(self, name: str, x: dict, y: dict) -> dict:  # type: ignore[override]
         result = copy(x)
         for key, value in y.items():
             if key in result:
@@ -99,6 +101,8 @@ def _get_merger(hint: Any):
 
 
 class BaseMeshModel:
+    _field_mergers: ClassVar[dict[str, Merger]]
+
     def __init__(self, **kwargs):
         if extra_keys := (kwargs.keys() - self._field_mergers.keys()):
             raise ValueError(f"Extra arguments: {extra_keys}")
@@ -116,6 +120,7 @@ class BaseMeshModel:
         cls._field_mergers = {
             field: _get_merger(hint)
             for field, hint in get_type_hints(cls, include_extras=True).items()
+            if get_origin(hint) is not ClassVar
         }
 
     def __setattr__(self, key, value):
@@ -124,7 +129,10 @@ class BaseMeshModel:
         super().__setattr__(key, value)
 
 
-def _merge(a: T, b: T) -> T:
+ModelT = TypeVar("ModelT", bound=BaseMeshModel)
+
+
+def _merge(a: ModelT, b: BaseMeshModel) -> ModelT:
     result = copy(a)
     for attr_name, merger in a._field_mergers.items():
         new_value = merger(
@@ -137,7 +145,22 @@ def _merge(a: T, b: T) -> T:
     return result
 
 
-def merge(first: Union[T, Special], *others: T) -> T:
+@overload
+def merge(first: Special, second: ModelT, /, *others: BaseMeshModel) -> ModelT:
+    ...
+
+
+@overload
+def merge(first: ModelT, /, *others: BaseMeshModel) -> ModelT:
+    ...
+
+
+@overload
+def merge(first: Special, /) -> Special:
+    ...
+
+
+def merge(first: Any, /, *others: Any) -> Any:
     if first is Special.NOT_SET:
         if not others:
             return Special.NOT_SET
