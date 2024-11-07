@@ -20,10 +20,16 @@ class BaseCondition(Generic[ValueT]):
     operator: Operator
     value: ValueT
 
+    def __and__(self, other: "Condition") -> "AndCondition":
+        return AndCondition(self, other)
+
 
 @dataclass(frozen=True)
 class CommunityCondition:
     values: Sequence[str]
+
+    def __and__(self, other: "Condition") -> "AndCondition":
+        return AndCondition(self, other)
 
 
 _ConditionMethod = Callable[["ConditionFactory[ValueT]", ValueT], BaseCondition[ValueT]]
@@ -62,4 +68,23 @@ class Checkable:
 
 
 R = Checkable()
-Condition = Union[BaseCondition, CommunityCondition]
+SingleCondition = Union[BaseCondition, CommunityCondition]
+Condition = Union[BaseCondition, CommunityCondition, "AndCondition"]
+
+
+class AndCondition:
+    def __init__(self, *conditions: Condition):
+        self.conditions = []
+        for c in conditions:
+            self.conditions.extend(self._unpack(c))
+
+    def _unpack(self, other: Condition) -> Sequence[SingleCondition]:
+        if isinstance(other, AndCondition):
+            return other.conditions
+        return [other]
+
+    def __and__(self, other: Condition) -> "AndCondition":
+        return AndCondition(*self.conditions, other)
+
+    def __iadd__(self, other):
+        self.conditions.extend(self._unpack(other))
