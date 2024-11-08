@@ -84,9 +84,29 @@ Here, the ``undo_redo`` function from the file in rulebook/huawei/misc.py is use
         ...
 
 Now calling ``annet patch -g snmp sw1-i38`` returns the correct set of commands.
+
 .. code-block::
 
     acl number 2610
       undo rule 40
       rule 12 permit source 10.11.133.81 0
       quit
+
+
+annet deploy
+******************
+
+To apply these commands on a switch there is a **deploy** module.
+Annet can apply changes (roll out) to multiple devices at the same time.
+
+By default, the edits that annet proposes to roll out will be shown before the rollout.
+The user must confirm that they agree to roll out the proposed diff to a given list of devices.
+During the rollout, annet will display the overall progress of the task and the log of one of the devices.
+
+Normal layout. The screen with patches will be shown and the process of laying out will be displayed.
+
+.. code-block:: bash
+
+    annet deploy -g snmp $HOST
+
+Credentials will be used from the current user (username, ssh key, ssh agent).
