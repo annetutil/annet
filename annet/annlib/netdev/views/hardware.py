@@ -123,3 +123,34 @@ def vendor_to_hw(vendor):
         None,
     )
     return hw
+
+
+def lag_name(hw: HardwareView, nlagg: int) -> str:
+    if hw.Huawei:
+        return f"Eth-Trunk{nlagg}"
+    if hw.Cisco:
+        return f"port-channel{nlagg}"
+    if hw.Nexus:
+        return f"port-channel{nlagg}"
+    if hw.Arista:
+        return f"Port-Channel{nlagg}"
+    if hw.Juniper:
+        return f"ae{nlagg}"
+    if hw.Nokia:
+        return f"lag-{nlagg}"
+    if hw.PC.Whitebox:
+        return f"bond{nlagg}"
+    if hw.PC:
+        return f"lagg{nlagg}"
+    if hw.Nokia:
+        return f"lagg-{nlagg}"
+    raise NotImplementedError(hw)
+
+
+def svi_name(hw: HardwareView, num: int) -> str:
+    if hw.Juniper:
+        return f"irb.{num}"
+    elif hw.Huawei:
+        return f"Vlanif{num}"
+    else:
+        return f"vlan{num}"

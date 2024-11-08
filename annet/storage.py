@@ -1,4 +1,5 @@
 import abc
+from collections.abc import Sequence
 from typing import Any, Iterable, Optional, Type, Union, Protocol, Dict
 from annet.connectors import Connector, get_connector_from_config
 from annet.annlib.netdev.views.hardware import HardwareView
@@ -49,12 +50,20 @@ class Storage(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def resolve_all_fdnds(self) -> list[str]:
+        pass
+
+    @abc.abstractmethod
+    def search_connections(self, device: "Device", neighbor: "Device") -> list[tuple["Interface", "Interface"]]:
+        pass
+
+    @abc.abstractmethod
     def make_devices(
         self,
         query: Any,
         preload_neighbors: bool = False,
-        use_mesh: bool = None,
-        preload_extra_fields=False,
+        use_mesh: Optional[bool] = None,
+        preload_extra_fields: bool = False,
         **kwargs,
     ):
         pass
@@ -83,6 +92,17 @@ class Query(abc.ABC):
 
     def is_empty(self) -> bool:
         return False
+
+
+class Interface(Protocol):
+    @property
+    @abc.abstractmethod
+    def name(self) -> str:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def add_addr(self, address_mask: str, vrf: Optional[str]) -> None:
+        raise NotImplementedError
 
 
 class Device(Protocol):
@@ -126,10 +146,36 @@ class Device(Protocol):
 
     @property
     @abc.abstractmethod
+<<<<<<< HEAD
+    def breed(self) -> str:
+=======
+    def neighbours_fqdns(self):
+>>>>>>> fork-main
+        pass
+
+    @property
+    @abc.abstractmethod
     def breed(self) -> str:
         pass
 
+<<<<<<< HEAD
+=======
+    @abc.abstractmethod
+    def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: Optional[int]) -> Interface:
+        raise NotImplementedError
 
+    @abc.abstractmethod
+    def add_svi(self, svi: int) -> Interface:
+        """Add SVI interface or return existing one"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def add_subif(self, interface: str, subif: int) -> Interface:
+        """Add sub interface or return existing one"""
+        raise NotImplementedError
+
+
+>>>>>>> fork-main
 def get_storage() -> tuple[StorageProvider, Dict[str, Any]]:
     connectors = storage_connector.get_all()
     return get_connector_from_config("storage", connectors)

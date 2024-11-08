@@ -15,6 +15,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import colorama
 import psutil
+
+import annet.lib
 from annet.annlib.command import Command, CommandList, Question  # noqa: F401
 from annet.storage import Device
 
@@ -146,7 +148,7 @@ def async_bulk(
     kwargs["policy"] = policy
 
     if processes == 1:
-        host_res, host_duration = asyncio.get_event_loop().run_until_complete(bulk(executor, devices, coro_gen, *args, **kwargs))
+        host_res, host_duration = annet.lib.do_async(bulk(executor, devices, coro_gen, *args, **kwargs))
         res.update(host_res)
         deploy_durations.update(host_duration)
     else:
@@ -313,10 +315,7 @@ def _print_failed(host, res):
 
 
 def _mp_async_bulk(res_q: multiprocessing.Queue, *args, **kwargs):
-    asyncio.get_event_loop().close()
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    res = loop.run_until_complete(bulk(*args, **kwargs))
+    res = annet.lib.do_async(bulk(*args, **kwargs))
     res_q.put(res)
     res_q.close()
 
