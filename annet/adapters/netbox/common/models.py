@@ -125,8 +125,6 @@ class Interface(Entity):
     ip_addresses: List[IpAddress] = field(default_factory=list)
     vrf: Optional[Entity] = None
     mtu: int | None = None
-<<<<<<< HEAD
-=======
     lag: Entity | None = None
     lag_min_links: int | None = None
 
@@ -154,7 +152,6 @@ class Interface(Entity):
             status=Label(value="active", label="Active"),
             assigned_object_id=self.id,
         ))
->>>>>>> fork-main
 
 
 @dataclass

@@ -13,13 +13,7 @@ generators:
 
 storage:
   default:
-<<<<<<< HEAD
-    adapter: file
-    params:
-      path: /path/to/file
-=======
     adapter: netbox
->>>>>>> fork-main
 
 context:
   default:

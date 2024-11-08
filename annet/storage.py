@@ -146,11 +146,7 @@ class Device(Protocol):
 
     @property
     @abc.abstractmethod
-<<<<<<< HEAD
-    def breed(self) -> str:
-=======
     def neighbours_fqdns(self):
->>>>>>> fork-main
         pass
 
     @property
@@ -158,8 +154,6 @@ class Device(Protocol):
     def breed(self) -> str:
         pass
 
-<<<<<<< HEAD
-=======
     @abc.abstractmethod
     def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: Optional[int]) -> Interface:
         raise NotImplementedError
@@ -175,7 +169,6 @@ class Device(Protocol):
         raise NotImplementedError
 
 
->>>>>>> fork-main
 def get_storage() -> tuple[StorageProvider, Dict[str, Any]]:
     connectors = storage_connector.get_all()
     return get_connector_from_config("storage", connectors)
