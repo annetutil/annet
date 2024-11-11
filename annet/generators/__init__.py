@@ -4,6 +4,7 @@ import dataclasses
 import importlib
 import importlib.machinery
 import os
+import re
 import textwrap
 from collections import OrderedDict as odict
 from typing import (
@@ -412,7 +413,8 @@ def _load_gen_module(module_path: str):
         module = importlib.import_module(module_path)
     except ModuleNotFoundError as e:
         try:  # maybe it's a path to module
-            module = importlib.machinery.SourceFileLoader(module_path.replace("/", "_"), module_path).load_module()
+            module_abs_path = os.path.abspath(module_path)
+            module = importlib.machinery.SourceFileLoader(re.sub(r"[./]", "_", module_abs_path).strip("_"), module_abs_path).load_module()
         except ModuleNotFoundError:
             raise e
     return module
