@@ -1,7 +1,15 @@
 import pytest
 
-from annet.mesh import MeshExecutor, MeshRulesRegistry, GlobalOptions, DirectPeer, MeshSession, IndirectPeer
-from annet.mesh.registry import VirtualLocal, VirtualPeer
+from annet.mesh import (
+    MeshExecutor,
+    MeshRulesRegistry,
+    GlobalOptions,
+    DirectPeer,
+    MeshSession,
+    IndirectPeer,
+    VirtualLocal,
+    VirtualPeer,
+)
 from .fakes import FakeStorage, FakeDevice, FakeInterface
 
 VRF = "testvrf"

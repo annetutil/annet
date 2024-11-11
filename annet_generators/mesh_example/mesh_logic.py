@@ -1,5 +1,4 @@
-from annet.mesh import Right, MeshRulesRegistry, GlobalOptions, MeshSession, DirectPeer
-from annet.mesh.registry import VirtualLocal, VirtualPeer
+from annet.mesh import Right, MeshRulesRegistry, GlobalOptions, MeshSession, DirectPeer, VirtualLocal, VirtualPeer
 
 registry = MeshRulesRegistry()
 
@@ -18,11 +17,11 @@ def direct_handler(device: DirectPeer, neighbor: DirectPeer, session: MeshSessio
 
 
 @registry.virtual("{name:.*}", num=[1, 2, 3])
-def virtual_handler(device: VirtualLocal, neighbor: VirtualPeer, session: MeshSession):
+def virtual_handler(device: VirtualLocal, peer: VirtualPeer, session: MeshSession):
     session.asnum = 12345
     device.svi = 1
     device.addr = "192.168.1.254"
-    neighbor.addr = f"192.168.127.{neighbor.num}"
+    peer.addr = f"192.168.127.{peer.num}"
 
 
 @registry.direct("{name:.*}", "m9-sgw{x}.{domain:.*}", Right.x.in_([0, 1]))
