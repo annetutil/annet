@@ -1,6 +1,7 @@
 import pytest
 
 from annet.mesh import MeshExecutor, MeshRulesRegistry, GlobalOptions, DirectPeer, MeshSession, IndirectPeer
+from annet.mesh.registry import VirtualLocal, VirtualPeer
 from .fakes import FakeStorage, FakeDevice, FakeInterface
 
 VRF = "testvrf"
@@ -30,8 +31,8 @@ def on_direct_alt(local: DirectPeer, neighbor: DirectPeer, session: MeshSession)
 
 
 def on_indirect(local: IndirectPeer, neighbor: IndirectPeer, session: MeshSession):
-    local.addr = "192.168.1.254"
-    neighbor.addr = "192.168.1.10"
+    local.addr = "192.168.2.254"
+    neighbor.addr = "192.168.2.10"
     local.mtu = 1505
     neighbor.mtu = 1506
     session.asnum = 12340
@@ -39,10 +40,19 @@ def on_indirect(local: IndirectPeer, neighbor: IndirectPeer, session: MeshSessio
 
 
 def on_indirect_alt(local: IndirectPeer, neighbor: IndirectPeer, session: MeshSession):
-    local.addr = "192.168.1.254"
-    neighbor.addr = "192.168.1.11"
+    local.addr = "192.168.2.254"
+    neighbor.addr = "192.168.2.11"
     local.mtu = 1506
     neighbor.mtu = 1507
+    session.asnum = 12340
+    session.families = {"ipv6_unicast"}
+
+
+def on_virtual(local: VirtualLocal, virtual: VirtualPeer, session: MeshSession):
+    local.svi = 1
+    local.addr = "192.168.3.254"
+    virtual.addr = f"192.168.3.{virtual.num}"
+    virtual.mtu = 1506
     session.asnum = 12340
     session.families = {"ipv6_unicast"}
 
@@ -55,6 +65,7 @@ def registry():
     r.direct("dev{num}.example.com", "dev_{x:.*}")(on_direct_alt)
     r.indirect("dev{num}.example.com", "dev{num}.remote.example.com")(on_indirect)
     r.indirect("dev{num}.example.com", "dev{num}.remote.example.com")(on_indirect_alt)
+    r.virtual("dev{num}.example.com", num=[10, 20, 30])(on_virtual)
     return r
 
 
@@ -115,7 +126,8 @@ def test_storage(registry, storage, device1):
     assert vrf.groups[0].mtu == 1499
     assert vrf.groups[0].name == GROUP
 
-    peer_direct, peer_direct_alt, peer_indirect, peer_indirect_alt = res.peers
+    res.peers.sort(key=lambda p: p.addr)
+    peer_direct, peer_direct_alt, peer_indirect, peer_indirect_alt, *virtual = res.peers
     assert peer_direct.addr == "192.168.1.1"
     assert peer_direct.options.mtu == 1501
     assert peer_direct.families == {"ipv4_unicast"}
@@ -130,16 +142,23 @@ def test_storage(registry, storage, device1):
     assert peer_direct_alt.description == ""
     assert peer_direct_alt.interface == "if1"
 
-    assert peer_indirect.addr == "192.168.1.10"
+    assert peer_indirect.addr == "192.168.2.10"
     assert peer_indirect.options.mtu == 1505
     assert peer_indirect.families == {"ipv6_unicast"}
     assert peer_indirect.remote_as == 12340
     assert peer_indirect.description == ""
     assert peer_indirect.interface is None
 
-    assert peer_indirect_alt.addr == "192.168.1.11"
+    assert peer_indirect_alt.addr == "192.168.2.11"
     assert peer_indirect_alt.options.mtu == 1506
     assert peer_indirect_alt.families == {"ipv6_unicast"}
     assert peer_indirect_alt.remote_as == 12340
     assert peer_indirect_alt.description == ""
     assert peer_indirect_alt.interface is None
+
+    assert len(virtual) == 3
+    assert virtual[0].addr == "192.168.3.10"
+    assert virtual[1].addr == "192.168.3.20"
+    assert virtual[2].addr == "192.168.3.30"
+    for peer in virtual:
+        assert peer.interface == "Vlan1"
