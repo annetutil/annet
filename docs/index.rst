@@ -38,8 +38,14 @@ Usage help can be obtained by calling ``annet -h`` or for a specific command, su
    :hidden:
    :caption: Extending:
 
+   usage/adapters.rst
    mesh/index.rst
 
+.. toctree::
+   :hidden:
+   :caption: Contrib:
+
+   contrib/lab.rst
 
 .. toctree::
     :hidden:

@@ -1,4 +1,6 @@
-Generator - generates configuration
+.. _Generator reference:
+
+Generator
 ===============================================
 
 Generators are the cornerstone of Annet. Each generator is responsible for generating part of the configuration.
