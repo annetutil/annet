@@ -31,6 +31,7 @@ Usage help can be obtained by calling ``annet -h`` or for a specific command, su
    usage/install.rst
    usage/cli.rst
    usage/config.rst
+   usage/gen.rst
 
 
 .. toctree::

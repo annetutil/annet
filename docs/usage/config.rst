@@ -10,11 +10,6 @@ Config example:
 
 .. code-block:: yaml
 
-    connection:
-      default:
-        login: ~
-        passwords: ~
-
     generators:
       default:
         - my_annet_generators.example
@@ -27,7 +22,8 @@ Config example:
 
     context:
       default:
-        connection: default
+        fetcher: default
+        deployer: default
         generators: default
         storage: default
 
