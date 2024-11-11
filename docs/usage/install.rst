@@ -34,7 +34,6 @@ and NetBox as a storage.
     default:
         fetcher: default
         deployer: default
-        connection: default
         generators: default
         storage: default
     selected_context: default

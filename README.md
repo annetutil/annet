@@ -133,7 +133,6 @@ context:
   default:
     fetcher: default
     deployer: default
-    connection: default
     generators: default
     storage: default
 selected_context: default
@@ -154,11 +153,6 @@ The path to the configuration file is searched in following order:
 Config example:
 
 ```yaml
-connection:
-  default:
-    login: ~
-    passwords: ~
-
 generators:
   default:
     - my_annet_generators.example
@@ -171,7 +165,6 @@ storage:
 
 context:
   default:
-    connection: default
     generators: default
     storage: default
 
