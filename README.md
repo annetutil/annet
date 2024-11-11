@@ -13,7 +13,7 @@ Annet has a number of modes (subcommands):
 
 Usage help can be obtained by calling ```annet -h``` or for a specific command, such as ```annet gen -h```.
 
-<img src="https://github.com/annetutil/annet/blob/main/docs/_static/annet_demo.gif?raw=true" width="400" />
+<img src="https://github.com/annetutil/annet/blob/main/docs/_static/annet_demo.gif?raw=true" width="800" />
 
 ## Configuration
 
