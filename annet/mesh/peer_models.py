@@ -81,6 +81,7 @@ class DirectPeerDTO(MeshSession, _OptionsDTO):
     pod: int
     addr: str
     description: str
+    update_source: str
 
     subif: int
     lag: Optional[int]
@@ -92,14 +93,19 @@ class IndirectPeerDTO(MeshSession, _OptionsDTO):
     pod: int
     addr: str
     description: str
+    update_source: str
 
 
-class VirtualLocalDTO:
+class VirtualLocalDTO(BaseMeshModel):
     pod: int
     addr: str
     description: str
 
-    svi: Optional[int]
+    import_policy: str
+    export_policy: str
+    update_source: str
+
+    svi: int
 
 
 class VirtualPeerDTO(MeshSession, _OptionsDTO):

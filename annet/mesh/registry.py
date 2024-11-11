@@ -30,7 +30,13 @@ class IndirectPeer(IndirectPeerDTO):
 
 
 class VirtualLocal(VirtualLocalDTO):
+    match: MatchedArgs
     device: Any
+
+    def __init__(self, match: MatchedArgs, device: Any) -> None:
+        super().__init__()
+        self.match = match
+        self.device = device
 
 
 class VirtualPeer(VirtualPeerDTO):
