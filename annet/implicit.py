@@ -46,6 +46,7 @@ def _implicit_tree(device):
                 !user-interface vty ~
                     protocol inbound all
                 netconf
+                port link-flap trigger error-down
             """
         elif device.hw.Huawei.NE:
             text = """
