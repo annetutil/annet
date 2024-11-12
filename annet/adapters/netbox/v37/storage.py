@@ -87,7 +87,7 @@ def extend_ip_address(
 
 class NetboxStorageV37(Storage):
     def __init__(self, opts: Optional[NetboxStorageOpts] = None):
-        ctx: None | ssl.SSLContext = None
+        ctx: Optional[ssl.SSLContext] = None
         url = ""
         token = ""
         if opts:
