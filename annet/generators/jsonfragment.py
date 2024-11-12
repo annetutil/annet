@@ -96,22 +96,23 @@ class JSONFragment(TreeGenerator):
     def _set_or_replace_dict(self, pointer, value):
         if not pointer:
             if self._json_config == {}:
-                self._json_config = value
+                self._json_config = self.process_value(value)
             else:
-                self._json_config = [self._json_config, value]
+                self._json_config = [self._json_config, self.process_value(value)]
         else:
             self._set_dict(self._json_config, pointer, value)
 
+    def process_scalar_value(self, value: Any) -> Any:
+        return str(value)
+
     def process_value(self, value: Any) -> Any:
-        if isinstance(value, str):
-            return value
-        elif isinstance(value, list):
+        if isinstance(value, (list, set, frozenset)):
             return [self.process_value(x) for x in value]
         elif isinstance(value, dict):
             for k, v in value.items():
                 value[k] = self.process_value(v)
             return value
-        return str(value)
+        return self.process_scalar_value(value)
 
     def _set_dict(self, cfg, pointer, value):
         # pointer has at least one key
