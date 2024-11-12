@@ -87,16 +87,17 @@ def extend_ip_address(
 
 class NetboxStorageV37(Storage):
     def __init__(self, opts: Optional[NetboxStorageOpts] = None):
-        ctx: ssl.con | ssl.SSLContext = None
-        if opts.insecure:
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-        self.netbox = NetboxV37(
-            url=opts.url,
-            token=opts.token,
-            ssl_context=ctx,
-        )
+        ctx: None | ssl.SSLContext = None
+        url = ""
+        token = ""
+        if opts:
+            if opts.insecure:
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+            url = opts.url
+            token = opts.token
+        self.netbox = NetboxV37(url=url, token=token, ssl_context=ctx)
         self._all_fqdns: Optional[list[str]] = None
 
     def __enter__(self):
@@ -147,7 +148,7 @@ class NetboxStorageV37(Storage):
 
         interfaces = self._load_interfaces(list(device_ids))
         neighbours = {x.id: x for x in self._load_neighbours(interfaces)}
-        neighbours_seen = defaultdict(set)
+        neighbours_seen: dict[str, set] = defaultdict(set)
 
         for interface in interfaces:
             device_ids[interface.device.id].interfaces.append(interface)
