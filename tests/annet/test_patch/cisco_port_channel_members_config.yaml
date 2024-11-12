@@ -52,7 +52,6 @@ patch: |
     switchport mode trunk
     switchport trunk allowed vlan add 2
     switchport
-    no ip address
     mtu 9000
     no shutdown
     exit
