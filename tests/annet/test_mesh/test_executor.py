@@ -169,4 +169,5 @@ def test_storage(registry, storage, device1):
     assert virtual[1].addr == "192.168.3.20"
     assert virtual[2].addr == "192.168.3.30"
     for peer in virtual:
+        assert peer.options.local_as == 12340
         assert peer.interface == "Vlan1"
