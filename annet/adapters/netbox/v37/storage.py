@@ -2,6 +2,7 @@ from logging import getLogger
 from typing import Any, Optional, List, Union, Dict
 from ipaddress import ip_interface
 from collections import defaultdict
+import ssl
 
 from adaptix import P
 from adaptix.conversion import impl_converter, link, link_constant
@@ -86,9 +87,15 @@ def extend_ip_address(
 
 class NetboxStorageV37(Storage):
     def __init__(self, opts: Optional[NetboxStorageOpts] = None):
+        ctx: ssl.con | ssl.SSLContext = None
+        if opts.insecure:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
         self.netbox = NetboxV37(
             url=opts.url,
             token=opts.token,
+            ssl_context=ctx,
         )
         self._all_fqdns: Optional[list[str]] = None
 
