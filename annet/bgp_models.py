@@ -103,7 +103,7 @@ class PeerOptions:
     af_rib_group: Optional[str] = None
     af_loops: Optional[int] = None
     hold_time: Optional[int] = None
-    listen_network: Optional[bool] = None
+    listen_network: Optional[list[str]] = None
     remove_private: Optional[bool] = None
     as_override: Optional[bool] = None
     aigp: Optional[bool] = None
@@ -213,7 +213,7 @@ class PeerGroup:
     af_rib_group: Optional[str] = None
     af_loops: int = 0
     hold_time: int = 0
-    listen_network: bool = False
+    listen_network: list[str] = field(default_factory=list)
     remove_private: bool = False
     as_override: bool = False
     aigp: bool = False

@@ -61,7 +61,7 @@ class _OptionsDTO(_SharedOptionsDTO):
     af_rib_group: Optional[str]
     af_loops: int
     hold_time: int
-    listen_network: bool
+    listen_network: list[str]
     remove_private: bool
     as_override: bool
     aigp: bool
@@ -77,17 +77,41 @@ class _OptionsDTO(_SharedOptionsDTO):
     mtu: int
 
 
-class PeerDTO(MeshSession, _OptionsDTO):
+class DirectPeerDTO(MeshSession, _OptionsDTO):
     pod: int
     addr: str
     description: str
+    update_source: str
 
     subif: int
     lag: Optional[int]
     lag_links_min: Optional[int]
     svi: Optional[int]
 
-    group_name: str
+
+class IndirectPeerDTO(MeshSession, _OptionsDTO):
+    pod: int
+    addr: str
+    description: str
+    update_source: str
+
+
+class VirtualLocalDTO(BaseMeshModel):
+    asnum: int
+    pod: int
+    addr: str
+    description: str
+
+    import_policy: str
+    export_policy: str
+    update_source: str
+
+    svi: int
+
+
+class VirtualPeerDTO(MeshSession, _OptionsDTO):
+    addr: str
+    description: str
 
 
 class MeshPeerGroup(_OptionsDTO):

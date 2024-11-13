@@ -1,12 +1,16 @@
 from dataclasses import dataclass
 from ipaddress import ip_interface
-from typing import Optional
+from typing import Optional, Union
 
 from adaptix import Retort, loader, Chain, name_mapping
 
-from .peer_models import PeerDTO
+from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO, VirtualLocalDTO
 from ..bgp_models import Aggregate, GlobalOptions, VrfOptions, FamilyOptions, Peer, PeerGroup, ASN, PeerOptions
 from ..storage import Device
+
+
+PeerDTO = Union[DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO]
+LocalDTO = Union[DirectPeerDTO, IndirectPeerDTO, VirtualLocalDTO]
 
 
 @dataclass
@@ -63,14 +67,13 @@ to_bgp_global_options = retort.get_loader(GlobalOptions)
 to_interface_changes = retort.get_loader(InterfaceChanges)
 
 
-def to_bgp_peer(local: PeerDTO, connected: PeerDTO, connected_device: Device, interface: Optional[str]) -> Peer:
+def to_bgp_peer(local: LocalDTO, connected: PeerDTO, connected_hostname: str, interface: Optional[str]) -> Peer:
     options = retort.load(local, PeerOptions)
-    # TODO validate `lagg_links` before conversion
     result = Peer(
         addr=str(ip_interface(connected.addr).ip),
         interface=interface,
         remote_as=ASN(connected.asnum),
-        hostname=connected_device.hostname,
+        hostname=connected_hostname,
         options=options,
     )
     # connected
