@@ -90,6 +90,7 @@ class NetboxStorageV37(Storage):
         ctx: Optional[ssl.SSLContext] = None
         url = ""
         token = ""
+        self.exact_host_filter = False
         if opts:
             if opts.insecure:
                 ctx = ssl.create_default_context()
@@ -97,6 +98,7 @@ class NetboxStorageV37(Storage):
                 ctx.verify_mode = ssl.CERT_NONE
             url = opts.url
             token = opts.token
+            self.exact_host_filter = opts.exact_host_filter
         self.netbox = NetboxV37(url=url, token=token, ssl_context=ctx)
         self._all_fqdns: Optional[list[str]] = None
 
@@ -163,14 +165,18 @@ class NetboxStorageV37(Storage):
     def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
         if not query.globs:
             return []
-        query = _hostname_dot_hack(query)
-        return [
-            device
-            for device in self.netbox.dcim_all_devices(
-                name__ic=query.globs,
-            ).results
-            if _match_query(query, device)
-        ]
+        if self.exact_host_filter:
+            devices = self.netbox.dcim_all_devices(name__ie=query.globs).results
+        else:
+            query = _hostname_dot_hack(query)
+            devices = [
+                device
+                for device in self.netbox.dcim_all_devices(
+                    name__ic=query.globs,
+                ).results
+                if _match_query(query, device)
+            ]
+        return devices
 
     def _extend_interfaces(self, interfaces: List[models.Interface]) -> List[models.Interface]:
         extended_ifaces = {
