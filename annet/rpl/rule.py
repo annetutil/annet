@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, Literal
 
-from annet.rpl.condition import Condition
+from annet.rpl.condition import Condition, AndCondition
 
 
 class Action(Enum):
@@ -14,7 +14,7 @@ class Action(Enum):
 
 @dataclass
 class Rule:
-    _conditions: Sequence[Condition]
+    _conditions: AndCondition
     _name: Optional[str]
     _order: Optional[int]
     _action: Action = Action.SKIP
@@ -41,19 +41,17 @@ class Rule:
         self._action = Action.DENY
         return self
 
-    def add_as_path(self, *as_path: int) -> "Rule":
+    def add_as_path(self, *as_path: int) -> None:
         self._added_as_path.extend(as_path)
-        return self
 
-    def add_community(self, *community: str) -> "Rule":
+    def add_community(self, *community: str) -> None:
         for c in community:
             while c in self._removed_community:
                 self._removed_community.remove(c)
             if c not in self._removed_community and (not self._removed_community or c not in self._replaced_community):
                 self._added_community.append(c)
-        return self
 
-    def remove_community(self, *community: str) -> "Rule":
+    def remove_community(self, *community: str) -> None:
         for c in community:
             if self._replaced_community:
                 while c in self._replaced_community:
@@ -62,13 +60,11 @@ class Rule:
                 self._added_community.remove(c)
             if c not in self._removed_community:
                 self._removed_community.append(c)
-        return self
 
-    def set_community(self, *community: str) -> "Rule":
+    def set_community(self, *community: str) -> None:
         self._added_community.clear()
         self._removed_community.clear()
         self._replaced_community = list(community)
-        return self
 
 
 class Route:
@@ -81,6 +77,6 @@ class Route:
             name: Optional[str] = None,
             order: Optional[int] = None,
     ) -> "Rule":
-        rule = Rule(conditions, name, order)
+        rule = Rule(AndCondition(*conditions), name, order)
         self.rules.append(rule)
         return rule
