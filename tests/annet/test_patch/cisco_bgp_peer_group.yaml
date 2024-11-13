@@ -1,0 +1,31 @@
+- vendor: Cisco
+  diff: |
+    router bgp 65112
+      + bgp router-id 1.1.1.2
+      + bgp log-neighbor-changes
+      + redistribute connected route-map CONNECTED
+      + maximum-paths 16
+      + neighbor SPINE peer-group
+      + neighbor SPINE route-map SPINE_IMPORT in
+      + neighbor SPINE route-map SPINE_EXPORT out
+      + neighbor SPINE soft-reconfiguration inbound
+      + neighbor SPINE send-community both
+      + neighbor 192.168.22.1 remote-as 65201
+      + neighbor 192.168.22.1 peer-group SPINE
+  patch: |
+    conf t
+    router bgp 65112
+      bgp router-id 1.1.1.2
+      bgp log-neighbor-changes
+      redistribute connected route-map CONNECTED
+      maximum-paths 16
+      neighbor SPINE peer-group
+      neighbor SPINE route-map SPINE_IMPORT in
+      neighbor SPINE route-map SPINE_EXPORT out
+      neighbor SPINE soft-reconfiguration inbound
+      neighbor SPINE send-community both
+      neighbor 192.168.22.1 remote-as 65201
+      neighbor 192.168.22.1 peer-group SPINE
+      exit
+    exit
+    copy running-config startup-config

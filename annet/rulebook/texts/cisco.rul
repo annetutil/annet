@@ -42,12 +42,19 @@ no snmp-server sysobjectid type stack-oid
 
 !interface */(mgmt|ipmi|Vlan1$)/
 
+interface Loopback
+    ipv6 address *
+    ip address ~
+    ! no ip address
+
 # SVI/Subifs/Lagg
 interface */(Vlan|Ethernet.*\.|port-channel.*\.?)\d+$/ %diff_logic=cisco.iface.diff
     vrf member
     ipv6 link-local
     ipv6 address *
     ipv6 nd ~                      %logic=cisco.misc.no_ipv6_nd_suppress_ra
+    ip address ~
+    ! no ip address
     mtu
 
 # Physical
@@ -59,6 +66,8 @@ interface */\w*Ethernet[0-9\/]+$/     %logic=common.permanent %diff_logic=cisco.
     vrf member
     ipv6 link-local
     ipv6 address *
+    ip address ~
+    ! no ip address
     channel-group
     mtu
     storm-control * level

@@ -46,6 +46,7 @@ def _implicit_tree(device):
                 !user-interface vty ~
                     protocol inbound all
                 netconf
+                port link-flap trigger error-down
             """
         elif device.hw.Huawei.NE:
             text = """
@@ -133,6 +134,10 @@ def _implicit_tree(device):
                         no shutdown
             """
     elif device.hw.Cisco:
+        text += r"""
+            !interface
+                no shutdown
+        """
         if device.hw.Cisco.Catalyst:
             # this configuration is not visible in running-config when enabled
             text += r"""

@@ -2,6 +2,7 @@ from logging import getLogger
 from typing import Any, Optional, List, Union, Dict
 from ipaddress import ip_interface
 from collections import defaultdict
+import ssl
 
 from adaptix import P
 from adaptix.conversion import impl_converter, link, link_constant
@@ -15,8 +16,7 @@ from annet.adapters.netbox.common.manufacturer import (
 from annet.adapters.netbox.common.query import NetboxQuery
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.storage import Storage
-
+from annet.storage import Storage, Device, Interface
 
 logger = getLogger(__name__)
 
@@ -68,7 +68,9 @@ def extend_device(
     return res
 
 
-@impl_converter
+@impl_converter(
+    recipe=[link_constant(P[models.Interface].lag_min_links, value=None)],
+)
 def extend_interface(
         interface: api_models.Interface,
         ip_addresses: List[models.IpAddress],
@@ -85,10 +87,18 @@ def extend_ip_address(
 
 class NetboxStorageV37(Storage):
     def __init__(self, opts: Optional[NetboxStorageOpts] = None):
-        self.netbox = NetboxV37(
-            url=opts.url,
-            token=opts.token,
-        )
+        ctx: Optional[ssl.SSLContext] = None
+        url = ""
+        token = ""
+        if opts:
+            if opts.insecure:
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+            url = opts.url
+            token = opts.token
+        self.netbox = NetboxV37(url=url, token=token, ssl_context=ctx)
+        self._all_fqdns: Optional[list[str]] = None
 
     def __enter__(self):
         return self
@@ -105,6 +115,14 @@ class NetboxStorageV37(Storage):
         return [
             d.name for d in self._load_devices(query)
         ]
+
+    def resolve_all_fdnds(self) -> list[str]:
+        if self._all_fqdns is None:
+            self._all_fqdns = [
+                d.name
+                for d in self.netbox.dcim_all_devices().results
+            ]
+        return self._all_fqdns
 
     def make_devices(
             self,
@@ -130,7 +148,7 @@ class NetboxStorageV37(Storage):
 
         interfaces = self._load_interfaces(list(device_ids))
         neighbours = {x.id: x for x in self._load_neighbours(interfaces)}
-        neighbours_seen = defaultdict(set)
+        neighbours_seen: dict[str, set] = defaultdict(set)
 
         for interface in interfaces:
             device_ids[interface.device.id].interfaces.append(interface)
@@ -217,6 +235,24 @@ class NetboxStorageV37(Storage):
 
     def flush_perf(self):
         pass
+
+    def search_connections(self, device: Device, neighbor: Device) -> list[tuple[Interface, Interface]]:
+        if device.storage is not self:
+            raise ValueError("device does not belong to this storage")
+        if neighbor.storage is not self:
+            raise ValueError("neighbor does not belong to this storage")
+        # both devices are NetboxDevice if they are loaded from this storage
+        res = []
+        for local_port in device.interfaces:
+            if not local_port.connected_endpoints:
+                continue
+            for endpoint in local_port.connected_endpoints:
+                if endpoint.device.id == neighbor.id:
+                    for remote_port in neighbor.interfaces:
+                        if remote_port.name == endpoint.name:
+                            res.append((local_port, remote_port))
+                            break
+        return res
 
 
 def _match_query(query: NetboxQuery, device_data: api_models.Device) -> bool:

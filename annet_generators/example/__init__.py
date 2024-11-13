@@ -7,6 +7,4 @@ from . import lldp
 
 
 def get_generators(store: Storage) -> List[BaseGenerator]:
-    return [
-        lldp.Lldp(store),
-    ]
+    return lldp.get_generators(store)

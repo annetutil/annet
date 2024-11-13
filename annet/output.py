@@ -2,9 +2,12 @@ import abc
 import os
 import posixpath
 import sys
-from typing import List, Optional, Tuple, Type, Dict
+from typing import Dict, List, Optional, Tuple, Type
+from urllib.parse import urlparse
 
 import colorama
+from contextlog import get_logger
+
 from annet.annlib.output import (  # pylint: disable=unused-import
     LABEL_NEW_PREFIX,
     OutputWriter,
@@ -17,8 +20,6 @@ from annet.annlib.output import (  # pylint: disable=unused-import
     print_err_label,
     print_label,
 )
-from contextlog import get_logger
-
 from annet.cli_args import FileOutOptions, QueryOptions
 from annet.connectors import Connector
 from annet.storage import Device, storage_connector
@@ -112,9 +113,11 @@ class OutputDriverBasic(OutputDriver):
                 if label.startswith(os.sep):
                     # just in case.
                     label = label.lstrip(os.sep)
+
                 if os.sep not in label:
                     # vendor config
                     label = os.path.basename(label)
+
                 else:
                     # entire generated file
                     parts = label.split(os.sep)
@@ -125,6 +128,7 @@ class OutputDriverBasic(OutputDriver):
                     if query_result_count > 1 or arg_out.dest_force_create_dir:
                         label = os.path.join(hostname, label)
                 file_dest = os.path.join(dest, "errors") if is_fail else dest
+
                 out_file = os.path.normpath(os.path.join(file_dest, label))
                 logger.info("writing '%s'", out_file)
                 dirname = os.path.dirname(out_file)
@@ -164,12 +168,22 @@ class OutputDriverBasic(OutputDriver):
         >>>
         ```
         """
+
         # NOTE: с полученным `config_path` работаем через `posixpath`, а не через `os.path`, потому что
         #       entire-путь POSIX-специфичный; но в конце формируем путь через `os.path` для текущей платформы
         if not posixpath.abspath(config_path):
             raise RuntimeError(f"Want absolute config path, but relative received: {config_path}")
+
         cfg_files = self.cfg_file_names(device)
-        # NOTE: получаем путь без "/" в начале, например, "etc/frr/frr.conf"
+
+        parsed_config_path = urlparse(config_path)
+        scheme, config_path = parsed_config_path.scheme or "file", parsed_config_path.path
+
         relative_config_path = posixpath.relpath(config_path, "/")
+        if scheme != "file":
+            host = parsed_config_path.hostname + f":{parsed_config_path.port}" if parsed_config_path.port else ""
+            relative_config_path = os.path.join(host, relative_config_path)
+
         dest_config_path_parts = [cfg_files[0]] + relative_config_path.split(posixpath.sep)
+
         return os.path.join(*dest_config_path_parts)

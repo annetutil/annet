@@ -1,0 +1,26 @@
+- vendor: juniper
+  acl: |
+    routing-options  %cant_delete=1
+      rib *
+        ~  %global=1
+    routing-options  %cant_delete=1
+      rib inet6.0  %cant_delete=1
+        static  %cant_delete=1
+          route 127.0.0.1
+            ~
+  input: |
+    routing-options {
+        rib inet6.0 {
+            static {
+                route ::1/128 discard;
+            }
+        }
+    }
+  output: |
+    routing-options {
+        rib inet6.0 {
+            static {
+                route ::1/128 discard;
+            }
+        }
+    }
