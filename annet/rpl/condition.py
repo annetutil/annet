@@ -21,7 +21,7 @@ ValueT = TypeVar("ValueT")
 
 
 @dataclass(frozen=True)
-class BaseCondition(Generic[ValueT]):
+class SingleCondition(Generic[ValueT]):
     field: str
     operator: Operator
     value: ValueT
@@ -30,14 +30,14 @@ class BaseCondition(Generic[ValueT]):
         return AndCondition(self, other)
 
 
-_ConditionMethod = Callable[["ConditionFactory[ValueT]", ValueT], BaseCondition[ValueT]]
+_ConditionMethod = Callable[["ConditionFactory[ValueT]", ValueT], SingleCondition[ValueT]]
 
 
 def condition_method(operator: Operator) -> _ConditionMethod:
-    def method(self: "ConditionFactory[ValueT]", other: ValueT) -> BaseCondition[ValueT]:
+    def method(self: "ConditionFactory[ValueT]", other: ValueT) -> SingleCondition[ValueT]:
         if operator.value not in self.supported_ops:
             raise NotImplementedError(f"Operator {operator.value} is not supported for field {self.field}")
-        return BaseCondition(self.field, operator, other)
+        return SingleCondition(self.field, operator, other)
 
     method.__name__ = operator.value
     return method
@@ -56,11 +56,11 @@ class ConditionFactory(Generic[ValueT]):
 
 
 class CommunityConditionFactory:
-    def has(self, *community: str) -> BaseCondition[list[str]]:
-        return BaseCondition("community", Operator.HAS, community)
+    def has(self, *community: str) -> SingleCondition[list[str]]:
+        return SingleCondition("community", Operator.HAS, community)
 
-    def has_any(self, *community: str) -> BaseCondition[list[str]]:
-        return BaseCondition("community", Operator.HAS_ANY, community)
+    def has_any(self, *community: str) -> SingleCondition[list[str]]:
+        return SingleCondition("community", Operator.HAS_ANY, community)
 
 
 class Checkable:
@@ -72,12 +72,12 @@ class Checkable:
 
 
 R = Checkable()
-Condition = Union[BaseCondition, "AndCondition"]
+Condition = Union[SingleCondition, "AndCondition"]
 
 
 class AndCondition:
     def __init__(self, *conditions: Condition):
-        self.conditions: list[BaseCondition[Any]] = []
+        self.conditions: list[SingleCondition[Any]] = []
         for c in conditions:
             self.conditions.extend(self._unpack(c))
         self._check_duplicates()
@@ -88,7 +88,7 @@ class AndCondition:
             if condition.field in seen_fields:
                 raise ValueError(f"Cannot have multiple condition on field {condition.field}")
 
-    def _unpack(self, other: Condition) -> Sequence[BaseCondition]:
+    def _unpack(self, other: Condition) -> Sequence[SingleCondition]:
         if isinstance(other, AndCondition):
             return other.conditions
         return [other]
@@ -103,14 +103,14 @@ class AndCondition:
         conditions = ", ".join(repr(c) for c in self.conditions)
         return f"AndCondition({conditions})"
 
-    def __getitem__(self, item: str):
+    def __getitem__(self, item: str) -> SingleCondition[Any]:
         return next(c for c in self.conditions if c.field == item)
 
-    def __contains__(self, item: str):
+    def __contains__(self, item: str) -> bool:
         return any(c.field == item for c in self.conditions)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.conditions)
 
-    def __iter__(self) -> Iterator[BaseCondition[Any]]:
+    def __iter__(self) -> Iterator[SingleCondition[Any]]:
         return iter(self.conditions)

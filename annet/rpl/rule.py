@@ -1,45 +1,61 @@
-from collections.abc import Sequence
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional, Literal
+from typing import Optional, Literal, Any
 
-from annet.rpl.condition import Condition, AndCondition
-
-
-class Action(Enum):
-    ALLOW = "allow"
-    DENY = "deny"
-    SKIP = "skip"
+from .action import Action, SingleAction, ActionType
+from .condition import Condition, AndCondition
+from .policy import RoutingPolicyStatement
+from .result import ResultType
 
 
-@dataclass
-class Rule:
-    _conditions: AndCondition
-    _name: Optional[str]
-    _order: Optional[int]
-    _action: Action = Action.SKIP
-    _added_as_path: list[int] = field(default_factory=list)
-    _replaced_community: Optional[list[str]] = None
-    _added_community: list[str] = field(default_factory=list)
-    _removed_community: list[str] = field(default_factory=list)
-    local_pref: Optional[int] = None
-    metric: Optional[int] = None
-    rpki_valid_state: Optional[str] = None
-    next_hop: Optional[Literal["self", "peer"]] = None
+class Field:
+    def __set_name__(self, owner, name):
+        self.name = name
 
-    def __enter__(self) -> "Rule":
+    def __set__(self, instance: "StatementBuilder", value: Any):
+        action = instance._statement.then
+        if self.name in action:
+            action[self.name].value = value
+        else:
+            action.append(SingleAction(
+                field=self.name,
+                action_type=ActionType.SET,
+                value=value,
+            ))
+
+    def __get__(self, instance: "StatementBuilder", objtype=None):
+        return instance._statement.then[self.name]
+
+class StatementBuilder:
+    def __init__(self, statement: RoutingPolicyStatement) -> None:
+        self._statement = statement
+        self._added_as_path: list[int] = []
+        self._replaced_community: Optional[list[str]] = None
+        self._added_community: list[str] = []
+        self._removed_community: list[str] = []
+
+    local_pref: int = Field()
+    metric: int = Field()
+    rpki_valid_state: str = Field()
+    next_hop: Literal["self", "peer"] = Field()
+
+
+    def __enter__(self) -> "StatementBuilder":
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         return None
 
-    def allow(self) -> "Rule":
-        self._action = Action.ALLOW
-        return self
+    def allow(self) -> None:
+        self._statement.result = ResultType.ALLOW
 
-    def deny(self) -> "Rule":
-        self._action = Action.DENY
-        return self
+    def deny(self) -> None:
+        self._statement.result = ResultType.DENY
+
+    def next(self) -> None:
+        self._statement.result = ResultType.NEXT
+
+    def next_policy(self) -> None:
+        self._statement.result = ResultType.NEXT_POLICY
 
     def add_as_path(self, *as_path: int) -> None:
         self._added_as_path.extend(as_path)
@@ -69,14 +85,20 @@ class Rule:
 
 class Route:
     def __init__(self):
-        self.rules: list[Rule] = []
+        self.statements: list[RoutingPolicyStatement] = []
 
     def __call__(
             self,
             *conditions: Condition,
             name: Optional[str] = None,
-            order: Optional[int] = None,
-    ) -> "Rule":
-        rule = Rule(AndCondition(*conditions), name, order)
-        self.rules.append(rule)
-        return rule
+            number: Optional[int] = None,
+    ) -> "StatementBuilder":
+        statement = RoutingPolicyStatement(
+            name=name,
+            number=number,
+            match=AndCondition(*conditions),
+            then=Action(),
+            result=ResultType.NEXT,
+        )
+        self.statements.append(statement)
+        return StatementBuilder(statement=statement)
