@@ -5,10 +5,13 @@ from .fakes import FakeStorage, FakeDevice, FakeInterface
 
 VRF = "testvrf"
 GROUP = "test_group"
-
+EXPORT_POLICY1 = "EXPORT_POLICY1"
+EXPORT_POLICY2 = "EXPORT_POLICY2"
 
 def on_device_x(device: GlobalOptions):
     device.vrf[VRF].groups[GROUP].mtu = 1499
+    device.vrf[VRF].ipv4_unicast.aggregate.export_policy = EXPORT_POLICY1
+    device.ipv6_unicast.aggregate.export_policy = EXPORT_POLICY2
     print(device.match.x)
 
 
@@ -106,6 +109,10 @@ def test_storage(registry, storage, device1):
     r = MeshExecutor(registry, storage)
     res = r.execute_for(device1)
 
+    assert res.global_options.ipv6_unicast.vrf_name == ""
+    assert res.global_options.ipv6_unicast.family == "ipv6_unicast"
+    assert res.global_options.ipv6_unicast.aggregate.export_policy == EXPORT_POLICY2
+
     assert res.global_options.groups == []
     assert res.global_options.vrf.keys() == {VRF}
     vrf = res.global_options.vrf[VRF]
@@ -114,6 +121,9 @@ def test_storage(registry, storage, device1):
     assert len(vrf.groups) == 1
     assert vrf.groups[0].mtu == 1499
     assert vrf.groups[0].name == GROUP
+    assert vrf.ipv4_unicast.vrf_name == VRF
+    assert vrf.ipv4_unicast.family == "ipv4_unicast"
+    assert vrf.ipv4_unicast.aggregate.export_policy == EXPORT_POLICY1
 
     peer_direct, peer_direct_alt, peer_indirect, peer_indirect_alt = res.peers
     assert peer_direct.addr == "192.168.1.1"

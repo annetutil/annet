@@ -158,7 +158,7 @@ class Redistribute:
 @dataclass
 class FamilyOptions:
     family: Family
-    vrf_name: str
+    vrf_name: str = ""
     multipath: int = 0
     global_multipath: int = 0
     aggregate: Aggregate = field(default_factory=Aggregate)
@@ -234,6 +234,12 @@ class PeerGroup:
 @dataclass
 class VrfOptions:
     vrf_name: str
+
+    ipv4_unicast: FamilyOptions
+    ipv6_unicast: FamilyOptions
+    ipv4_labeled_unicast: FamilyOptions
+    ipv6_labeled_unicast: FamilyOptions
+
     vrf_name_global: Optional[str] = None
     import_policy: Optional[str] = None
     export_policy: Optional[str] = None
@@ -244,23 +250,20 @@ class VrfOptions:
     route_distinguisher: Optional[str] = None
     static_label: Optional[int] = None  # FIXME: str?
 
-    ipv4_unicast: Optional[FamilyOptions] = None
-    ipv6_unicast: Optional[FamilyOptions] = None
-    ipv4_labeled_unicast: Optional[FamilyOptions] = None
-    ipv6_labeled_unicast: Optional[FamilyOptions] = None
     groups: list[PeerGroup] = field(default_factory=list)
 
 
 @dataclass
 class GlobalOptions:
+    ipv4_unicast: FamilyOptions
+    ipv6_unicast: FamilyOptions
+    ipv4_labeled_unicast: FamilyOptions
+    ipv6_labeled_unicast: FamilyOptions
+
     local_as: ASN = ASN(None)
     loops: int = 0
     multipath: int = 0
     router_id: str = ""
     vrf: dict[str, VrfOptions] = field(default_factory=dict)
 
-    ipv4_unicast: Optional[FamilyOptions] = None
-    ipv6_unicast: Optional[FamilyOptions] = None
-    ipv4_labeled_unicast: Optional[FamilyOptions] = None
-    ipv6_labeled_unicast: Optional[FamilyOptions] = None
     groups: list[PeerGroup] = field(default_factory=list)
