@@ -59,4 +59,4 @@ pip install -r requirements-doc.txt
 sphinx-build -M html docs docs-build
 ```
 
-3. Open rendered html in browser [docs-build/html/index.html](docs-build/html/index.html)
+3. Open rendered html in browser docs-build/html/index.html
