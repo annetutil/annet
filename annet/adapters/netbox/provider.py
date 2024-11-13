@@ -12,7 +12,7 @@ from .v37.storage import NetboxStorageV37
 
 
 def storage_factory(opts: NetboxStorageOpts) -> Storage:
-    client = NetboxStatusClient(opts.url, opts.token)
+    client = NetboxStatusClient(opts.url, opts.token, opts.insecure)
     try:
         status = client.status()
     except ClientError as e:
@@ -27,9 +27,10 @@ def storage_factory(opts: NetboxStorageOpts) -> Storage:
 
 
 class NetboxProvider(StorageProvider, AdapterWithName, AdapterWithConfig):
-    def __init__(self, url: Optional[str] = None, token: Optional[str] = None):
+    def __init__(self, url: Optional[str] = None, token: Optional[str] = None, insecure: bool = False):
         self.url = url
         self.token = token
+        self.insecure = insecure
 
     @classmethod
     def with_config(cls, **kwargs: Dict[str, Any]) -> T:

@@ -5,7 +5,8 @@ from typing import Optional, Union
 from adaptix import Retort, loader, Chain, name_mapping
 
 from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO, VirtualLocalDTO
-from ..bgp_models import GlobalOptions, VrfOptions, FamilyOptions, Peer, PeerGroup, ASN, PeerOptions
+from ..bgp_models import Aggregate, GlobalOptions, VrfOptions, FamilyOptions, Peer, PeerGroup, ASN, PeerOptions
+from ..storage import Device
 
 
 PeerDTO = Union[DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO]
@@ -49,6 +50,7 @@ retort = Retort(
         loader(GlobalOptions, ObjMapping, Chain.FIRST),
         loader(VrfOptions, ObjMapping, Chain.FIRST),
         loader(FamilyOptions, ObjMapping, Chain.FIRST),
+        loader(Aggregate, ObjMapping, Chain.FIRST),
         loader(PeerOptions, ObjMapping, Chain.FIRST),
         name_mapping(PeerOptions, map={
             "local_as": "asnum",
