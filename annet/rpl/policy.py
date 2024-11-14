@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from .action import Action
@@ -17,4 +18,4 @@ class RoutingPolicyStatement:
 @dataclass
 class RoutingPolicyTuple:
     name: str
-    statements: tuple[RoutingPolicyStatement]
+    statements: Sequence[RoutingPolicyStatement]
