@@ -137,8 +137,10 @@ def _implicit_tree(device):
         text += r"""
             !interface FastEthernet*
                 mtu 1500
+                no shutdown
             !interface GigabitEthernet*
                 mtu 1500
+                no shutdown
 
 
         """
