@@ -1,5 +1,6 @@
 import pytest
 
+from annet.bgp_models import BFDTimers, Redistribute
 from annet.mesh import (
     MeshExecutor,
     MeshRulesRegistry,
@@ -22,6 +23,9 @@ def on_device_x(device: GlobalOptions):
     device.vrf[VRF].groups[GROUP].families = {"ipv4_unicast"}
     device.vrf[VRF].ipv4_unicast.aggregate.export_policy = EXPORT_POLICY1
     device.ipv6_unicast.aggregate.export_policy = EXPORT_POLICY2
+    device.ipv4_unicast.redistributes = (Redistribute(
+        protocol="ipv4", policy="sss",
+    ),)
     print(device.match.x)
 
 
@@ -31,6 +35,7 @@ def on_direct(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):
     local.mtu = 1501
     neighbor.mtu = 1502
     session.asnum = 12345
+    session.bfd_timers = BFDTimers(multiplier=1)
     session.families = {"ipv4_unicast"}
 
 def on_direct_alt(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):
