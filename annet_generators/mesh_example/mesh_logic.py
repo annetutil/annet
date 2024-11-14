@@ -21,6 +21,7 @@ def virtual_handler(device: VirtualLocal, peer: VirtualPeer, session: MeshSessio
     session.asnum = 12345
     device.svi = 1
     device.addr = "192.168.1.254"
+    device.listen_network = ["10.0.0.0/8"]
     peer.addr = f"192.168.127.{peer.num}"
 
 

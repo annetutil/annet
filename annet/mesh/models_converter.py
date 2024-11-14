@@ -82,7 +82,7 @@ def to_bgp_peer(local: LocalDTO, connected: PeerDTO, connected_hostname: str, in
     result.description = getattr(connected, "description", result.description)
     result.families = getattr(connected, "families", result.families)
     # local
-    result.import_policy = getattr(connected, "import_policy", result.import_policy)
-    result.export_policy = getattr(connected, "export_policy", result.export_policy)
-    result.update_source = getattr(connected, "update_source", result.update_source)
+    result.import_policy = getattr(local, "import_policy", result.import_policy)
+    result.export_policy = getattr(local, "export_policy", result.export_policy)
+    result.update_source = getattr(local, "update_source", result.update_source)
     return result

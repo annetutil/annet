@@ -96,7 +96,7 @@ class IndirectPeerDTO(MeshSession, _OptionsDTO):
     update_source: str
 
 
-class VirtualLocalDTO(BaseMeshModel):
+class VirtualLocalDTO(_OptionsDTO):
     asnum: int
     pod: int
     addr: str
@@ -109,13 +109,14 @@ class VirtualLocalDTO(BaseMeshModel):
     svi: int
 
 
-class VirtualPeerDTO(MeshSession, _OptionsDTO):
+class VirtualPeerDTO(MeshSession):
     addr: str
     description: str
 
 
 class MeshPeerGroup(_OptionsDTO):
     name: str
+    families: Annotated[set[FamilyName], Concat()]
     remote_as: Union[int, str]
     internal_name: str
     update_source: str
