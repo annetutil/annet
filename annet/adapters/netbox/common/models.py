@@ -139,6 +139,13 @@ class Interface(Entity):
             family = IpFamily(value=6, label="IPv6")
         else:
             family = IpFamily(value=4, label="IPv4")
+
+        for existing_addr in self.ip_addresses:
+            if existing_addr.address == address_mask and (
+                (existing_addr.vrf is None and vrf is None) or
+                (existing_addr.vrf is not None and existing_addr.vrf.name == vrf)
+            ):
+                return
         self.ip_addresses.append(IpAddress(
             id=0,
             display=address_mask,
