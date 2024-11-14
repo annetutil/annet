@@ -16,6 +16,6 @@ class RoutingPolicyStatement:
 
 
 @dataclass
-class RoutingPolicyTuple:
+class RoutingPolicy:
     name: str
     statements: Sequence[RoutingPolicyStatement]

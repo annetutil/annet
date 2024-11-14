@@ -84,7 +84,8 @@ class StatementBuilder:
 
 
 class Route:
-    def __init__(self):
+    def __init__(self, name: str):
+        self.name = name
         self.statements: list[RoutingPolicyStatement] = []
 
     def __call__(

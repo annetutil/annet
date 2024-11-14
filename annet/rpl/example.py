@@ -1,10 +1,14 @@
 from pprint import pprint
+from typing import Any
 
 from annet.rpl.condition import R
-from annet.rpl.rule import Route, StatementBuilder
+from annet.rpl.rule import Route
+from annet.rpl.routemap import RouteMap
 
+routemap = RouteMap()
 
-def example(route: Route):
+@routemap
+def example(device: Any, route: Route):
     condition = (R.interface == "l0.0") & (R.protocol == "bgp")
     with route(condition, number=1, name="n1") as rule:
         rule.next_hop = "self"
@@ -16,8 +20,9 @@ def example(route: Route):
         rule.allow()
 
 
-route = Route()
-example(route)
+policies = routemap.apply(None)
 
-for rule in route.statements:
-    pprint(rule)
+for policy in policies:
+    print(f"=== {policy.name} ===")
+    for rule in policy.statements:
+        pprint(rule)
