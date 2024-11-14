@@ -135,11 +135,8 @@ def _implicit_tree(device):
             """
     elif device.hw.Cisco:
         text += r"""
-            !interface *Ethernet*
-                mtu 1500
+            !interface
                 no shutdown
-
-
         """
         if device.hw.Cisco.Catalyst:
             # this configuration is not visible in running-config when enabled
