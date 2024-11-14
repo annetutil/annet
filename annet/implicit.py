@@ -135,10 +135,7 @@ def _implicit_tree(device):
             """
     elif device.hw.Cisco:
         text += r"""
-            !interface FastEthernet*
-                mtu 1500
-                no shutdown
-            !interface GigabitEthernet*
+            !interface *Ethernet*
                 mtu 1500
                 no shutdown
 
