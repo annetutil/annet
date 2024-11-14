@@ -2,11 +2,13 @@ from dataclasses import dataclass
 from ipaddress import ip_interface
 from typing import Optional, Union
 
-from adaptix import Retort, loader, Chain, name_mapping
+from adaptix import Retort, loader, Chain, name_mapping, as_is_loader
 
 from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO, VirtualLocalDTO
-from ..bgp_models import Aggregate, GlobalOptions, VrfOptions, FamilyOptions, Peer, PeerGroup, ASN, PeerOptions
-from ..storage import Device
+from ..bgp_models import (
+    Aggregate, GlobalOptions, VrfOptions, FamilyOptions, Peer, PeerGroup, ASN, PeerOptions,
+    Redistribute, BFDTimers,
+)
 
 
 PeerDTO = Union[DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO]
@@ -52,6 +54,8 @@ retort = Retort(
         loader(FamilyOptions, ObjMapping, Chain.FIRST),
         loader(Aggregate, ObjMapping, Chain.FIRST),
         loader(PeerOptions, ObjMapping, Chain.FIRST),
+        as_is_loader(Redistribute),
+        as_is_loader(BFDTimers),
         name_mapping(PeerOptions, map={
             "local_as": "asnum",
         }),
