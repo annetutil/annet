@@ -55,17 +55,21 @@ class ConditionFactory(Generic[ValueT]):
     __le__ = condition_method(Operator.LE)
 
 
-class CommunityConditionFactory:
-    def has(self, *community: str) -> SingleCondition[list[str]]:
-        return SingleCondition("community", Operator.HAS, community)
+class SetConditionFactory(Generic[ValueT]):
+    def __init__(self, field: str):
+        self.field = field
 
-    def has_any(self, *community: str) -> SingleCondition[list[str]]:
-        return SingleCondition("community", Operator.HAS_ANY, community)
+    def has(self, *values: str) -> SingleCondition[list[ValueT]]:
+        return SingleCondition(self.field, Operator.HAS, values)
+
+    def has_any(self, *values: str) -> SingleCondition[list[ValueT]]:
+        return SingleCondition(self.field, Operator.HAS_ANY, values)
 
 
 class Checkable:
     def __init__(self):
-        self.community = CommunityConditionFactory()
+        self.community = SetConditionFactory[str]("community")
+        self.rd = SetConditionFactory[str]("rd")
         self.interface = ConditionFactory[str]("interface", ["=="])
         self.protocol = ConditionFactory[str]("protocol", ["=="])
         self.as_path_length = ConditionFactory[int]("as_path_length", ["==", ">="])
