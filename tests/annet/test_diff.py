@@ -257,6 +257,4 @@ def test_diff_nocdev_1720():
         for pre_as_diff in gen_pre_as_diff(pd, False, " ", False):
             want_result.write(pre_as_diff)
         w = want_result.getvalue()
-    with open("/tmp/actual", "w") as f:
-        f.write(actual)
     assert actual == w
