@@ -178,6 +178,7 @@ class FamilyOptions:
 class PeerGroup:
     name: str
     remote_as: ASN = ASN(None)
+    families: set[Family] = field(default_factory=set)
     internal_name: str = ""
     description: str = ""
     update_source: str = ""

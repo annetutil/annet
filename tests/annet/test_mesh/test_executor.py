@@ -19,6 +19,7 @@ EXPORT_POLICY2 = "EXPORT_POLICY2"
 
 def on_device_x(device: GlobalOptions):
     device.vrf[VRF].groups[GROUP].mtu = 1499
+    device.vrf[VRF].groups[GROUP].families = {"ipv4_unicast"}
     device.vrf[VRF].ipv4_unicast.aggregate.export_policy = EXPORT_POLICY1
     device.ipv6_unicast.aggregate.export_policy = EXPORT_POLICY2
     print(device.match.x)
@@ -62,8 +63,9 @@ def on_indirect_alt(local: IndirectPeer, neighbor: IndirectPeer, session: MeshSe
 def on_virtual(local: VirtualLocal, virtual: VirtualPeer, session: MeshSession):
     local.svi = 1
     local.addr = "192.168.3.254"
+    local.mtu = 1506
+    local.listen_network = ["10.0.0.0/8"]
     virtual.addr = f"192.168.3.{virtual.num}"
-    virtual.mtu = 1506
     session.asnum = 12340
     session.families = {"ipv6_unicast"}
 
@@ -139,6 +141,7 @@ def test_storage(registry, storage, device1):
     assert vrf.static_label is None
     assert len(vrf.groups) == 1
     assert vrf.groups[0].mtu == 1499
+    assert vrf.groups[0].families == {"ipv4_unicast"}
     assert vrf.groups[0].name == GROUP
     assert vrf.ipv4_unicast.vrf_name == VRF
     assert vrf.ipv4_unicast.family == "ipv4_unicast"
@@ -181,3 +184,4 @@ def test_storage(registry, storage, device1):
     for peer in virtual:
         assert peer.options.local_as == 12340
         assert peer.interface == "Vlan1"
+        assert peer.options.listen_network == ["10.0.0.0/8"]
