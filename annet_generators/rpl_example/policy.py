@@ -59,6 +59,17 @@ class RoutingPolicyGenerator(PartialGenerator):
                     for comm_name in condition.value:
                         yield "if-match community-filter", comm_name
                     continue
+                if condition.field == "extcommunity":
+                    if condition.operator is ConditionOperator.HAS:
+                        if len(condition.value) > 1:
+                            raise NotImplementedError("Multiple HAS for extcommunities is not supported for huawei")
+                    elif condition.operator is not ConditionOperator.HAS_ANY:
+                        raise NotImplementedError("Extcommunity operator %r not supported for huawei" % condition.operator)
+                    for comm_name in condition.value:
+                        yield "if-match extcommunity-filter", comm_name
+                    continue
+                if condition.operator is not ConditionOperator.EQ:
+                    raise NotImplementedError(f"{condition.field} operator {condition.operator} is not supported for huawei")
                 cmd = HUAWEI_MATCH_COMMAND_MAP[condition.field]
                 yield "if-match", cmd.format(option_value=condition.value)
             for action in statement.then:

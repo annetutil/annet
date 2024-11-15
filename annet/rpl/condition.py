@@ -69,6 +69,7 @@ class SetConditionFactory(Generic[ValueT]):
 class Checkable:
     def __init__(self):
         self.community = SetConditionFactory[str]("community")
+        self.extcommunity = SetConditionFactory[str]("extcommunity")
         self.rd = SetConditionFactory[str]("rd")
         self.interface = ConditionFactory[str]("interface", ["=="])
         self.protocol = ConditionFactory[str]("protocol", ["=="])
