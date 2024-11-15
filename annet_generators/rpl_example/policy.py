@@ -1,7 +1,10 @@
 from collections.abc import Iterator, Sequence
+from typing import Any
 
 from annet.generators import PartialGenerator, BaseGenerator
-from annet.rpl import ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator
+from annet.rpl import (
+    ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator, SingleCondition, SingleAction,
+)
 from annet.storage import Storage
 from .routes import routemap
 
@@ -41,6 +44,34 @@ class RoutingPolicyGenerator(PartialGenerator):
             ~ %global=1
         """
 
+    def _huawei_match(self, device, condition: SingleCondition[Any]) -> Iterator[Sequence[str]]:
+        if condition.field == "community":
+            if condition.operator is ConditionOperator.HAS:
+                if len(condition.value) > 1:
+                    raise NotImplementedError("Multiple HAS for communities is not supported for huawei")
+            elif condition.operator is not ConditionOperator.HAS_ANY:
+                raise NotImplementedError("Community operator %r not supported for huawei" % condition.operator)
+            for comm_name in condition.value:
+                yield "if-match community-filter", comm_name
+            return
+        if condition.field == "extcommunity":
+            if condition.operator is ConditionOperator.HAS:
+                if len(condition.value) > 1:
+                    raise NotImplementedError("Multiple HAS for extcommunities is not supported for huawei")
+            elif condition.operator is not ConditionOperator.HAS_ANY:
+                raise NotImplementedError("Extcommunity operator %r not supported for huawei" % condition.operator)
+            for comm_name in condition.value:
+                yield "if-match extcommunity-filter", comm_name
+            return
+        if condition.operator is not ConditionOperator.EQ:
+            raise NotImplementedError(f"{condition.field} operator {condition.operator} is not supported for huawei")
+        cmd = HUAWEI_MATCH_COMMAND_MAP[condition.field]
+        yield "if-match", cmd.format(option_value=condition.value)
+
+    def _huawei_then(self, device, action: SingleAction[Any]) -> Iterator[Sequence[str]]:
+        cmd = HUAWEI_THEN_COMMAND_MAP[action.field]
+        yield "then", cmd.format(option_value=action.value)
+
     def _huawei_statement(
             self, device, policy: RoutingPolicy, statement: RoutingPolicyStatement,
     ) -> Iterator[Sequence[str]]:
@@ -50,31 +81,9 @@ class RoutingPolicyGenerator(PartialGenerator):
                 "node", statement.number
         ):
             for condition in statement.match:
-                if condition.field == "community":
-                    if condition.operator is ConditionOperator.HAS:
-                        if len(condition.value) > 1:
-                            raise NotImplementedError("Multiple HAS for communities is not supported for huawei")
-                    elif condition.operator is not ConditionOperator.HAS_ANY:
-                        raise NotImplementedError("Community operator %r not supported for huawei" % condition.operator)
-                    for comm_name in condition.value:
-                        yield "if-match community-filter", comm_name
-                    continue
-                if condition.field == "extcommunity":
-                    if condition.operator is ConditionOperator.HAS:
-                        if len(condition.value) > 1:
-                            raise NotImplementedError("Multiple HAS for extcommunities is not supported for huawei")
-                    elif condition.operator is not ConditionOperator.HAS_ANY:
-                        raise NotImplementedError("Extcommunity operator %r not supported for huawei" % condition.operator)
-                    for comm_name in condition.value:
-                        yield "if-match extcommunity-filter", comm_name
-                    continue
-                if condition.operator is not ConditionOperator.EQ:
-                    raise NotImplementedError(f"{condition.field} operator {condition.operator} is not supported for huawei")
-                cmd = HUAWEI_MATCH_COMMAND_MAP[condition.field]
-                yield "if-match", cmd.format(option_value=condition.value)
+                yield from self._huawei_match(device, condition)
             for action in statement.then:
-                cmd = HUAWEI_THEN_COMMAND_MAP[action.field]
-                yield "then", cmd.format(option_value=action.value)
+                yield from self._huawei_then(device, action)
 
     def run_huawei(self, device):
         for policy in routemap.apply(device):
