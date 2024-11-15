@@ -71,14 +71,14 @@ def _implicit_tree(device):
                 netconf
             """
     elif device.hw.Arista:
-        # эта часть конфигурации будет не видна в конфиге, если она включена с таким набором полей:
+        # This part of configuration will not be visible in configuration
         text = r"""
                 ip load-sharing trident fields ipv6 destination-port source-ip ingress-interface destination-ip source-port flow-label
                 ip load-sharing trident fields ip source-ip source-port destination-ip destination-port ingress-interface
         """
     elif device.hw.Nexus:
         text = r"""
-                # часть конфигурации скрытая если включена
+                # This part of configuration will not be visible in configuration if enabled
                 snmp-server enable traps link linkDown
                 snmp-server enable traps link linkUp
         """
@@ -107,25 +107,24 @@ def _implicit_tree(device):
             """
 
         elif device.hw.Nexus.N3x:
-            # У нексуса сложные взаимоотношения с
-            # shutdown командой вездe
-            # в данный момент поведение проверенно для Cisco Nexus 3132Q 6.0(2)U6(7)
+            # Cisco Nexus has some specific related to "shutdown" command
+            # Behavior is cheked on Cisco Nexus 3132Q 6.0(2)U6(7)
             text += r"""
                 # SVI
                 !interface Vlan*
                     !shutdown
                 !interface mgmt[0-9]*
                     no shutdown
-                # Физические НЕ сплитованные интерфейсы и subif'ы
+                # Physical and NOT splitted interfaces and subifs
                 !interface */Ethernet1\/[0-9.]*/
                     no shutdown
-                # Физические НЕ сплитованные интерфейсы и subif'ы
+                # Physical and NOT splitted interfaces and subifs
                 !interface */Ethernet1\/[0-9]+\/[0-9.]+/
                     # только explicit
-                # Лупбеки
+                # Loopbacks
                 !interface */Loopback[0-9.]+/
                     no shutdown
-                # Агрегаты
+                # Port-Channels
                 !interface */port-channel[0-9.]+/
                     no shutdown
                 # BGP
@@ -135,7 +134,7 @@ def _implicit_tree(device):
             """
     elif device.hw.Cisco:
         text += r"""
-            !interface /\S*Ethernet\S*/
+            !interface /\S*Ethernet\S+/
                 mtu 1500
                 no shutdown
         """
