@@ -75,6 +75,8 @@ class Checkable:
         self.protocol = ConditionFactory[str]("protocol", ["=="])
         self.as_path_length = ConditionFactory[int]("as_path_length", ["==", ">="])
 
+    def as_path_filter(self, name: str) -> SingleCondition[str]:
+        return SingleCondition("as_path_filter", ConditionOperator.EQ, name)
 
 R = Checkable()
 Condition = Union[SingleCondition, "AndCondition"]

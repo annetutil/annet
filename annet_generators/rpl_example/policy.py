@@ -31,8 +31,13 @@ HUAWEI_THEN_COMMAND_MAP = {
 HUAWEI_RESULT_MAP = {
     ResultType.ALLOW: "permit",
     ResultType.DENY: "deny",
+    ResultType.NEXT: ""
 }
 
+
+AS_PATH_FILTERS = {
+    "ASP_EXAMPLE": [".*123456.*"],
+}
 
 class RoutingPolicyGenerator(PartialGenerator):
     TAGS = ["policy", "rpl", "routing"]
@@ -64,17 +69,29 @@ class RoutingPolicyGenerator(PartialGenerator):
                 yield "if-match extcommunity-filter", comm_name
             return
         if condition.operator is not ConditionOperator.EQ:
-            raise NotImplementedError(f"{condition.field} operator {condition.operator} is not supported for huawei")
+            raise NotImplementedError(f"`{condition.field}` with operator {condition.operator} is not supported for huawei")
+        if condition.field not in HUAWEI_MATCH_COMMAND_MAP:
+            raise NotImplementedError(f"Match using `{condition.field}` is not supported for huawei")
         cmd = HUAWEI_MATCH_COMMAND_MAP[condition.field]
         yield "if-match", cmd.format(option_value=condition.value)
 
     def _huawei_then(self, device, action: SingleAction[Any]) -> Iterator[Sequence[str]]:
+        if action.field not in HUAWEI_THEN_COMMAND_MAP:
+            raise NotImplementedError(f"Then action using `{action.field}` is not supported for huawei")
         cmd = HUAWEI_THEN_COMMAND_MAP[action.field]
-        yield "then", cmd.format(option_value=action.value)
+        yield "apply", cmd.format(option_value=action.value)
 
     def _huawei_statement(
             self, device, policy: RoutingPolicy, statement: RoutingPolicyStatement,
     ) -> Iterator[Sequence[str]]:
+        if "as_path_filter" in statement.match:
+            as_path_condition = statement.match["as_path_filter"]
+            as_filter_value = AS_PATH_FILTERS[as_path_condition.value]
+            yield "ip as-path-filter", \
+                as_path_condition.value, \
+                "index 10 permit", \
+                "_{}_".format("_".join(("%s" % x for x in as_filter_value if x != ".*")))
+
         with self.block(
                 "route-policy", policy.name,
                 HUAWEI_RESULT_MAP[statement.result],
@@ -84,6 +101,8 @@ class RoutingPolicyGenerator(PartialGenerator):
                 yield from self._huawei_match(device, condition)
             for action in statement.then:
                 yield from self._huawei_then(device, action)
+            if statement.result is ResultType.NEXT:
+                yield "goto next-node"
 
     def run_huawei(self, device):
         for policy in routemap.apply(device):
