@@ -36,7 +36,7 @@ class StatementBuilder:
     local_pref: int = Field()
     metric: int = Field()
     rpki_valid_state: str = Field()
-    next_hop: Literal["self", "peer"] = Field()
+    next_hop: Literal["self", "peer"] = Field()  # ???
 
 
     def __enter__(self) -> "StatementBuilder":

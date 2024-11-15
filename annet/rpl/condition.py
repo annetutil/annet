@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Generic, TypeVar, Sequence, Union, Callable, Any
 
 
-class Operator(Enum):
+class ConditionOperator(Enum):
     EQ = "=="
     GE = ">="
     GT = ">"
@@ -23,7 +23,7 @@ ValueT = TypeVar("ValueT")
 @dataclass(frozen=True)
 class SingleCondition(Generic[ValueT]):
     field: str
-    operator: Operator
+    operator: ConditionOperator
     value: ValueT
 
     def __and__(self, other: "Condition") -> "AndCondition":
@@ -33,7 +33,7 @@ class SingleCondition(Generic[ValueT]):
 _ConditionMethod = Callable[["ConditionFactory[ValueT]", ValueT], SingleCondition[ValueT]]
 
 
-def condition_method(operator: Operator) -> _ConditionMethod:
+def condition_method(operator: ConditionOperator) -> _ConditionMethod:
     def method(self: "ConditionFactory[ValueT]", other: ValueT) -> SingleCondition[ValueT]:
         if operator.value not in self.supported_ops:
             raise NotImplementedError(f"Operator {operator.value} is not supported for field {self.field}")
@@ -48,11 +48,11 @@ class ConditionFactory(Generic[ValueT]):
         self.field = field
         self.supported_ops = supported_ops
 
-    __eq__ = condition_method(Operator.EQ)
-    __gt__ = condition_method(Operator.GT)
-    __ge__ = condition_method(Operator.GE)
-    __lt__ = condition_method(Operator.LT)
-    __le__ = condition_method(Operator.LE)
+    __eq__ = condition_method(ConditionOperator.EQ)
+    __gt__ = condition_method(ConditionOperator.GT)
+    __ge__ = condition_method(ConditionOperator.GE)
+    __lt__ = condition_method(ConditionOperator.LT)
+    __le__ = condition_method(ConditionOperator.LE)
 
 
 class SetConditionFactory(Generic[ValueT]):
@@ -60,10 +60,10 @@ class SetConditionFactory(Generic[ValueT]):
         self.field = field
 
     def has(self, *values: str) -> SingleCondition[list[ValueT]]:
-        return SingleCondition(self.field, Operator.HAS, values)
+        return SingleCondition(self.field, ConditionOperator.HAS, values)
 
     def has_any(self, *values: str) -> SingleCondition[list[ValueT]]:
-        return SingleCondition(self.field, Operator.HAS_ANY, values)
+        return SingleCondition(self.field, ConditionOperator.HAS_ANY, values)
 
 
 class Checkable:
