@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum
-from typing import Generic, TypeVar, Sequence, Union, Callable, Any
+from typing import Generic, TypeVar, Sequence, Union, Callable, Any, Optional
 
 
 class ConditionOperator(Enum):
@@ -66,6 +66,11 @@ class SetConditionFactory(Generic[ValueT]):
         return SingleCondition(self.field, ConditionOperator.HAS_ANY, values)
 
 
+@dataclass(frozen=True)
+class PrefixMatchValue:
+    names: Sequence[str]
+    or_longer: Optional[tuple[int, int]]  # ????
+
 class Checkable:
     def __init__(self):
         self.community = SetConditionFactory[str]("community")
@@ -77,6 +82,12 @@ class Checkable:
 
     def as_path_filter(self, name: str) -> SingleCondition[str]:
         return SingleCondition("as_path_filter", ConditionOperator.EQ, name)
+
+    def match_v6(self, *names: str, or_longer: Optional[tuple[int, int]] = None) -> SingleCondition[PrefixMatchValue]:
+        return SingleCondition("ipv6_prefix", ConditionOperator.CUSTOM, PrefixMatchValue(names, or_longer))
+
+    def match_v4(self, *names: str, or_longer: Optional[tuple[int, int]] = None) -> SingleCondition[PrefixMatchValue]:
+        return SingleCondition("ip_prefix", ConditionOperator.CUSTOM, PrefixMatchValue(names, or_longer))
 
 R = Checkable()
 Condition = Union[SingleCondition, "AndCondition"]

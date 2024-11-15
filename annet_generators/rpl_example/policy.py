@@ -7,6 +7,7 @@ from annet.rpl import (
 )
 from annet.storage import Storage
 from .routes import routemap
+from .items import AS_PATH_FILTERS, IPV6_PREFIX_LISTS
 
 HUAWEI_MATCH_COMMAND_MAP = {
     "as_path_filter": "as-path-filter {option_value}",
@@ -32,11 +33,6 @@ HUAWEI_RESULT_MAP = {
     ResultType.ALLOW: "permit",
     ResultType.DENY: "deny",
     ResultType.NEXT: ""
-}
-
-
-AS_PATH_FILTERS = {
-    "ASP_EXAMPLE": [".*123456.*"],
 }
 
 class RoutingPolicyGenerator(PartialGenerator):
@@ -68,6 +64,15 @@ class RoutingPolicyGenerator(PartialGenerator):
             for comm_name in condition.value:
                 yield "if-match extcommunity-filter", comm_name
             return
+        if condition.field == "ip_prefix":
+            for name in condition.value.names:
+                yield "if-match", "ip-prefix-filter", name
+            return
+        if condition.field == "ipv6_prefix":
+            for name in condition.value.names:
+                yield "if-match", "ipv6 address prefix-list", name
+            return
+
         if condition.operator is not ConditionOperator.EQ:
             raise NotImplementedError(f"`{condition.field}` with operator {condition.operator} is not supported for huawei")
         if condition.field not in HUAWEI_MATCH_COMMAND_MAP:

@@ -1,0 +1,7 @@
+AS_PATH_FILTERS = {
+    "ASP_EXAMPLE": [".*123456.*"],
+}
+
+IPV6_PREFIX_LISTS = {
+    "IPV6_LIST_EXAMPLE": ["2a13:5941::/32"],
+}
