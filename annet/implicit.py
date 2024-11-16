@@ -134,7 +134,10 @@ def _implicit_tree(device):
             """
     elif device.hw.Cisco:
         text += r"""
-            !interface /\S*Ethernet\S+/
+            !interface */\S*Ethernet\S+/
+                mtu 1500
+                no shutdown
+            !interface */Loopback[0-9.]+/
                 mtu 1500
                 no shutdown
         """
