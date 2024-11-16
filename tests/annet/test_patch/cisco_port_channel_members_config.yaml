@@ -4,23 +4,18 @@ before: |
     switchport
     switchport mode trunk
     switchport trunk allowed vlan 2
-    mtu 1500
     channel-group 1 mode active
-    no shutdown
 
   interface Ethernet1/2
     switchport
     switchport mode trunk
     switchport trunk allowed vlan 2
-    mtu 1500
     channel-group 1 mode active
-    no shutdown
 
   interface port-channel1
     switchport
     switchport mode trunk
     switchport trunk allowed vlan 2
-    mtu 1500
 after: |
   interface Ethernet1/1
     switchport
@@ -28,14 +23,12 @@ after: |
     switchport trunk allowed vlan 2
     mtu 9000
     channel-group 1 mode active
-    no shutdown
 
   interface Ethernet1/2
     switchport
     switchport mode trunk
     switchport trunk allowed vlan 2
-    mtu 9000
-    no shutdown
+    mtu 1500
 
   interface port-channel1
     switchport
@@ -52,7 +45,7 @@ patch: |
     switchport mode trunk
     switchport trunk allowed vlan add 2
     switchport
-    mtu 9000
+    mtu 1500
     no shutdown
     exit
   exit
