@@ -140,6 +140,9 @@ def _implicit_tree(device):
             !interface */Loopback[0-9.]+/
                 mtu 1500
                 no shutdown
+            !interface */port-channel[0-9.]+/
+                mtu 1500
+                no shutdown
         """
         if device.hw.Cisco.Catalyst:
             # this configuration is not visible in running-config when enabled
