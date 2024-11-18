@@ -20,13 +20,15 @@ EXPORT_POLICY2 = "EXPORT_POLICY2"
 
 def on_device_x(device: GlobalOptions):
     device.vrf[VRF].groups[GROUP].mtu = 1499
+    device.vrf[VRF].groups[GROUP].local_as = 11111
+    device.vrf[VRF].groups[GROUP].remote_as = 22222
     device.vrf[VRF].groups[GROUP].families = {"ipv4_unicast"}
+    device.vrf[VRF].groups[GROUP].export_policy = EXPORT_POLICY1
     device.vrf[VRF].ipv4_unicast.aggregate.export_policy = EXPORT_POLICY1
     device.ipv6_unicast.aggregate.export_policy = EXPORT_POLICY2
     device.ipv4_unicast.redistributes = (Redistribute(
         protocol="ipv4", policy="sss",
     ),)
-    print(device.match.x)
 
 
 def on_direct(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):
@@ -146,8 +148,11 @@ def test_storage(registry, storage, device1):
     assert vrf.static_label is None
     assert len(vrf.groups) == 1
     assert vrf.groups[0].mtu == 1499
+    assert vrf.groups[0].local_as == 11111
+    assert vrf.groups[0].remote_as == 22222
     assert vrf.groups[0].families == {"ipv4_unicast"}
     assert vrf.groups[0].name == GROUP
+    assert vrf.groups[0].export_policy == EXPORT_POLICY1
     assert vrf.ipv4_unicast.vrf_name == VRF
     assert vrf.ipv4_unicast.family == "ipv4_unicast"
     assert vrf.ipv4_unicast.aggregate.export_policy == EXPORT_POLICY1
