@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from enum import Enum
-from typing import Optional, Literal, Any
+from typing import Optional, Literal, TypeVar
 
 from .action import Action, SingleAction, ActionType
 from .condition import Condition, AndCondition
@@ -8,26 +9,14 @@ from .result import ResultType
 
 
 class ThenField(str, Enum):
-    pass
+    local_pref = "local_pref"
+    metric = "metric"
+    rpki_valid_state = "rpki_valid_state"
+    next_hop = "next_hop"
 
 
-class Field:
-    def __set_name__(self, owner, name):
-        self.name = name
-
-    def __set__(self, instance: "StatementBuilder", value: Any):
-        action = instance._statement.then
-        if self.name in action:
-            action[self.name].value = value
-        else:
-            action.append(SingleAction(
-                field=self.name,
-                action_type=ActionType.SET,
-                value=value,
-            ))
-
-    def __get__(self, instance: "StatementBuilder", objtype=None):
-        return instance._statement.then[self.name]
+ValueT = TypeVar("ValueT")
+_Setter = Callable[[ValueT], SingleAction[ValueT]]
 
 
 class StatementBuilder:
@@ -38,10 +27,28 @@ class StatementBuilder:
         self._added_community: list[str] = []
         self._removed_community: list[str] = []
 
-    local_pref: int = Field()
-    metric: int = Field()
-    rpki_valid_state: str = Field()
-    next_hop: Literal["self", "peer"] = Field()  # ???
+    def _set(self, field: str, value: ValueT) -> None:
+        action = self._statement.then
+        if field in action:
+            action[field].value = value
+        else:
+            action.append(SingleAction(
+                field=field,
+                action_type=ActionType.SET,
+                value=value,
+            ))
+
+    def set_local_pref(self, value: int) -> None:
+        self._set(ThenField.local_pref, value)
+
+    def set_metric(self, value: int) -> None:
+        self._set(ThenField.metric, value)
+
+    def set_rpki_valid_state(self, value: str) -> None:
+        self._set(ThenField.rpki_valid_state, value)
+
+    def set_next_hop(self, value: Literal["self", "peer"]) -> None:  # ???
+        self._set(ThenField.next_hop, value)
 
     def __enter__(self) -> "StatementBuilder":
         return self
