@@ -1,10 +1,14 @@
-from dataclasses import dataclass, field
+from enum import Enum
 from typing import Optional, Literal, Any
 
 from .action import Action, SingleAction, ActionType
 from .condition import Condition, AndCondition
 from .policy import RoutingPolicyStatement
 from .result import ResultType
+
+
+class ThenField(str, Enum):
+    pass
 
 
 class Field:
@@ -25,6 +29,7 @@ class Field:
     def __get__(self, instance: "StatementBuilder", objtype=None):
         return instance._statement.then[self.name]
 
+
 class StatementBuilder:
     def __init__(self, statement: RoutingPolicyStatement) -> None:
         self._statement = statement
@@ -37,7 +42,6 @@ class StatementBuilder:
     metric: int = Field()
     rpki_valid_state: str = Field()
     next_hop: Literal["self", "peer"] = Field()  # ???
-
 
     def __enter__(self) -> "StatementBuilder":
         return self

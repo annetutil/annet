@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional, Callable, Generic, TypeVar, Union
 
 from .policy import RoutingPolicy
-from .rule import Route
+from .statement_builder import Route
 
 DeviceT = TypeVar("DeviceT")
 RouteHandlerFunc = Callable[[DeviceT, Route], bool]

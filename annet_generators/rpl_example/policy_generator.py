@@ -6,7 +6,7 @@ from annet.rpl import (
     ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator, SingleCondition, SingleAction,
 )
 from annet.storage import Storage
-from .routes import routemap
+from .route_policy import routemap
 from .items import AS_PATH_FILTERS, IPV6_PREFIX_LISTS
 
 HUAWEI_MATCH_COMMAND_MAP = {
