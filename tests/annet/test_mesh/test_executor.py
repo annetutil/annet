@@ -46,7 +46,7 @@ def on_direct_alt(local: DirectPeer, neighbor: DirectPeer, session: MeshSession)
     local.mtu = 1501
     neighbor.mtu = 1502
     session.asnum = 12345
-    session.families = {"ipv4_labeled"}
+    session.families = {"ipv4_labeled_unicast"}
 
 
 def on_indirect(local: IndirectPeer, neighbor: IndirectPeer, session: MeshSession):
@@ -168,7 +168,7 @@ def test_storage(registry, storage, device1):
 
     assert peer_direct_alt.addr == "192.168.1.2"
     assert peer_direct_alt.options.mtu == 1501
-    assert peer_direct_alt.families == {"ipv4_labeled"}
+    assert peer_direct_alt.families == {"ipv4_labeled_unicast"}
     assert peer_direct_alt.remote_as == 12345
     assert peer_direct_alt.description == ""
     assert peer_direct_alt.interface == "if1"
