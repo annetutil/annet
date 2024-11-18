@@ -61,9 +61,6 @@ retort = Retort(
         }),
         loader(list[PeerGroup], lambda x: list(x.values()), Chain.FIRST),
         loader(PeerGroup, ObjMapping, Chain.FIRST),
-        name_mapping(PeerGroup, map={
-            "local_as": "asnum",
-        }),
     ]
 )
 

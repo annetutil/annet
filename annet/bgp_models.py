@@ -182,6 +182,8 @@ class PeerGroup:
     internal_name: str = ""
     description: str = ""
     update_source: str = ""
+    import_policy: str = ""
+    export_policy: str = ""
 
     # more strict version of PeerOptions
     local_as: ASN = ASN(None)
@@ -242,8 +244,6 @@ class VrfOptions:
     ipv6_labeled_unicast: FamilyOptions
 
     vrf_name_global: Optional[str] = None
-    import_policy: Optional[str] = None
-    export_policy: Optional[str] = None
     rt_import: list[str] = field(default_factory=list)
     rt_export: list[str] = field(default_factory=list)
     rt_import_v4: list[str] = field(default_factory=list)

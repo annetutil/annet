@@ -117,7 +117,11 @@ class VirtualPeerDTO(MeshSession):
 class MeshPeerGroup(_OptionsDTO):
     name: str
     families: Annotated[set[FamilyName], Concat()]
+    local_as: Union[int, str]
     remote_as: Union[int, str]
     internal_name: str
     update_source: str
     description: str
+
+    import_policy: str
+    export_policy: str
