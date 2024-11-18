@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Generic, TypeVar, Sequence, Union, Callable, Any, Optional
 
+from .common import ConditionField
+
 
 class ConditionOperator(Enum):
     EQ = "=="
@@ -71,23 +73,25 @@ class PrefixMatchValue:
     names: Sequence[str]
     or_longer: Optional[tuple[int, int]]  # ????
 
+
 class Checkable:
     def __init__(self):
-        self.community = SetConditionFactory[str]("community")
-        self.extcommunity = SetConditionFactory[str]("extcommunity")
-        self.rd = SetConditionFactory[str]("rd")
-        self.interface = ConditionFactory[str]("interface", ["=="])
-        self.protocol = ConditionFactory[str]("protocol", ["=="])
-        self.as_path_length = ConditionFactory[int]("as_path_length", ["==", ">="])
+        self.community = SetConditionFactory[str](ConditionField.community)
+        self.extcommunity = SetConditionFactory[str](ConditionField.extcommunity)
+        self.rd = SetConditionFactory[str](ConditionField.rd)
+        self.interface = ConditionFactory[str](ConditionField.interface, ["=="])
+        self.protocol = ConditionFactory[str](ConditionField.protocol, ["=="])
+        self.as_path_length = ConditionFactory[int](ConditionField.as_path_length, ["==", ">="])
 
     def as_path_filter(self, name: str) -> SingleCondition[str]:
-        return SingleCondition("as_path_filter", ConditionOperator.EQ, name)
+        return SingleCondition(ConditionField.as_path_filter, ConditionOperator.EQ, name)
 
     def match_v6(self, *names: str, or_longer: Optional[tuple[int, int]] = None) -> SingleCondition[PrefixMatchValue]:
-        return SingleCondition("ipv6_prefix", ConditionOperator.CUSTOM, PrefixMatchValue(names, or_longer))
+        return SingleCondition(ConditionField.ipv6_prefix, ConditionOperator.CUSTOM, PrefixMatchValue(names, or_longer))
 
     def match_v4(self, *names: str, or_longer: Optional[tuple[int, int]] = None) -> SingleCondition[PrefixMatchValue]:
-        return SingleCondition("ip_prefix", ConditionOperator.CUSTOM, PrefixMatchValue(names, or_longer))
+        return SingleCondition(ConditionField.ip_prefix, ConditionOperator.CUSTOM, PrefixMatchValue(names, or_longer))
+
 
 R = Checkable()
 Condition = Union[SingleCondition, "AndCondition"]
