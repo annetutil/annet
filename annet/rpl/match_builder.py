@@ -11,6 +11,10 @@ class MatchField(str, Enum):
     rd = "rd"
     interface = "interface"
     protocol = "protocol"
+    net_len = "net_len"
+    local_pref = "local_pref"
+    metric = "metric"
+    family = "family"
 
     as_path_length = "as_path_length"
     as_path_filter = "as_path_filter"
@@ -68,6 +72,10 @@ class Checkable:
         self.rd = SetConditionFactory[str](MatchField.rd)
         self.interface = ConditionFactory[str](MatchField.interface, ["=="])
         self.protocol = ConditionFactory[str](MatchField.protocol, ["=="])
+        self.net_len = ConditionFactory[int](MatchField.net_len, ["==", "!="])
+        self.local_pref = ConditionFactory[int](MatchField.local_pref, ["<"])
+        self.metric = ConditionFactory[int](MatchField.metric, ["=="])
+        self.family = ConditionFactory[int](MatchField.family, ["=="])
         self.as_path_length = ConditionFactory[int](MatchField.as_path_length, ["==", ">="])
 
     def as_path_filter(self, name: str) -> SingleCondition[str]:

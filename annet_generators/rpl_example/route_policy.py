@@ -26,6 +26,5 @@ def example1(device: Any, route: Route):
 def example2(device: Any, route: Route):
     with route(R.as_path_filter("ASP_EXAMPLE"), number=3, name="n3") as rule:
         rule.deny()
-
     with route(R.match_v6("IPV6_LIST_EXAMPLE"), number=4, name="n4") as rule:
         rule.allow()

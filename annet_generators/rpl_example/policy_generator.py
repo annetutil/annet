@@ -7,8 +7,8 @@ from annet.rpl import (
     ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator, SingleCondition, SingleAction, ActionType,
 )
 from annet.storage import Storage
+from .items import AS_PATH_FILTERS, COMMUNITIES
 from .route_policy import routemap
-from .items import AS_PATH_FILTERS, IPV6_PREFIX_LISTS, COMMUNITIES
 
 HUAWEI_MATCH_COMMAND_MAP = {
     "as_path_filter": "as-path-filter {option_value}",
@@ -35,6 +35,7 @@ HUAWEI_RESULT_MAP = {
     ResultType.DENY: "deny",
     ResultType.NEXT: ""
 }
+
 
 class RoutingPolicyGenerator(PartialGenerator):
     TAGS = ["policy", "rpl", "routing"]
@@ -75,7 +76,9 @@ class RoutingPolicyGenerator(PartialGenerator):
             return
 
         if condition.operator is not ConditionOperator.EQ:
-            raise NotImplementedError(f"`{condition.field}` with operator {condition.operator} is not supported for huawei")
+            raise NotImplementedError(
+                f"`{condition.field}` with operator {condition.operator} is not supported for huawei",
+            )
         if condition.field not in HUAWEI_MATCH_COMMAND_MAP:
             raise NotImplementedError(f"Match using `{condition.field}` is not supported for huawei")
         cmd = HUAWEI_MATCH_COMMAND_MAP[condition.field]
@@ -105,7 +108,7 @@ class RoutingPolicyGenerator(PartialGenerator):
             return
         if action.field == "metric":
             if action.type is ActionType.ADD:
-                yield "apply",  f"cost + {action.value}"
+                yield "apply", f"cost + {action.value}"
             elif action.type is ActionType.SET:
                 yield "apply", f"cost {action.value}"
             else:
