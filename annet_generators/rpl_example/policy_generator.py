@@ -4,7 +4,7 @@ from typing import Any, cast
 from annet.generators import PartialGenerator, BaseGenerator
 from annet.rpl import (
     CommunityActionValue,
-    ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator, SingleCondition, SingleAction,
+    ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator, SingleCondition, SingleAction, ActionType,
 )
 from annet.storage import Storage
 from .route_policy import routemap
@@ -19,10 +19,10 @@ HUAWEI_MATCH_COMMAND_MAP = {
 
 HUAWEI_THEN_COMMAND_MAP = {
     "metric": "cost {option_value}",
-    "metric_add": "cost + {option_value}",
+    "local_pref": "local-preference {option_value}",
+
     "metric_type": "cost-type {option_value}",
     "next_hop_self": "cost {option_value}",  # XXX next_hop_self == metric ?WTF?
-    "local_pref": "local-preference {option_value}",
     "next_hop": "ip-address next-hop {option_value}",
     "next_hop_v6": "ipv6 next-hop {option_value}",
     "next_hop_v4mapped": "ipv6 next-hop ::FFFF:{option_value}",
@@ -103,7 +103,17 @@ class RoutingPolicyGenerator(PartialGenerator):
             for community_name in comm_action_value.removed:
                 yield "apply comm-filter", community_name, "delete"
             return
+        if action.field == "metric":
+            if action.type is ActionType.ADD:
+                yield "apply",  f"cost + {action.value}"
+            elif action.type is ActionType.SET:
+                yield "apply", f"cost {action.value}"
+            else:
+                raise NotImplementedError(f"Action type {action.type} for metric is not supported for huawei")
+            return
 
+        if action.type is not ActionType.SET:
+            raise NotImplementedError(f"Action type {action.type} for `{action.field}` is not supported for huawei")
         if action.field not in HUAWEI_THEN_COMMAND_MAP:
             raise NotImplementedError(f"Then action using `{action.field}` is not supported for huawei")
         cmd = HUAWEI_THEN_COMMAND_MAP[action.field]

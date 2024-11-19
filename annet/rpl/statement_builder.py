@@ -41,11 +41,12 @@ class StatementBuilder:
     def _set(self, field: str, value: ValueT) -> None:
         action = self._statement.then
         if field in action:
+            action[field].type = ActionType.SET
             action[field].value = value
         else:
             action.append(SingleAction(
                 field=field,
-                action_type=ActionType.SET,
+                type=ActionType.SET,
                 value=value,
             ))
 
@@ -54,6 +55,24 @@ class StatementBuilder:
 
     def set_metric(self, value: int) -> None:
         self._set(ThenField.metric, value)
+
+    def add_metric(self, value: int) -> None:
+        action = self._statement.then
+        field = ThenField.metric
+        if field in action:
+            old_action = action[field]
+            if old_action.type == ActionType.SET:
+                action[field].value += value
+            elif old_action.type == ActionType.ADD:
+                action[field].value = value
+            else:
+                raise RuntimeError(f"Unknown action type {old_action.type} for metric")
+        else:
+            action.append(SingleAction(
+                field=field,
+                type=ActionType.ADD,
+                value=value,
+            ))
 
     def set_rpki_valid_state(self, value: str) -> None:
         self._set(ThenField.rpki_valid_state, value)
@@ -68,7 +87,7 @@ class StatementBuilder:
         if self._community:
             self._statement.then.append(SingleAction(
                 field=ThenField.community,
-                action_type=ActionType.CUSTOM,
+                type=ActionType.CUSTOM,
                 value=self._community,
             ))
         return None

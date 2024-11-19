@@ -1,11 +1,10 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
+from enum import Enum
 from typing import Generic, TypeVar, Any
 
-from cffi.model import EnumType
 
-
-class ActionType(EnumType):
+class ActionType(Enum):
     SET = "set"
     ADD = "add"
     REMOVE = "delete"
@@ -16,10 +15,10 @@ class ActionType(EnumType):
 ValueT = TypeVar("ValueT")
 
 
-@dataclass(frozen=True)
+@dataclass
 class SingleAction(Generic[ValueT]):
     field: str
-    action_type: ActionType
+    type: ActionType
     value: ValueT
 
 
