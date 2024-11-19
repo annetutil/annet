@@ -12,13 +12,14 @@ def example1(device: Any, route: Route):
         rule.set_local_pref(100)
         rule.set_metric(100)
         rule.add_metric(200)
-        rule.set_community("COMMUNITY_EXAMPLE_ADD")
+        rule.community.set("COMMUNITY_EXAMPLE_ADD")
+        rule.as_path.set(12345, "123456")
         rule.allow()
     with route(R.protocol == "bgp", R.community.has("comm_name"), number=2, name="n2") as rule:
         rule.set_local_pref(100)
         rule.add_metric(200)
-        rule.add_community("COMMUNITY_EXAMPLE_ADD")
-        rule.remove_community("COMMUNITY_EXAMPLE_REMOVE")
+        rule.community.add("COMMUNITY_EXAMPLE_ADD")
+        rule.community.remove("COMMUNITY_EXAMPLE_REMOVE")
         rule.allow()
 
 

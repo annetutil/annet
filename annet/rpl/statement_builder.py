@@ -2,7 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
 from enum import Enum
-from typing import Optional, Literal, TypeVar
+from typing import Optional, Literal, TypeVar, Union
 
 from .action import Action, SingleAction, ActionType
 from .condition import Condition, AndCondition
@@ -12,6 +12,7 @@ from .result import ResultType
 
 class ThenField(str, Enum):
     community = "community"
+    as_path = "as_path"
     local_pref = "local_pref"
     metric = "metric"
     rpki_valid_state = "rpki_valid_state"
@@ -32,11 +33,84 @@ class CommunityActionValue:
         return bool(self.replaced is not None or self.added or self.removed)
 
 
+class CommunityActionBuilder:
+    def __init__(self, community: CommunityActionValue):
+        self._community = community
+
+    def add(self, *community: str) -> None:
+        for c in community:
+            while c in self._community.removed:
+                self._community.removed.remove(c)
+            if c not in self._community.removed and (not self._community.removed or c not in self._community.replaced):
+                self._community.added.append(c)
+
+    def remove(self, *community: str) -> None:
+        for c in community:
+            if self._community.replaced:
+                while c in self._community.replaced:
+                    self._community.replaced.remove(c)
+            while c in self._community.added:
+                self._community.added.remove(c)
+            if c not in self._community.removed:
+                self._community.removed.append(c)
+
+    def set(self, *community: str) -> None:
+        self._community.added.clear()
+        self._community.removed.clear()
+        self._community.replaced = list(community)
+
+
+@dataclass
+class AsPathActionValue:
+    set: Optional[list[str]] = None  # None means no replacement is done
+    prepend: list[str] = field(default_factory=list)
+    expand: list[str] = field(default_factory=list)
+    expand_last_as: str = ""
+    delete: list[str] = field(default_factory=list)
+
+    def __bool__(self) -> bool:  # check if any action required
+        return bool(
+            self.set is not None or self.prepend or self.expand or self.expand_last_as or self.delete
+        )
+
+
+RawAsNum = Union[str, int]
+
+
+class AsPathActionBuilder:
+    def __init__(self, as_path_value: AsPathActionValue):
+        self._as_path_value = as_path_value
+
+    def prepend(self, *values: RawAsNum) -> None:
+        self._as_path_value.prepend = list(map(str, values))
+
+    def delete(self, *values: RawAsNum) -> None:
+        self._as_path_value.delete = list(map(str, values))
+
+    def expand(self, *values: RawAsNum) -> None:
+        self._as_path_value.expand = list(map(str, values))
+
+    def expand_last_as(self, value: RawAsNum) -> None:
+        self._as_path_value.expand_last_as = str(value)
+
+    def set(self, *values: RawAsNum) -> None:
+        self._as_path_value.set = list(map(str, values))
+
+
 class StatementBuilder:
     def __init__(self, statement: RoutingPolicyStatement) -> None:
         self._statement = statement
         self._added_as_path: list[int] = []
         self._community = CommunityActionValue()
+        self._as_path = AsPathActionValue()
+
+    @property
+    def as_path(self) -> AsPathActionBuilder:
+        return AsPathActionBuilder(self._as_path)
+
+    @property
+    def community(self) -> CommunityActionBuilder:
+        return CommunityActionBuilder(self._community)
 
     def _set(self, field: str, value: ValueT) -> None:
         action = self._statement.then
@@ -90,6 +164,12 @@ class StatementBuilder:
                 type=ActionType.CUSTOM,
                 value=self._community,
             ))
+        if self._as_path:
+            self._statement.then.append(SingleAction(
+                field=ThenField.as_path,
+                type=ActionType.CUSTOM,
+                value=self._as_path,
+            ))
         return None
 
     def allow(self) -> None:
@@ -106,28 +186,6 @@ class StatementBuilder:
 
     def add_as_path(self, *as_path: int) -> None:
         self._added_as_path.extend(as_path)
-
-    def add_community(self, *community: str) -> None:
-        for c in community:
-            while c in self._community.removed:
-                self._community.removed.remove(c)
-            if c not in self._community.removed and (not self._community.removed or c not in self._community.replaced):
-                self._community.added.append(c)
-
-    def remove_community(self, *community: str) -> None:
-        for c in community:
-            if self._community.replaced:
-                while c in self._community.replaced:
-                    self._community.replaced.remove(c)
-            while c in self._community.added:
-                self._community.added.remove(c)
-            if c not in self._community.removed:
-                self._community.removed.append(c)
-
-    def set_community(self, *community: str) -> None:
-        self._community.added.clear()
-        self._community.removed.clear()
-        self._community.replaced = list(community)
 
 
 class Route:

@@ -6,6 +6,7 @@ from annet.rpl import (
     CommunityActionValue,
     ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator, SingleCondition, SingleAction, ActionType,
 )
+from annet.rpl.statement_builder import AsPathActionValue
 from annet.storage import Storage
 from .items import AS_PATH_FILTERS, COMMUNITIES
 from .route_policy import routemap
@@ -114,6 +115,19 @@ class RoutingPolicyGenerator(PartialGenerator):
                 yield "apply", f"cost {action.value}"
             else:
                 raise NotImplementedError(f"Action type {action.type} for metric is not supported for huawei")
+            return
+        if action.field == "as_path":
+            as_path_action_value = cast(AsPathActionValue, action.value)
+            if as_path_action_value.set is not None:
+                yield "apply as-path", as_path_action_value.set, "overwrite"
+            if as_path_action_value.prepend:
+                yield "apply as-path", as_path_action_value.prepend, "additive"
+            if as_path_action_value.expand:  # same as prepend?
+                yield "apply as-path", as_path_action_value.expand, "additive"
+            if as_path_action_value.delete:
+                yield "apply as-path", as_path_action_value.delete, "delete"
+            if as_path_action_value.expand_last_as:
+                raise RuntimeError("asp_path.expand_last_as is not supported for huawei")
             return
 
         if action.type is not ActionType.SET:
