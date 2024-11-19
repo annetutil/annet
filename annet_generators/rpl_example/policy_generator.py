@@ -86,6 +86,7 @@ class RoutingPolicyGenerator(PartialGenerator):
 
     def _huawei_then(self, device, action: SingleAction[Any]) -> Iterator[Sequence[str]]:
         if action.field == "community":
+            # TODO group by extcommunity
             comm_action_value = cast(CommunityActionValue, action.value)
             if comm_action_value.replaced is not None:
                 if not comm_action_value.replaced:
