@@ -1,13 +1,14 @@
 from collections.abc import Iterator, Sequence
-from typing import Any
+from typing import Any, cast
 
 from annet.generators import PartialGenerator, BaseGenerator
 from annet.rpl import (
+    CommunityActionValue,
     ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator, SingleCondition, SingleAction,
 )
 from annet.storage import Storage
 from .route_policy import routemap
-from .items import AS_PATH_FILTERS, IPV6_PREFIX_LISTS
+from .items import AS_PATH_FILTERS, IPV6_PREFIX_LISTS, COMMUNITIES
 
 HUAWEI_MATCH_COMMAND_MAP = {
     "as_path_filter": "as-path-filter {option_value}",
@@ -81,6 +82,28 @@ class RoutingPolicyGenerator(PartialGenerator):
         yield "if-match", cmd.format(option_value=condition.value)
 
     def _huawei_then(self, device, action: SingleAction[Any]) -> Iterator[Sequence[str]]:
+        if action.field == "community":
+            comm_action_value = cast(CommunityActionValue, action.value)
+            if comm_action_value.replaced is not None:
+                if not comm_action_value.replaced:
+                    yield "apply", "community", "none"
+                first = True
+                for community_name in comm_action_value.replaced:
+                    community = COMMUNITIES[community_name]
+                    for comm_value in community.values:
+                        if first:
+                            yield "apply", "community", comm_value
+                            first = False
+                        else:
+                            yield "apply", "community", comm_value, "additive"
+            for community_name in comm_action_value.added:
+                community = COMMUNITIES[community_name]
+                for comm_value in community.values:
+                    yield "apply", "community", comm_value, "additive"
+            for community_name in comm_action_value.removed:
+                yield "apply comm-filter", community_name, "delete"
+            return
+
         if action.field not in HUAWEI_THEN_COMMAND_MAP:
             raise NotImplementedError(f"Then action using `{action.field}` is not supported for huawei")
         cmd = HUAWEI_THEN_COMMAND_MAP[action.field]

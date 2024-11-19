@@ -1,4 +1,6 @@
 from collections.abc import Callable
+from dataclasses import dataclass
+from dataclasses import field
 from enum import Enum
 from typing import Optional, Literal, TypeVar
 
@@ -9,6 +11,7 @@ from .result import ResultType
 
 
 class ThenField(str, Enum):
+    community = "community"
     local_pref = "local_pref"
     metric = "metric"
     rpki_valid_state = "rpki_valid_state"
@@ -19,13 +22,21 @@ ValueT = TypeVar("ValueT")
 _Setter = Callable[[ValueT], SingleAction[ValueT]]
 
 
+@dataclass
+class CommunityActionValue:
+    replaced: Optional[list[str]] = None  # None means no replacement is done
+    added: list[str] = field(default_factory=list)
+    removed: list[str] = field(default_factory=list)
+
+    def __bool__(self) -> bool:  # check if any action required
+        return bool(self.replaced is not None or self.added or self.removed)
+
+
 class StatementBuilder:
     def __init__(self, statement: RoutingPolicyStatement) -> None:
         self._statement = statement
         self._added_as_path: list[int] = []
-        self._replaced_community: Optional[list[str]] = None
-        self._added_community: list[str] = []
-        self._removed_community: list[str] = []
+        self._community = CommunityActionValue()
 
     def _set(self, field: str, value: ValueT) -> None:
         action = self._statement.then
@@ -54,6 +65,12 @@ class StatementBuilder:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._community:
+            self._statement.then.append(SingleAction(
+                field=ThenField.community,
+                action_type=ActionType.CUSTOM,
+                value=self._community,
+            ))
         return None
 
     def allow(self) -> None:
@@ -73,25 +90,25 @@ class StatementBuilder:
 
     def add_community(self, *community: str) -> None:
         for c in community:
-            while c in self._removed_community:
-                self._removed_community.remove(c)
-            if c not in self._removed_community and (not self._removed_community or c not in self._replaced_community):
-                self._added_community.append(c)
+            while c in self._community.removed:
+                self._community.removed.remove(c)
+            if c not in self._community.removed and (not self._community.removed or c not in self._community.replaced):
+                self._community.added.append(c)
 
     def remove_community(self, *community: str) -> None:
         for c in community:
-            if self._replaced_community:
-                while c in self._replaced_community:
-                    self._replaced_community.remove(c)
-            while c in self._added_community:
-                self._added_community.remove(c)
-            if c not in self._removed_community:
-                self._removed_community.append(c)
+            if self._community.replaced:
+                while c in self._community.replaced:
+                    self._community.replaced.remove(c)
+            while c in self._community.added:
+                self._community.added.remove(c)
+            if c not in self._community.removed:
+                self._community.removed.append(c)
 
     def set_community(self, *community: str) -> None:
-        self._added_community.clear()
-        self._removed_community.clear()
-        self._replaced_community = list(community)
+        self._community.added.clear()
+        self._community.removed.clear()
+        self._community.replaced = list(community)
 
 
 class Route:

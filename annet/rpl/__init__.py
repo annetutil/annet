@@ -14,6 +14,7 @@ __all__ = [
     "SingleCondition",
     "RoutingPolicyStatement",
     "RoutingPolicy",
+    "CommunityActionValue",
 ]
 
 from .action import Action, ActionType, SingleAction
@@ -22,4 +23,4 @@ from .match_builder import R, MatchField
 from .policy import RoutingPolicyStatement, RoutingPolicy
 from .result import ResultType
 from .routemap import RouteMap
-from .statement_builder import Route, ThenField
+from .statement_builder import Route, ThenField, CommunityActionValue
