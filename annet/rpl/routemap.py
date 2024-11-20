@@ -1,8 +1,35 @@
 from dataclasses import dataclass
 from typing import Optional, Callable, Generic, TypeVar, Union
 
-from .policy import RoutingPolicy
-from .statement_builder import Route
+from .action import Action
+from .condition import AndCondition, Condition
+from .match_builder import merge_conditions
+from .policy import RoutingPolicy, RoutingPolicyStatement
+from .result import ResultType
+from .statement_builder import StatementBuilder
+
+
+class Route:
+    def __init__(self, name: str):
+        self.name = name
+        self.statements: list[RoutingPolicyStatement] = []
+
+    def __call__(
+            self,
+            *conditions: Condition,
+            name: Optional[str] = None,
+            number: Optional[int] = None,
+    ) -> "StatementBuilder":
+        statement = RoutingPolicyStatement(
+            name=name,
+            number=number,
+            match=merge_conditions(AndCondition(*conditions)),
+            then=Action(),
+            result=ResultType.NEXT,
+        )
+        self.statements.append(statement)
+        return StatementBuilder(statement=statement)
+
 
 DeviceT = TypeVar("DeviceT")
 RouteHandlerFunc = Callable[[DeviceT, Route], bool]

@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Iterator, Iterable
 from dataclasses import dataclass
 from enum import Enum
 from typing import Generic, TypeVar, Any
@@ -44,3 +44,8 @@ class Action:
 
     def __iter__(self) -> Iterator[SingleAction[Any]]:
         return iter(self.actions)
+
+    def find_all(self, item: str) -> Iterable[SingleAction[Any]]:
+        for action in self.actions:
+            if action.field == item:
+                yield action

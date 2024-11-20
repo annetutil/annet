@@ -70,7 +70,20 @@ class RoutingPolicyGenerator(PartialGenerator):
             for name in condition.value.names:
                 yield "if-match", "ipv6 address prefix-list", name
             return
-
+        if condition.field == "as_path_length":
+            if condition.operator is ConditionOperator.EQ:
+                yield "if-match", "as-path length", condition.value
+            elif condition.operator is ConditionOperator.LE:
+                yield "if-match", "as-path length less-equal", condition.value
+            elif condition.operator is ConditionOperator.GE:
+                yield "if-match", "as-path length greater-equal", condition.value
+            elif condition.operator is ConditionOperator.BETWEEN_INCLUDED:
+                yield "if-match", "as-path length greater-equal", condition.value[0], "less-equal", condition.value[1]
+            else:
+                raise NotImplementedError(
+                    f"as_path_length operator {condition.operator} not supported for huawei",
+                )
+            return 
         if condition.operator is not ConditionOperator.EQ:
             raise NotImplementedError(
                 f"`{condition.field}` with operator {condition.operator} is not supported for huawei",
@@ -140,7 +153,6 @@ class RoutingPolicyGenerator(PartialGenerator):
                 yield "apply", f"ipv6 next-hop ::FFFF:{next_hop_action_value.addr}"
             else:
                 raise RuntimeError(f"Next_hop target {next_hop_action_value.target} is not supported for huawei")
-
 
         if action.type is not ActionType.SET:
             raise NotImplementedError(f"Action type {action.type} for `{action.field}` is not supported for huawei")

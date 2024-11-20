@@ -29,3 +29,6 @@ def example2(device: Any, route: Route):
         rule.deny()
     with route(R.match_v6("IPV6_LIST_EXAMPLE"), number=4, name="n4") as rule:
         rule.allow()
+
+    with route(R.as_path_length >= 1, R.as_path_length <=20, number=4, name="n4") as rule:
+        rule.allow()

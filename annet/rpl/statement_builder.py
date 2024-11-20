@@ -260,25 +260,3 @@ class StatementBuilder:
 
     def add_as_path(self, *as_path: int) -> None:
         self._added_as_path.extend(as_path)
-
-
-class Route:
-    def __init__(self, name: str):
-        self.name = name
-        self.statements: list[RoutingPolicyStatement] = []
-
-    def __call__(
-            self,
-            *conditions: Condition,
-            name: Optional[str] = None,
-            number: Optional[int] = None,
-    ) -> "StatementBuilder":
-        statement = RoutingPolicyStatement(
-            name=name,
-            number=number,
-            match=AndCondition(*conditions),
-            then=Action(),
-            result=ResultType.NEXT,
-        )
-        self.statements.append(statement)
-        return StatementBuilder(statement=statement)

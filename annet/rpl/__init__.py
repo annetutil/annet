@@ -1,6 +1,6 @@
 __all__ = [
     "MatchField",
-    "ThenField"
+    "ThenField",
     "RouteMap",
     "Route",
     "ResultType",
@@ -22,5 +22,5 @@ from .condition import AndCondition, Condition, ConditionOperator, SingleConditi
 from .match_builder import R, MatchField
 from .policy import RoutingPolicyStatement, RoutingPolicy
 from .result import ResultType
-from .routemap import RouteMap
-from .statement_builder import Route, ThenField, CommunityActionValue
+from .routemap import RouteMap, Route
+from .statement_builder import ThenField, CommunityActionValue

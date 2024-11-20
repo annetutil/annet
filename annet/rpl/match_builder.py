@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Generic, Sequence, Callable, Optional, TypeVar
+from typing import Generic, Sequence, Callable, Optional, TypeVar, Any
 
-from .condition import SingleCondition, ConditionOperator
+from .condition import SingleCondition, ConditionOperator, AndCondition
 
 
 class MatchField(str, Enum):
@@ -76,7 +76,7 @@ class Checkable:
         self.local_pref = ConditionFactory[int](MatchField.local_pref, ["<"])
         self.metric = ConditionFactory[int](MatchField.metric, ["=="])
         self.family = ConditionFactory[int](MatchField.family, ["=="])
-        self.as_path_length = ConditionFactory[int](MatchField.as_path_length, ["==", ">="])
+        self.as_path_length = ConditionFactory[int](MatchField.as_path_length, ["==", ">=", "<=", "BETWEEN_INCLUDED"])
 
     def as_path_filter(self, name: str) -> SingleCondition[str]:
         return SingleCondition(MatchField.as_path_filter, ConditionOperator.EQ, name)
@@ -86,6 +86,16 @@ class Checkable:
 
     def match_v4(self, *names: str, or_longer: Optional[tuple[int, int]] = None) -> SingleCondition[PrefixMatchValue]:
         return SingleCondition(MatchField.ip_prefix, ConditionOperator.CUSTOM, PrefixMatchValue(names, or_longer))
+
+
+def merge_conditions(and_condition: AndCondition) -> AndCondition:
+    conditions: dict[str, SingleCondition[Any]] = {}
+    for condition in and_condition.conditions:
+        if condition.field in conditions:
+            conditions[condition.field] = conditions[condition.field].merge(condition)
+        else:
+            conditions[condition.field] = condition
+    return AndCondition(*conditions.values())
 
 
 R = Checkable()

@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Iterator, Iterable
 from dataclasses import dataclass
 from enum import Enum
 from typing import Generic, TypeVar, Sequence, Union, Any
@@ -10,6 +10,7 @@ class ConditionOperator(Enum):
     GT = ">"
     LE = "<="
     LT = "<"
+    BETWEEN_INCLUDED = "BETWEEN_INCLUDED"
 
     HAS = "has"
     HAS_ANY = "has_any"
@@ -26,8 +27,36 @@ class SingleCondition(Generic[ValueT]):
     operator: ConditionOperator
     value: ValueT
 
-    def __and__(self, other: "Condition") -> "AndCondition":
+    def __and__(self, other: "Condition") -> "Condition":
         return AndCondition(self, other)
+
+    def merge(self, other: "SingleCondition") -> "SingleCondition":
+        if other.field != self.field:
+            raise ValueError(f"Cannot merge conditions with different fields: {self.field} != {other.field}")
+        if self.operator is ConditionOperator.HAS:
+            if other.operator is ConditionOperator.HAS:
+                values = set(self.value) | set(other.value)
+                return SingleCondition(self.field, ConditionOperator.HAS, list(values))
+            elif other.operator is ConditionOperator.HAS_ANY:
+                values = set(self.value) & set(other.value)
+                return SingleCondition(self.field, ConditionOperator.HAS_ANY, list(values))
+        elif self.operator is ConditionOperator.HAS_ANY:
+            if other.operator is ConditionOperator.HAS:
+                return other.merge(self)
+            elif other.operator is ConditionOperator.HAS_ANY:
+                values = set(self.value) & set(other.value)
+                return SingleCondition(self.field, ConditionOperator.HAS_ANY, list(values))
+        elif self.operator is ConditionOperator.LE:
+            if other.operator is ConditionOperator.GE:
+                return SingleCondition(self.field, ConditionOperator.BETWEEN_INCLUDED, [other.value, self.value])
+            elif other.operator is ConditionOperator.LE:
+                return SingleCondition(self.field, ConditionOperator.LE, min(self.value, other.value))
+        elif self.operator is ConditionOperator.GE:
+            if other.operator is ConditionOperator.LE:
+                return other.merge(self)
+            elif other.operator is ConditionOperator.GE:
+                return SingleCondition(self.field, ConditionOperator.GE, max(self.value, other.value))
+        raise ValueError(f"Cannot merge condition with operator {self.operator} and {other.operator}")
 
 
 Condition = Union[SingleCondition, "AndCondition"]
@@ -38,13 +67,6 @@ class AndCondition:
         self.conditions: list[SingleCondition[Any]] = []
         for c in conditions:
             self.conditions.extend(self._unpack(c))
-        self._check_duplicates()
-
-    def _check_duplicates(self) -> None:
-        seen_fields: set[str] = set()
-        for condition in self.conditions:
-            if condition.field in seen_fields:
-                raise ValueError(f"Cannot have multiple condition on field {condition.field}")
 
     def _unpack(self, other: Condition) -> Sequence[SingleCondition]:
         if isinstance(other, AndCondition):
@@ -72,3 +94,8 @@ class AndCondition:
 
     def __iter__(self) -> Iterator[SingleCondition[Any]]:
         return iter(self.conditions)
+
+    def find_all(self, item: str) -> Iterable[SingleCondition[Any]]:
+        for condition in self.conditions:
+            if condition.field == item:
+                yield condition
