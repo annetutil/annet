@@ -6,7 +6,7 @@ from annet.rpl import (
     CommunityActionValue,
     ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator, SingleCondition, SingleAction, ActionType,
 )
-from annet.rpl.statement_builder import AsPathActionValue
+from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue
 from annet.storage import Storage
 from .items import AS_PATH_FILTERS, COMMUNITIES
 from .route_policy import routemap
@@ -25,11 +25,6 @@ HUAWEI_THEN_COMMAND_MAP = {
     "mpls_label": "mpls-label",
     "origin": "origin {option_value}",
     "tag": "tag {option_value}",
-
-    "next_hop_self": "cost {option_value}",  # XXX next_hop_self == metric ?WTF?
-    "next_hop": "ip-address next-hop {option_value}",
-    "next_hop_v6": "ipv6 next-hop {option_value}",
-    "next_hop_v4mapped": "ipv6 next-hop ::FFFF:{option_value}",
 }
 HUAWEI_RESULT_MAP = {
     ResultType.ALLOW: "permit",
@@ -129,6 +124,23 @@ class RoutingPolicyGenerator(PartialGenerator):
             if as_path_action_value.expand_last_as:
                 raise RuntimeError("asp_path.expand_last_as is not supported for huawei")
             return
+        if action.field == "next_hop":
+            next_hop_action_value = cast(NextHopActionValue, action.value)
+            if next_hop_action_value.target == "self":
+                yield "apply", "cost 1"
+            elif next_hop_action_value.target == "discard":
+                pass
+            elif next_hop_action_value.target == "peer":
+                pass
+            elif next_hop_action_value.target == "ipv4_addr":
+                yield "apply", f"ip-address next-hop {next_hop_action_value.addr}"
+            elif next_hop_action_value.target == "ipv6_addr":
+                yield "apply", f"ipv6 next-hop {next_hop_action_value.addr}"
+            elif next_hop_action_value.target == "mapped_ipv4":
+                yield "apply", f"ipv6 next-hop ::FFFF:{next_hop_action_value.addr}"
+            else:
+                raise RuntimeError(f"Next_hop target {next_hop_action_value.target} is not supported for huawei")
+
 
         if action.type is not ActionType.SET:
             raise NotImplementedError(f"Action type {action.type} for `{action.field}` is not supported for huawei")

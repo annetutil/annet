@@ -107,12 +107,55 @@ class AsPathActionBuilder:
         self._as_path_value.set = list(map(str, values))
 
 
+@dataclass
+class NextHopActionValue:
+    target: Optional[Literal["self", "discard", "peer", "ipv4_addr", "ipv6_addr", "mapped_ipv4"]] = None
+    addr: Optional[str] = None
+
+    def __bool__(self) -> bool:
+        return bool(self.target)
+
+
+class NextHopActionBuilder:
+    def __init__(self, next_hop_value: NextHopActionValue):
+        self._next_hop_value = next_hop_value
+
+    def ipv4_addr(self, value: str) -> None:
+        self._next_hop_value.target = "ipv4_addr"
+        self._next_hop_value.addr = value
+
+    def ipv6_addr(self, value: str) -> None:
+        self._next_hop_value.target = "ipv6_addr"
+        self._next_hop_value.addr = value
+
+    def mapped_ipv4(self, value: str) -> None:
+        self._next_hop_value.target = "mapped_ipv4"
+        self._next_hop_value.addr = value
+
+    def self(self) -> None:
+        self._next_hop_value.target = "self"
+        self._next_hop_value.addr = ""
+
+    def peer(self) -> None:
+        self._next_hop_value.target = "peer"
+        self._next_hop_value.addr = ""
+
+    def discard(self) -> None:
+        self._next_hop_value.target = "discard"
+        self._next_hop_value.addr = ""
+
+
 class StatementBuilder:
     def __init__(self, statement: RoutingPolicyStatement) -> None:
         self._statement = statement
         self._added_as_path: list[int] = []
         self._community = CommunityActionValue()
         self._as_path = AsPathActionValue()
+        self._next_hop = NextHopActionValue()
+
+    @property
+    def next_hop(self) -> NextHopActionBuilder:
+        return NextHopActionBuilder(self._next_hop)
 
     @property
     def as_path(self) -> AsPathActionBuilder:
@@ -194,6 +237,12 @@ class StatementBuilder:
                 field=ThenField.as_path,
                 type=ActionType.CUSTOM,
                 value=self._as_path,
+            ))
+        if self._next_hop:
+            self._statement.then.append(SingleAction(
+                field=ThenField.next_hop,
+                type=ActionType.CUSTOM,
+                value=self._next_hop,
             ))
         return None
 
