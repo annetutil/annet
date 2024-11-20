@@ -25,6 +25,8 @@ HUAWEI_THEN_COMMAND_MAP = {
     "mpls_label": "mpls-label",
     "origin": "origin {option_value}",
     "tag": "tag {option_value}",
+    # unsupported: resolution
+    # unsupported: rpki_valid_state
 }
 HUAWEI_RESULT_MAP = {
     ResultType.ALLOW: "permit",
