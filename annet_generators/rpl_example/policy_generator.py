@@ -8,7 +8,7 @@ from annet.rpl import (
 )
 from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue
 from annet.storage import Storage
-from .items import AS_PATH_FILTERS, COMMUNITIES
+from .items import AS_PATH_FILTERS, COMMUNITIES, EXT_COMMUNITIES
 from .route_policy import routemap
 
 HUAWEI_MATCH_COMMAND_MAP = {
@@ -83,7 +83,7 @@ class RoutingPolicyGenerator(PartialGenerator):
                 raise NotImplementedError(
                     f"as_path_length operator {condition.operator} not supported for huawei",
                 )
-            return 
+            return
         if condition.operator is not ConditionOperator.EQ:
             raise NotImplementedError(
                 f"`{condition.field}` with operator {condition.operator} is not supported for huawei",
@@ -93,28 +93,52 @@ class RoutingPolicyGenerator(PartialGenerator):
         cmd = HUAWEI_MATCH_COMMAND_MAP[condition.field]
         yield "if-match", cmd.format(option_value=condition.value)
 
-    def _huawei_then(self, device, action: SingleAction[Any]) -> Iterator[Sequence[str]]:
-        if action.field == "community":
-            # TODO group by extcommunity
-            comm_action_value = cast(CommunityActionValue, action.value)
-            if comm_action_value.replaced is not None:
-                if not comm_action_value.replaced:
-                    yield "apply", "community", "none"
-                first = True
-                for community_name in comm_action_value.replaced:
-                    community = COMMUNITIES[community_name]
-                    for comm_value in community.values:
-                        if first:
-                            yield "apply", "community", comm_value
-                            first = False
-                        else:
-                            yield "apply", "community", comm_value, "additive"
-            for community_name in comm_action_value.added:
+    def _huawei_then_community(self, action: SingleAction[CommunityActionValue]) -> Iterator[Sequence[str]]:
+        if action.value.replaced is not None:
+            if not action.value.replaced:
+                yield "apply", "community", "none"
+            first = True
+            for community_name in action.value.replaced:
                 community = COMMUNITIES[community_name]
                 for comm_value in community.values:
-                    yield "apply", "community", comm_value, "additive"
-            for community_name in comm_action_value.removed:
-                yield "apply comm-filter", community_name, "delete"
+                    if first:
+                        yield "apply", "community", comm_value
+                        first = False
+                    else:
+                        yield "apply", "community", comm_value, "additive"
+        for community_name in action.value.added:
+            community = COMMUNITIES[community_name]
+            for comm_value in community.values:
+                yield "apply", "community", comm_value, "additive"
+        for community_name in action.value.removed:
+            yield "apply comm-filter", community_name, "delete"
+
+    def _huawei_then_extcommunity(self, action: SingleAction[CommunityActionValue]) -> Iterator[Sequence[str]]:
+        if action.value.replaced is not None:
+            if not action.value.replaced:
+                yield "apply", "extcommunity", "none"
+            first = True
+            for community_name in action.value.replaced:
+                community = EXT_COMMUNITIES[community_name]
+                for comm_value in community.values:
+                    if first:
+                        yield "apply", "extcommunity", comm_value
+                        first = False
+                    else:
+                        yield "apply", "extcommunity", comm_value, "additive"
+        for community_name in action.value.added:
+            community = EXT_COMMUNITIES[community_name]
+            for comm_value in community.values:
+                yield "apply", "extcommunity", comm_value, "additive"
+        for community_name in action.value.removed:
+            yield "apply extcommunity-filter", community_name, "delete"
+
+    def _huawei_then(self, device, action: SingleAction[Any]) -> Iterator[Sequence[str]]:
+        if action.field == "community":
+            yield from self._huawei_then_community(cast(SingleAction[CommunityActionValue], action))
+            return
+        if action.field == "extcommunity":
+            yield from self._huawei_then_extcommunity(cast(SingleAction[CommunityActionValue], action))
             return
         if action.field == "metric":
             if action.type is ActionType.ADD:

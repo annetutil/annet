@@ -13,11 +13,19 @@ IPV6_PREFIX_LISTS = {
 @dataclass(frozen=True)
 class Community:
     values: Sequence[str]
-    is_extended: bool = False
-    is_color: bool = False
+
+
+@dataclass(frozen=True)
+class ExtCommunity:
+    values: Sequence[str]
 
 
 COMMUNITIES = {
     "COMMUNITY_EXAMPLE_ADD": Community(["1234:1000"]),
     "COMMUNITY_EXAMPLE_REMOVE": Community(["12345:999"]),
+}
+
+EXT_COMMUNITIES = {
+    "COMMUNITY_EXAMPLE_ADD": ExtCommunity(["1234:1000"]),
+    "COMMUNITY_EXAMPLE_REMOVE": ExtCommunity(["12345:999"]),
 }
