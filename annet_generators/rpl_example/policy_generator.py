@@ -21,15 +21,15 @@ HUAWEI_MATCH_COMMAND_MAP = {
 HUAWEI_THEN_COMMAND_MAP = {
     "metric": "cost {option_value}",
     "local_pref": "local-preference {option_value}",
-
     "metric_type": "cost-type {option_value}",
+    "mpls_label": "mpls-label",
+    "origin": "origin {option_value}",
+    "tag": "tag {option_value}",
+
     "next_hop_self": "cost {option_value}",  # XXX next_hop_self == metric ?WTF?
     "next_hop": "ip-address next-hop {option_value}",
     "next_hop_v6": "ipv6 next-hop {option_value}",
     "next_hop_v4mapped": "ipv6 next-hop ::FFFF:{option_value}",
-    "tag": "tag {option_value}",
-    "origin": "origin {option_value}",
-    "mpls_label": "mpls-label",
 }
 HUAWEI_RESULT_MAP = {
     ResultType.ALLOW: "permit",

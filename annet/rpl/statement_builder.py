@@ -16,6 +16,12 @@ class ThenField(str, Enum):
     local_pref = "local_pref"
     metric = "metric"
     rpki_valid_state = "rpki_valid_state"
+    resolution = "resolution"
+    mpls_label = "mpls_label"
+    metric_type = "metric_type"
+    origin = "origin"
+    tag = "tag"
+
     next_hop = "next_hop"
 
 
@@ -94,6 +100,10 @@ class AsPathActionBuilder:
         self._as_path_value.expand_last_as = str(value)
 
     def set(self, *values: RawAsNum) -> None:
+        self._as_path_value.expand.clear()
+        self._as_path_value.expand_last_as = ""
+        self._as_path_value.delete.clear()
+        self._as_path_value.prepend.clear()
         self._as_path_value.set = list(map(str, values))
 
 
@@ -127,6 +137,9 @@ class StatementBuilder:
     def set_local_pref(self, value: int) -> None:
         self._set(ThenField.local_pref, value)
 
+    def set_metric_type(self, value: str) -> None:
+        self._set(ThenField.metric_type, value)
+
     def set_metric(self, value: int) -> None:
         self._set(ThenField.metric, value)
 
@@ -150,6 +163,18 @@ class StatementBuilder:
 
     def set_rpki_valid_state(self, value: str) -> None:
         self._set(ThenField.rpki_valid_state, value)
+
+    def set_resolution(self, value: str) -> None:
+        self._set(ThenField.resolution, value)
+
+    def set_mpls_label(self) -> None:
+        self._set(ThenField.mpls_label, True)
+
+    def set_origin(self, value: str) -> None:
+        self._set(ThenField.origin, value)
+
+    def set_tag(self, value: int) -> None:
+        self._set(ThenField.tag, value)
 
     def set_next_hop(self, value: Literal["self", "peer"]) -> None:  # ???
         self._set(ThenField.next_hop, value)
