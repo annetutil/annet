@@ -21,8 +21,11 @@ def example_rule1(device: Device, route: Route):
 
 
 def test_routemap():
+    subroutemap = RouteMap[Device]()
+    subroutemap(example_rule1)
+
     routemap = RouteMap[Device]()
-    routemap(example_rule1)
+    routemap.include(subroutemap)
 
     device = Device(DEVICE_NAME)
     res = routemap.apply(device)

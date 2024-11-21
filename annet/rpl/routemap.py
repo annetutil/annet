@@ -32,7 +32,7 @@ class Route:
 
 
 DeviceT = TypeVar("DeviceT")
-RouteHandlerFunc = Callable[[DeviceT, Route], bool]
+RouteHandlerFunc = Callable[[DeviceT, Route], None]
 Decorator = Callable[[RouteHandlerFunc[DeviceT]], RouteHandlerFunc[DeviceT]]
 
 
