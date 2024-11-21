@@ -153,13 +153,24 @@ class RoutingPolicyGenerator(PartialGenerator):
         if action.field == "as_path":
             as_path_action_value = cast(AsPathActionValue, action.value)
             if as_path_action_value.set is not None:
-                yield "apply as-path", as_path_action_value.set, "overwrite"
+                if not as_path_action_value.set:
+                    yield "apply", "as_path", "none overwrite"
+                first = True
+                for path_item in as_path_action_value.set:
+                    if first:
+                        yield "apply as-path", path_item, "overwrite"
+                        first = False
+                    else:
+                        yield "apply as-path", path_item, "additive"
             if as_path_action_value.prepend:
-                yield "apply as-path", as_path_action_value.prepend, "additive"
+                for path_item in as_path_action_value.prepend:
+                    yield "apply as-path", path_item, "additive"
             if as_path_action_value.expand:  # same as prepend?
-                yield "apply as-path", as_path_action_value.expand, "additive"
+                for path_item in as_path_action_value.expand:
+                    yield "apply as-path", path_item, "additive"
             if as_path_action_value.delete:
-                yield "apply as-path", as_path_action_value.delete, "delete"
+                for path_item in as_path_action_value.delete:
+                    yield "apply as-path", path_item, "delete"
             if as_path_action_value.expand_last_as:
                 raise RuntimeError("asp_path.expand_last_as is not supported for huawei")
             return
