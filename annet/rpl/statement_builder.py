@@ -45,20 +45,11 @@ class CommunityActionBuilder:
 
     def add(self, *community: str) -> None:
         for c in community:
-            while c in self._community.removed:
-                self._community.removed.remove(c)
-            if c not in self._community.removed and (not self._community.removed or c not in self._community.replaced):
-                self._community.added.append(c)
+            self._community.added.append(c)
 
     def remove(self, *community: str) -> None:
         for c in community:
-            if self._community.replaced:
-                while c in self._community.replaced:
-                    self._community.replaced.remove(c)
-            while c in self._community.added:
-                self._community.added.remove(c)
-            if c not in self._community.removed:
-                self._community.removed.append(c)
+            self._community.removed.append(c)
 
     def set(self, *community: str) -> None:
         self._community.added.clear()
@@ -110,7 +101,7 @@ class AsPathActionBuilder:
 @dataclass
 class NextHopActionValue:
     target: Optional[Literal["self", "discard", "peer", "ipv4_addr", "ipv6_addr", "mapped_ipv4"]] = None
-    addr: Optional[str] = None
+    addr: str = ""
 
     def __bool__(self) -> bool:
         return bool(self.target)

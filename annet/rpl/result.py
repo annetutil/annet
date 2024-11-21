@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class ResultType(Enum):
+class ResultType(str, Enum):
     ALLOW = "allow"
     DENY = "deny"
     NEXT = "next"
