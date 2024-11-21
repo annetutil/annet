@@ -41,21 +41,22 @@ class ConditionFactory(Generic[ValueT]):
         self.field = field
         self.supported_ops = supported_ops
 
-    __eq__ = condition_method(ConditionOperator.EQ)
-    __gt__ = condition_method(ConditionOperator.GT)
-    __ge__ = condition_method(ConditionOperator.GE)
-    __lt__ = condition_method(ConditionOperator.LT)
-    __le__ = condition_method(ConditionOperator.LE)
+    # https://github.com/python/typeshed/issues/3685
+    eq = __eq__ = condition_method(ConditionOperator.EQ)  # type: ignore[assignment]
+    gt = __gt__ = condition_method(ConditionOperator.GT)
+    ge = __ge__ = condition_method(ConditionOperator.GE)
+    lt = __lt__ = condition_method(ConditionOperator.LT)
+    le = __le__ = condition_method(ConditionOperator.LE)
 
 
 class SetConditionFactory(Generic[ValueT]):
-    def __init__(self, field: str):
+    def __init__(self, field: str) -> None:
         self.field = field
 
-    def has(self, *values: str) -> SingleCondition[list[ValueT]]:
+    def has(self, *values: ValueT) -> SingleCondition[Sequence[ValueT]]:
         return SingleCondition(self.field, ConditionOperator.HAS, values)
 
-    def has_any(self, *values: str) -> SingleCondition[list[ValueT]]:
+    def has_any(self, *values: ValueT) -> SingleCondition[Sequence[ValueT]]:
         return SingleCondition(self.field, ConditionOperator.HAS_ANY, values)
 
 

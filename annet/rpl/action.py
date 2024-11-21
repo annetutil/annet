@@ -23,7 +23,7 @@ class SingleAction(Generic[ValueT]):
 
 
 class Action:
-    def __init__(self):
+    def __init__(self) -> None:
         self.actions: list[SingleAction[Any]] = []
 
     def append(self, action: SingleAction[Any]) -> None:

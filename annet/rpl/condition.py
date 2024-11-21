@@ -30,21 +30,21 @@ class SingleCondition(Generic[ValueT]):
     def __and__(self, other: "Condition") -> "Condition":
         return AndCondition(self, other)
 
-    def merge(self, other: "SingleCondition") -> "SingleCondition":
+    def merge(self, other: "SingleCondition[Any]") -> "SingleCondition[Any]":
         if other.field != self.field:
             raise ValueError(f"Cannot merge conditions with different fields: {self.field} != {other.field}")
         if self.operator is ConditionOperator.HAS:
             if other.operator is ConditionOperator.HAS:
-                values = set(self.value) | set(other.value)
+                values = set(self.value) | set(other.value)  # type: ignore[call-overload]
                 return SingleCondition(self.field, ConditionOperator.HAS, list(values))
             elif other.operator is ConditionOperator.HAS_ANY:
-                values = set(self.value) & set(other.value)
+                values = set(self.value) & set(other.value)  # type: ignore[call-overload]
                 return SingleCondition(self.field, ConditionOperator.HAS_ANY, list(values))
         elif self.operator is ConditionOperator.HAS_ANY:
             if other.operator is ConditionOperator.HAS:
                 return other.merge(self)
             elif other.operator is ConditionOperator.HAS_ANY:
-                values = set(self.value) & set(other.value)
+                values = set(self.value) & set(other.value)  # type: ignore[call-overload]
                 return SingleCondition(self.field, ConditionOperator.HAS_ANY, list(values))
         elif self.operator is ConditionOperator.LE:
             if other.operator is ConditionOperator.GE:
@@ -56,6 +56,12 @@ class SingleCondition(Generic[ValueT]):
                 return other.merge(self)
             elif other.operator is ConditionOperator.GE:
                 return SingleCondition(self.field, ConditionOperator.GE, max(self.value, other.value))
+        elif self.operator is ConditionOperator.LT:
+            if other.operator is ConditionOperator.LT:
+                return SingleCondition(self.field, ConditionOperator.LT, min(self.value, other.value))
+        elif self.operator is ConditionOperator.GT:
+            if other.operator is ConditionOperator.GT:
+                return SingleCondition(self.field, ConditionOperator.LT, max(self.value, other.value))
         raise ValueError(f"Cannot merge condition with operator {self.operator} and {other.operator}")
 
 

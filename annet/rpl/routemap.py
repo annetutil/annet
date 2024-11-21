@@ -43,7 +43,7 @@ class Handler(Generic[DeviceT]):
 
 
 class RouteMap(Generic[DeviceT]):
-    def __init__(self):
+    def __init__(self) -> None:
         self.handlers: list[Handler[DeviceT]] = []
         self.submaps: list[RouteMap[DeviceT]] = []
 
