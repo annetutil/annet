@@ -98,7 +98,7 @@ def bgp_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
     yield from common.default_diff(corrected_old, new, diff_pre, _pops)
 
 
-def _create_subsections(data: OrderedDict[str, Any], sub_section_prefix: str):
+def _create_subsections(data: OrderedDict[str, Any], sub_section_prefix: str) -> OrderedDict[str, Any]:
     """
     Reorganizes the given OrderedDict to nest commands under their respective
     sub_section_prefix keys.
@@ -118,12 +118,12 @@ def _create_subsections(data: OrderedDict[str, Any], sub_section_prefix: str):
 
     result = OrderedDict()
     sub_section = None
-    temp = OrderedDict()
+    temp: OrderedDict = OrderedDict()
 
     for key, value in data.items():
         # make nested loop if found nested values
         if value:
-            fixed_value = _create_subsections(value, sub_section_prefix)
+            fixed_value: OrderedDict[str, Any] = _create_subsections(value, sub_section_prefix)
         else:
             fixed_value = value
         if key.startswith(sub_section_prefix):
