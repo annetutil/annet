@@ -73,7 +73,7 @@ interface */\w*Ethernet[0-9\/]+$/     %logic=common.permanent %diff_logic=cisco.
     storm-control * level
     spanning-tree portfast
 
-router bgp *   # %diff_logic=cisco.misc.bgp_diff
+router bgp *     %diff_logic=cisco.misc.bgp_diff
     router-id
     vrf *
         router-id
