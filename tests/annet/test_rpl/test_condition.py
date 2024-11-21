@@ -1,3 +1,4 @@
+import pytest
 from annet.rpl import SingleCondition, ConditionOperator
 
 FIELD1 = "field1"
@@ -5,7 +6,7 @@ FIELD2 = "field2"
 FIELD3 = "field3"
 
 
-def test_action_list():
+def test_and_condition():
     c1 = SingleCondition(
         field=FIELD1,
         operator=ConditionOperator.EQ,
@@ -34,3 +35,35 @@ def test_action_list():
     assert list(condition.find_all(FIELD1)) == [c1, c3]
     assert list(condition.find_all(FIELD2)) == [c2]
     assert list(condition.find_all(FIELD3)) == []
+
+
+def test_merge_other_field():
+    c1 = SingleCondition("f1", ConditionOperator.CUSTOM, "")
+    c2 = SingleCondition("f2", ConditionOperator.CUSTOM, "")
+    with pytest.raises(ValueError):
+        c1.merge(c2)
+
+
+@pytest.mark.parametrize(["v1", "op", "v2", "res"], [
+    (1, ConditionOperator.LT, 2, 1),
+    (1, ConditionOperator.LE, 2, 1),
+    (1, ConditionOperator.GE, 2, 2),
+    (1, ConditionOperator.GT, 2, 2),
+])
+def test_cmp(v1, op, v2, res):
+    c1 = SingleCondition("f1", op, v1)
+    c2 = SingleCondition("f1", op, v2)
+    cres = c1.merge(c2)
+    assert cres.field == c1.field
+    assert cres.operator == op
+    assert cres.value == res
+
+
+def test_between():
+    c1 = SingleCondition("f1", ConditionOperator.GE, 10)
+    c2 = SingleCondition("f1", ConditionOperator.LE, 20)
+    cres = c1.merge(c2)
+    assert cres.field == c1.field
+    assert cres.operator == ConditionOperator.BETWEEN_INCLUDED
+    assert cres.value == (10, 20)
+    assert c2.merge(c1) == cres
