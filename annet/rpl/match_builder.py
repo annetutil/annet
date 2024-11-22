@@ -47,6 +47,7 @@ class ConditionFactory(Generic[ValueT]):
     ge = __ge__ = condition_method(ConditionOperator.GE)
     lt = __lt__ = condition_method(ConditionOperator.LT)
     le = __le__ = condition_method(ConditionOperator.LE)
+    between_included = condition_method(ConditionOperator.BETWEEN_INCLUDED)
 
 
 class SetConditionFactory(Generic[ValueT]):

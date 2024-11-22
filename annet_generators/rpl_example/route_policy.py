@@ -1,13 +1,11 @@
-from typing import Any
-
-from annet.rpl import R, RouteMap, Route
 from annet.adapters.netbox.common.models import NetboxDevice
+from annet.rpl import R, RouteMap, Route
 
 routemap = RouteMap[NetboxDevice]()
 
 
 @routemap
-def example1(device: Any, route: Route):
+def example1(device: NetboxDevice, route: Route):
     condition = (R.interface == "l0.0") & (R.protocol == "bgp")
     with route(condition, number=1, name="n1") as rule:
         rule.set_local_pref(100)
@@ -25,7 +23,7 @@ def example1(device: Any, route: Route):
 
 
 @routemap
-def example2(device: Any, route: Route):
+def example2(device: NetboxDevice, route: Route):
     with route(R.as_path_filter("ASP_EXAMPLE"), number=3, name="n3") as rule:
         rule.deny()
     with route(R.match_v6("IPV6_LIST_EXAMPLE"), number=4, name="n4") as rule:

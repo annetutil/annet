@@ -2,7 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
 from enum import Enum
-from typing import Optional, Literal, TypeVar, Union
+from typing import Optional, Literal, TypeVar, Union, Any
 
 from .action import SingleAction, ActionType
 from .policy import RoutingPolicyStatement
@@ -262,3 +262,6 @@ class StatementBuilder:
 
     def add_as_path(self, *as_path: int) -> None:
         self._added_as_path.extend(as_path)
+
+    def custom_action(self, action: SingleAction[Any]) -> None:
+        self._statement.then.append(action)
