@@ -1,5 +1,5 @@
 Annet - configuration generation and deploying utility for network equipment
-===============================================
+================================================================================
 
 Annet is a configuration generator that can translate differences between old and new
 configurations into sequnce of commands. This feature is vital for CLI-based devices,
@@ -41,6 +41,7 @@ Usage help can be obtained by calling ``annet -h`` or for a specific command, su
 
    usage/adapters.rst
    mesh/index.rst
+   rpl/index.rst
 
 .. toctree::
    :hidden:

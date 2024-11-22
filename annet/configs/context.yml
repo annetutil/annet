@@ -2,6 +2,7 @@ generators:
   default:
     - annet_generators.example
     - annet_generators.mesh_example
+    - annet_generators.rpl_example
 
 storage:
   default:
