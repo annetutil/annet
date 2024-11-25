@@ -47,6 +47,7 @@ router bfd
 router bgp *
     no bgp default *
     neighbor * maximum-routes
+    ! no neighbor * shutdown
     ~ %global
 
 ip load-sharing trident fields *              %logic=common.default_instead_undo
