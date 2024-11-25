@@ -225,9 +225,3 @@ class RoutingPolicyGenerator(PartialGenerator):
         for policy in routemap.apply(device):
             for statement in policy.statements:
                 yield from self._huawei_statement(device, policy, statement)
-
-
-def get_generators(store: Storage) -> list[BaseGenerator]:
-    return [
-        RoutingPolicyGenerator(store),
-    ]

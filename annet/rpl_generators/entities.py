@@ -3,24 +3,26 @@ from dataclasses import dataclass
 from enum import Enum
 
 
+class CommunityLogic(Enum):
+    AND = "AND"
+    OR = "OR"
+
+
+class CommunityType(Enum):
+    BASIC = "BASIC"
+    RT = "RT"
+    SOO = "SOO"
+    COST = "COST"
+    LARGE = "LARGE"
+
 
 @dataclass(frozen=True)
 class CommunityList:
     name: str
-    values: Sequence[str]
-
-
-class ExtCommunityType(Enum):
-    REGULAR = "REGULAR"
-    RT = "RT"
-    SOO = "SOO"
-
-
-@dataclass(frozen=True)
-class ExtCommunityList:
-    name: str
-    values: Sequence[str]
-    type: ExtCommunityType
+    type: CommunityType
+    members: Sequence[str]  #
+    logic: CommunityLogic
+    use_regex: bool
 
 
 @dataclass(frozen=True)
