@@ -2,10 +2,11 @@ from typing import Any
 
 from annet.generators import BaseGenerator
 from annet.rpl import RouteMap
-from annet.rpl_generators import CommunityListGenerator, RoutingPolicyGenerator
-from annet.rpl_generators.entities import CommunityList
+from annet.rpl_generators import (
+    CommunityListGenerator, RoutingPolicyGenerator, AsPathFilterGenerator, CommunityList, AsPathFilter,
+)
 from annet.storage import Storage
-from .items import COMMUNITIES
+from .items import COMMUNITIES, AS_PATH_FILTERS
 from .route_policy import routemap
 
 
@@ -25,8 +26,17 @@ class PolicyGenerator(RoutingPolicyGenerator):
         return COMMUNITIES
 
 
+class AsPathGenerator(AsPathFilterGenerator):
+    def get_routemap(self) -> RouteMap:
+        return routemap
+
+    def get_as_path_filters(self, device: Any) -> list[AsPathFilter]:
+        return AS_PATH_FILTERS
+
+
 def get_generators(store: Storage) -> list[BaseGenerator]:
     return [
+        AsPathGenerator(store),
         PolicyGenerator(store),
         CommunityGenerator(store),
     ]

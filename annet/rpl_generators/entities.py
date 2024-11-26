@@ -29,3 +29,9 @@ class CommunityList:
 class RouteDistinguisherFilter:
     name: str
     members: Sequence[str]
+
+
+@dataclass(frozen=True)
+class AsPathFilter:
+    name: str
+    filters: Sequence[str]

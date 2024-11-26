@@ -39,7 +39,6 @@ class RoutingPolicyGenerator(PartialGenerator):
 
     def acl_huawei(self, _):
         return r"""
-        ip as-path-filter
         route-policy *
             ~ %global=1
         """
@@ -221,14 +220,6 @@ class RoutingPolicyGenerator(PartialGenerator):
             policy: RoutingPolicy,
             statement: RoutingPolicyStatement,
     ) -> Iterator[Sequence[str]]:
-        # if "as_path_filter" in statement.match:
-        #     as_path_condition = statement.match["as_path_filter"]
-        #     as_filter_value = AS_PATH_FILTERS[as_path_condition.value]
-        #     yield "ip as-path-filter", \
-        #         as_path_condition.value, \
-        #         "index 10 permit", \
-        #         "_{}_".format("_".join(("%s" % x for x in as_filter_value if x != ".*")))
-
         with self.block(
                 "route-policy", policy.name,
                 HUAWEI_RESULT_MAP[statement.result],
