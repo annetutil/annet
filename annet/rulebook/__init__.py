@@ -5,7 +5,7 @@ from typing import Iterable, Union
 
 from annet.annlib.lib import mako_render
 from annet.annlib.rbparser.ordering import compile_ordering_text
-from annet.annlib.rbparser.platform import VENDOR_REVERSES
+from annet.annlib.rbparser.platform import VENDOR_REVERSES, VENDOR_ALIASES
 
 from annet.connectors import CachedConnector
 from annet.rulebook.deploying import compile_deploying_text
@@ -64,7 +64,8 @@ class DefaultRulebookProvider(RulebookProvider):
             return self._rulebook_cache[hw]
 
         assert hw.vendor in VENDOR_REVERSES, "Unknown vendor: %s" % (hw.vendor)
-        patching = compile_patching_text(self._render_rul(hw.vendor + ".rul", hw), hw.vendor)
+        rul_vendor_name = VENDOR_ALIASES.get(hw.vendor, hw.vendor)
+        patching = compile_patching_text(self._render_rul(rul_vendor_name + ".rul", hw), rul_vendor_name)
 
         try:
             ordering_text = self._render_rul(hw.vendor + ".order", hw)

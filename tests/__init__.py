@@ -55,6 +55,7 @@ def make_hw_stub(vendor):
         "ribbon": "Ribbon",
         "optixtrans": "Huawei DC",
         "b4com": "B4com",
+        "h3c": "H3C",
     }[vendor], None)
 
 

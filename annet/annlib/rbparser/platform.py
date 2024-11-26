@@ -1,5 +1,6 @@
 VENDOR_REVERSES = {
     "huawei": "undo",
+    "h3c": "undo",
     "optixtrans": "undo",
     "cisco": "no",
     "nexus": "no",
@@ -45,6 +46,7 @@ VENDOR_DIFF_ORDERED = {
 
 VENDOR_EXIT = {
     "huawei": "quit",
+    "h3c": "quit",
     "optixtrans": "quit",
     "cisco": "exit",
     "nexus": "exit",
@@ -56,4 +58,8 @@ VENDOR_EXIT = {
     "pc": "",
     "ribbon": "exit",
     "b4com": "exit",
+}
+
+VENDOR_ALIASES = {
+    "h3c": "huawei",
 }

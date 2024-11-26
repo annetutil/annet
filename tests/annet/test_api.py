@@ -31,7 +31,7 @@ from annet import api
         id="juniper-ribbon"
     ),
     pytest.param(
-        {"huawei"},
+        {"huawei", "h3c"},
         """
         port split mode mode1 slot 1
         ip vpn-instance MEth0/0/0

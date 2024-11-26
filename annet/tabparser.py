@@ -33,6 +33,8 @@ def make_formatter(hw, **kwargs):
         cls = CommonFormatter
     elif hw.Ribbon:
         cls = RibbonFormatter
+    elif hw.H3C:
+        cls = HuaweiFormatter
     else:
         raise NotImplementedError("Unknown formatter for hw '%s'" % hw)
 
