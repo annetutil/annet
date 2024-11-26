@@ -15,6 +15,7 @@
       neighbor SPINE route-map TOR_EXPORT_SPINE out
       neighbor 10.1.1.11 activate
       neighbor 10.2.1.11 activate
+      exit-address-family
   after: |
     router bgp 65111
       bgp router-id 1.1.1.1
@@ -38,6 +39,7 @@
         neighbor 10.2.1.11 activate
         no neighbor 2001:DB8:1:1::11 activate
         no neighbor 2001:DB8:2:1::11 activate
+        exit-address-family
       address-family ipv6
         neighbor SPINEv6 send-community both
         neighbor SPINEv6 soft-reconfiguration inbound
@@ -45,6 +47,7 @@
         neighbor SPINEv6 route-map TOR_EXPORT_SPINE out
         neighbor 2001:DB8:1:1::11 activate
         neighbor 2001:DB8:2:1::11 activate
+        exit-address-family
   patch: |
     conf t
     router bgp 65111
@@ -56,7 +59,7 @@
       address-family ipv4
         no neighbor 2001:DB8:1:1::11 activate
         no neighbor 2001:DB8:2:1::11 activate
-        exit
+        exit-address-family
       address-family ipv6
         neighbor SPINEv6 send-community both
         neighbor SPINEv6 soft-reconfiguration inbound
@@ -64,7 +67,7 @@
         neighbor SPINEv6 route-map TOR_EXPORT_SPINE out
         neighbor 2001:DB8:1:1::11 activate
         neighbor 2001:DB8:2:1::11 activate
-        exit
+        exit-address-family
       exit
     exit
     copy running-config startup-config
