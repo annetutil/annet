@@ -17,7 +17,8 @@ _VENDORS = {
     "aruba": "Aruba",
     "routeros": "RouterOS",
     "ribbon": "Ribbon",
-    "b4com": "B4com"
+    "b4com": "B4com",
+    "h3c": "H3C",
 }
 
 
@@ -37,6 +38,8 @@ def get_breed(manufacturer: str, model: str):
         return "vrp85"
     elif manufacturer == "Huawei":
         return "vrp55"
+    elif manufacturer == "H3C":
+        return "h3c"
     elif manufacturer in ("Mellanox", "NVIDIA"):
         return "cuml2"
     elif manufacturer == "Juniper":
