@@ -1,15 +1,14 @@
 from collections.abc import Iterator, Sequence
 from typing import Any, cast
 
-from annet.generators import PartialGenerator, BaseGenerator
+from annet.generators import PartialGenerator
 from annet.rpl import (
     CommunityActionValue,
     ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator, SingleCondition, SingleAction, ActionType,
+    RouteMap,
 )
 from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue
-from annet.storage import Storage
-from .items import AS_PATH_FILTERS, COMMUNITIES, EXT_COMMUNITIES
-from .route_policy import routemap
+from annet.rpl_generators.entities import CommunityList
 
 HUAWEI_MATCH_COMMAND_MAP = {
     "as_path_filter": "as-path-filter {option_value}",
@@ -44,6 +43,12 @@ class RoutingPolicyGenerator(PartialGenerator):
         route-policy *
             ~ %global=1
         """
+
+    def get_routemap(self) -> RouteMap:
+        return RouteMap()
+
+    def get_community_lists(self, device: Any) -> list[CommunityList]:
+        return []
 
     def _huawei_match(self, device, condition: SingleCondition[Any]) -> Iterator[Sequence[str]]:
         if condition.field == "community":
@@ -95,52 +100,63 @@ class RoutingPolicyGenerator(PartialGenerator):
         cmd = HUAWEI_MATCH_COMMAND_MAP[condition.field]
         yield "if-match", cmd.format(option_value=condition.value)
 
-    def _huawei_then_community(self, action: SingleAction[CommunityActionValue]) -> Iterator[Sequence[str]]:
+    def _huawei_then_community(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
             if not action.value.replaced:
                 yield "apply", "community", "none"
             first = True
             for community_name in action.value.replaced:
-                community = COMMUNITIES[community_name]
-                for comm_value in community.values:
-                    if first:
-                        yield "apply", "community", comm_value
-                        first = False
-                    else:
-                        yield "apply", "community", comm_value, "additive"
+                if first:
+                    yield "apply", "community community-list", community_name
+                    first = False
+                else:
+                    yield "apply", "community community-list", community_name, "additive"
         for community_name in action.value.added:
-            community = COMMUNITIES[community_name]
-            for comm_value in community.values:
-                yield "apply", "community", comm_value, "additive"
+            yield "apply", "community community-list", community_name, "additive"
         for community_name in action.value.removed:
             yield "apply comm-filter", community_name, "delete"
 
-    def _huawei_then_extcommunity(self, action: SingleAction[CommunityActionValue]) -> Iterator[Sequence[str]]:
+    def _huawei_then_extcommunity(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
             if not action.value.replaced:
                 yield "apply", "extcommunity", "none"
             first = True
             for community_name in action.value.replaced:
-                community = EXT_COMMUNITIES[community_name]
-                for comm_value in community.values:
+                community = communities[community_name]
+                for comm_value in community.members:
                     if first:
                         yield "apply", "extcommunity", comm_value
                         first = False
                     else:
                         yield "apply", "extcommunity", comm_value, "additive"
         for community_name in action.value.added:
-            community = EXT_COMMUNITIES[community_name]
-            for comm_value in community.values:
+            community = communities[community_name]
+            for comm_value in community.members:
                 yield "apply", "extcommunity", comm_value, "additive"
         for community_name in action.value.removed:
             yield "apply extcommunity-filter", community_name, "delete"
 
-    def _huawei_then(self, device, action: SingleAction[Any]) -> Iterator[Sequence[str]]:
+    def _huawei_then(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[Any],
+    ) -> Iterator[Sequence[str]]:
         if action.field == "community":
-            yield from self._huawei_then_community(cast(SingleAction[CommunityActionValue], action))
+            yield from self._huawei_then_community(communities, device, cast(SingleAction[CommunityActionValue], action))
             return
         if action.field == "extcommunity":
-            yield from self._huawei_then_extcommunity(cast(SingleAction[CommunityActionValue], action))
+            yield from self._huawei_then_extcommunity(communities, device, cast(SingleAction[CommunityActionValue], action))
             return
         if action.field == "metric":
             if action.type is ActionType.ADD:
@@ -199,15 +215,19 @@ class RoutingPolicyGenerator(PartialGenerator):
         yield "apply", cmd.format(option_value=action.value)
 
     def _huawei_statement(
-            self, device, policy: RoutingPolicy, statement: RoutingPolicyStatement,
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            policy: RoutingPolicy,
+            statement: RoutingPolicyStatement,
     ) -> Iterator[Sequence[str]]:
-        if "as_path_filter" in statement.match:
-            as_path_condition = statement.match["as_path_filter"]
-            as_filter_value = AS_PATH_FILTERS[as_path_condition.value]
-            yield "ip as-path-filter", \
-                as_path_condition.value, \
-                "index 10 permit", \
-                "_{}_".format("_".join(("%s" % x for x in as_filter_value if x != ".*")))
+        # if "as_path_filter" in statement.match:
+        #     as_path_condition = statement.match["as_path_filter"]
+        #     as_filter_value = AS_PATH_FILTERS[as_path_condition.value]
+        #     yield "ip as-path-filter", \
+        #         as_path_condition.value, \
+        #         "index 10 permit", \
+        #         "_{}_".format("_".join(("%s" % x for x in as_filter_value if x != ".*")))
 
         with self.block(
                 "route-policy", policy.name,
@@ -217,11 +237,13 @@ class RoutingPolicyGenerator(PartialGenerator):
             for condition in statement.match:
                 yield from self._huawei_match(device, condition)
             for action in statement.then:
-                yield from self._huawei_then(device, action)
+                yield from self._huawei_then(communities, device, action)
             if statement.result is ResultType.NEXT:
                 yield "goto next-node"
 
     def run_huawei(self, device):
-        for policy in routemap.apply(device):
+        communities = {c.name: c for c in self.get_community_lists(device)}
+
+        for policy in self.get_routemap().apply(device):
             for statement in policy.statements:
-                yield from self._huawei_statement(device, policy, statement)
+                yield from self._huawei_statement(communities, device, policy, statement)

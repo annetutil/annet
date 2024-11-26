@@ -44,12 +44,12 @@ class CommunityListGenerator(PartialGenerator):
                 for condition in statement.match.find_all("extcommunity"):
                     used_communities.update(condition.value)
                 for action in statement.then.find_all("community"):
-                    if action.value.replaces is not None:
+                    if action.value.replaced is not None:
                         used_communities.update(action.value.replaced)
                     used_communities.update(action.value.added)
                     used_communities.update(action.value.removed)
                 for action in statement.then.find_all("extcommunity"):
-                    if action.value.replaces is not None:
+                    if action.value.replaced is not None:
                         used_communities.update(action.value.replaced)
                     used_communities.update(action.value.added)
                     used_communities.update(action.value.removed)

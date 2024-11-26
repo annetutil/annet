@@ -19,10 +19,10 @@ class CommunityType(Enum):
 @dataclass(frozen=True)
 class CommunityList:
     name: str
-    type: CommunityType
-    members: Sequence[str]  #
-    logic: CommunityLogic
-    use_regex: bool
+    members: Sequence[str]
+    type: CommunityType = CommunityType.BASIC
+    logic: CommunityLogic = CommunityLogic.OR
+    use_regex: bool = False
 
 
 @dataclass(frozen=True)

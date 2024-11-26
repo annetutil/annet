@@ -1,12 +1,8 @@
-from typing import List
-
 from annet.generators import BaseGenerator
 from annet.storage import Storage
-from .policy_generator import RoutingPolicyGenerator
-from .community_generator import CommunityGenerator
+from tests.annet.test_mesh.test_executor import storage
+from . import generator
 
-def get_generators(store: Storage) -> list[BaseGenerator]:
-    return [
-        RoutingPolicyGenerator(store),
-        CommunityGenerator(store),
-    ]
+
+def get_generators(storage: Storage) -> list[BaseGenerator]:
+    return generator.get_generators(storage)
