@@ -311,16 +311,13 @@ class CiscoFormatter(BlockExitFormatter):
 
     def split(self, text):
         additional_indent = 0
-        block_exit_strings = []
+        block_exit_strings = [self._block_exit]
         tree = self.split_remove_spaces(text)
         for i, item in enumerate(tree):
             block_exit_strings, new_indent = self._split_indent(
                 item, additional_indent, block_exit_strings
             )
-            if additional_indent > new_indent:
-                tree[i] = f"{' ' * new_indent}{item}"
-            else:
-                tree[i] = f"{' ' * additional_indent}{item}"
+            tree[i] = f"{' ' * additional_indent}{item}"
             additional_indent = new_indent
         return tree
 
