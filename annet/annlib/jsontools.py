@@ -59,11 +59,11 @@ def _ensure_pointer_exists(doc: Dict[str, Any], pointer: jsonpointer.JsonPointer
     parts_except_the_last = pointer.get_parts()[:-1]
     doc_pointer: Dict[str, Any] = doc
     for part in parts_except_the_last:
-        if part not in doc_pointer:
-            # create an empty object by the pointer part
-            doc_pointer[part] = {}
-
         if isinstance(doc_pointer, dict):
+            if part not in doc_pointer or doc_pointer[part] is None:
+                # create an empty object by the pointer part
+                doc_pointer[part] = {}
+
             # follow the pointer to delve deeper
             doc_pointer = doc_pointer[part]
         else:
