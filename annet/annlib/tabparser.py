@@ -330,6 +330,30 @@ class CiscoFormatter(BlockExitFormatter):
             yield from super().block_exit(context)
 
 
+class NexusFormatter(BlockExitFormatter):
+    def __init__(self, indent="  "):
+        super().__init__("exit", indent)
+
+    def split(self, text):
+        return self.split_remove_spaces(text)
+
+
+class B4comFormatter(BlockExitFormatter):
+    def __init__(self, indent="  "):
+        super().__init__("exit", indent)
+
+    def split(self, text):
+        return self.split_remove_spaces(text)
+
+
+class ArubaFormatter(BlockExitFormatter):
+    def __init__(self, indent="  "):
+        super().__init__("exit", indent)
+
+    def split(self, text):
+        return self.split_remove_spaces(text)
+
+
 class AristaFormatter(CiscoFormatter):
 
     def block_exit(self, context: Optional[FormatterContext]) -> str:
