@@ -330,6 +330,17 @@ class CiscoFormatter(BlockExitFormatter):
             yield from super().block_exit(context)
 
 
+class AristaFormatter(CiscoFormatter):
+
+    def block_exit(self, context: Optional[FormatterContext]) -> str:
+        current = context and context.row or ""
+
+        if current.startswith(("address-family")):
+            yield from block_wrapper("exit")
+        else:
+            yield from super().block_exit(context)
+
+
 class AsrFormatter(BlockExitFormatter):
     def __init__(self, indent="  "):
         super().__init__("exit", indent)
@@ -705,7 +716,7 @@ def make_formatter(vendor, **kwargs):
         "nexus": CiscoFormatter,
         "huawei": HuaweiFormatter,
         "optixtrans": OptixtransFormatter,
-        "arista": CiscoFormatter,
+        "arista": AristaFormatter,
         "nokia": NokiaFormatter,
         "routeros": RosFormatter,
         "aruba": CiscoFormatter,
