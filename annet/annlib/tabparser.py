@@ -737,16 +737,16 @@ def make_formatter(vendor, **kwargs):
     formatters = {
         "juniper": JuniperFormatter,
         "cisco": CiscoFormatter,
-        "nexus": CiscoFormatter,
+        "nexus": NexusFormatter,
         "huawei": HuaweiFormatter,
         "optixtrans": OptixtransFormatter,
         "arista": AristaFormatter,
         "nokia": NokiaFormatter,
         "routeros": RosFormatter,
-        "aruba": CiscoFormatter,
+        "aruba": ArubaFormatter,
         "pc": CommonFormatter,
         "ribbon": RibbonFormatter,
-        "b4com": CiscoFormatter,
+        "b4com": B4comFormatter,
     }
     return formatters[vendor](**kwargs)
 
