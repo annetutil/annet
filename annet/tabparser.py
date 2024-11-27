@@ -12,6 +12,9 @@ from annet.annlib.tabparser import (  # pylint: disable=unused-import
     RosFormatter,
     parse_to_tree,
     AristaFormatter,
+    NexusFormatter,
+    B4comFormatter,
+    ArubaFormatter,
 )
 
 
@@ -22,8 +25,14 @@ def make_formatter(hw, **kwargs):
         cls = HuaweiFormatter
     elif hw.Cisco.ASR or hw.Cisco.XRV:
         cls = AsrFormatter
-    elif hw.Nexus or hw.Cisco or hw.Aruba or hw.B4com:
+    elif hw.Nexus:
+        cls = NexusFormatter
+    elif hw.Cisco:
         cls = CiscoFormatter
+    elif hw.B4com:
+        cls = B4comFormatter
+    elif hw.Aruba:
+        cls = ArubaFormatter
     elif hw.Juniper:
         cls = JuniperFormatter
     elif hw.Nokia:
