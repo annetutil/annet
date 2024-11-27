@@ -11,6 +11,7 @@ from annet.annlib.tabparser import (  # pylint: disable=unused-import
     RibbonFormatter,
     RosFormatter,
     parse_to_tree,
+    AristaFormatter,
 )
 
 
@@ -21,7 +22,7 @@ def make_formatter(hw, **kwargs):
         cls = HuaweiFormatter
     elif hw.Cisco.ASR or hw.Cisco.XRV:
         cls = AsrFormatter
-    elif hw.Nexus or hw.Cisco or hw.Arista or hw.Aruba or hw.B4com:
+    elif hw.Nexus or hw.Cisco or hw.Aruba or hw.B4com:
         cls = CiscoFormatter
     elif hw.Juniper:
         cls = JuniperFormatter
@@ -35,6 +36,8 @@ def make_formatter(hw, **kwargs):
         cls = RibbonFormatter
     elif hw.H3C:
         cls = HuaweiFormatter
+    elif hw.Arista:
+        cls = AristaFormatter
     else:
         raise NotImplementedError("Unknown formatter for hw '%s'" % hw)
 
