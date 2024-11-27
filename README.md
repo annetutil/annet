@@ -1,6 +1,6 @@
 # Annet - configuration generation and deploying utility for network equipment
 
-Annet is a configuration generator that can translate differences between old and new configurations into sequnce of commands. This feature is vital for CLI-based devices, such as Huawei, Cisco IOS, Cisco NX-OS, Juniper. Devices configured via separate config files, Linux, FreeBSD and Cumulus are also supported.
+Annet is a configuration generator that can translate differences between old and new configurations into sequence of commands. This feature is vital for CLI-based devices, such as Huawei, Cisco IOS, Cisco NX-OS, Juniper. Devices configured via separate config files, Linux, FreeBSD and Cumulus are also supported.
 
 It works this way. Annet `gen`erates configuration for a device by running Python code, which usually goes to the Network Source of Truth, like NetBox. Annet then gets the `diff`erence by getting the configuration from the device and comparing it. Finally, Annet translates the difference into a sequence of commands, called a `patch`. After `deploy`ing these commands, the diff will be empty.
 
