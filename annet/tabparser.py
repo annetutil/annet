@@ -25,14 +25,14 @@ def make_formatter(hw, **kwargs):
         cls = HuaweiFormatter
     elif hw.Cisco.ASR or hw.Cisco.XRV:
         cls = AsrFormatter
+    elif hw.Nexus:
+        cls = NexusFormatter
     elif hw.Cisco:
         cls = CiscoFormatter
     elif hw.B4com:
         cls = B4comFormatter
     elif hw.Aruba:
         cls = ArubaFormatter
-    elif hw.Nexus:
-        cls = NexusFormatter
     elif hw.Juniper:
         cls = JuniperFormatter
     elif hw.Nokia:
