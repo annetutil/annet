@@ -354,15 +354,12 @@ class ArubaFormatter(BlockExitFormatter):
         return self.split_remove_spaces(text)
 
 
-class AristaFormatter(CiscoFormatter):
+class AristaFormatter(BlockExitFormatter):
+    def __init__(self, indent="  "):
+        super().__init__("exit", indent)
 
-    def block_exit(self, context: Optional[FormatterContext]) -> str:
-        current = context and context.row or ""
-
-        if current.startswith(("address-family")):
-            yield from block_wrapper("exit")
-        else:
-            yield from super().block_exit(context)
+    def split(self, text):
+        return self.split_remove_spaces(text)
 
 
 class AsrFormatter(BlockExitFormatter):
