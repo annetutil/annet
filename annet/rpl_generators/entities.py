@@ -26,8 +26,9 @@ class CommunityList:
 
 
 @dataclass(frozen=True)
-class RouteDistinguisherFilter:
+class RDFilter:
     name: str
+    number: int
     members: Sequence[str]
 
 

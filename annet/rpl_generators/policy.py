@@ -8,7 +8,7 @@ from annet.rpl import (
     RouteMap,
 )
 from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue
-from annet.rpl_generators.entities import CommunityList
+from annet.rpl_generators.entities import CommunityList, RDFilter
 
 HUAWEI_MATCH_COMMAND_MAP = {
     "as_path_filter": "as-path-filter {option_value}",
@@ -49,7 +49,15 @@ class RoutingPolicyGenerator(PartialGenerator):
     def get_community_lists(self, device: Any) -> list[CommunityList]:
         return []
 
-    def _huawei_match(self, device, condition: SingleCondition[Any]) -> Iterator[Sequence[str]]:
+    def get_rd_filters(self, device: Any) -> list[RDFilter]:
+        return []
+
+    def _huawei_match(
+            self,
+            device: Any,
+            condition: SingleCondition[Any],
+            rd_filters: dict[str, RDFilter],
+    ) -> Iterator[Sequence[str]]:
         if condition.field == "community":
             if condition.operator is ConditionOperator.HAS:
                 if len(condition.value) > 1:
@@ -67,6 +75,12 @@ class RoutingPolicyGenerator(PartialGenerator):
                 raise NotImplementedError("Extcommunity operator %r not supported for huawei" % condition.operator)
             for comm_name in condition.value:
                 yield "if-match extcommunity-filter", comm_name
+            return
+        if condition.field == "rd":
+            if len(condition.value) > 1:
+                raise NotImplementedError("Multiple RD filters is not supported for huawei")
+            rd_filter = rd_filters[condition.value[0]]
+            yield "if-match rd-filter", str(rd_filter.number)
             return
         if condition.field == "ip_prefix":
             for name in condition.value.names:
@@ -216,6 +230,7 @@ class RoutingPolicyGenerator(PartialGenerator):
     def _huawei_statement(
             self,
             communities: dict[str, CommunityList],
+            rd_filters: dict[str, RDFilter],
             device: Any,
             policy: RoutingPolicy,
             statement: RoutingPolicyStatement,
@@ -226,7 +241,7 @@ class RoutingPolicyGenerator(PartialGenerator):
                 "node", statement.number
         ):
             for condition in statement.match:
-                yield from self._huawei_match(device, condition)
+                yield from self._huawei_match(device, condition, rd_filters)
             for action in statement.then:
                 yield from self._huawei_then(communities, device, action)
             if statement.result is ResultType.NEXT:
@@ -234,7 +249,8 @@ class RoutingPolicyGenerator(PartialGenerator):
 
     def run_huawei(self, device):
         communities = {c.name: c for c in self.get_community_lists(device)}
+        rd_filters = {f.name: f for f in self.get_rd_filters(device)}
 
         for policy in self.get_routemap().apply(device):
             for statement in policy.statements:
-                yield from self._huawei_statement(communities, device, policy, statement)
+                yield from self._huawei_statement(communities, rd_filters, device, policy, statement)

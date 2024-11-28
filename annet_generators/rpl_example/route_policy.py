@@ -14,7 +14,12 @@ def example1(device: NetboxDevice, route: Route):
         rule.community.set("COMMUNITY_EXAMPLE_ADD")
         rule.as_path.set(12345, "123456")
         rule.allow()
-    with route(R.protocol == "bgp", R.community.has("COMMUNITY_EXAMPLE_REMOVE"), number=2, name="n2") as rule:
+    with route(
+            R.protocol == "bgp",
+            R.community.has("COMMUNITY_EXAMPLE_REMOVE"),
+            R.rd.has_any("RD_EXAMPLE1"),
+            number=2, name="n2",
+    ) as rule:
         rule.set_local_pref(100)
         rule.add_metric(200)
         rule.community.add("COMMUNITY_EXAMPLE_ADD")
