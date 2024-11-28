@@ -4,10 +4,10 @@ from annet.generators import BaseGenerator
 from annet.rpl import RouteMap
 from annet.rpl_generators import (
     CommunityListGenerator, RoutingPolicyGenerator, AsPathFilterGenerator, CommunityList, AsPathFilter,
-    RDFilterFilterGenerator, RDFilter
+    RDFilterFilterGenerator, RDFilter, PrefixListFilterGenerator, IpPrefixList
 )
 from annet.storage import Storage
-from .items import COMMUNITIES, AS_PATH_FILTERS, RD_FILTERS
+from .items import COMMUNITIES, AS_PATH_FILTERS, RD_FILTERS, PREFIX_LISTS
 from .route_policy import routemap
 
 
@@ -46,10 +46,19 @@ class RDGenerator(RDFilterFilterGenerator):
         return RD_FILTERS
 
 
+class PrefixListGenerator(PrefixListFilterGenerator):
+    def get_routemap(self) -> RouteMap:
+        return routemap
+
+    def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
+        return PREFIX_LISTS
+
+
 def get_generators(store: Storage) -> list[BaseGenerator]:
     return [
         AsPathGenerator(store),
         PolicyGenerator(store),
         CommunityGenerator(store),
         RDGenerator(store),
+        PrefixListGenerator(store),
     ]

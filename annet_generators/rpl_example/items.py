@@ -1,4 +1,4 @@
-from annet.rpl_generators import AsPathFilter, CommunityList, CommunityType, RDFilter
+from annet.rpl_generators import AsPathFilter, CommunityList, CommunityType, RDFilter, IpPrefixList
 
 AS_PATH_FILTERS = [
     AsPathFilter("ASP_EXAMPLE", [".*123456.*"]),
@@ -15,7 +15,7 @@ RD_FILTERS = [
     RDFilter("RD_EXAMPLE2", 2, ["10.2.2.2:1", "10.3.3.3:1"]),
 ]
 
-# FIXME
-IPV6_PREFIX_LISTS = {
-    "IPV6_LIST_EXAMPLE": ["2a13:5941::/32"],
-}
+PREFIX_LISTS = [
+    IpPrefixList("IPV6_LIST_EXAMPLE", ["2a13:5941::/32"]),
+    IpPrefixList("IPV4_LIST_EXAMPLE", ["0.0.0.0/8", "10.0.0.0/8"]),
+]

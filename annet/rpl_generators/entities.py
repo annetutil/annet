@@ -36,3 +36,9 @@ class RDFilter:
 class AsPathFilter:
     name: str
     filters: Sequence[str]
+
+
+@dataclass(frozen=True)
+class IpPrefixList:
+    name: str
+    members: Sequence[str]
