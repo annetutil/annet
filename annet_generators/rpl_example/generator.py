@@ -4,9 +4,8 @@ from annet.generators import BaseGenerator
 from annet.rpl import RouteMap
 from annet.rpl_generators import (
     CommunityListGenerator, RoutingPolicyGenerator, AsPathFilterGenerator, CommunityList, AsPathFilter,
-    RDFilterFilterGenerator,
+    RDFilterFilterGenerator, RDFilter
 )
-from annet.rpl_generators.entities import RDFilter
 from annet.storage import Storage
 from .items import COMMUNITIES, AS_PATH_FILTERS, RD_FILTERS
 from .route_policy import routemap

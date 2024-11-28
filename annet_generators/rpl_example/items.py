@@ -1,4 +1,4 @@
-from annet.rpl_generators.entities import AsPathFilter, CommunityList, CommunityType, RDFilter
+from annet.rpl_generators import AsPathFilter, CommunityList, CommunityType, RDFilter
 
 AS_PATH_FILTERS = [
     AsPathFilter("ASP_EXAMPLE", [".*123456.*"]),
