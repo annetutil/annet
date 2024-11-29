@@ -7,7 +7,9 @@ from .condition import SingleCondition, ConditionOperator, AndCondition
 
 class MatchField(str, Enum):
     community = "community"
-    extcommunity = "extcommunity"
+    large_community = "large_community"
+    extcommunity_rt = "extcommunity_rt"
+    extcommunity_soo = "extcommunity_soo"
     rd = "rd"
     interface = "interface"
     protocol = "protocol"
@@ -71,7 +73,9 @@ class PrefixMatchValue:
 class Checkable:
     def __init__(self):
         self.community = SetConditionFactory[str](MatchField.community)
-        self.extcommunity = SetConditionFactory[str](MatchField.extcommunity)
+        self.large_community = SetConditionFactory[str](MatchField.large_community)
+        self.extcommunity_rt = SetConditionFactory[str](MatchField.extcommunity_rt)
+        self.extcommunity_soo = SetConditionFactory[str](MatchField.extcommunity_soo)
         self.rd = SetConditionFactory[str](MatchField.rd)
         self.interface = ConditionFactory[str](MatchField.interface, ["=="])
         self.protocol = ConditionFactory[str](MatchField.protocol, ["=="])

@@ -33,8 +33,11 @@ def example2(device: NetboxDevice, route: Route):
         rule.deny()
     with route(R.match_v6("IPV6_LIST_EXAMPLE"), number=4, name="n4") as rule:
         rule.allow()
-    with route(R.match_v6("IPV4_LIST_EXAMPLE", or_longer=(29, 48)), number=4, name="n4") as rule:
+    with route(R.match_v6("IPV4_LIST_EXAMPLE", or_longer=(29, 48)), number=5, name="n5") as rule:
         rule.allow()
 
-    with route(R.as_path_length >= 1, R.as_path_length <= 20, number=4, name="n4") as rule:
+    with route(R.as_path_length >= 1, R.as_path_length <= 20, number=6, name="n6") as rule:
         rule.allow()
+    with route(R.extcommunity_rt.has("EXTCOMMUNITY_EXAMPLE_REMOVE"), number=7, name="n7") as rule:
+        rule.extcommunity_rt.remove("EXTCOMMUNITY_EXAMPLE_REMOVE")
+        rule.deny()

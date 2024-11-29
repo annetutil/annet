@@ -67,14 +67,33 @@ class RoutingPolicyGenerator(PartialGenerator):
             for comm_name in condition.value:
                 yield "if-match community-filter", comm_name
             return
-        if condition.field == "extcommunity":
+        if condition.field == "large_community":
+            if condition.operator is ConditionOperator.HAS_ANY:
+                if len(condition.value) > 1:
+                    raise NotImplementedError("Multiple HAS_ANY values for large_community is not supported for huawei")
+            elif condition.operator is not ConditionOperator.HAS:
+                raise NotImplementedError("large_community operator %r not supported for huawei" % condition.operator)
+            for comm_name in condition.value:
+                yield "if-match large-community-filter", comm_name
+            return
+        if condition.field == "extcommunity_rt":
             if condition.operator is ConditionOperator.HAS:
                 if len(condition.value) > 1:
-                    raise NotImplementedError("Multiple HAS for extcommunities is not supported for huawei")
+                    raise NotImplementedError("Multiple HAS values for extcommunity_rt is not supported for huawei")
             elif condition.operator is not ConditionOperator.HAS_ANY:
-                raise NotImplementedError("Extcommunity operator %r not supported for huawei" % condition.operator)
+                raise NotImplementedError("Extcommunity_rt operator %r not supported for huawei" % condition.operator)
             for comm_name in condition.value:
+                print("if-match extcommunity-filter", comm_name)
                 yield "if-match extcommunity-filter", comm_name
+            return
+        if condition.field == "extcommunity_soo":
+            if condition.operator is ConditionOperator.HAS_ANY:
+                if len(condition.value) > 1:
+                    raise NotImplementedError("Multiple HAS_ANY for extcommunities_soo is not supported for huawei")
+            elif condition.operator is not ConditionOperator.HAS:
+                raise NotImplementedError("Extcommunity_soo operator %r not supported for huawei" % condition.operator)
+            for comm_name in condition.value:
+                yield "if-match extcommunity-list soo", comm_name
             return
         if condition.field == "rd":
             if len(condition.value) > 1:
@@ -134,7 +153,7 @@ class RoutingPolicyGenerator(PartialGenerator):
         for community_name in action.value.removed:
             yield "apply comm-filter", community_name, "delete"
 
-    def _huawei_then_extcommunity(
+    def _huawei_then_large_community(
             self,
             communities: dict[str, CommunityList],
             device: Any,
@@ -142,22 +161,48 @@ class RoutingPolicyGenerator(PartialGenerator):
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
             if not action.value.replaced:
-                yield "apply", "extcommunity", "none"
+                yield "apply", "large-community", "none"
             first = True
             for community_name in action.value.replaced:
-                community = communities[community_name]
-                for comm_value in community.members:
-                    if first:
-                        yield "apply", "extcommunity", comm_value
-                        first = False
-                    else:
-                        yield "apply", "extcommunity", comm_value, "additive"
+                if first:
+                    yield "apply", "large-community-list ", community_name, "overwrite"
+                    first = False
+                else:
+                    yield "apply", "large-community-list ", community_name, "additive"
+        for community_name in action.value.added:
+            yield "apply", "large-community-list ", community_name, "additive"
+        for community_name in action.value.removed:
+            yield "apply large-community-list ", community_name, "delete"
+
+    def _huawei_then_extcommunity_rt(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.replaced is not None:
+            raise NotImplementedError("Extcommunity_rt replace is not supported for huawei")
         for community_name in action.value.added:
             community = communities[community_name]
             for comm_value in community.members:
-                yield "apply", "extcommunity", comm_value, "additive"
+                yield "apply", "extcommunity rt", comm_value, "additive"
         for community_name in action.value.removed:
-            yield "apply extcommunity-filter", community_name, "delete"
+            yield "apply extcommunity-filter rt", community_name, "delete"
+
+    def _huawei_then_extcommunity_soo(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.replaced is not None:
+            raise NotImplementedError("Extcommunity_soo replace is not supported for huawei")
+        for community_name in action.value.added:
+            community = communities[community_name]
+            for comm_value in community.members:
+                yield "apply", "extcommunity soo", comm_value, "additive"
+        if action.value.removed:
+            raise NotImplementedError("Extcommunity_soo remove is not supported for huawei")
 
     def _huawei_then(
             self,
@@ -166,10 +211,20 @@ class RoutingPolicyGenerator(PartialGenerator):
             action: SingleAction[Any],
     ) -> Iterator[Sequence[str]]:
         if action.field == "community":
-            yield from self._huawei_then_community(communities, device, cast(SingleAction[CommunityActionValue], action))
+            yield from self._huawei_then_community(communities, device,
+                                                   cast(SingleAction[CommunityActionValue], action))
             return
-        if action.field == "extcommunity":
-            yield from self._huawei_then_extcommunity(communities, device, cast(SingleAction[CommunityActionValue], action))
+        if action.field == "large_community":
+            yield from self._huawei_then_large_community(communities, device,
+                                                         cast(SingleAction[CommunityActionValue], action))
+            return
+        if action.field == "extcommunity_rt":
+            yield from self._huawei_then_extcommunity_rt(communities, device,
+                                                         cast(SingleAction[CommunityActionValue], action))
+            return
+        if action.field == "extcommunity_soo":
+            yield from self._huawei_then_extcommunity_soo(communities, device,
+                                                          cast(SingleAction[CommunityActionValue], action))
             return
         if action.field == "metric":
             if action.type is ActionType.ADD:
@@ -235,6 +290,8 @@ class RoutingPolicyGenerator(PartialGenerator):
             policy: RoutingPolicy,
             statement: RoutingPolicyStatement,
     ) -> Iterator[Sequence[str]]:
+        if statement.number is None:
+            raise RuntimeError(f"Statement number should not be empty on Huawei (found for policy: {policy.name})")
         with self.block(
                 "route-policy", policy.name,
                 HUAWEI_RESULT_MAP[statement.result],

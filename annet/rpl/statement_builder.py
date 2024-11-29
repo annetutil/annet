@@ -11,7 +11,9 @@ from .result import ResultType
 
 class ThenField(str, Enum):
     community = "community"
-    extcommunity = "extcommunity"
+    large_community = "large_community"
+    extcommunity_rt = "extcommunity_rt"
+    extcommunity_soo = "extcommunity_soo"
     as_path = "as_path"
     local_pref = "local_pref"
     metric = "metric"
@@ -141,7 +143,9 @@ class StatementBuilder:
         self._statement = statement
         self._added_as_path: list[int] = []
         self._community = CommunityActionValue()
-        self._extcommunity = CommunityActionValue()
+        self._large_community = CommunityActionValue()
+        self._extcommunity_rt = CommunityActionValue()
+        self._extcommunity_soo = CommunityActionValue()
         self._as_path = AsPathActionValue()
         self._next_hop = NextHopActionValue()
 
@@ -158,8 +162,16 @@ class StatementBuilder:
         return CommunityActionBuilder(self._community)
 
     @property
-    def extcommunity(self) -> CommunityActionBuilder:
-        return CommunityActionBuilder(self._extcommunity)
+    def large_community(self) -> CommunityActionBuilder:
+        return CommunityActionBuilder(self._large_community)
+
+    @property
+    def extcommunity_rt(self) -> CommunityActionBuilder:
+        return CommunityActionBuilder(self._extcommunity_rt)
+
+    @property
+    def extcommunity_soo(self) -> CommunityActionBuilder:
+        return CommunityActionBuilder(self._extcommunity_soo)
 
     def _set(self, field: str, value: ValueT) -> None:
         action = self._statement.then
@@ -228,11 +240,23 @@ class StatementBuilder:
                 type=ActionType.CUSTOM,
                 value=self._community,
             ))
-        if self._extcommunity:
+        if self._large_community:
             self._statement.then.append(SingleAction(
-                field=ThenField.extcommunity,
+                field=ThenField.large_community,
                 type=ActionType.CUSTOM,
-                value=self._extcommunity,
+                value=self._extcommunity_rt,
+            ))
+        if self._extcommunity_rt:
+            self._statement.then.append(SingleAction(
+                field=ThenField.extcommunity_rt,
+                type=ActionType.CUSTOM,
+                value=self._extcommunity_rt,
+            ))
+        if self._extcommunity_soo:
+            self._statement.then.append(SingleAction(
+                field=ThenField.extcommunity_soo,
+                type=ActionType.CUSTOM,
+                value=self._extcommunity_rt,
             ))
         if self._as_path:
             self._statement.then.append(SingleAction(
