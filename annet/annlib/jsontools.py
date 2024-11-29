@@ -4,6 +4,7 @@ import copy
 import fnmatch
 import json
 from collections.abc import Mapping, Sequence
+from operator import itemgetter
 from typing import Any, Dict, List, Optional
 
 import jsonpatch
@@ -73,7 +74,7 @@ def _ensure_pointer_exists(doc: Dict[str, Any], pointer: jsonpointer.JsonPointer
 
 def make_patch(old: Dict[str, Any], new: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Generate a JSON patch by comparing the old document with the new one."""
-    return jsonpatch.make_patch(old, new).patch
+    return sorted(jsonpatch.make_patch(old, new).patch, key=itemgetter("path"))
 
 
 def apply_patch(content: Optional[bytes], patch_bytes: bytes) -> bytes:
