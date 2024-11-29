@@ -42,7 +42,7 @@ class RDGenerator(RDFilterFilterGenerator):
     def get_routemap(self) -> RouteMap:
         return routemap
 
-    def get_rd_filters(self, device: Any) -> list[AsPathFilter]:
+    def get_rd_filters(self, device: Any) -> list[RDFilter]:
         return RD_FILTERS
 
 

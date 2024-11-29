@@ -1,16 +1,21 @@
+from typing import Optional
+
 from annet.adapters.netbox.common.models import NetboxDevice
 from annet.rpl import R, RouteMap, Route
 
 routemap = RouteMap[NetboxDevice]()
 
 
-def find_loopback(device: NetboxDevice) -> str:
+def find_loopback(device: NetboxDevice) -> Optional[str]:
     for iface in device.interfaces:
         if iface.name.lower().startswith("lo"):
             return iface.name
+    return None
 
 
 SOME_CONDITION = (R.rd.has_any("RD_EXAMPLE1")) & (R.protocol == "bgp")
+
+
 @routemap
 def example1(device: NetboxDevice, route: Route):
     # condition can be referenced as global constant
@@ -26,7 +31,7 @@ def example1(device: NetboxDevice, route: Route):
     if loopback:  # rules can be generated dynamically
         with route(
                 R.community.has("COMMUNITY_EXAMPLE_REMOVE"),
-                R.interface == loopback, # conditions can reference calculated values
+                R.interface == loopback,  # conditions can reference calculated values
                 number=2, name="n2",
         ) as rule:
             rule.set_local_pref(100)

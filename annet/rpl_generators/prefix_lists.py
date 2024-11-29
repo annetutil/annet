@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Sequence, Iterable
 from ipaddress import ip_interface
 from typing import Any, Literal
 
@@ -38,7 +38,7 @@ class PrefixListFilterGenerator(PartialGenerator):
             prefix_type: Literal["ipv6-prefix", "ip-prefix"],
             match: PrefixMatchValue,
             plists: dict[str, IpPrefixList],
-    ) -> Sequence[Sequence[str]]:
+    ) -> Iterable[Sequence[str]]:
         for name in match.names:
             plist = plists[name]
             for i, prefix in enumerate(plist.members):
@@ -50,11 +50,11 @@ class PrefixListFilterGenerator(PartialGenerator):
                     f"index {i * 10}",
                     "permit",
                     str(addr_mask.ip).upper(),
-                    addr_mask.hostmask.max_prefixlen,
+                    str(addr_mask.hostmask.max_prefixlen),
                 ) + (
-                    ("less-equal", match.less_equal) if match.less_equal is not None else ()
+                    ("less-equal", str(match.less_equal)) if match.less_equal is not None else ()
                 ) + (
-                    ("greater-equal", match.greater_equal) if match.greater_equal is not None else ()
+                    ("greater-equal", str(match.greater_equal)) if match.greater_equal is not None else ()
                 )
 
     def run_huawei(self, device: Any):
