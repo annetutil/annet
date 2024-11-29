@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from annet.generators import PartialGenerator
-from annet.rpl import RouteMap, SingleCondition
+from annet.rpl import RouteMap, SingleCondition, MatchField, ThenField
 from .entities import CommunityList, CommunityLogic, CommunityType
 
 
@@ -26,20 +26,21 @@ class CommunityListGenerator(PartialGenerator, ABC):
         for policy in policies:
             for statement in policy.statements:
                 condition: SingleCondition[Sequence[str]]
-                for condition in statement.match.find_all("community"):
-                    used_communities.update(condition.value)
-                for condition in statement.match.find_all("extcommunity"):
-                    used_communities.update(condition.value)
-                for action in statement.then.find_all("community"):
-                    if action.value.replaced is not None:
-                        used_communities.update(action.value.replaced)
-                    used_communities.update(action.value.added)
-                    used_communities.update(action.value.removed)
-                for action in statement.then.find_all("extcommunity"):
-                    if action.value.replaced is not None:
-                        used_communities.update(action.value.replaced)
-                    used_communities.update(action.value.added)
-                    used_communities.update(action.value.removed)
+                for match_field in (
+                        MatchField.community, MatchField.large_community,
+                        MatchField.extcommunity_rt, MatchField.extcommunity_soo
+                ):
+                    for condition in statement.match.find_all(match_field):
+                        used_communities.update(condition.value)
+                for then_field in (
+                    ThenField.community, ThenField.large_community,
+                    ThenField.extcommunity_rt, ThenField.extcommunity_soo
+                ):
+                    for action in statement.then.find_all(then_field):
+                        if action.value.replaced is not None:
+                            used_communities.update(action.value.replaced)
+                        used_communities.update(action.value.added)
+                        used_communities.update(action.value.removed)
         return [
             communities[name] for name in used_communities
         ]

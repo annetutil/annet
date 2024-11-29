@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from annet.generators import PartialGenerator
-from annet.rpl import RouteMap
+from annet.rpl import RouteMap, MatchField
 from .entities import AsPathFilter
 
 
@@ -22,7 +22,7 @@ class AsPathFilterGenerator(PartialGenerator, ABC):
         used_filters = set()
         for policy in policies:
             for statement in policy.statements:
-                for condition in statement.match.find_all("as_path_filter"):
+                for condition in statement.match.find_all(MatchField.as_path_filter):
                     used_filters.add(condition.value)
         return [filters[name] for name in used_filters]
 

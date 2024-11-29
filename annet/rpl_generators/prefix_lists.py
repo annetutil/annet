@@ -4,7 +4,7 @@ from ipaddress import ip_interface
 from typing import Any, Literal
 
 from annet.generators import PartialGenerator
-from annet.rpl import RouteMap, PrefixMatchValue
+from annet.rpl import RouteMap, PrefixMatchValue, MatchField
 from .entities import IpPrefixList
 
 
@@ -23,9 +23,9 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
         used_names = set()
         for policy in policies:
             for statement in policy.statements:
-                for condition in statement.match.find_all("ipv6_prefix"):
+                for condition in statement.match.find_all(MatchField.ipv6_prefix):
                     used_names.update(condition.value.names)
-                for condition in statement.match.find_all("ip_prefix"):
+                for condition in statement.match.find_all(MatchField.ip_prefix):
                     used_names.update(condition.value.names)
         return [plists[name] for name in used_names]
 

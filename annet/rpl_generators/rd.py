@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from annet.generators import PartialGenerator
-from annet.rpl import RouteMap
+from annet.rpl import RouteMap, MatchField
 from .entities import RDFilter
 
 
@@ -22,7 +22,7 @@ class RDFilterFilterGenerator(PartialGenerator, ABC):
         used_filters = set()
         for policy in policies:
             for statement in policy.statements:
-                for condition in statement.match.find_all("rd"):
+                for condition in statement.match.find_all(MatchField.rd):
                     used_filters.update(condition.value)
         return [filters[name] for name in used_filters]
 

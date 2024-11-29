@@ -6,25 +6,25 @@ from annet.generators import PartialGenerator
 from annet.rpl import (
     CommunityActionValue,
     ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator, SingleCondition, SingleAction, ActionType,
-    RouteMap,
+    RouteMap, MatchField,
 )
-from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue
+from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, ThenField
 from annet.rpl_generators.entities import CommunityList, RDFilter
 
-HUAWEI_MATCH_COMMAND_MAP = {
-    "as_path_filter": "as-path-filter {option_value}",
-    "metric": "cost {option_value}",
-    "protocol": "protocol {option_value}",
-    "interface": "interface {option_value}",
+HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
+    MatchField.as_path_filter: "as-path-filter {option_value}",
+    MatchField.metric: "cost {option_value}",
+    MatchField.protocol: "protocol {option_value}",
+    MatchField.interface: "interface {option_value}",
 }
 
-HUAWEI_THEN_COMMAND_MAP = {
-    "metric": "cost {option_value}",
-    "local_pref": "local-preference {option_value}",
-    "metric_type": "cost-type {option_value}",
-    "mpls_label": "mpls-label",
-    "origin": "origin {option_value}",
-    "tag": "tag {option_value}",
+HUAWEI_THEN_COMMAND_MAP: dict[str, str] = {
+    ThenField.metric: "cost {option_value}",
+    ThenField.local_pref: "local-preference {option_value}",
+    ThenField.metric_type: "cost-type {option_value}",
+    ThenField.mpls_label: "mpls-label",
+    ThenField.origin: "origin {option_value}",
+    ThenField.tag: "tag {option_value}",
     # unsupported: resolution
     # unsupported: rpki_valid_state
 }
@@ -62,7 +62,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             condition: SingleCondition[Any],
             rd_filters: dict[str, RDFilter],
     ) -> Iterator[Sequence[str]]:
-        if condition.field == "community":
+        if condition.field == MatchField.community:
             if condition.operator is ConditionOperator.HAS:
                 if len(condition.value) > 1:
                     raise NotImplementedError("Multiple HAS for communities is not supported for huawei")
@@ -71,7 +71,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             for comm_name in condition.value:
                 yield "if-match community-filter", comm_name
             return
-        if condition.field == "large_community":
+        if condition.field == MatchField.large_community:
             if condition.operator is ConditionOperator.HAS_ANY:
                 if len(condition.value) > 1:
                     raise NotImplementedError("Multiple HAS_ANY values for large_community is not supported for huawei")
@@ -80,7 +80,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             for comm_name in condition.value:
                 yield "if-match large-community-filter", comm_name
             return
-        if condition.field == "extcommunity_rt":
+        if condition.field == MatchField.extcommunity_rt:
             if condition.operator is ConditionOperator.HAS:
                 if len(condition.value) > 1:
                     raise NotImplementedError("Multiple HAS values for extcommunity_rt is not supported for huawei")
@@ -89,7 +89,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             for comm_name in condition.value:
                 yield "if-match extcommunity-filter", comm_name
             return
-        if condition.field == "extcommunity_soo":
+        if condition.field == MatchField.extcommunity_soo:
             if condition.operator is ConditionOperator.HAS_ANY:
                 if len(condition.value) > 1:
                     raise NotImplementedError("Multiple HAS_ANY for extcommunities_soo is not supported for huawei")
@@ -98,17 +98,17 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             for comm_name in condition.value:
                 yield "if-match extcommunity-list soo", comm_name
             return
-        if condition.field == "rd":
+        if condition.field == MatchField.rd:
             if len(condition.value) > 1:
                 raise NotImplementedError("Multiple RD filters is not supported for huawei")
             rd_filter = rd_filters[condition.value[0]]
             yield "if-match rd-filter", str(rd_filter.number)
             return
-        if condition.field == "ip_prefix":
+        if condition.field == MatchField.ip_prefix:
             for name in condition.value.names:
                 yield "if-match", "ip-prefix-filter", name
             return
-        if condition.field == "ipv6_prefix":
+        if condition.field == MatchField.ipv6_prefix:
             for name in condition.value.names:
                 yield "if-match", "ipv6 address prefix-list", name
             return
@@ -213,23 +213,23 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             device: Any,
             action: SingleAction[Any],
     ) -> Iterator[Sequence[str]]:
-        if action.field == "community":
+        if action.field == ThenField.community:
             yield from self._huawei_then_community(communities, device,
                                                    cast(SingleAction[CommunityActionValue], action))
             return
-        if action.field == "large_community":
+        if action.field == ThenField.large_community:
             yield from self._huawei_then_large_community(communities, device,
                                                          cast(SingleAction[CommunityActionValue], action))
             return
-        if action.field == "extcommunity_rt":
+        if action.field == ThenField.extcommunity_rt:
             yield from self._huawei_then_extcommunity_rt(communities, device,
                                                          cast(SingleAction[CommunityActionValue], action))
             return
-        if action.field == "extcommunity_soo":
+        if action.field == ThenField.extcommunity_soo:
             yield from self._huawei_then_extcommunity_soo(communities, device,
                                                           cast(SingleAction[CommunityActionValue], action))
             return
-        if action.field == "metric":
+        if action.field == ThenField.metric:
             if action.type is ActionType.ADD:
                 yield "apply", f"cost + {action.value}"
             elif action.type is ActionType.SET:
@@ -237,7 +237,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             else:
                 raise NotImplementedError(f"Action type {action.type} for metric is not supported for huawei")
             return
-        if action.field == "as_path":
+        if action.field == ThenField.as_path:
             as_path_action_value = cast(AsPathActionValue, action.value)
             if as_path_action_value.set is not None:
                 if not as_path_action_value.set:
@@ -261,7 +261,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             if as_path_action_value.expand_last_as:
                 raise RuntimeError("asp_path.expand_last_as is not supported for huawei")
             return
-        if action.field == "next_hop":
+        if action.field == ThenField.next_hop:
             next_hop_action_value = cast(NextHopActionValue, action.value)
             if next_hop_action_value.target == "self":
                 yield "apply", "cost 1"
