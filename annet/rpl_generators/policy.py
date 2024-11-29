@@ -83,7 +83,6 @@ class RoutingPolicyGenerator(PartialGenerator):
             elif condition.operator is not ConditionOperator.HAS_ANY:
                 raise NotImplementedError("Extcommunity_rt operator %r not supported for huawei" % condition.operator)
             for comm_name in condition.value:
-                print("if-match extcommunity-filter", comm_name)
                 yield "if-match extcommunity-filter", comm_name
             return
         if condition.field == "extcommunity_soo":

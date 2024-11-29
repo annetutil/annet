@@ -6,9 +6,7 @@ routemap = RouteMap[NetboxDevice]()
 
 def find_loopback(device: NetboxDevice) -> str:
     for iface in device.interfaces:
-        print("iface", iface.name)
         if iface.name.lower().startswith("lo"):
-            print("found loopback")
             return iface.name
 
 
