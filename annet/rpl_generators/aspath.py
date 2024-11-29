@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from typing import Any
 
@@ -6,9 +7,14 @@ from annet.rpl import RouteMap
 from .entities import AsPathFilter
 
 
-class AsPathFilterGenerator(PartialGenerator):
+class AsPathFilterGenerator(PartialGenerator, ABC):
+    @abstractmethod
+    def get_routemap(self) -> RouteMap:
+        raise NotImplementedError
+
+    @abstractmethod
     def get_as_path_filters(self, device: Any) -> Sequence[AsPathFilter]:
-        return []
+        raise NotImplementedError
 
     def get_used_as_path_filters(self, device: Any) -> Sequence[AsPathFilter]:
         filters = {c.name: c for c in self.get_as_path_filters(device)}
@@ -19,9 +25,6 @@ class AsPathFilterGenerator(PartialGenerator):
                 for condition in statement.match.find_all("as_path_filter"):
                     used_filters.add(condition.value)
         return [filters[name] for name in used_filters]
-
-    def get_routemap(self) -> RouteMap:
-        return RouteMap()
 
     def acl_huawei(self, _):
         return r"""

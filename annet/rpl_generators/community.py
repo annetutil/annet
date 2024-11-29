@@ -1,37 +1,22 @@
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from typing import Any
-
-from mypyc.primitives.int_ops import int_eq
 
 from annet.generators import PartialGenerator
 from annet.rpl import RouteMap, SingleCondition
 from .entities import CommunityList, CommunityLogic, CommunityType
 
 
-class CommunityListGenerator(PartialGenerator):
+class CommunityListGenerator(PartialGenerator, ABC):
     TAGS = ["policy", "rpl", "routing"]
 
-    def acl_huawei(self, _):
-        return r"""
-        ip community-filter
-        ip extcommunity-filter
-        ip extcommunity-list
-        ip large-community-filter
-        """
+    @abstractmethod
+    def get_routemap(self) -> RouteMap:
+        raise NotImplementedError()
 
-    def ref_huawei(self, _):
-        return """
-        route-policy
-            if-match community-filter <name>
-            if-match extcommunity-filter <name>
-            if-match extcommunity-list soo <name>
-            if-match large-community-filter <name>
-            apply comm-filter <name>
-        """
-
+    @abstractmethod
     def get_community_lists(self, device: Any) -> list[CommunityList]:
-        # TODO filter using RPL
-        return []
+        raise NotImplementedError()
 
     def get_used_community_lists(self, device: Any) -> list[CommunityList]:
         communities = {c.name: c for c in self.get_community_lists(device)}
@@ -59,8 +44,23 @@ class CommunityListGenerator(PartialGenerator):
             communities[name] for name in used_communities
         ]
 
-    def get_routemap(self) -> RouteMap:
-        return RouteMap()
+    def acl_huawei(self, _):
+        return r"""
+        ip community-filter
+        ip extcommunity-filter
+        ip extcommunity-list
+        ip large-community-filter
+        """
+
+    def ref_huawei(self, _):
+        return """
+        route-policy
+            if-match community-filter <name>
+            if-match extcommunity-filter <name>
+            if-match extcommunity-list soo <name>
+            if-match large-community-filter <name>
+            apply comm-filter <name>
+        """
 
     def _huawei_community_filter(self, index: int, community_list: CommunityList, members: str) -> Sequence[str]:
         if community_list.type is CommunityType.BASIC:

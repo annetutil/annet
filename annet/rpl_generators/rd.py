@@ -1,3 +1,4 @@
+from abc import abstractmethod, ABC
 from collections.abc import Sequence
 from typing import Any
 
@@ -6,9 +7,14 @@ from annet.rpl import RouteMap
 from .entities import RDFilter
 
 
-class RDFilterFilterGenerator(PartialGenerator):
+class RDFilterFilterGenerator(PartialGenerator, ABC):
+    @abstractmethod
+    def get_routemap(self) -> RouteMap:
+        raise NotImplementedError()
+
+    @abstractmethod
     def get_rd_filters(self, device: Any) -> Sequence[RDFilter]:
-        return []
+        raise NotImplementedError()
 
     def get_used_rd_filters(self, device: Any) -> Sequence[RDFilter]:
         filters = {c.name: c for c in self.get_rd_filters(device)}
@@ -19,9 +25,6 @@ class RDFilterFilterGenerator(PartialGenerator):
                 for condition in statement.match.find_all("rd"):
                     used_filters.update(condition.value)
         return [filters[name] for name in used_filters]
-
-    def get_routemap(self) -> RouteMap:
-        return RouteMap()
 
     def acl_huawei(self, _):
         return r"""

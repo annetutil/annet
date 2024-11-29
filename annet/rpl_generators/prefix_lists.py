@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from collections.abc import Sequence, Iterable
 from ipaddress import ip_interface
 from typing import Any, Literal
@@ -7,9 +8,14 @@ from annet.rpl import RouteMap, PrefixMatchValue
 from .entities import IpPrefixList
 
 
-class PrefixListFilterGenerator(PartialGenerator):
+class PrefixListFilterGenerator(PartialGenerator, ABC):
+    @abstractmethod
+    def get_routemap(self) -> RouteMap:
+        raise NotImplementedError()
+
+    @abstractmethod
     def get_prefix_lists(self, device: Any) -> Sequence[IpPrefixList]:
-        return []
+        raise NotImplementedError()
 
     def get_used_prefix_lists(self, device: Any) -> Sequence[IpPrefixList]:
         plists = {c.name: c for c in self.get_prefix_lists(device)}
@@ -22,9 +28,6 @@ class PrefixListFilterGenerator(PartialGenerator):
                 for condition in statement.match.find_all("ip_prefix"):
                     used_names.update(condition.value.names)
         return [plists[name] for name in used_names]
-
-    def get_routemap(self) -> RouteMap:
-        return RouteMap()
 
     def acl_huawei(self, _):
         return r"""

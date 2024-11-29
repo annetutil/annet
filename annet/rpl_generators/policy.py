@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from collections.abc import Iterator, Sequence
 from typing import Any, cast
 
@@ -34,23 +35,26 @@ HUAWEI_RESULT_MAP = {
 }
 
 
-class RoutingPolicyGenerator(PartialGenerator):
+class RoutingPolicyGenerator(PartialGenerator, ABC):
     TAGS = ["policy", "rpl", "routing"]
+
+    @abstractmethod
+    def get_routemap(self) -> RouteMap:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_community_lists(self, device: Any) -> list[CommunityList]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_rd_filters(self, device: Any) -> list[RDFilter]:
+        raise NotImplementedError()
 
     def acl_huawei(self, _):
         return r"""
         route-policy *
             ~ %global=1
         """
-
-    def get_routemap(self) -> RouteMap:
-        return RouteMap()
-
-    def get_community_lists(self, device: Any) -> list[CommunityList]:
-        return []
-
-    def get_rd_filters(self, device: Any) -> list[RDFilter]:
-        return []
 
     def _huawei_match(
             self,
