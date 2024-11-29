@@ -4,27 +4,41 @@ from annet.rpl import R, RouteMap, Route
 routemap = RouteMap[NetboxDevice]()
 
 
+def find_loopback(device: NetboxDevice) -> str:
+    for iface in device.interfaces:
+        print("iface", iface.name)
+        if iface.name.lower().startswith("lo"):
+            print("found loopback")
+            return iface.name
+
+
+SOME_CONDITION = (R.rd.has_any("RD_EXAMPLE1")) & (R.protocol == "bgp")
 @routemap
 def example1(device: NetboxDevice, route: Route):
-    condition = (R.interface == "l0.0") & (R.protocol == "bgp")
-    with route(condition, number=1, name="n1") as rule:
+    # condition can be referenced as global constant
+    with route(SOME_CONDITION, number=1, name="n1") as rule:
         rule.set_local_pref(100)
         rule.set_metric(100)
         rule.add_metric(200)
         rule.community.set("COMMUNITY_EXAMPLE_ADD")
         rule.as_path.set(12345, "123456")
         rule.allow()
-    with route(
-            R.protocol == "bgp",
-            R.community.has("COMMUNITY_EXAMPLE_REMOVE"),
-            R.rd.has_any("RD_EXAMPLE1"),
-            number=2, name="n2",
-    ) as rule:
-        rule.set_local_pref(100)
-        rule.add_metric(200)
-        rule.community.add("COMMUNITY_EXAMPLE_ADD")
-        rule.community.remove("COMMUNITY_EXAMPLE_REMOVE")
-        rule.allow()
+
+    loopback = find_loopback(device)
+    if loopback:  # rules can be generated dynamically
+        with route(
+                R.community.has("COMMUNITY_EXAMPLE_REMOVE"),
+                R.interface == loopback, # conditions can reference calculated values
+                number=2, name="n2",
+        ) as rule:
+            rule.set_local_pref(100)
+            rule.add_metric(200)
+            rule.community.add("COMMUNITY_EXAMPLE_ADD")
+            rule.community.remove("COMMUNITY_EXAMPLE_REMOVE")
+            rule.allow()
+    # default rule with no conditions
+    with route(number=100, name="last") as rule:
+        rule.deny()
 
 
 @routemap
