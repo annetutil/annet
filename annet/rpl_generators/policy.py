@@ -9,7 +9,7 @@ from annet.rpl import (
     RouteMap, MatchField,
 )
 from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, ThenField
-from annet.rpl_generators.entities import CommunityList, RDFilter
+from annet.rpl_generators.entities import CommunityList, RDFilter, mangle_huawei_prefix_list_name
 
 HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.as_path_filter: "as-path-filter {option_value}",
@@ -106,11 +106,21 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             return
         if condition.field == MatchField.ip_prefix:
             for name in condition.value.names:
-                yield "if-match", "ip-prefix-filter", name
+                mangled_name = mangle_huawei_prefix_list_name(
+                    name=name,
+                    greater_equal=condition.value.greater_equal,
+                    less_equal=condition.value.less_equal,
+                )
+                yield "if-match", "ip-prefix-filter", mangled_name
             return
         if condition.field == MatchField.ipv6_prefix:
             for name in condition.value.names:
-                yield "if-match", "ipv6 address prefix-list", name
+                mangled_name = mangle_huawei_prefix_list_name(
+                    name=name,
+                    greater_equal=condition.value.greater_equal,
+                    less_equal=condition.value.less_equal,
+                )
+                yield "if-match", "ipv6 address prefix-list", mangled_name
             return
         if condition.field == "as_path_length":
             if condition.operator is ConditionOperator.EQ:
