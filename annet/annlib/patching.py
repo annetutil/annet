@@ -54,11 +54,30 @@ class PatchItem:
     row: str
     child: "Union[PatchTree, None]"
     context: Dict[str, str]
+    sort_key: Tuple[Any, ...]
 
-    def __init__(self, row, child, context):
+    def __init__(self, row, child, context, sort_key):
         self.row = row
         self.child = child
         self.context = context
+        self.sort_key = sort_key
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "row": self.row,
+            "child": self.child.to_json() if self.child is not None else None,
+            "context": self.context,
+            "sort_key": self.sort_key,
+        }
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> "PatchItem":
+        return cls(
+            row=data["row"],
+            child=PatchTree.from_json(data["child"]) if data["child"] is not None else None,
+            context=data["context"],
+            sort_key=data["sort_key"],
+        )
 
     def __str__(self):
         return (
@@ -66,6 +85,7 @@ class PatchItem:
             f'    row="{self.row}",\n'
             f"    child={textwrap.indent(str(self.child), '    ').strip()},\n"
             f"    context={self.context}\n"
+            f"    sort_key={self.sort_key}\n"
             f")"
         )
 
@@ -78,15 +98,15 @@ class PatchTree:
         if row:
             self.add(row, {})
 
-    def add(self, row: str, context: Dict[str, str]) -> None:
-        self.itms.append(PatchItem(row, None, context))
+    def add(self, row: str, context: Dict[str, str], sort_key=()) -> None:
+        self.itms.append(PatchItem(row, None, context, sort_key))
 
-    def add_block(self, row: str, subtree: "Optional[PatchTree]" = None, context: Dict[str, str] = None) -> "PatchTree":
+    def add_block(self, row: str, subtree: "Optional[PatchTree]" = None, context: Dict[str, str] = None, sort_key=()) -> "PatchTree":
         if subtree is None:
             subtree = PatchTree()
         if context is None:
             context = {}
-        self.itms.append(PatchItem(row, subtree, context))
+        self.itms.append(PatchItem(row, subtree, context, sort_key))
         return subtree
 
     def items(self) -> "Iterator[Tuple[str, Union[PatchTree, None]]]":
@@ -105,6 +125,21 @@ class PatchTree:
             else:
                 ret[str(row)] = None
         return ret
+
+    def to_json(self) -> list[dict[str, Any]]:
+        return [i.to_json() for i in self.itms]
+
+    @classmethod
+    def from_json(cls, data: list[dict[str, Any]]) -> "PatchTree":
+        ret = cls()
+        ret.itms = [PatchItem.from_json(i) for i in data]
+        return ret
+
+    def sort(self) -> None:
+        self.itms.sort(key=operator.attrgetter("sort_key"))
+        for item in self.itms:
+            if item.child:
+                item.child.sort()
 
     def __bool__(self):
         return bool(self.itms)
@@ -409,18 +444,19 @@ def make_patch(pre, rb, hw, add_comments, orderer=None, _root_pre=None, do_commi
                         "context": attrs["context"],
                     })
     tree = PatchTree()
-    sorted_patch = sorted(patch, key=(lambda item: (
-        (item["order"] if item["order_direct"] else -item["order"]),
-        item["raw_rule"],
-        item["order_direct"],
-    )))
-    for item in sorted_patch:
+    for item in patch:
+        sort_key = (
+            (item["order"] if item["order_direct"] else -item["order"]),
+            item["raw_rule"],
+            item["order_direct"],
+        )
         if (not item["children"] and not item["parent"]) or not item["direct"]:
-            tree.add(item["row"], item["context"])
+            tree.add(item["row"], item["context"], sort_key)
         else:
-            tree.add_block(item["row"], item["children"], item["context"])
+            tree.add_block(item["row"], item["children"], item["context"], sort_key)
         if item["force_commit"]:
-            tree.add("commit", item["context"])
+            tree.add("commit", item["context"], sort_key)
+    tree.sort()
     return tree
 
 
