@@ -101,3 +101,12 @@ def test_patch_class_tree():
       c
     """
     )
+
+
+def test_patch_class_to_from_json():
+    tree = PatchTree()
+    tree.add_block("a").add("b", {})
+    tree.add_block("a").add("c", {})
+
+    json = tree.to_json()
+    assert json == PatchTree.from_json(json).to_json()
