@@ -12,6 +12,7 @@ from .registry import (
     DirectPeer,
     GlobalOptions as MeshGlobalOptions,
     IndirectPeer,
+    MatchedDirectPair,
     MeshRulesRegistry,
     MeshSession,
     VirtualLocal,
@@ -76,72 +77,92 @@ class MeshExecutor:
         except AttributeError:
             return str(handler)
 
+    def _execute_direct_pair(
+            self,
+            device: Device,
+            neighbor_device: Device,
+            rule: MatchedDirectPair,
+            ports: list[tuple[str, str]],
+            all_connected_ports: list[tuple[str, str]],
+    ) -> Pair:
+        session = MeshSession()
+        handler_name = self._handler_name(rule.handler)
+        logger.debug("Running direct handler: %s", handler_name)
+        if rule.direct_order:
+            peer_device = DirectPeer(rule.match_left, device, [], [])
+            peer_neighbor = DirectPeer(rule.match_right, neighbor_device, [], [])
+        else:
+            peer_neighbor = DirectPeer(rule.match_left, neighbor_device, [], [])
+            peer_device = DirectPeer(rule.match_right, device, [], [])
+
+        for local_port, remote_port in ports:
+            peer_device.ports.append(local_port)
+            peer_neighbor.ports.append(remote_port)
+        for local_port, remote_port in all_connected_ports:
+            peer_device.all_connected_ports.append(local_port)
+            peer_neighbor.all_connected_ports.append(remote_port)
+
+        if rule.direct_order:
+            rule.handler(peer_device, peer_neighbor, session)
+        else:
+            rule.handler(peer_neighbor, peer_device, session)
+
+        try:
+            neighbor_dto = merge(DirectPeerDTO(), peer_neighbor, session)
+        except MergeForbiddenError as e:
+            raise ValueError(
+                f"Handler `{handler_name}` provided session data conflicting with "
+                f"peer data for device `{neighbor_device.fqdn}`:\n" + str(e)
+            ) from e
+        try:
+            device_dto = merge(DirectPeerDTO(), peer_device, session)
+        except MergeForbiddenError as e:
+            raise ValueError(
+                f"Handler `{handler_name}` provided session data conflicting with "
+                f"peer data for device `{device.fqdn}`:\n" + str(e)
+            ) from e
+
+        return Pair(local=device_dto, connected=neighbor_dto, device=neighbor_device)
+
     def _execute_direct(self, device: Device) -> list[Pair]:
         # we can have multiple rules for the same pair
         # we merge them according to remote fqdn
         neighbor_peers: dict[PeerKey, Pair] = {}
         # TODO batch resolve
         for rule in self._registry.lookup_direct(device.fqdn, device.neighbours_fqdns):
-            session = MeshSession()
             handler_name = self._handler_name(rule.handler)
-            logger.debug("Running direct handler: %s", handler_name)
             if rule.direct_order:
                 neighbor_device = self._storage.make_devices([rule.name_right])[0]
-                peer_device = DirectPeer(rule.match_left, device, [])
-                peer_neighbor = DirectPeer(rule.match_right, neighbor_device, [])
             else:
                 neighbor_device = self._storage.make_devices([rule.name_left])[0]
-                peer_neighbor = DirectPeer(rule.match_left, neighbor_device, [])
-                peer_device = DirectPeer(rule.match_right, device, [])
-
-            interfaces = self._storage.search_connections(device, neighbor_device)
-            for local_port, remote_port in interfaces:
-                peer_device.ports.append(local_port.name)
-                peer_neighbor.ports.append(remote_port.name)
-
-            if rule.direct_order:
-                rule.handler(peer_device, peer_neighbor, session)
-            else:
-                rule.handler(peer_neighbor, peer_device, session)
-
-            try:
-                neighbor_dto = merge(DirectPeerDTO(), peer_neighbor, session)
-            except MergeForbiddenError as e:
-                raise ValueError(
-                    f"Handler `{handler_name}` provided session data conflicting with "
-                    f"peer data for device `{neighbor_device.fqdn}`:\n" + str(e)
-                ) from e
-            try:
-                device_dto = merge(DirectPeerDTO(), peer_device, session)
-            except MergeForbiddenError as e:
-                raise ValueError(
-                    f"Handler `{handler_name}` provided session data conflicting with "
-                    f"peer data for device `{device.fqdn}`:\n" + str(e)
-                ) from e
-
-            pair = Pair(local=device_dto, connected=neighbor_dto, device=neighbor_device)
-            addr = getattr(neighbor_dto, "addr", None)
-            if addr is None:
-                raise ValueError(f"Handler `{handler_name}` returned no peer addr")
-            peer_key = PeerKey(
-                fqdn=neighbor_device.fqdn,
-                addr=addr,
-                vrf=getattr(neighbor_dto, "vrf", "")
-            )
-            try:
-                if peer_key in neighbor_peers:
-                    pair = merge(neighbor_peers[peer_key], pair)
-            except MergeForbiddenError as e:
-                if rule.direct_order:
-                    pair_names = device.fqdn, neighbor_device.fqdn
-                else:
-                    pair_names = neighbor_device.fqdn, device.fqdn
-                raise ValueError(
-                    f"Handler `{handler_name}` provides data conflicting with "
-                    f"previously loaded for device pair {pair_names} "
-                    f"with addr={peer_key.addr}, vrf{peer_key.vrf}:\n" + str(e)
-                ) from e
-            neighbor_peers[peer_key] = pair
+            all_connected_ports = [
+                (p1.name, p2.name)
+                for p1, p2 in self._storage.search_connections(device, neighbor_device)
+            ]
+            for ports in rule.port_processor(all_connected_ports):
+                pair = self._execute_direct_pair(device, neighbor_device, rule, ports, all_connected_ports)
+                addr = getattr(pair.connected, "addr", None)
+                if addr is None:
+                    raise ValueError(f"Handler `{handler_name}` returned no peer addr")
+                peer_key = PeerKey(
+                    fqdn=pair.device.fqdn,
+                    addr=addr,
+                    vrf=getattr(pair.connected, "vrf", "")
+                )
+                try:
+                    if peer_key in neighbor_peers:
+                        pair = merge(neighbor_peers[peer_key], pair)
+                except MergeForbiddenError as e:
+                    if rule.direct_order:
+                        pair_names = device.fqdn, pair.device.fqdn
+                    else:
+                        pair_names = pair.device.fqdn, device.fqdn
+                    raise ValueError(
+                        f"Handler `{handler_name}` provides data conflicting with "
+                        f"previously loaded for device pair {pair_names} "
+                        f"with addr={peer_key.addr}, vrf{peer_key.vrf}:\n" + str(e)
+                    ) from e
+                neighbor_peers[peer_key] = pair
         return list(neighbor_peers.values())
 
     def _execute_virtual(self, device: Device) -> list[VirtualPair]:
