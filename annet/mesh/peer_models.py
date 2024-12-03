@@ -1,6 +1,6 @@
 from typing import Literal, Annotated, Union, Optional
 
-from .basemodel import BaseMeshModel, Concat
+from .basemodel import BaseMeshModel, Concat, Unite
 from ..bgp_models import BFDTimers
 
 FamilyName = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled_unicast", "ipv6_labeled_unicast"]
@@ -25,7 +25,7 @@ class MeshSession(_SharedOptionsDTO):
     """
     asnum: Union[int, str]
     vrf: str
-    families: Annotated[set[FamilyName], Concat()]
+    families: Annotated[set[FamilyName], Unite()]
     group_name: str
 
     bmp_monitor: bool
@@ -116,7 +116,7 @@ class VirtualPeerDTO(MeshSession):
 
 class MeshPeerGroup(_OptionsDTO):
     name: str
-    families: Annotated[set[FamilyName], Concat()]
+    families: Annotated[set[FamilyName], Unite()]
     local_as: Union[int, str]
     remote_as: Union[int, str]
     internal_name: str

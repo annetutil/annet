@@ -39,6 +39,7 @@ class Pair(BaseMeshModel):
     local: Annotated[Union[DirectPeerDTO, IndirectPeerDTO], Merge()]
     connected: Annotated[Union[DirectPeerDTO, IndirectPeerDTO], Merge()]
     device: Annotated[Device, UseLast()]
+    ports: list[str]
 
 
 class VirtualPair(BaseMeshModel):
@@ -122,7 +123,7 @@ class MeshExecutor:
                 f"peer data for device `{device.fqdn}`:\n" + str(e)
             ) from e
 
-        return Pair(local=device_dto, connected=neighbor_dto, device=neighbor_device)
+        return Pair(local=device_dto, connected=neighbor_dto, device=neighbor_device, ports=peer_device.ports)
 
     def _execute_direct(self, device: Device) -> list[Pair]:
         # we can have multiple rules for the same pair
@@ -270,8 +271,15 @@ class MeshExecutor:
     def _to_bgp_global(self, global_options: GlobalOptionsDTO) -> GlobalOptions:
         return to_bgp_global_options(global_options)
 
-    def _apply_interface_changes(self, device: Device, neighbor: Device, changes: InterfaceChanges) -> str:
-        port_pairs = self._storage.search_connections(device, neighbor)
+    def _apply_interface_changes(
+            self, device: Device, neighbor: Device, ports: list[str], changes: InterfaceChanges,
+    ) -> str:
+        # filter ports according to processed in pair
+        port_pairs = [
+            p
+            for p in self._storage.search_connections(device, neighbor)
+            if p[0].name in ports
+        ]
         if len(port_pairs) > 1:
             if changes.lag is changes.svi is None:
                 raise ValueError(
@@ -310,6 +318,7 @@ class MeshExecutor:
             target_interface = self._apply_interface_changes(
                 device,
                 direct_pair.device,
+                direct_pair.ports,
                 to_interface_changes(direct_pair.local),
             )
             peers.append(self._to_bgp_peer(direct_pair, target_interface))

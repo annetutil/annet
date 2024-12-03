@@ -10,6 +10,7 @@ from annet.mesh import (
     IndirectPeer,
     VirtualLocal,
     VirtualPeer,
+    separate_ports,
 )
 from .fakes import FakeStorage, FakeDevice, FakeInterface
 
@@ -195,3 +196,79 @@ def test_storage(registry, storage, device1):
         assert peer.options.local_as == 12340
         assert peer.interface == "Vlan1"
         assert peer.options.listen_network == ["10.0.0.0/8"]
+
+
+@pytest.fixture()
+def device_2ports():
+    return FakeDevice(DEV1, [])
+
+
+@pytest.fixture()
+def device_neighbor_2ports(device_2ports):
+    device_2ports.interfaces.append(FakeInterface(
+        name="if1",
+        neighbor_fqdn=DEV_NEIGHBOR,
+        neighbor_port="if10"
+    ))
+    device_2ports.interfaces.append(FakeInterface(
+        name="if2",
+        neighbor_fqdn=DEV_NEIGHBOR,
+        neighbor_port="if11"
+    ))
+    return FakeDevice(DEV_NEIGHBOR, [
+        FakeInterface(
+            name="if10",
+            neighbor_fqdn=DEV1,
+            neighbor_port="if2"
+        ),
+        FakeInterface(
+            name="if11",
+            neighbor_fqdn=DEV1,
+            neighbor_port="if1"
+        ),
+    ])
+
+
+def on_direct_2ports(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):
+    port_number = local.all_connected_ports.index(local.ports[0])+1
+    local.addr = f"192.168.1.{port_number}"
+    neighbor.addr = f"192.168.1.{255-port_number}"
+    local.mtu = 1501
+    neighbor.mtu = 1502
+    session.asnum = 12345
+    session.families = {"ipv4_unicast"}
+
+
+@pytest.fixture
+def storage_2ports(device_2ports, device_neighbor_2ports):
+    s = FakeStorage()
+    s.add_device(device_2ports)
+    s.add_device(device_neighbor_2ports)
+    return s
+
+
+def test_2ports(storage_2ports, device_2ports):
+    registry = MeshRulesRegistry()
+    registry.direct("dev{num}.example.com", "dev_{x:.*}", port_processor=separate_ports)(on_direct_2ports)
+    r = MeshExecutor(registry, storage_2ports)
+    res = r.execute_for(device_2ports)
+
+    peer_ports = [
+        (peer.addr, peer.interface)
+        for peer in res.peers
+    ]
+    peer_ports.sort()
+    assert peer_ports == [
+        ("192.168.1.253", "if2"),
+        ("192.168.1.254", "if1"),
+    ]
+
+    local_ports = [
+        (interface.addrs, interface.name)
+        for interface in device_2ports.interfaces
+    ]
+    local_ports.sort()
+    assert local_ports == [
+        ([("192.168.1.1", None)], "if1"),
+        ([("192.168.1.2", None)], "if2"),
+    ]
