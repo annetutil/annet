@@ -14,7 +14,7 @@ class DirectPeer(DirectPeerDTO):
     ports: list[str]
     all_connected_ports: list[str]
 
-    def __init__(self, match: MatchedArgs, device: Any, ports: list[str], all_connected_ports:list[str]) -> None:
+    def __init__(self, match: MatchedArgs, device: Any, ports: list[str], all_connected_ports: list[str]) -> None:
         super().__init__()
         self.match = match
         self.device = device
