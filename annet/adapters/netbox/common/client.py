@@ -79,9 +79,11 @@ def collect(func: Func, field: str = "", batch_size: int = 100) -> Func:
 
 
 class BaseNetboxClient(RequestsClient):
-    def __init__(self, url: str, token: str):
+    def __init__(self, url: str, token: str, insecure: bool = False):
         url = url.rstrip("/") + "/api/"
         session = Session()
+        if insecure:
+            session.verify = False
         if token:
             session.headers["Authorization"] = f"Token {token}"
         super().__init__(url, session)

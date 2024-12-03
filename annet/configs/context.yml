@@ -1,15 +1,8 @@
-connection:
-  default:
-    login: ~
-    passwords: ~
-    enable_ssh_conf: false
-    no_nocauth: false
-    ssh_forward_agent: ~
-    tunnel: ~
 generators:
   default:
     - annet_generators.example
     - annet_generators.mesh_example
+    - annet_generators.rpl_example
 
 storage:
   default:
@@ -17,7 +10,6 @@ storage:
 
 context:
   default:
-    connection: default
     generators: default
     storage: default
 

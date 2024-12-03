@@ -1,4 +1,5 @@
-from annet.mesh import Right, MeshRulesRegistry, GlobalOptions, MeshSession, DirectPeer
+from annet.bgp_models import Redistribute, BFDTimers
+from annet.mesh import Right, MeshRulesRegistry, GlobalOptions, MeshSession, DirectPeer, VirtualLocal, VirtualPeer
 
 registry = MeshRulesRegistry()
 
@@ -6,6 +7,9 @@ registry = MeshRulesRegistry()
 @registry.device("{name:.*}")
 def device_handler(global_opts: GlobalOptions):
     global_opts.local_as = 12345
+    global_opts.ipv4_unicast.redistributes = (Redistribute(
+        protocol="ipv4", policy="sss",
+    ),)
     global_opts.groups["GROP_NAME"].remote_as = 11111
 
 
@@ -14,6 +18,15 @@ def direct_handler(device: DirectPeer, neighbor: DirectPeer, session: MeshSessio
     session.asnum = 12345
     device.addr = "192.168.1.254"
     neighbor.addr = f"192.168.1.{neighbor.match.x}"
+
+
+@registry.virtual("{name:.*}", num=[1, 2, 3])
+def virtual_handler(device: VirtualLocal, peer: VirtualPeer, session: MeshSession):
+    session.asnum = 12345
+    device.svi = 1
+    device.addr = "192.168.1.254"
+    device.listen_network = ["10.0.0.0/8"]
+    peer.addr = f"192.168.127.{peer.num}"
 
 
 @registry.direct("{name:.*}", "m9-sgw{x}.{domain:.*}", Right.x.in_([0, 1]))

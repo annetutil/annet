@@ -67,7 +67,7 @@ class BFDTimers:
     multiplier: int = 4
 
 
-Family = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled", "ipv6_labeled"]
+Family = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled_unicast", "ipv6_labeled_unicast"]
 
 
 @dataclass(frozen=True)
@@ -103,7 +103,7 @@ class PeerOptions:
     af_rib_group: Optional[str] = None
     af_loops: Optional[int] = None
     hold_time: Optional[int] = None
-    listen_network: Optional[bool] = None
+    listen_network: Optional[list[str]] = None
     remove_private: Optional[bool] = None
     as_override: Optional[bool] = None
     aigp: Optional[bool] = None
@@ -158,7 +158,7 @@ class Redistribute:
 @dataclass
 class FamilyOptions:
     family: Family
-    vrf_name: str
+    vrf_name: str = ""
     multipath: int = 0
     global_multipath: int = 0
     aggregate: Aggregate = field(default_factory=Aggregate)
@@ -178,9 +178,12 @@ class FamilyOptions:
 class PeerGroup:
     name: str
     remote_as: ASN = ASN(None)
+    families: set[Family] = field(default_factory=set)
     internal_name: str = ""
     description: str = ""
     update_source: str = ""
+    import_policy: str = ""
+    export_policy: str = ""
 
     # more strict version of PeerOptions
     local_as: ASN = ASN(None)
@@ -213,7 +216,7 @@ class PeerGroup:
     af_rib_group: Optional[str] = None
     af_loops: int = 0
     hold_time: int = 0
-    listen_network: bool = False
+    listen_network: list[str] = field(default_factory=list)
     remove_private: bool = False
     as_override: bool = False
     aigp: bool = False
@@ -234,9 +237,13 @@ class PeerGroup:
 @dataclass
 class VrfOptions:
     vrf_name: str
+
+    ipv4_unicast: FamilyOptions
+    ipv6_unicast: FamilyOptions
+    ipv4_labeled_unicast: FamilyOptions
+    ipv6_labeled_unicast: FamilyOptions
+
     vrf_name_global: Optional[str] = None
-    import_policy: Optional[str] = None
-    export_policy: Optional[str] = None
     rt_import: list[str] = field(default_factory=list)
     rt_export: list[str] = field(default_factory=list)
     rt_import_v4: list[str] = field(default_factory=list)
@@ -244,23 +251,20 @@ class VrfOptions:
     route_distinguisher: Optional[str] = None
     static_label: Optional[int] = None  # FIXME: str?
 
-    ipv4_unicast: Optional[FamilyOptions] = None
-    ipv6_unicast: Optional[FamilyOptions] = None
-    ipv4_labeled_unicast: Optional[FamilyOptions] = None
-    ipv6_labeled_unicast: Optional[FamilyOptions] = None
     groups: list[PeerGroup] = field(default_factory=list)
 
 
 @dataclass
 class GlobalOptions:
+    ipv4_unicast: FamilyOptions
+    ipv6_unicast: FamilyOptions
+    ipv4_labeled_unicast: FamilyOptions
+    ipv6_labeled_unicast: FamilyOptions
+
     local_as: ASN = ASN(None)
     loops: int = 0
     multipath: int = 0
     router_id: str = ""
     vrf: dict[str, VrfOptions] = field(default_factory=dict)
 
-    ipv4_unicast: Optional[FamilyOptions] = None
-    ipv6_unicast: Optional[FamilyOptions] = None
-    ipv4_labeled_unicast: Optional[FamilyOptions] = None
-    ipv6_labeled_unicast: Optional[FamilyOptions] = None
     groups: list[PeerGroup] = field(default_factory=list)

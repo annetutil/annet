@@ -799,12 +799,20 @@ def guess_hw(config_text: str):
         hw = hw_provider.vendor_to_hw(vendor)
         fmtr = tabparser.make_formatter(hw)
         rb = rulebook.get_rulebook(hw)
-        config = tabparser.parse_to_tree(config_text, fmtr.split)
+        try:
+            config = tabparser.parse_to_tree(config_text, fmtr.split)
+        except Exception:
+            continue
         pre = patching.make_pre(patching.make_diff({}, config, rb, []))
         metric = _count_pre_score(pre)
         scores[metric] = hw
+
+    if not scores:
+        raise RuntimeError("No formatter was guessed")
+
     max_score = max(scores.keys())
     hw = scores[max_score]
+
     return hw, max_score
 
 

@@ -2,6 +2,7 @@ from logging import getLogger
 from typing import Any, Optional, List, Union, Dict
 from ipaddress import ip_interface
 from collections import defaultdict
+import ssl
 
 from adaptix import P
 from adaptix.conversion import impl_converter, link, link_constant
@@ -86,10 +87,19 @@ def extend_ip_address(
 
 class NetboxStorageV37(Storage):
     def __init__(self, opts: Optional[NetboxStorageOpts] = None):
-        self.netbox = NetboxV37(
-            url=opts.url,
-            token=opts.token,
-        )
+        ctx: Optional[ssl.SSLContext] = None
+        url = ""
+        token = ""
+        self.exact_host_filter = False
+        if opts:
+            if opts.insecure:
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+            url = opts.url
+            token = opts.token
+            self.exact_host_filter = opts.exact_host_filter
+        self.netbox = NetboxV37(url=url, token=token, ssl_context=ctx)
         self._all_fqdns: Optional[list[str]] = None
 
     def __enter__(self):
@@ -112,7 +122,7 @@ class NetboxStorageV37(Storage):
         if self._all_fqdns is None:
             self._all_fqdns = [
                 d.name
-                for d in self.netbox.dcim_all_devices().results
+                for d in self.netbox.dcim_all_devices_brief().results
             ]
         return self._all_fqdns
 
@@ -140,7 +150,7 @@ class NetboxStorageV37(Storage):
 
         interfaces = self._load_interfaces(list(device_ids))
         neighbours = {x.id: x for x in self._load_neighbours(interfaces)}
-        neighbours_seen = defaultdict(set)
+        neighbours_seen: dict[str, set] = defaultdict(set)
 
         for interface in interfaces:
             device_ids[interface.device.id].interfaces.append(interface)
@@ -155,14 +165,18 @@ class NetboxStorageV37(Storage):
     def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
         if not query.globs:
             return []
-        query = _hostname_dot_hack(query)
-        return [
-            device
-            for device in self.netbox.dcim_all_devices(
-                name__ic=query.globs,
-            ).results
-            if _match_query(query, device)
-        ]
+        if self.exact_host_filter:
+            devices = self.netbox.dcim_all_devices(name__ie=query.globs).results
+        else:
+            query = _hostname_dot_hack(query)
+            devices = [
+                device
+                for device in self.netbox.dcim_all_devices(
+                    name__ic=query.globs,
+                ).results
+                if _match_query(query, device)
+            ]
+        return devices
 
     def _extend_interfaces(self, interfaces: List[models.Interface]) -> List[models.Interface]:
         extended_ifaces = {

@@ -86,40 +86,42 @@ class JSONFragment(TreeGenerator):
             self._config_pointer.pop()
 
     def __call__(self, device: Device, annotate: bool = False):
-        for cfg_fragment in self.run(device):
-            self._set_or_replace_dict(self._config_pointer, cfg_fragment)
-        return self._json_config
+        try:
+            for cfg_fragment in self.run(device):
+                self._set_or_replace_dict(self._config_pointer, cfg_fragment)
+            return self._json_config
+        finally:
+            self._json_config = {}
 
     def _set_or_replace_dict(self, pointer, value):
         if not pointer:
             if self._json_config == {}:
-                self._json_config = value
+                self._json_config = self.process_value(value)
             else:
-                self._json_config = [self._json_config, value]
+                self._json_config = [self._json_config, self.process_value(value)]
         else:
             self._set_dict(self._json_config, pointer, value)
 
-    @classmethod
-    def _to_str(cls, value: Any) -> str:
-        if isinstance(value, str):
-            return value
-        elif isinstance(value, list):
-            return [cls._to_str(x) for x in value]
-        elif isinstance(value, dict):
-            for k, v in value.items():
-                value[k] = cls._to_str(v)
-            return value
+    def process_scalar_value(self, value: Any) -> Any:
         return str(value)
 
-    @classmethod
-    def _set_dict(cls, cfg, pointer, value):
+    def process_value(self, value: Any) -> Any:
+        if isinstance(value, (list, set, frozenset)):
+            return [self.process_value(x) for x in value]
+        elif isinstance(value, dict):
+            for k, v in value.items():
+                value[k] = self.process_value(v)
+            return value
+        return self.process_scalar_value(value)
+
+    def _set_dict(self, cfg, pointer, value):
         # pointer has at least one key
         if len(pointer) == 1:
             if pointer[0] in cfg:
-                cfg[pointer[0]] = [cfg[pointer[0]], cls._to_str(value)]
+                cfg[pointer[0]] = [cfg[pointer[0]], self.process_value(value)]
             else:
-                cfg[pointer[0]] = cls._to_str(value)
+                cfg[pointer[0]] = self.process_value(value)
         else:
             if pointer[0] not in cfg:
                 cfg[pointer[0]] = {}
-            cls._set_dict(cfg[pointer[0]], pointer[1:], cls._to_str(value))
+            self._set_dict(cfg[pointer[0]], pointer[1:], self.process_value(value))

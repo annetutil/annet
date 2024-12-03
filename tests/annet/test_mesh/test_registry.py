@@ -34,6 +34,25 @@ def test_global(short):
     else:
         assert short_found == []
 
+@pytest.mark.parametrize("short", [True, False])
+def test_virtual(short):
+    registry = MeshRulesRegistry(short)
+    registry.virtual("left1-{x}", (1, 2))(foo)
+    registry.virtual("left1-{x}", (2, 3), Left.x > 1)(bar)
+    registry.virtual("left2-{x}", (4, 5))(baz)
+
+    found = registry.lookup_virtual("left1-1")
+    assert len(found) == 1
+    assert found[0].handler is foo
+    assert found[0].match.x == 1
+    assert found[0].num == (1,2)
+
+    short_found = registry.lookup_virtual("left1-1.example.com")
+    if short:
+        assert short_found == found
+    else:
+        assert short_found == []
+
 
 @pytest.mark.parametrize("short", [True, False])
 def test_direct(short):

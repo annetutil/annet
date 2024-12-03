@@ -4,6 +4,7 @@ import re
 from annet import patching
 from annet.diff import diff_cmp, diff_ops, gen_pre_as_diff, resort_diff
 from annet.types import Diff
+from typing import Tuple, List, Dict
 
 
 before = """
@@ -203,7 +204,7 @@ def str2diff(raw_diff: str) -> Diff:
         m = re.match(r"([+-])?(\s+)", raw_line)
         if m:
             level = (len(m.group(2)) - 1) // 4
-        diffline = (
+        diffline: Tuple[str, str, List, Dict] = (
             diff_ops[op],
             line,
             [],
@@ -244,7 +245,7 @@ def test_sort():
     assert diff_cmp(l1, l2) == 0
 
 
-def test_diff_nocdev_1720():
+def test_diff():
     with io.StringIO() as test_result:
         tf = resort_diff(str2diff(before))
         pd = patching.make_pre(tf)
@@ -257,6 +258,4 @@ def test_diff_nocdev_1720():
         for pre_as_diff in gen_pre_as_diff(pd, False, " ", False):
             want_result.write(pre_as_diff)
         w = want_result.getvalue()
-    with open("/tmp/actual", "w") as f:
-        f.write(actual)
     assert actual == w

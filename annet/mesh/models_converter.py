@@ -1,12 +1,18 @@
 from dataclasses import dataclass
 from ipaddress import ip_interface
-from typing import Optional
+from typing import Optional, Union
 
-from adaptix import Retort, loader, Chain, name_mapping
+from adaptix import Retort, loader, Chain, name_mapping, as_is_loader
 
-from .peer_models import PeerDTO
-from ..bgp_models import GlobalOptions, VrfOptions, FamilyOptions, Peer, PeerGroup, ASN, PeerOptions
-from ..storage import Device
+from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO, VirtualLocalDTO
+from ..bgp_models import (
+    Aggregate, GlobalOptions, VrfOptions, FamilyOptions, Peer, PeerGroup, ASN, PeerOptions,
+    Redistribute, BFDTimers,
+)
+
+
+PeerDTO = Union[DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO]
+LocalDTO = Union[DirectPeerDTO, IndirectPeerDTO, VirtualLocalDTO]
 
 
 @dataclass
@@ -46,15 +52,15 @@ retort = Retort(
         loader(GlobalOptions, ObjMapping, Chain.FIRST),
         loader(VrfOptions, ObjMapping, Chain.FIRST),
         loader(FamilyOptions, ObjMapping, Chain.FIRST),
+        loader(Aggregate, ObjMapping, Chain.FIRST),
         loader(PeerOptions, ObjMapping, Chain.FIRST),
+        as_is_loader(Redistribute),
+        as_is_loader(BFDTimers),
         name_mapping(PeerOptions, map={
             "local_as": "asnum",
         }),
         loader(list[PeerGroup], lambda x: list(x.values()), Chain.FIRST),
         loader(PeerGroup, ObjMapping, Chain.FIRST),
-        name_mapping(PeerGroup, map={
-            "local_as": "asnum",
-        }),
     ]
 )
 
@@ -62,14 +68,13 @@ to_bgp_global_options = retort.get_loader(GlobalOptions)
 to_interface_changes = retort.get_loader(InterfaceChanges)
 
 
-def to_bgp_peer(local: PeerDTO, connected: PeerDTO, connected_device: Device, interface: Optional[str]) -> Peer:
+def to_bgp_peer(local: LocalDTO, connected: PeerDTO, connected_hostname: str, interface: Optional[str]) -> Peer:
     options = retort.load(local, PeerOptions)
-    # TODO validate `lagg_links` before conversion
     result = Peer(
         addr=str(ip_interface(connected.addr).ip),
         interface=interface,
         remote_as=ASN(connected.asnum),
-        hostname=connected_device.hostname,
+        hostname=connected_hostname,
         options=options,
     )
     # connected
@@ -78,7 +83,7 @@ def to_bgp_peer(local: PeerDTO, connected: PeerDTO, connected_device: Device, in
     result.description = getattr(connected, "description", result.description)
     result.families = getattr(connected, "families", result.families)
     # local
-    result.import_policy = getattr(connected, "import_policy", result.import_policy)
-    result.export_policy = getattr(connected, "export_policy", result.export_policy)
-    result.update_source = getattr(connected, "update_source", result.update_source)
+    result.import_policy = getattr(local, "import_policy", result.import_policy)
+    result.export_policy = getattr(local, "export_policy", result.export_policy)
+    result.update_source = getattr(local, "update_source", result.update_source)
     return result

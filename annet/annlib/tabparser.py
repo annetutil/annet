@@ -2,7 +2,7 @@ import dataclasses
 import itertools
 import re
 from collections import OrderedDict as odict
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Union, List
 
 from .types import Op
 
@@ -268,6 +268,93 @@ class OptixtransFormatter(CommonFormatter):
 
 
 class CiscoFormatter(BlockExitFormatter):
+    def __init__(self, indent="  "):
+        super().__init__("exit", indent)
+
+    def _split_indent(
+        self, line: str, indent: int, block_exit_strings: List[str]
+    ) -> Tuple[List[str], int]:
+        """
+        The small helper calculates indent shift based on block exit string.
+        If configuration line has non-default block exit string it means that
+        new subsection is started and indent should be increased.
+        If configuration line exists in list of block exit strings,
+        it means that subsection is finished and indent should be decreased
+
+        Args:
+            line: just configuration line
+            indent: current indent
+            block_exit_strings: list of previously seen block exit strings
+        Returns:
+            new indent and list of previously seen block exit strings
+        """
+
+        if line.strip() in block_exit_strings:
+            indent -= 1
+            block_exit_strings.remove(line.strip())
+            return block_exit_strings, indent
+
+        block_exit_wrapped = [
+            v for v in self.block_exit(FormatterContext(current=(line.strip(), {})))
+        ]
+
+        if not block_exit_wrapped or len(block_exit_wrapped) != 3:
+            return block_exit_strings, indent
+        if not isinstance(block_exit_wrapped[1], str):
+            return block_exit_strings, indent
+        if block_exit_wrapped[1] == self._block_exit:
+            return block_exit_strings, indent
+
+        indent += 1
+        block_exit_strings.append(block_exit_wrapped[1])
+        return block_exit_strings, indent
+
+    def split(self, text):
+        additional_indent = 0
+        block_exit_strings = [self._block_exit]
+        tree = self.split_remove_spaces(text)
+        for i, item in enumerate(tree):
+            block_exit_strings, new_indent = self._split_indent(
+                item, additional_indent, block_exit_strings
+            )
+            tree[i] = f"{' ' * additional_indent}{item}"
+            additional_indent = new_indent
+        return tree
+
+    def block_exit(self, context: Optional[FormatterContext]) -> str:
+        current = context and context.row or ""
+
+        if current.startswith(("address-family")):
+            yield from block_wrapper("exit-address-family")
+        else:
+            yield from super().block_exit(context)
+
+
+class NexusFormatter(BlockExitFormatter):
+    def __init__(self, indent="  "):
+        super().__init__("exit", indent)
+
+    def split(self, text):
+        return self.split_remove_spaces(text)
+
+
+class B4comFormatter(BlockExitFormatter):
+    def __init__(self, indent="  "):
+        super().__init__("exit", indent)
+
+    def split(self, text):
+        return self.split_remove_spaces(text)
+
+
+class ArubaFormatter(BlockExitFormatter):
+    def __init__(self, indent="  "):
+        super().__init__("exit", indent)
+
+    def split(self, text):
+        return self.split_remove_spaces(text)
+
+
+class AristaFormatter(BlockExitFormatter):
     def __init__(self, indent="  "):
         super().__init__("exit", indent)
 
@@ -647,16 +734,16 @@ def make_formatter(vendor, **kwargs):
     formatters = {
         "juniper": JuniperFormatter,
         "cisco": CiscoFormatter,
-        "nexus": CiscoFormatter,
+        "nexus": NexusFormatter,
         "huawei": HuaweiFormatter,
         "optixtrans": OptixtransFormatter,
-        "arista": CiscoFormatter,
+        "arista": AristaFormatter,
         "nokia": NokiaFormatter,
         "routeros": RosFormatter,
-        "aruba": CiscoFormatter,
+        "aruba": ArubaFormatter,
         "pc": CommonFormatter,
         "ribbon": RibbonFormatter,
-        "b4com": CiscoFormatter,
+        "b4com": B4comFormatter,
     }
     return formatters[vendor](**kwargs)
 

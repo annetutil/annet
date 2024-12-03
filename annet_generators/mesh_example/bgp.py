@@ -21,6 +21,7 @@ class Bgp(PartialGenerator):
         res = executor.execute_for(device)
         yield f"bgp {res.global_options.local_as}"
         for peer in res.peers:
+            yield f"   peer {peer.addr} interface {peer.interface}"
             if peer.group_name:
                 yield f"   peer {peer.addr} {peer.group_name}"
             if peer.remote_as is not None:

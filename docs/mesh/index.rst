@@ -11,13 +11,17 @@ To setup configuration you need create an instance of ``MeshRulesRegistry`` and 
 * ``.device`` handlers setup device global configuration
 * ``.direct`` handlers can be used to setup relation between directly connected devices
 * ``.indirect`` handlers can be used to setup configuration related to devices which do not have direct connection
+* ``.virtual`` handlers can be used to setup configuration related to outgoing connections, when the connected devices are out of our control. ``num`` parameter is used to run handler multiple times.
 
-The naming ``.indirect`` reflects the uses cases, it doesn't control to connection of devices: neither they are rechable or connected directly.
+The naming ``.indirect`` reflects the uses cases, it doesn't control to connection of devices: neither they are reachable or connected directly.
 
 .. code-block:: python
 
     from annet.mesh import (
-        MeshRulesRegistry, GlobalOptions, MeshSession, DirectPeer, IndirectPeer,
+        MeshRulesRegistry,
+        GlobalOptions, MeshSession,
+        DirectPeer, IndirectPeer,
+        VirtualLocal, VirtualPeer,
     )
 
     registry = MeshRulesRegistry()
@@ -31,6 +35,10 @@ The naming ``.indirect`` reflects the uses cases, it doesn't control to connecti
 
     @registry.indirect("{name:.*}.left.example.com", "{name:.*}.other.example.com")
     def baz(device: IndirectPeer, neighbor: IndirectPeer, session: MeshSession):
+        ...
+
+    @registry.virtual("{name:.*}.left.example.com", num=[1, 2, 3, 100])
+    def baz(device: VirtualLocal, neighbor: IndirectPeer, session: MeshSession):
         ...
 
 
@@ -91,12 +99,21 @@ Variables captured from hostname are available via ``.match`` attribute of ``Glo
 
     @registry.device("host-{num}.{domain:.*}")
     def foo(global_opts: GlobalOptions):
-        print(global_opts.match.num)
+        print(global_opts.match.num, global_opts.match.domain)
+
+For ``VirtualPeer`` objects you can access ``.num`` with single number from provided list.
+
+.. code-block:: python
+
+    @registry.virtual("host-{num}.{domain:.*}", num=range(2, 5))
+    def virtual_handler(device: VirtualLocal, peer: VirtualPeer, session: MeshSession):
+        print(device.match.num)  # matched from fqdn
+        print(peer.num)  # retrieved from range, will be 2,3 or 4
 
 Accessing device data
 ------------------------------
 
-Device instance is accessible via ``.device`` attribute of ``GlobalOptions``, ``DirectPeer`` and ``IndirectPeer`` objects.
+Device instance is accessible via ``.device`` attribute of ``GlobalOptions``, ``DirectPeer``, ``IndirectPeer`` and ``VirtualLocal`` objects.
 ``DirectPeer`` additionally has ``ports`` field with names of interfaces used for a connection between devices
 (the order is preserved for both sides)
 

@@ -43,7 +43,10 @@ if __name__ == "__main__":
             "file = annet.adapters.file.provider:Provider",
           ],
         },
-        python_requires=">=3.9",
+        extras_require={
+            "netbox": ["annetbox[sync]>=0.1.10"],
+        },
+        python_requires=">=3.10",
         install_requires=requirements(),
         include_package_data=True,
     )

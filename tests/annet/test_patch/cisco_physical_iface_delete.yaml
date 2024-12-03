@@ -9,8 +9,8 @@ patch: |
   conf t
   interface Ethernet1/2
     no description
+    no mtu
     shutdown
-    ip address
     exit
   exit
   copy running-config startup-config
