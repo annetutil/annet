@@ -122,7 +122,7 @@ class NetboxStorageV37(Storage):
         if self._all_fqdns is None:
             self._all_fqdns = [
                 d.name
-                for d in self.netbox.dcim_all_devices().results
+                for d in self.netbox.dcim_all_devices_brief().results
             ]
         return self._all_fqdns
 
