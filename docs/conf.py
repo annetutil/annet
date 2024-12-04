@@ -35,6 +35,8 @@ extensions = [
 autodoc_type_aliases: dict[str, str] = {
 }
 autodoc_typehints = 'description'
+smv_tag_whitelist = "$^"
+smv_branch_whitelist = "main"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
