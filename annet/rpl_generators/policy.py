@@ -122,7 +122,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 )
                 yield "if-match", "ipv6 address prefix-list", mangled_name
             return
-        if condition.field == "as_path_length":
+        if condition.field == MatchField.as_path_length:
             if condition.operator is ConditionOperator.EQ:
                 yield "if-match", "as-path length", condition.value
             elif condition.operator is ConditionOperator.LE:

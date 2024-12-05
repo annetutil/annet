@@ -7,7 +7,9 @@ from annet.rpl import RouteMap, SingleCondition, MatchField, ThenField, RoutingP
 from .entities import CommunityList, CommunityLogic, CommunityType
 
 
-def get_used_community_lists(communities: list[CommunityList], policies: list[RoutingPolicy]) -> list[CommunityList]:
+def get_used_community_lists(
+        communities: list[CommunityList], policies: list[RoutingPolicy],
+) -> list[CommunityList]:
     communities_dict = {c.name: c for c in communities}
     used_communities: set[str] = set()
     for policy in policies:
