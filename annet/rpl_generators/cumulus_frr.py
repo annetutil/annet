@@ -1,13 +1,14 @@
 from abc import abstractmethod, ABC
 from collections.abc import Sequence
 from ipaddress import ip_interface
-from typing import Any, Literal, Iterable, Iterator, Optional
+from typing import Any, Literal, Iterable, Iterator, Optional, cast
 
 from annet.generators import PartialGenerator
 from annet.rpl import (
     RouteMap, RoutingPolicy, PrefixMatchValue, SingleCondition, MatchField, RoutingPolicyStatement, ResultType,
-    SingleAction, ConditionOperator, ThenField,
+    SingleAction, ConditionOperator, ThenField, ActionType,
 )
+from annet.rpl.statement_builder import NextHopActionValue, AsPathActionValue
 from .entities import IpPrefixList, mangle_ranged_prefix_list_name, CommunityList, CommunityLogic, CommunityType
 from .prefix_lists import get_used_prefix_lists
 
@@ -21,9 +22,17 @@ FRR_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.metric: "metric {option_value}",
     MatchField.protocol: "source-protocol {option_value}",
     MatchField.interface: "interface {option_value}",
-    # unsupported:
-    # as_path_length
-    # rd
+    # unsupported: as_path_length
+    # unsupported: rd
+}
+FRR_THEN_COMMAND_MAP: dict[str, str] = {
+    ThenField.local_pref: "local-preference {option_value}",
+    ThenField.metric_type: "metric-type {option_value}",
+    ThenField.origin: "origin {option_value}",
+    ThenField.tag: "tag {option_value}",
+    # unsupported: resolution
+    # unsupported: rpki_valid_state
+    # unsupported: mpls-label
 }
 
 
@@ -254,10 +263,10 @@ class CumulusPolicyGenerator(PartialGenerator, ABC):
             return
         if condition.operator is not ConditionOperator.EQ:
             raise NotImplementedError(
-                f"`{condition.field}` with operator {condition.operator} is not supported for huawei",
+                f"`{condition.field}` with operator {condition.operator} is not supported for Cumulus",
             )
         if condition.field not in FRR_MATCH_COMMAND_MAP:
-            raise NotImplementedError(f"Match using `{condition.field}` is not supported for huawei")
+            raise NotImplementedError(f"Match using `{condition.field}` is not supported for Cumulus")
         cmd = FRR_MATCH_COMMAND_MAP[condition.field]
         yield "match", cmd.format(option_value=condition.value)
 
@@ -266,7 +275,63 @@ class CumulusPolicyGenerator(PartialGenerator, ABC):
             device: Any,
             action: SingleAction[Any],
     ) -> Iterator[Sequence[str]]:
-        pass
+        if action.field == ThenField.community:
+            ...  # TODO
+        if action.field == ThenField.large_community:
+            ...  # TODO
+        if action.field == ThenField.extcommunity_rt:
+            ...  # TODO
+        if action.field == ThenField.extcommunity_soo:
+            ...  # TODO
+        if action.field == ThenField.metric:
+            if action.type is ActionType.ADD:
+                yield "set", f"metric +{action.value}"
+            if action.type is ActionType.REMOVE:
+                yield "set", f"metric -{action.value}"
+            elif action.type is ActionType.SET:
+                yield "set", f"metric {action.value}"
+            else:
+                raise NotImplementedError(f"Action type {action.type} for metric is not supported for huawei")
+            return
+        if action.field == ThenField.as_path:
+            as_path_action_value = cast(AsPathActionValue, action.value)
+            if as_path_action_value.prepend:
+                for path_item in as_path_action_value.prepend:
+                    yield "set as-path prepend", path_item
+            if as_path_action_value.expand:  # same as prepend?
+                for path_item in as_path_action_value.expand:
+                    yield "set as-path prepend", path_item
+            if as_path_action_value.delete:
+                for path_item in as_path_action_value.delete:
+                    yield "set as-path exclude", path_item
+            if as_path_action_value.set is not None:
+                raise NotImplementedError("asp_path.set is not supported for Cumulus")
+            if as_path_action_value.expand_last_as:
+                raise NotImplementedError("asp_path.expand_last_as is not supported for Cumulus")
+            return
+        if action.field == ThenField.next_hop:
+            next_hop_action_value = cast(NextHopActionValue, action.value)
+            if next_hop_action_value.target == "self":
+                yield "set", "metric 1"
+            elif next_hop_action_value.target == "discard":
+                pass
+            elif next_hop_action_value.target == "peer":
+                pass
+            elif next_hop_action_value.target == "ipv4_addr":
+                yield "set", f"ip next-hop {next_hop_action_value.addr}"
+            elif next_hop_action_value.target == "ipv6_addr":
+                yield "set", f"ipv6 next-hop {next_hop_action_value.addr}"
+            elif next_hop_action_value.target == "mapped_ipv4":
+                yield "set", "ipv6 next-hop ::FFFF:{next_hop_action_value.addr}"
+            else:
+                raise NotImplementedError(f"Next_hop target {next_hop_action_value.target} is not supported for Cumulus")
+
+        if action.type is not ActionType.SET:
+            raise NotImplementedError(f"Action type {action.type} for `{action.field}` is not supported for Cumulus")
+        if action.field not in FRR_THEN_COMMAND_MAP:
+            raise NotImplementedError(f"Then action using `{action.field}` is not supported for Cumulus")
+        cmd = FRR_THEN_COMMAND_MAP[action.field]
+        yield "set", cmd.format(option_value=action.value)
 
     def _cumulus_policy_statement(
             self,

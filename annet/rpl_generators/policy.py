@@ -19,7 +19,6 @@ HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
 }
 
 HUAWEI_THEN_COMMAND_MAP: dict[str, str] = {
-    ThenField.metric: "cost {option_value}",
     ThenField.local_pref: "local-preference {option_value}",
     ThenField.metric_type: "cost-type {option_value}",
     ThenField.mpls_label: "mpls-label",
