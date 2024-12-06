@@ -8,7 +8,7 @@ from annet.rpl import (
     RouteMap, RoutingPolicy, PrefixMatchValue, SingleCondition, MatchField, RoutingPolicyStatement, ResultType,
     SingleAction, ConditionOperator, ThenField, ActionType,
 )
-from annet.rpl.statement_builder import NextHopActionValue, AsPathActionValue
+from annet.rpl.statement_builder import NextHopActionValue, AsPathActionValue, CommunityActionValue
 from .entities import IpPrefixList, mangle_ranged_prefix_list_name, CommunityList, CommunityLogic, CommunityType
 from .prefix_lists import get_used_prefix_lists
 
@@ -55,9 +55,13 @@ class CumulusPolicyGenerator(PartialGenerator, ABC):
 
     def generate_cumulus_rpl(self, device: Any) -> Sequence[Sequence[[str]]]:
         policies = self.get_routemap().apply(device)
-        yield from self._cumulus_communities(device, policies)
+        communities = {c.name: c for c in self._get_used_community_lists(
+            communities=self.get_community_lists(device),
+            policies=policies,
+        )}
+        yield from self._cumulus_communities(device, communities, policies)
         yield from self._cumulus_prefix_lists(device, policies)
-        yield from self._cumulus_policy_config(device, policies)
+        yield from self._cumulus_policy_config(device, communities, policies)
 
     def _cumulus_prefix_list(
             self,
@@ -171,14 +175,15 @@ class CumulusPolicyGenerator(PartialGenerator, ABC):
             communities_dict[name] for name in used_communities
         ]
 
-    def _cumulus_communities(self, device: Any, policies: list[RoutingPolicy]) -> Iterable[Sequence[str]]:
+    def _cumulus_communities(
+            self,
+            device: Any,
+            communities: dict[str, CommunityList],
+            policies: list[RoutingPolicy],
+    ) -> Iterable[Sequence[str]]:
         """ BGP community-lists section configuration """
-        communities = self._get_used_community_lists(
-            communities=self.get_community_lists(device),
-            policies=policies,
-        )
 
-        for clist in communities:
+        for clist in communities.values():
             if clist.type is CommunityType.BASIC:
                 member_prefix = ""
                 cmd = "bgp community-list"
@@ -270,19 +275,100 @@ class CumulusPolicyGenerator(PartialGenerator, ABC):
         cmd = FRR_MATCH_COMMAND_MAP[condition.field]
         yield "match", cmd.format(option_value=condition.value)
 
+    def _cumulus_then_community(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.replaced is not None:
+            if not action.value.replaced:
+                yield "set", "community", "none"
+            first = True
+            for community_name in action.value.replaced:
+                if first:
+                    yield "set", "community", community_name
+                    first = False
+                else:
+                    yield "set", "community", community_name, "additive"
+        for community_name in action.value.added:
+            yield "set", "community", community_name, "additive"
+        for community_name in action.value.removed:
+            yield "set comm-list", community_name, "delete"
+
+    def _cumulus_then_large_community(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.replaced is not None:
+            raise NotImplementedError("Replacing Large community is not supported for Cumulus")
+        for community_name in action.value.added:
+            yield "set", "large-community", community_name, "additive"
+        for community_name in action.value.removed:
+            raise NotImplementedError("Large-community remove is not supported for Cumulus")
+
+    def _cumulus_then_rt_community(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.replaced is not None:
+            raise NotImplementedError("Replacing RT extcommunity is not supported for Cumulus")
+        for community_name in action.value.added:
+            yield "set", "extcommunity rt", community_name, "additive"
+        for community_name in action.value.removed:
+            raise NotImplementedError("RT extcommunity remove is not supported for Cumulus")
+
+    def _cumulus_then_soo_community(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.replaced is not None:
+            raise NotImplementedError("Replacing SOO extcommunity is not supported for Cumulus")
+        for community_name in action.value.added:
+            yield "set", "extcommunity soo", community_name, "additive"
+        for community_name in action.value.removed:
+            raise NotImplementedError("SOO extcommunity remove is not supported for Cumulus")
+
     def _cumulus_policy_then(
             self,
+            communities: dict[str, CommunityList],
             device: Any,
             action: SingleAction[Any],
     ) -> Iterator[Sequence[str]]:
         if action.field == ThenField.community:
-            ...  # TODO
+            yield from self._cumulus_then_community(
+                communities,
+                device,
+                cast(SingleAction[CommunityActionValue], action),
+            )
+            return
         if action.field == ThenField.large_community:
-            ...  # TODO
+            yield from self._cumulus_then_large_community(
+                communities,
+                device,
+                cast(SingleAction[CommunityActionValue], action),
+            )
+            return
         if action.field == ThenField.extcommunity_rt:
-            ...  # TODO
+            yield from self._cumulus_then_rt_community(
+                communities,
+                device,
+                cast(SingleAction[CommunityActionValue], action),
+            )
+            return
         if action.field == ThenField.extcommunity_soo:
-            ...  # TODO
+            yield from self._cumulus_then_soo_community(
+                communities,
+                device,
+                cast(SingleAction[CommunityActionValue], action),
+            )
+            return
         if action.field == ThenField.metric:
             if action.type is ActionType.ADD:
                 yield "set", f"metric +{action.value}"
@@ -324,7 +410,8 @@ class CumulusPolicyGenerator(PartialGenerator, ABC):
             elif next_hop_action_value.target == "mapped_ipv4":
                 yield "set", "ipv6 next-hop ::FFFF:{next_hop_action_value.addr}"
             else:
-                raise NotImplementedError(f"Next_hop target {next_hop_action_value.target} is not supported for Cumulus")
+                raise NotImplementedError(
+                    f"Next_hop target {next_hop_action_value.target} is not supported for Cumulus")
 
         if action.type is not ActionType.SET:
             raise NotImplementedError(f"Action type {action.type} for `{action.field}` is not supported for Cumulus")
@@ -335,6 +422,7 @@ class CumulusPolicyGenerator(PartialGenerator, ABC):
 
     def _cumulus_policy_statement(
             self,
+            communities: dict[str, CommunityList],
             device: Any,
             policy: RoutingPolicy,
             statement: RoutingPolicyStatement,
@@ -351,12 +439,17 @@ class CumulusPolicyGenerator(PartialGenerator, ABC):
             for condition in statement.match:
                 yield from self._cumulus_policy_match(device, condition)
             for action in statement.then:
-                yield from self._cumulus_policy_then(device, action)
+                yield from self._cumulus_policy_then(communities, device, action)
             if statement.result is ResultType.NEXT:
                 yield "on-match next"
         yield "!"
 
-    def _cumulus_policy_config(self, device: Any, policies: list[RoutingPolicy]) -> Iterable[Sequence[str]]:
+    def _cumulus_policy_config(
+            self,
+            device: Any,
+            communities: dict[str, CommunityList],
+            policies: list[RoutingPolicy],
+    ) -> Iterable[Sequence[str]]:
         """ Route maps configuration """
 
         for policy in policies:
@@ -366,5 +459,5 @@ class CumulusPolicyGenerator(PartialGenerator, ABC):
                     raise RuntimeError(
                         f"Multiple statements have same number {statement.number} for policy `{policy.name}`: "
                         f"`{statement.name}` and `{applied_stmts[statement.number]}`")
-                yield from self._cumulus_policy_statement(device, policy, statement)
+                yield from self._cumulus_policy_statement(communities, device, policy, statement)
                 applied_stmts[statement.number] = statement.name
