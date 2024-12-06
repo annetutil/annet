@@ -45,7 +45,7 @@ class IpPrefixList:
     members: Sequence[str]
 
 
-def mangle_huawei_prefix_list_name(name: str, greater_equal: Optional[int], less_equal: Optional[int]) -> str:
+def mangle_ranged_prefix_list_name(name: str, greater_equal: Optional[int], less_equal: Optional[int]) -> str:
     if greater_equal is less_equal is None:
         return name
     if greater_equal is None:
