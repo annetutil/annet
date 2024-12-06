@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from ipaddress import ip_interface
 from typing import Any, Literal, Iterable, Iterator, Optional, cast
 
-from annet.generators import PartialGenerator
+from annet.generators import PartialGenerator, Entire
 from annet.rpl import (
     RouteMap, RoutingPolicy, PrefixMatchValue, SingleCondition, MatchField, RoutingPolicyStatement, ResultType,
     SingleAction, ConditionOperator, ThenField, ActionType,
@@ -35,12 +35,14 @@ FRR_THEN_COMMAND_MAP: dict[str, str] = {
     # unsupported: mpls-label
 }
 
+FRR_INDENT = " "
+
 
 def mangle_united_community_list_name(values: Sequence[str]) -> str:
     return "_OR_".join(values)
 
 
-class CumulusPolicyGenerator(PartialGenerator, ABC):
+class CumulusPolicyGenerator(Entire, ABC):
     @abstractmethod
     def get_routemap(self) -> RouteMap:
         raise NotImplementedError()
@@ -237,17 +239,19 @@ class CumulusPolicyGenerator(PartialGenerator, ABC):
         if condition.field == MatchField.community:
             for comm_name in self._get_match_community_names(condition):
                 yield "match community", comm_name
-
+            return
         if condition.field == MatchField.large_community:
             for comm_name in self._get_match_community_names(condition):
                 yield "match large-community-list", comm_name
+            return
         if condition.field == MatchField.extcommunity_rt:
             for comm_name in self._get_match_community_names(condition):
                 yield "match extcommunity", comm_name
+            return
         if condition.field == MatchField.extcommunity_soo:
             for comm_name in self._get_match_community_names(condition):
                 yield "match extcommunity", comm_name
-
+            return
         if condition.field == MatchField.ip_prefix:
             for name in condition.value.names:
                 mangled_name = mangle_ranged_prefix_list_name(
@@ -372,12 +376,12 @@ class CumulusPolicyGenerator(PartialGenerator, ABC):
         if action.field == ThenField.metric:
             if action.type is ActionType.ADD:
                 yield "set", f"metric +{action.value}"
-            if action.type is ActionType.REMOVE:
+            elif action.type is ActionType.REMOVE:
                 yield "set", f"metric -{action.value}"
             elif action.type is ActionType.SET:
                 yield "set", f"metric {action.value}"
             else:
-                raise NotImplementedError(f"Action type {action.type} for metric is not supported for huawei")
+                raise NotImplementedError(f"Action type {action.type} for metric is not supported for Cumulus")
             return
         if action.field == ThenField.as_path:
             as_path_action_value = cast(AsPathActionValue, action.value)
@@ -412,6 +416,7 @@ class CumulusPolicyGenerator(PartialGenerator, ABC):
             else:
                 raise NotImplementedError(
                     f"Next_hop target {next_hop_action_value.target} is not supported for Cumulus")
+            return
 
         if action.type is not ActionType.SET:
             raise NotImplementedError(f"Action type {action.type} for `{action.field}` is not supported for Cumulus")
@@ -429,19 +434,16 @@ class CumulusPolicyGenerator(PartialGenerator, ABC):
     ) -> Iterable[Sequence[str]]:
         if statement.number is None:
             raise RuntimeError(f"Statement number should not be empty on Cumulus (found for policy: {policy.name})")
-        with self.block(
-                "route-map",
-                policy.name,
-                FRR_RESULT_MAP[statement.result],
-                statement.number,
-                indent=" ",
-        ):
-            for condition in statement.match:
-                yield from self._cumulus_policy_match(device, condition)
-            for action in statement.then:
-                yield from self._cumulus_policy_then(communities, device, action)
-            if statement.result is ResultType.NEXT:
-                yield "on-match next"
+        yield "route-map", policy.name, FRR_RESULT_MAP[statement.result], statement.number
+
+        for condition in statement.match:
+            for row in self._cumulus_policy_match(device, condition):
+                yield FRR_INDENT, *row
+        for action in statement.then:
+            for row in self._cumulus_policy_then(communities, device, action):
+                yield FRR_INDENT, *row
+        if statement.result is ResultType.NEXT:
+            yield FRR_INDENT, "on-match next"
         yield "!"
 
     def _cumulus_policy_config(
