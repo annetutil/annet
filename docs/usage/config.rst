@@ -17,7 +17,7 @@ Config example:
 
     storage:
       default:
-        adapter: annet.adapters.file.provider
+        adapter: file
         params:
           path: /path/to/file
 
@@ -45,7 +45,7 @@ See :ref:`generator reference`.
         - /path/to/my_annet_generators/__init__.py
         - my_annet_generators  # relative import from sys.path
 
-storages
+Storages
 ************************
 
 Storages provide information about devices like FQDN, interface and so on.
@@ -53,7 +53,7 @@ Storages provide information about devices like FQDN, interface and so on.
 Netbox storage
 ----------------------
 
-Uses netbox as storage.
+Uses `NetBox <https://netboxlabs.com/docs/netbox/en/stable/>`_ as storage.
 
 .. code-block:: yaml
 
@@ -63,9 +63,11 @@ Uses netbox as storage.
         params:
           url: http://127.0.0.1:8000
           token: 1234567890abcdef01234567890abcdef0123456
+          insecure: true # skip SSL verification
+          exact_host_filter: true # for setup where hostname used instead of fqdn
 
 
-URL and token may be provided using ``NETBOX_URL`` and ``NETBOX_TOKEN`` environment variable.
+URL and token may be provided using ``NETBOX_URL``, ``NETBOX_TOKEN``, ``NETBOX_EXACT_HOST_FILTER`` and ``NETBOX_INSECURE`` environment variable.
 
 .. code-block:: shell
 
@@ -75,16 +77,18 @@ URL and token may be provided using ``NETBOX_URL`` and ``NETBOX_TOKEN`` environm
 File storage
 ----------------------
 
+Uses local file as storage.
+
 .. code-block:: yaml
 
     storage:
       default:
-        adapter: annet.adapters.file.provider
+        adapter: file
         params:
           path: /path/to/file
 
 
-cat /path/to/file:
+``cat /path/to/file``:
 
 .. code-block:: yaml
 
