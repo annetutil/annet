@@ -156,12 +156,47 @@ Creating entities
 
 There are several entities that should be created separately:
 
-* Prefix lists
-* Communities
-* AS-Path filters
+* Prefix lists (``annet.rpl_generators.IpPrefixList``)
+* Communities (``annet.rpl_generators.CommunityList``)
+* AS-Path filters (``annet.rpl_generators.AsPathFilter``)
+* RD filters (``annet.rpl_generators.RDFilter``)
 
-Running generator
+They are used by rpl related generators (see below) and referenced by name in RPL rules.
+
+Running generators
 *************************
 
 Currently there is only en example of policy generator, but it will be improved soon.
 
+To apply RPL to a device you need to setup generators.
+Instead of writing policy and entity generators from scratch you can customize exising.
+
+
+1. Import generator and entity type
+
+.. code-block:: python
+
+    from annet.rpl_generators import RDFilterFilterGenerator, RDFilter
+
+
+2. Inherit and override abstract methods:
+
+.. code-block:: python
+
+    class MyRDGenerator(RDFilterFilterGenerator):
+        def get_routemap(self) -> RouteMap:
+            return routemap  # you route map used in RPLs
+
+        def get_rd_filters(self, device: Any) -> list[RDFilter]:
+            return RD_FILTERS  # you RDFilter instances
+
+3. Repeat for other generators:
+
+   * ``AsPathFilterGenerator``
+   * ``CommunityListGenerator``
+   * ``PrefixListFilterGenerator``
+   * ``RoutingPolicyGenerator``
+
+Each of them has its own set of abstractmethods which need to be implemented.
+
+4. Implement you ``get_generators`` logic

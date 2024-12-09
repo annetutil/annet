@@ -5,18 +5,21 @@ from .match_args import MatchExpr, PairMatcher, SingleMatcher
 from .match_args import MatchedArgs
 from .device_models import GlobalOptionsDTO
 from .peer_models import MeshSession, IndirectPeerDTO, VirtualLocalDTO, VirtualPeerDTO, DirectPeerDTO
+from .port_processor import PortProcessor, united_ports
 
 
 class DirectPeer(DirectPeerDTO):
     match: MatchedArgs
     device: Any
     ports: list[str]
+    all_connected_ports: list[str]
 
-    def __init__(self, match: MatchedArgs, device: Any, ports: list[str]) -> None:
+    def __init__(self, match: MatchedArgs, device: Any, ports: list[str], all_connected_ports: list[str]) -> None:
         super().__init__()
         self.match = match
         self.device = device
         self.ports = ports
+        self.all_connected_ports = all_connected_ports
 
 
 class IndirectPeer(IndirectPeerDTO):
@@ -69,9 +72,10 @@ VirtualHandler = Callable[[VirtualLocal, VirtualPeer, MeshSession], None]
 
 @dataclass
 class DirectRule:
-    __slots__ = ("matcher", "handler")
+    __slots__ = ("matcher", "handler", "port_processor")
     matcher: PairMatcher
     handler: DirectHandler
+    port_processor: PortProcessor
 
 
 @dataclass
@@ -98,8 +102,9 @@ class MatchedGlobal:
 
 @dataclass
 class MatchedDirectPair:
-    __slots__ = ("handler", "direct_order", "name_left", "name_right", "match_left", "match_right")
+    __slots__ = ("handler", "port_processor", "direct_order", "name_left", "name_right", "match_left", "match_right")
     handler: DirectHandler
+    port_processor: PortProcessor
     direct_order: bool
     name_left: str
     name_right: str
@@ -154,11 +159,12 @@ class MeshRulesRegistry:
 
     def direct(
             self, left_mask: str, right_mask: str, *match: MatchExpr,
+            port_processor: PortProcessor = united_ports,
     ) -> Callable[[DirectHandler], DirectHandler]:
         matcher = PairMatcher(left_mask, right_mask, match)
 
         def register(handler: DirectHandler) -> DirectHandler:
-            self.direct_rules.append(DirectRule(matcher, handler))
+            self.direct_rules.append(DirectRule(matcher, handler, port_processor))
             return handler
 
         return register
@@ -194,6 +200,7 @@ class MeshRulesRegistry:
                 if args := rule.matcher.match_pair(device, neighbor):
                     found.append(MatchedDirectPair(
                         handler=rule.handler,
+                        port_processor=rule.port_processor,
                         direct_order=True,
                         name_left=device,
                         name_right=neighbor,
@@ -203,6 +210,7 @@ class MeshRulesRegistry:
                 if args := rule.matcher.match_pair(neighbor, device):
                     found.append(MatchedDirectPair(
                         handler=rule.handler,
+                        port_processor=rule.port_processor,
                         direct_order=False,
                         name_left=neighbor,
                         name_right=device,

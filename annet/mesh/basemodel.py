@@ -60,6 +60,11 @@ class Concat(Merger):
         return x + y  # type: ignore[operator]
 
 
+class Unite(Merger):
+    def _merge(self, name: str, x: T, y: T) -> T:
+        return x | y  # type: ignore[operator]
+
+
 class Merge(Merger):
     def _merge(self, name: str, x: "ModelT", y: "ModelT") -> "ModelT":  # type: ignore[override]
         return merge(x, y)

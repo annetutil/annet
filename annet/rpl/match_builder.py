@@ -7,7 +7,9 @@ from .condition import SingleCondition, ConditionOperator, AndCondition
 
 class MatchField(str, Enum):
     community = "community"
-    extcommunity = "extcommunity"
+    large_community = "large_community"
+    extcommunity_rt = "extcommunity_rt"
+    extcommunity_soo = "extcommunity_soo"
     rd = "rd"
     interface = "interface"
     protocol = "protocol"
@@ -63,14 +65,17 @@ class SetConditionFactory(Generic[ValueT]):
 
 @dataclass(frozen=True)
 class PrefixMatchValue:
-    names: Sequence[str]
-    or_longer: Optional[tuple[int, int]]  # ????
+    names: tuple[str, ...]
+    greater_equal: Optional[int]
+    less_equal: Optional[int]
 
 
 class Checkable:
     def __init__(self):
         self.community = SetConditionFactory[str](MatchField.community)
-        self.extcommunity = SetConditionFactory[str](MatchField.extcommunity)
+        self.large_community = SetConditionFactory[str](MatchField.large_community)
+        self.extcommunity_rt = SetConditionFactory[str](MatchField.extcommunity_rt)
+        self.extcommunity_soo = SetConditionFactory[str](MatchField.extcommunity_soo)
         self.rd = SetConditionFactory[str](MatchField.rd)
         self.interface = ConditionFactory[str](MatchField.interface, ["=="])
         self.protocol = ConditionFactory[str](MatchField.protocol, ["=="])
@@ -83,11 +88,27 @@ class Checkable:
     def as_path_filter(self, name: str) -> SingleCondition[str]:
         return SingleCondition(MatchField.as_path_filter, ConditionOperator.EQ, name)
 
-    def match_v6(self, *names: str, or_longer: Optional[tuple[int, int]] = None) -> SingleCondition[PrefixMatchValue]:
-        return SingleCondition(MatchField.ipv6_prefix, ConditionOperator.CUSTOM, PrefixMatchValue(names, or_longer))
+    def match_v6(
+            self,
+            *names: str,
+            or_longer: tuple[Optional[int], Optional[int]] = (None, None),
+    ) -> SingleCondition[PrefixMatchValue]:
+        return SingleCondition(
+            MatchField.ipv6_prefix,
+            ConditionOperator.CUSTOM,
+            PrefixMatchValue(names, greater_equal=or_longer[0], less_equal=or_longer[1]),
+        )
 
-    def match_v4(self, *names: str, or_longer: Optional[tuple[int, int]] = None) -> SingleCondition[PrefixMatchValue]:
-        return SingleCondition(MatchField.ip_prefix, ConditionOperator.CUSTOM, PrefixMatchValue(names, or_longer))
+    def match_v4(
+            self,
+            *names: str,
+            or_longer: tuple[Optional[int], Optional[int]] = (None, None),
+    ) -> SingleCondition[PrefixMatchValue]:
+        return SingleCondition(
+            MatchField.ip_prefix,
+            ConditionOperator.CUSTOM,
+            PrefixMatchValue(names, greater_equal=or_longer[0], less_equal=or_longer[1]),
+        )
 
 
 def merge_conditions(and_condition: AndCondition) -> AndCondition:
