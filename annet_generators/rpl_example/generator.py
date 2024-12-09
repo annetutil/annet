@@ -54,6 +54,7 @@ class PrefixListGenerator(PrefixListFilterGenerator):
     def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
         return PREFIX_LISTS
 
+
 FRR_HEADER = """\
 !!! This file is auto-generated
 !
@@ -61,7 +62,6 @@ frr defaults datacenter
 log syslog informational
 log timestamp precision 6
 service integrated-vtysh-config"""
-
 
 
 class FrrGenerator(CumulusPolicyGenerator):
@@ -74,7 +74,6 @@ class FrrGenerator(CumulusPolicyGenerator):
     def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
         return PREFIX_LISTS
 
-
     def path(self, device):
         if device.hw.PC.Mellanox or device.hw.PC.NVIDIA:
             return "/etc/frr/frr.conf"
@@ -83,6 +82,7 @@ class FrrGenerator(CumulusPolicyGenerator):
         yield FRR_HEADER
         yield from self.generate_cumulus_rpl(device)
         yield "line vty"
+
 
 def get_generators(store: Storage) -> list[BaseGenerator]:
     return [

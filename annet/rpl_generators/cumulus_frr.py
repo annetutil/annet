@@ -55,7 +55,7 @@ class CumulusPolicyGenerator(Entire, ABC):
     def get_community_lists(self, device: Any) -> list[CommunityList]:
         raise NotImplementedError()
 
-    def generate_cumulus_rpl(self, device: Any) -> Sequence[Sequence[[str]]]:
+    def generate_cumulus_rpl(self, device: Any) -> Iterator[Sequence[str]]:
         policies = self.get_routemap().apply(device)
         communities = {c.name: c for c in self._get_used_community_lists(
             communities=self.get_community_lists(device),
@@ -154,7 +154,7 @@ class CumulusPolicyGenerator(Entire, ABC):
                                     f"Cannot use community list with AND logic for HAS_ANY rule, "
                                     f"found for policy: `{policy.name}`, statement: {statement.name}"
                                 )
-                            members = set()
+                            members: set[str] = set()
                             for clist in united_communities:
                                 members.update(clist.members)
                             communities_dict[united_name] = CommunityList(
@@ -218,7 +218,7 @@ class CumulusPolicyGenerator(Entire, ABC):
                     "expanded",
                     clist.name,
                     "permit",
-                    member_prefix, ",".join(f"\"{m}\"" for m in clist.members),
+                    member_prefix, ",".join(f'"{m}"' for m in clist.members),
                 )
             else:
                 yield (
@@ -441,9 +441,7 @@ class CumulusPolicyGenerator(Entire, ABC):
             policy: RoutingPolicy,
             statement: RoutingPolicyStatement,
     ) -> Iterable[Sequence[str]]:
-        if statement.number is None:
-            raise RuntimeError(f"Statement number should not be empty on Cumulus (found for policy: {policy.name})")
-        yield "route-map", policy.name, FRR_RESULT_MAP[statement.result], statement.number
+        yield "route-map", policy.name, FRR_RESULT_MAP[statement.result], str(statement.number)
 
         for condition in statement.match:
             for row in self._cumulus_policy_match(device, condition):
@@ -464,8 +462,13 @@ class CumulusPolicyGenerator(Entire, ABC):
         """ Route maps configuration """
 
         for policy in policies:
-            applied_stmts: dict[Optional[int], str] = {}
+            applied_stmts: dict[int, Optional[str]] = {}
             for statement in policy.statements:
+                if statement.number is None:
+                    raise RuntimeError(
+                        f"Statement number should not be empty on Cumulus (found for policy: {policy.name})"
+                    )
+
                 if statement.number in applied_stmts:
                     raise RuntimeError(
                         f"Multiple statements have same number {statement.number} for policy `{policy.name}`: "
