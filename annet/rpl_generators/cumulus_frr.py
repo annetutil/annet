@@ -295,13 +295,17 @@ class CumulusPolicyGenerator(Entire, ABC):
                 yield "set", "community", "none"
             first = True
             for community_name in action.value.replaced:
-                if first:
-                    yield "set", "community", community_name
-                    first = False
-                else:
-                    yield "set", "community", community_name, "additive"
+                comminity = communities[community_name]
+                for comm_member in comminity.members:
+                    if first:
+                        yield "set", "community", comm_member
+                        first = False
+                    else:
+                        yield "set", "community", comm_member, "additive"
         for community_name in action.value.added:
-            yield "set", "community", community_name, "additive"
+            comminity = communities[community_name]
+            for comm_member in comminity.members:
+                yield "set", "community", comm_member, "additive"
         for community_name in action.value.removed:
             yield "set comm-list", community_name, "delete"
 
