@@ -24,7 +24,7 @@ class RDFilterFilterGenerator(PartialGenerator, ABC):
             for statement in policy.statements:
                 for condition in statement.match.find_all(MatchField.rd):
                     used_filters.update(condition.value)
-        return [filters[name] for name in used_filters]
+        return [filters[name] for name in sorted(used_filters)]
 
     def acl_huawei(self, _):
         return r"""

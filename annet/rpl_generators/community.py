@@ -3,8 +3,36 @@ from collections.abc import Sequence
 from typing import Any
 
 from annet.generators import PartialGenerator
-from annet.rpl import RouteMap, SingleCondition, MatchField, ThenField
+from annet.rpl import RouteMap, SingleCondition, MatchField, ThenField, RoutingPolicy
 from .entities import CommunityList, CommunityLogic, CommunityType
+
+
+def get_used_community_lists(
+        communities: list[CommunityList], policies: list[RoutingPolicy],
+) -> list[CommunityList]:
+    communities_dict = {c.name: c for c in communities}
+    used_communities: set[str] = set()
+    for policy in policies:
+        for statement in policy.statements:
+            condition: SingleCondition[Sequence[str]]
+            for match_field in (
+                    MatchField.community, MatchField.large_community,
+                    MatchField.extcommunity_rt, MatchField.extcommunity_soo
+            ):
+                for condition in statement.match.find_all(match_field):
+                    used_communities.update(condition.value)
+            for then_field in (
+                    ThenField.community, ThenField.large_community,
+                    ThenField.extcommunity_rt, ThenField.extcommunity_soo
+            ):
+                for action in statement.then.find_all(then_field):
+                    if action.value.replaced is not None:
+                        used_communities.update(action.value.replaced)
+                    used_communities.update(action.value.added)
+                    used_communities.update(action.value.removed)
+    return [
+        communities_dict[name] for name in sorted(used_communities)
+    ]
 
 
 class CommunityListGenerator(PartialGenerator, ABC):
@@ -19,31 +47,10 @@ class CommunityListGenerator(PartialGenerator, ABC):
         raise NotImplementedError()
 
     def get_used_community_lists(self, device: Any) -> list[CommunityList]:
-        communities = {c.name: c for c in self.get_community_lists(device)}
-        policies = self.get_routemap().apply(device)
-
-        used_communities: set[str] = set()
-        for policy in policies:
-            for statement in policy.statements:
-                condition: SingleCondition[Sequence[str]]
-                for match_field in (
-                        MatchField.community, MatchField.large_community,
-                        MatchField.extcommunity_rt, MatchField.extcommunity_soo
-                ):
-                    for condition in statement.match.find_all(match_field):
-                        used_communities.update(condition.value)
-                for then_field in (
-                    ThenField.community, ThenField.large_community,
-                    ThenField.extcommunity_rt, ThenField.extcommunity_soo
-                ):
-                    for action in statement.then.find_all(then_field):
-                        if action.value.replaced is not None:
-                            used_communities.update(action.value.replaced)
-                        used_communities.update(action.value.added)
-                        used_communities.update(action.value.removed)
-        return [
-            communities[name] for name in used_communities
-        ]
+        return get_used_community_lists(
+            communities=self.get_community_lists(device),
+            policies=self.get_routemap().apply(device),
+        )
 
     def acl_huawei(self, _):
         return r"""
