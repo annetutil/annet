@@ -17,7 +17,7 @@ def get_used_prefix_lists(prefix_lists: Sequence[IpPrefixList], policies: list[R
                 used_names.update(condition.value.names)
             for condition in statement.match.find_all(MatchField.ip_prefix):
                 used_names.update(condition.value.names)
-    return [plist_map[name] for name in used_names]
+    return [plist_map[name] for name in sorted(used_names)]
 
 
 class PrefixListFilterGenerator(PartialGenerator, ABC):
@@ -59,9 +59,9 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                 str(addr_mask.ip).upper(),
                 str(addr_mask.hostmask.max_prefixlen),
             ) + (
-                ("less-equal", str(match.less_equal)) if match.less_equal is not None else ()
-            ) + (
                 ("greater-equal", str(match.greater_equal)) if match.greater_equal is not None else ()
+            ) + (
+                ("less-equal", str(match.less_equal)) if match.less_equal is not None else ()
             )
 
     def run_huawei(self, device: Any):

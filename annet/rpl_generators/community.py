@@ -31,7 +31,7 @@ def get_used_community_lists(
                     used_communities.update(action.value.added)
                     used_communities.update(action.value.removed)
     return [
-        communities_dict[name] for name in used_communities
+        communities_dict[name] for name in sorted(used_communities)
     ]
 
 

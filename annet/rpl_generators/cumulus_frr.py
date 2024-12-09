@@ -81,9 +81,9 @@ class CumulusPolicyGenerator(Entire, ABC):
                 f"index {i * 10}",
                 "permit", f"{addr_mask.ip}/{addr_mask.hostmask.max_prefixlen}",
             ) + (
-                ("le", str(match.less_equal)) if match.less_equal is not None else ()
-            ) + (
                 ("ge", str(match.greater_equal)) if match.greater_equal is not None else ()
+            ) + (
+                ("le", str(match.less_equal)) if match.less_equal is not None else ()
             )
 
     def _cumulus_prefix_lists(self, device: Any, policies: list[RoutingPolicy]) -> Iterable[Sequence[str]]:
@@ -91,6 +91,9 @@ class CumulusPolicyGenerator(Entire, ABC):
             prefix_lists=self.get_prefix_lists(device),
             policies=policies,
         )}
+        if not plists.values():
+            return
+
         precessed_names = set()
         for policy in policies:
             for statement in policy.statements:
@@ -117,7 +120,7 @@ class CumulusPolicyGenerator(Entire, ABC):
                             continue
                         yield from self._cumulus_prefix_list(mangled_name, "ipv6", cond.value, plists[name])
                         precessed_names.add(mangled_name)
-            yield "!"
+        yield "!"
 
     def _get_used_community_lists(self, communities: list[CommunityList], policies: list[RoutingPolicy]) -> list[
         CommunityList]:
@@ -174,7 +177,7 @@ class CumulusPolicyGenerator(Entire, ABC):
                         used_communities.update(action.value.added)
                         used_communities.update(action.value.removed)
         return [
-            communities_dict[name] for name in used_communities
+            communities_dict[name] for name in sorted(used_communities)
         ]
 
     def _cumulus_communities(
@@ -184,16 +187,18 @@ class CumulusPolicyGenerator(Entire, ABC):
             policies: list[RoutingPolicy],
     ) -> Iterable[Sequence[str]]:
         """ BGP community-lists section configuration """
+        if not communities.values():
+            return
 
         for clist in communities.values():
             if clist.type is CommunityType.BASIC:
                 member_prefix = ""
                 cmd = "bgp community-list"
             elif clist.type is CommunityType.RT:
-                member_prefix = "rt"
+                member_prefix = "rt "
                 cmd = "bgp extcommunity"
             elif clist.type is CommunityType.SOO:
-                member_prefix = "soo"
+                member_prefix = "soo "
                 cmd = "bgp extcommunity"
             elif clist.type is CommunityType.LARGE:
                 member_prefix = ""
@@ -221,7 +226,7 @@ class CumulusPolicyGenerator(Entire, ABC):
                     "standard",
                     clist.name,
                     "permit",
-                    " ".join(f"\"{member_prefix} {m}\"" for m in clist.members),
+                    " ".join(f"{member_prefix}{m}" for m in clist.members),
                 )
         yield "!"
 
