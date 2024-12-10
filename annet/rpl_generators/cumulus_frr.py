@@ -81,7 +81,7 @@ class CumulusPolicyGenerator(ABC):
         if not as_path_filters:
             return
         for as_path_filter in as_path_filters:
-            values = "_".join((x for x in as_path_filter.filters if x != ".*"))
+            values = "_".join(x for x in as_path_filter.filters if x != ".*")
             yield "ip as-path access-list", as_path_filter.name, "permit", f"_{values}_"
 
     def _cumulus_prefix_list(
@@ -247,7 +247,9 @@ class CumulusPolicyGenerator(ABC):
 
             if clist.logic == CommunityLogic.AND:
                 if clist.use_regex:
-                    member = member_prefix + ",".join(f'"{m}"' for m in clist.members)
+                    if len(clist.members) > 1:
+                        raise NotImplementedError("Multiple regexes with AND logic are not supported on Cumulus")
+                    member = member_prefix + clist.members[0]
                 else:
                     member = " ".join(f"{member_prefix}{m}" for m in clist.members)
                 yield from self._cumulus_community(
