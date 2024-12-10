@@ -3,13 +3,14 @@ from collections.abc import Sequence
 from ipaddress import ip_interface
 from typing import Any, Literal, Iterable, Iterator, Optional, cast
 
-from annet.generators import PartialGenerator, Entire
 from annet.rpl import (
     RouteMap, RoutingPolicy, PrefixMatchValue, SingleCondition, MatchField, RoutingPolicyStatement, ResultType,
     SingleAction, ConditionOperator, ThenField, ActionType,
 )
 from annet.rpl.statement_builder import NextHopActionValue, AsPathActionValue, CommunityActionValue
-from .entities import IpPrefixList, mangle_ranged_prefix_list_name, CommunityList, CommunityLogic, CommunityType
+from .entities import (
+    AsPathFilter, IpPrefixList, mangle_ranged_prefix_list_name, CommunityList, CommunityLogic, CommunityType,
+)
 from .prefix_lists import get_used_prefix_lists
 
 FRR_RESULT_MAP = {
@@ -42,7 +43,7 @@ def mangle_united_community_list_name(values: Sequence[str]) -> str:
     return "_OR_".join(values)
 
 
-class CumulusPolicyGenerator(Entire, ABC):
+class CumulusPolicyGenerator(ABC):
     @abstractmethod
     def get_routemap(self) -> RouteMap:
         raise NotImplementedError()
@@ -54,6 +55,10 @@ class CumulusPolicyGenerator(Entire, ABC):
     @abstractmethod
     def get_community_lists(self, device: Any) -> list[CommunityList]:
         raise NotImplementedError()
+
+    @abstractmethod
+    def get_as_path_filters(self, device: Any) -> Sequence[AsPathFilter]:
+        raise NotImplementedError
 
     def generate_cumulus_rpl(self, device: Any) -> Iterator[Sequence[str]]:
         policies = self.get_routemap().apply(device)

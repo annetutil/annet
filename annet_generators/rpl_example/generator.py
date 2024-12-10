@@ -1,12 +1,11 @@
 from typing import Any
 
-from annet.generators import BaseGenerator
+from annet.generators import BaseGenerator, Entire
 from annet.rpl import RouteMap
 from annet.rpl_generators import (
     CommunityListGenerator, RoutingPolicyGenerator, AsPathFilterGenerator, CommunityList, AsPathFilter,
-    RDFilterFilterGenerator, RDFilter, PrefixListFilterGenerator, IpPrefixList
+    RDFilterFilterGenerator, RDFilter, PrefixListFilterGenerator, IpPrefixList, CumulusPolicyGenerator
 )
-from annet.rpl_generators.cumulus_frr import CumulusPolicyGenerator
 from annet.storage import Storage
 from .items import COMMUNITIES, AS_PATH_FILTERS, RD_FILTERS, PREFIX_LISTS
 from .route_policy import routemap
@@ -64,7 +63,7 @@ log timestamp precision 6
 service integrated-vtysh-config"""
 
 
-class FrrGenerator(CumulusPolicyGenerator):
+class FrrGenerator(Entire, CumulusPolicyGenerator):
     def get_routemap(self) -> RouteMap:
         return routemap
 
@@ -73,6 +72,9 @@ class FrrGenerator(CumulusPolicyGenerator):
 
     def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
         return PREFIX_LISTS
+
+    def get_as_path_filters(self, device: Any) -> list[AsPathFilter]:
+        raise AS_PATH_FILTERS
 
     def path(self, device):
         if device.hw.PC.Mellanox or device.hw.PC.NVIDIA:
