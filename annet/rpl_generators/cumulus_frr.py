@@ -8,6 +8,7 @@ from annet.rpl import (
     SingleAction, ConditionOperator, ThenField, ActionType,
 )
 from annet.rpl.statement_builder import NextHopActionValue, AsPathActionValue, CommunityActionValue
+from .aspath import get_used_as_path_filters
 from .entities import (
     AsPathFilter, IpPrefixList, mangle_ranged_prefix_list_name, CommunityList, CommunityLogic, CommunityType,
 )
@@ -19,7 +20,7 @@ FRR_RESULT_MAP = {
     ResultType.NEXT: "permit",
 }
 FRR_MATCH_COMMAND_MAP: dict[str, str] = {
-    MatchField.as_path_filter: "as-path-list {option_value}",
+    MatchField.as_path_filter: "as-path {option_value}",
     MatchField.metric: "metric {option_value}",
     MatchField.protocol: "source-protocol {option_value}",
     MatchField.interface: "interface {option_value}",
@@ -66,9 +67,22 @@ class CumulusPolicyGenerator(ABC):
             communities=self.get_community_lists(device),
             policies=policies,
         )}
+        yield from self._cumulus_as_path_filters(device, policies)
         yield from self._cumulus_communities(device, communities, policies)
         yield from self._cumulus_prefix_lists(device, policies)
         yield from self._cumulus_policy_config(device, communities, policies)
+
+    def _cumulus_as_path_filters(
+            self,
+            device: Any,
+            policies: list[RoutingPolicy],
+    ):
+        as_path_filters = get_used_as_path_filters(self.get_as_path_filters(device), policies)
+        if not as_path_filters:
+            return
+        for as_path_filter in as_path_filters:
+            values = "_".join((x for x in as_path_filter.filters if x != ".*"))
+            yield "ip as-path access-list", as_path_filter.name, "permit", f"_{values}_"
 
     def _cumulus_prefix_list(
             self,
@@ -185,6 +199,26 @@ class CumulusPolicyGenerator(ABC):
             communities_dict[name] for name in sorted(used_communities)
         ]
 
+    def _cumulus_community(
+            self, name: str, cmd: str, member: str, use_regex: bool,
+    ) -> Iterable[Sequence[str]]:
+        if use_regex:
+            yield (
+                cmd,
+                "expanded",
+                name,
+                "permit",
+                member,
+            )
+        else:
+            yield (
+                cmd,
+                "standard",
+                name,
+                "permit",
+                member,
+            )
+
     def _cumulus_communities(
             self,
             device: Any,
@@ -211,28 +245,19 @@ class CumulusPolicyGenerator(ABC):
             else:
                 raise NotImplementedError(f"Community type {clist.type} is not supported on Cumulus")
 
-            if clist.logic == CommunityLogic.AND and len(clist.members) > 1:
-                raise NotImplementedError(
-                    "Only OR logic for CommunityFiltersMatch "
-                    "with multiple communities matches is currently supported"
-                )
-
-            if clist.use_regex:
-                yield (
-                    cmd,
-                    "expanded",
-                    clist.name,
-                    "permit",
-                    member_prefix, ",".join(f'"{m}"' for m in clist.members),
+            if clist.logic == CommunityLogic.AND:
+                if clist.use_regex:
+                    member = member_prefix + ",".join(f'"{m}"' for m in clist.members)
+                else:
+                    member = " ".join(f"{member_prefix}{m}" for m in clist.members)
+                yield from self._cumulus_community(
+                    name=clist.name, cmd=cmd, member=member, use_regex=clist.use_regex,
                 )
             else:
-                yield (
-                    cmd,
-                    "standard",
-                    clist.name,
-                    "permit",
-                    " ".join(f"{member_prefix}{m}" for m in clist.members),
-                )
+                for member_value in clist.members:
+                    yield from self._cumulus_community(
+                        name=clist.name, cmd=cmd, member=member_prefix + member_value, use_regex=clist.use_regex,
+                    )
         yield "!"
 
     def _get_match_community_names(self, condition: SingleCondition[Sequence[str]]) -> Sequence[str]:
