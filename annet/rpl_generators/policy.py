@@ -30,7 +30,18 @@ HUAWEI_THEN_COMMAND_MAP: dict[str, str] = {
 HUAWEI_RESULT_MAP = {
     ResultType.ALLOW: "permit",
     ResultType.DENY: "deny",
-    ResultType.NEXT: ""
+    ResultType.NEXT: "permit"
+}
+ARISTA_RESULT_MAP = {
+    ResultType.ALLOW: "permit",
+    ResultType.DENY: "deny",
+    ResultType.NEXT: "permit"
+}
+ARISTA_MATCH_COMMAND_MAP: dict[str, str] = {
+    MatchField.metric: "metric {option_value}",
+    MatchField.as_path_filter: "as-path {option_value}",
+    MatchField.protocol: "source-protocol {option_value}",
+    # unsupported: rd
 }
 
 
@@ -49,6 +60,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     def get_rd_filters(self, device: Any) -> list[RDFilter]:
         raise NotImplementedError()
 
+    # huawei
     def acl_huawei(self, _):
         return r"""
         route-policy *
@@ -327,3 +339,102 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         for policy in self.get_routemap().apply(device):
             for statement in policy.statements:
                 yield from self._huawei_statement(communities, rd_filters, device, policy, statement)
+
+    # arista
+    def acl_arista(self, device):
+        return r"""
+        route-map
+            ~ %global=1
+        """
+
+    def _arista_match(
+            self,
+            device: Any,
+            condition: SingleCondition[Any],
+            communities: dict[str, CommunityList],
+            rd_filters: dict[str, RDFilter],
+    ) -> Iterator[Sequence[str]]:
+        if condition.field == MatchField.interface:
+            yield "match interface", condition.value  # TODO extract number?
+        if condition.field == MatchField.community:
+            ...  # TODO
+            return
+        if condition.field == MatchField.large_community:
+            ...  # TODO
+            return
+        if condition.field == MatchField.extcommunity_rt:
+            ...  # TODO
+            return
+        if condition.field == MatchField.extcommunity_soo:
+            ...  # TODO
+            return
+        if condition.field == MatchField.ip_prefix:
+            for name in condition.value.names:
+                mangled_name = mangle_ranged_prefix_list_name(
+                    name=name,
+                    greater_equal=condition.value.greater_equal,
+                    less_equal=condition.value.less_equal,
+                )
+                yield "match", "ip address prefix-list", mangled_name
+            return
+        if condition.field == MatchField.ipv6_prefix:
+            for name in condition.value.names:
+                mangled_name = mangle_ranged_prefix_list_name(
+                    name=name,
+                    greater_equal=condition.value.greater_equal,
+                    less_equal=condition.value.less_equal,
+                )
+                yield "match", "ipv6 address prefix-list", mangled_name
+            return
+        if condition.field == MatchField.as_path_length:
+            if condition.operator is ConditionOperator.EQ:
+                yield "match", "as-path length =", condition.value
+            elif condition.operator is ConditionOperator.LE:
+                yield "match", "as-path length <=", condition.value
+            elif condition.operator is ConditionOperator.GE:
+                yield "match", "as-path length >=", condition.value
+            elif condition.operator is ConditionOperator.BETWEEN_INCLUDED:
+                yield "match", "as-path length >=", condition.value[0]
+                yield "match", "as-path length <=", condition.value[1]
+            else:
+                raise NotImplementedError(
+                    f"as_path_length operator {condition.operator} not supported for arista",
+                )
+            return
+        if condition.operator is not ConditionOperator.EQ:
+            raise NotImplementedError(
+                f"`{condition.field}` with operator {condition.operator} is not supported for arista",
+            )
+        if condition.field not in ARISTA_MATCH_COMMAND_MAP:
+            raise NotImplementedError(f"Match using `{condition.field}` is not supported for arista")
+        cmd = ARISTA_MATCH_COMMAND_MAP[condition.field]
+        yield "if-match", cmd.format(option_value=condition.value)
+
+    def _arista_statement(
+            self,
+            communities: dict[str, CommunityList],
+            rd_filters: dict[str, RDFilter],
+            device: Any,
+            policy: RoutingPolicy,
+            statement: RoutingPolicyStatement,
+    ) -> Iterator[Sequence[str]]:
+        with self.block(
+                "route-map",
+                policy.name,
+                ARISTA_RESULT_MAP[statement.result],
+                statement.number,
+        ):
+            for condition in statement.match:
+                yield from self._arista_match(device, condition, communities, rd_filters)
+            for action in statement.then:
+                yield from self._arista_then(communities, device, action)
+            if statement.result is ResultType.NEXT:
+                yield "continue"
+
+    def run_arista(self, device):
+        communities = {c.name: c for c in self.get_community_lists(device)}
+        rd_filters = {f.name: f for f in self.get_rd_filters(device)}
+
+        for policy in self.get_routemap().apply(device):
+            for statement in policy.statements:
+                yield from self._arista_statement(communities, rd_filters, device, policy, statement)
