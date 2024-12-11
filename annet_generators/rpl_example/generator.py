@@ -74,7 +74,7 @@ class FrrGenerator(Entire, CumulusPolicyGenerator):
         return PREFIX_LISTS
 
     def get_as_path_filters(self, device: Any) -> list[AsPathFilter]:
-        raise AS_PATH_FILTERS
+        return AS_PATH_FILTERS
 
     def path(self, device):
         if device.hw.PC.Mellanox or device.hw.PC.NVIDIA:
