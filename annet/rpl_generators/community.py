@@ -71,19 +71,25 @@ class CommunityListGenerator(PartialGenerator, ABC):
         """
 
     def _huawei_community_filter(self, index: int, community_list: CommunityList, members: str) -> Sequence[str]:
+        if community_list.use_regex:
+            match_type = "advanced"
+        else:
+            match_type = "basic"
         if community_list.type is CommunityType.BASIC:
-            return "ip community-filter basic", community_list.name, f"index {index}", "permit", members
+            return "ip community-filter", match_type, community_list.name, f"index {index}", "permit", members
         elif community_list.type is CommunityType.RT:
-            return "ip extcommunity-filter basic", community_list.name, f"index {index}", "permit", members
+            return "ip extcommunity-filter", match_type, community_list.name, f"index {index}", "permit", members
         elif community_list.type is CommunityType.SOO:
-            return "ip extcommunity-list soo", community_list.name, f"index {index}", "permit", members
+            return "ip extcommunity-list soo", match_type, community_list.name, f"index {index}", "permit", members
         elif community_list.type is CommunityType.LARGE:
-            return "ip large-community-filter", community_list.name, f"index {index}", "permit", members
+            return "ip large-community-filter", match_type, community_list.name, f"index {index}", "permit", members
         else:
             raise NotImplementedError(f"CommunityList type {community_list.type} not implemented for huawei")
 
     def run_huawei(self, device: Any):
         for community_list in self.get_used_community_lists(device):
+            if community_list.use_regex and len(community_list.members) > 1:
+                raise NotImplementedError("Multiple regex is not supported for huawei")
             if community_list.type is CommunityType.RT:
                 # RT communities used with prefix rt
                 members: Sequence[str] = [f"rt {m}" for m in community_list.members]
@@ -98,4 +104,4 @@ class CommunityListGenerator(PartialGenerator, ABC):
                     member_id = (i + 1) * 10
                     yield self._huawei_community_filter(member_id, community_list, member)
             else:
-                raise NotImplementedError
+                raise NotImplementedError(f"Community logic {community_list.logic} is not implemented for huawei")
