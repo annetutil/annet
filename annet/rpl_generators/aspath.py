@@ -3,8 +3,21 @@ from collections.abc import Sequence
 from typing import Any
 
 from annet.generators import PartialGenerator
-from annet.rpl import RouteMap, MatchField
+from annet.rpl import RouteMap, MatchField, RoutingPolicy
 from .entities import AsPathFilter
+
+
+def get_used_as_path_filters(
+        as_path_filters: Sequence[AsPathFilter], policies: list[RoutingPolicy],
+) -> Sequence[AsPathFilter]:
+    filters = {c.name: c for c in as_path_filters}
+
+    used_filters = set()
+    for policy in policies:
+        for statement in policy.statements:
+            for condition in statement.match.find_all(MatchField.as_path_filter):
+                used_filters.add(condition.value)
+    return [filters[name] for name in sorted(used_filters)]
 
 
 class AsPathFilterGenerator(PartialGenerator, ABC):
@@ -17,14 +30,9 @@ class AsPathFilterGenerator(PartialGenerator, ABC):
         raise NotImplementedError
 
     def get_used_as_path_filters(self, device: Any) -> Sequence[AsPathFilter]:
-        filters = {c.name: c for c in self.get_as_path_filters(device)}
+        filters = self.get_as_path_filters(device)
         policies = self.get_routemap().apply(device)
-        used_filters = set()
-        for policy in policies:
-            for statement in policy.statements:
-                for condition in statement.match.find_all(MatchField.as_path_filter):
-                    used_filters.add(condition.value)
-        return [filters[name] for name in used_filters]
+        return get_used_as_path_filters(filters, policies)
 
     def acl_huawei(self, _):
         return r"""

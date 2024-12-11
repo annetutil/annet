@@ -9,7 +9,7 @@ from annet.rpl import (
     RouteMap, MatchField,
 )
 from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, ThenField
-from annet.rpl_generators.entities import CommunityList, RDFilter, mangle_huawei_prefix_list_name
+from annet.rpl_generators.entities import CommunityList, RDFilter, mangle_ranged_prefix_list_name
 
 HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.as_path_filter: "as-path-filter {option_value}",
@@ -19,7 +19,6 @@ HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
 }
 
 HUAWEI_THEN_COMMAND_MAP: dict[str, str] = {
-    ThenField.metric: "cost {option_value}",
     ThenField.local_pref: "local-preference {option_value}",
     ThenField.metric_type: "cost-type {option_value}",
     ThenField.mpls_label: "mpls-label",
@@ -106,7 +105,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             return
         if condition.field == MatchField.ip_prefix:
             for name in condition.value.names:
-                mangled_name = mangle_huawei_prefix_list_name(
+                mangled_name = mangle_ranged_prefix_list_name(
                     name=name,
                     greater_equal=condition.value.greater_equal,
                     less_equal=condition.value.less_equal,
@@ -115,14 +114,14 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             return
         if condition.field == MatchField.ipv6_prefix:
             for name in condition.value.names:
-                mangled_name = mangle_huawei_prefix_list_name(
+                mangled_name = mangle_ranged_prefix_list_name(
                     name=name,
                     greater_equal=condition.value.greater_equal,
                     less_equal=condition.value.less_equal,
                 )
                 yield "if-match", "ipv6 address prefix-list", mangled_name
             return
-        if condition.field == "as_path_length":
+        if condition.field == MatchField.as_path_length:
             if condition.operator is ConditionOperator.EQ:
                 yield "if-match", "as-path length", condition.value
             elif condition.operator is ConditionOperator.LE:
