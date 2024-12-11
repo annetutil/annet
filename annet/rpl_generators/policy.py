@@ -9,7 +9,7 @@ from annet.rpl import (
     RouteMap, MatchField,
 )
 from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, ThenField
-from annet.rpl_generators.entities import CommunityList, RDFilter, mangle_ranged_prefix_list_name
+from annet.rpl_generators.entities import CommunityList, RDFilter, mangle_ranged_prefix_list_name, CommunityLogic
 
 HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.as_path_filter: "as-path-filter {option_value}",
@@ -59,6 +59,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             self,
             device: Any,
             condition: SingleCondition[Any],
+            communities: dict[str, CommunityList],
             rd_filters: dict[str, RDFilter],
     ) -> Iterator[Sequence[str]]:
         if condition.field == MatchField.community:
@@ -86,7 +87,10 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             elif condition.operator is not ConditionOperator.HAS_ANY:
                 raise NotImplementedError("Extcommunity_rt operator %r not supported for huawei" % condition.operator)
             for comm_name in condition.value:
-                yield "if-match extcommunity-filter", comm_name
+                if communities[comm_name].logic is CommunityLogic.AND:
+                    yield "if-match extcommunity-filter", comm_name, "matches-all"
+                else:
+                    yield "if-match extcommunity-filter", comm_name
             return
         if condition.field == MatchField.extcommunity_soo:
             if condition.operator is ConditionOperator.HAS_ANY:
@@ -310,7 +314,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 "node", statement.number
         ):
             for condition in statement.match:
-                yield from self._huawei_match(device, condition, rd_filters)
+                yield from self._huawei_match(device, condition, communities, rd_filters)
             for action in statement.then:
                 yield from self._huawei_then(communities, device, action)
             if statement.result is ResultType.NEXT:
