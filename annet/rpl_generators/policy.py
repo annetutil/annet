@@ -43,6 +43,15 @@ ARISTA_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.protocol: "source-protocol {option_value}",
     # unsupported: rd
 }
+ARISTA_THEN_COMMAND_MAP: dict[str, str] = {
+    ThenField.local_pref: "local-preference {option_value}",
+    ThenField.origin: "origin {option_value}",
+    ThenField.tag: "tag {option_value}",
+    ThenField.metric_type: "metric-type {option_value}",
+    # unsupported: mpls_label
+    # unsupported: resolution
+    # unsupported: rpki_valid_state
+}
 
 
 class RoutingPolicyGenerator(PartialGenerator, ABC):
@@ -284,7 +293,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 for path_item in as_path_action_value.delete:
                     yield "apply as-path", path_item, "delete"
             if as_path_action_value.expand_last_as:
-                raise RuntimeError("asp_path.expand_last_as is not supported for huawei")
+                raise RuntimeError("as_path.expand_last_as is not supported for huawei")
             return
         if action.field == ThenField.next_hop:
             next_hop_action_value = cast(NextHopActionValue, action.value)
@@ -409,6 +418,74 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             raise NotImplementedError(f"Match using `{condition.field}` is not supported for arista")
         cmd = ARISTA_MATCH_COMMAND_MAP[condition.field]
         yield "if-match", cmd.format(option_value=condition.value)
+
+
+    def _arista_then(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[Any],
+    ) -> Iterator[Sequence[str]]:
+        if action.field == ThenField.community:
+            ...  # TODO
+            return
+        if action.field == ThenField.large_community:
+            ...  # TODO
+            return
+        if action.field == ThenField.extcommunity_rt:
+            ...  # TODO
+            return
+        if action.field == ThenField.extcommunity_soo:
+            ...  # TODO
+            return
+        if action.field == ThenField.metric:
+            if action.type is ActionType.ADD:
+                yield "set", f"metric + {action.value}"
+            if action.type is ActionType.REMOVE:
+                yield "set", f"metric - {action.value}"
+            elif action.type is ActionType.SET:
+                yield "set", f"metric {action.value}"
+            else:
+                raise NotImplementedError(f"Action type {action.type} for metric is not supported for arista")
+            return
+        if action.field == ThenField.as_path:
+            as_path_action_value = cast(AsPathActionValue, action.value)
+            if as_path_action_value.set is not None:
+                raise RuntimeError("as_path.set is not supported for arista")
+            if as_path_action_value.prepend:
+                for path_item in as_path_action_value.prepend:
+                    yield "as-path prepend", path_item
+            if as_path_action_value.expand:  # same as prepend?
+                for path_item in as_path_action_value.expand:
+                    yield "as-path prepend", path_item, "additive"
+            if as_path_action_value.delete:
+                raise RuntimeError("as_path.delete is not supported for arista")
+            if as_path_action_value.expand_last_as:
+                raise RuntimeError("as_path.expand_last_as is not supported for arista")
+            return
+        if action.field == ThenField.next_hop:
+            next_hop_action_value = cast(NextHopActionValue, action.value)
+            if next_hop_action_value.target == "self":
+                yield "set", "cost 1"  # TODO?
+            elif next_hop_action_value.target == "discard":
+                pass
+            elif next_hop_action_value.target == "peer":
+                pass
+            elif next_hop_action_value.target == "ipv4_addr":
+                yield "set", f"ip next-hop {next_hop_action_value.addr}"
+            elif next_hop_action_value.target == "ipv6_addr":
+                yield "set", f"ipv6 next-hop {next_hop_action_value.addr}"
+            elif next_hop_action_value.target == "mapped_ipv4":
+                yield "set", f"ipv6 next-hop ::FFFF:{next_hop_action_value.addr}"
+            else:
+                raise RuntimeError(f"Next_hop target {next_hop_action_value.target} is not supported for arista")
+
+        if action.type is not ActionType.SET:
+            raise NotImplementedError(f"Action type {action.type} for `{action.field}` is not supported for arista")
+        if action.field not in ARISTA_THEN_COMMAND_MAP:
+            raise NotImplementedError(f"Then action using `{action.field}` is not supported for arista")
+        cmd = ARISTA_THEN_COMMAND_MAP[action.field]
+        yield "set", cmd.format(option_value=action.value)
 
     def _arista_statement(
             self,
