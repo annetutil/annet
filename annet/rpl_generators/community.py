@@ -105,3 +105,66 @@ class CommunityListGenerator(PartialGenerator, ABC):
                     yield self._huawei_community_filter(member_id, community_list, member)
             else:
                 raise NotImplementedError(f"Community logic {community_list.logic} is not implemented for huawei")
+
+    def acl_arista(self, _):
+        return r"""
+        ip community-list
+        ip extcommunity-list
+        """
+
+    def _arista_well_known_community(self, community: str) -> str:
+        if community == "65535:0":
+            return "GSHUT"
+        return community
+
+    def _arista_community_list(self, community_list: CommunityList, members: str) -> Sequence[str]:
+        if community_list.use_regex:
+            match_type = "regexp"
+        else:
+            match_type = "standard"
+        if community_list.type is CommunityType.BASIC:
+            return "ip community-list", match_type, community_list.name, "permit", members
+        elif community_list.type is CommunityType.RT:
+            return "ip extcommunity-list", match_type, community_list.name, "permit", members
+        elif community_list.type is CommunityType.SOO:
+            return "ip extcommunity-list", match_type, community_list.name, "permit", members
+        elif community_list.type is CommunityType.LARGE:
+            return "ip large-community-list", match_type, community_list.name, "permit", members
+        else:
+            raise NotImplementedError(f"CommunityList type {community_list.type} not implemented for arista")
+
+    def _arista_community_prefix(self, community_list: CommunityList) -> str:
+        if community_list.type is CommunityType.BASIC:
+            return ""
+        elif community_list.type is CommunityType.RT:
+            if community_list.use_regex:
+                return "RT:"
+            return "rt "
+        elif community_list.type is CommunityType.SOO:
+            if community_list.use_regex:
+                return "SoO:"
+            return "soo "
+        elif community_list.type is CommunityType.LARGE:
+            return ""
+        else:
+            raise NotImplementedError(f"CommunityList type {community_list.type} not implemented for arista")
+
+    def run_arista(self, device):
+        for community_list in self.get_used_community_lists(device):
+            if community_list.use_regex and len(community_list.members) > 1:
+                raise NotImplementedError("Multiple regex is not supported for arista")
+
+            member_prefix = self._arista_community_prefix(community_list)
+
+            if community_list.logic == CommunityLogic.AND:
+                # to get AND logic the communities should be in one sting
+                member_str = " ".join(
+                    member_prefix + self._arista_well_known_community(m)
+                    for m in community_list.members
+                )
+                yield self._arista_community_list(community_list, member_str)
+            elif community_list.logic == CommunityLogic.OR:
+                for member in community_list.members:
+                    yield self._arista_community_list(community_list, member_prefix + member)
+            else:
+                raise NotImplementedError(f"Community logic {community_list.logic} is not implemented for arista")
