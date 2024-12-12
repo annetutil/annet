@@ -9,7 +9,10 @@ from annet.rpl import (
     RouteMap, MatchField,
 )
 from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, ThenField
-from annet.rpl_generators.entities import CommunityList, RDFilter, mangle_ranged_prefix_list_name, CommunityLogic
+from annet.rpl_generators.entities import (
+    arista_well_known_community,
+    CommunityList, RDFilter, mangle_ranged_prefix_list_name, CommunityLogic,
+)
 
 HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.as_path_filter: "as-path-filter {option_value}",
@@ -419,6 +422,88 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         cmd = ARISTA_MATCH_COMMAND_MAP[condition.field]
         yield "if-match", cmd.format(option_value=condition.value)
 
+    def _arista_then_community(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.replaced is not None:
+            if not action.value.replaced:
+                yield "set", "community", "none"
+            first = True
+            for community_name in action.value.replaced:
+                community = communities[community_name]
+                for comm_value in community.members:
+                    if first:
+                        yield "set", "community community-list", arista_well_known_community(comm_value)
+                        first = False
+                    else:
+                        yield "set", "community community-list", arista_well_known_community(comm_value), "additive"
+        for community_name in action.value.added:
+            community = communities[community_name]
+            for comm_value in community.members:
+                yield "set", "community community-list", arista_well_known_community(comm_value), "additive"
+        for community_name in action.value.removed:
+            community = communities[community_name]
+            for comm_value in community.members:
+                yield "set comm-filter", arista_well_known_community(comm_value), "delete"
+
+    def _arista_then_large_community(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.replaced is not None:
+            if not action.value.replaced:
+                yield "set", "large-community", "none"
+            first = True
+            for community_name in action.value.replaced:
+                if first:
+                    yield "set", "large-community large-community-list ", community_name
+                    first = False
+                else:
+                    yield "set", "large-community large-community-list ", community_name, "additive"
+        for community_name in action.value.added:
+            yield "set", "large-community large-community-list ", community_name, "additive"
+        for community_name in action.value.removed:
+            yield "set large-community large-community-list ", community_name, "delete"
+
+    def _arista_then_extcommunity_rt(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.replaced is not None:
+            raise NotImplementedError("Extcommunity_rt replace is not supported for arista")
+        for community_name in action.value.added:
+            community = communities[community_name]
+            for comm_value in community.members:
+                yield "set", "extcommunity rt", comm_value, "additive"
+        for community_name in action.value.removed:
+            community = communities[community_name]
+            for comm_value in community.members:
+                yield "set extcommunity rt", comm_value, "delete"
+
+    def _arista_then_extcommunity_soo(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.replaced is not None:
+            raise NotImplementedError("Extcommunity_soo replace is not supported for arista")
+        for community_name in action.value.added:
+            community = communities[community_name]
+            for comm_value in community.members:
+                yield "set", "extcommunity soo", comm_value, "additive"
+        for community_name in action.value.removed:
+            community = communities[community_name]
+            for comm_value in community.members:
+                yield "set", "extcommunity soo", self.comm_value, "delete"
+
 
     def _arista_then(
             self,
@@ -427,16 +512,24 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[Any],
     ) -> Iterator[Sequence[str]]:
         if action.field == ThenField.community:
-            ...  # TODO
+            yield from self._arista_then_community(
+                communities, device, cast(SingleAction[CommunityActionValue], action),
+            )
             return
         if action.field == ThenField.large_community:
-            ...  # TODO
+            yield from self._arista_then_large_community(
+                communities, device, cast(SingleAction[CommunityActionValue], action),
+            )
             return
         if action.field == ThenField.extcommunity_rt:
-            ...  # TODO
+            yield from self._arista_then_extcommunity_rt(
+                communities, device, cast(SingleAction[CommunityActionValue], action),
+            )
             return
         if action.field == ThenField.extcommunity_soo:
-            ...  # TODO
+            yield from self._arista_then_extcommunity_soo(
+                communities, device, cast(SingleAction[CommunityActionValue], action),
+            )
             return
         if action.field == ThenField.metric:
             if action.type is ActionType.ADD:

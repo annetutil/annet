@@ -4,7 +4,7 @@ from typing import Any
 
 from annet.generators import PartialGenerator
 from annet.rpl import RouteMap, SingleCondition, MatchField, ThenField, RoutingPolicy
-from .entities import CommunityList, CommunityLogic, CommunityType
+from .entities import CommunityList, CommunityLogic, CommunityType, arista_well_known_community
 
 
 def get_used_community_lists(
@@ -112,11 +112,6 @@ class CommunityListGenerator(PartialGenerator, ABC):
         ip extcommunity-list
         """
 
-    def _arista_well_known_community(self, community: str) -> str:
-        if community == "65535:0":
-            return "GSHUT"
-        return community
-
     def _arista_community_list(self, community_list: CommunityList, members: str) -> Sequence[str]:
         if community_list.use_regex:
             match_type = "regexp"
@@ -159,7 +154,7 @@ class CommunityListGenerator(PartialGenerator, ABC):
             if community_list.logic == CommunityLogic.AND:
                 # to get AND logic the communities should be in one sting
                 member_str = " ".join(
-                    member_prefix + self._arista_well_known_community(m)
+                    member_prefix + arista_well_known_community(m)
                     for m in community_list.members
                 )
                 yield self._arista_community_list(community_list, member_str)

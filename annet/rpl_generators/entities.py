@@ -45,6 +45,11 @@ class IpPrefixList:
     members: Sequence[str]
 
 
+def arista_well_known_community(community: str) -> str:
+    if community == "65535:0":
+        return "GSHUT"
+    return community
+
 def mangle_ranged_prefix_list_name(name: str, greater_equal: Optional[int], less_equal: Optional[int]) -> str:
     if greater_equal is less_equal is None:
         return name
