@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterator, Sequence
-from typing import Any, cast
+from typing import Any, cast, Literal
 
 from annet.generators import PartialGenerator
 from annet.rpl import (
@@ -11,7 +11,7 @@ from annet.rpl import (
 from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, ThenField
 from annet.rpl_generators.entities import (
     arista_well_known_community,
-    CommunityList, RDFilter, mangle_ranged_prefix_list_name, CommunityLogic,
+    CommunityList, RDFilter, mangle_ranged_prefix_list_name, CommunityLogic, mangle_united_community_list_name,
 )
 
 HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
@@ -359,6 +359,14 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             ~ %global=1
         """
 
+    def _arista_match_community(
+            self,
+            device: Any,
+            community_type: Literal["community", "extcommunity", "large-community"],
+            community_names: Sequence[str],
+    ) -> Iterator[Sequence[str]]:
+        yield "match", community_type, *community_names
+
     def _arista_match(
             self,
             device: Any,
@@ -369,16 +377,52 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         if condition.field == MatchField.interface:
             yield "match interface", condition.value  # TODO extract number?
         if condition.field == MatchField.community:
-            ...  # TODO
+            if condition.operator is ConditionOperator.HAS_ANY:
+                yield from self._arista_match_community(
+                    device, "community", [mangle_united_community_list_name(condition.value)],
+                )
+            elif condition.operator is ConditionOperator.HAS:
+                yield from self._arista_match_community(
+                    device, "community", condition.value,
+                )
+            else:
+                raise NotImplementedError(f"Community match operator {condition.field} is not supported on arista")
             return
         if condition.field == MatchField.large_community:
-            ...  # TODO
+            if condition.operator is ConditionOperator.HAS_ANY:
+                yield from self._arista_match_community(
+                    device, "large-community", [mangle_united_community_list_name(condition.value)],
+                )
+            elif condition.operator is ConditionOperator.HAS:
+                yield from self._arista_match_community(
+                    device, "large-community", condition.value,
+                )
+            else:
+                raise NotImplementedError(f"Large-community match operator {condition.field} is not supported on arista")
             return
         if condition.field == MatchField.extcommunity_rt:
-            ...  # TODO
+            if condition.operator is ConditionOperator.HAS_ANY:
+                yield from self._arista_match_community(
+                    device, "extcommunity", [mangle_united_community_list_name(condition.value)],
+                )
+            elif condition.operator is ConditionOperator.HAS:
+                yield from self._arista_match_community(
+                    device, "extcommunity", condition.value,
+                )
+            else:
+                raise NotImplementedError(f"Community match operator {condition.field} is not supported on arista")
             return
         if condition.field == MatchField.extcommunity_soo:
-            ...  # TODO
+            if condition.operator is ConditionOperator.HAS_ANY:
+                yield from self._arista_match_community(
+                    device, "extcommunity", [mangle_united_community_list_name(condition.value)],
+                )
+            elif condition.operator is ConditionOperator.HAS:
+                yield from self._arista_match_community(
+                    device, "extcommunity", condition.value,
+                )
+            else:
+                raise NotImplementedError(f"Extcommunity match operator {condition.field} is not supported on arista")
             return
         if condition.field == MatchField.ip_prefix:
             for name in condition.value.names:

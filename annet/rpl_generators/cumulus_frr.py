@@ -9,8 +9,10 @@ from annet.rpl import (
 )
 from annet.rpl.statement_builder import NextHopActionValue, AsPathActionValue, CommunityActionValue
 from .aspath import get_used_as_path_filters
+from .community import get_used_united_community_lists
 from .entities import (
     AsPathFilter, IpPrefixList, mangle_ranged_prefix_list_name, CommunityList, CommunityLogic, CommunityType,
+    mangle_united_community_list_name,
 )
 from .prefix_lists import get_used_prefix_lists
 
@@ -40,10 +42,6 @@ FRR_THEN_COMMAND_MAP: dict[str, str] = {
 FRR_INDENT = " "
 
 
-def mangle_united_community_list_name(values: Sequence[str]) -> str:
-    return "_OR_".join(values)
-
-
 class CumulusPolicyGenerator(ABC):
     @abstractmethod
     def get_routemap(self) -> RouteMap:
@@ -63,10 +61,7 @@ class CumulusPolicyGenerator(ABC):
 
     def generate_cumulus_rpl(self, device: Any) -> Iterator[Sequence[str]]:
         policies = self.get_routemap().apply(device)
-        communities = {c.name: c for c in self._get_used_community_lists(
-            communities=self.get_community_lists(device),
-            policies=policies,
-        )}
+        communities = {c.name: c for c in self.get_community_lists(device)}
         yield from self._cumulus_as_path_filters(device, policies)
         yield from self._cumulus_communities(device, communities, policies)
         yield from self._cumulus_prefix_lists(device, policies)
@@ -141,63 +136,10 @@ class CumulusPolicyGenerator(ABC):
                         precessed_names.add(mangled_name)
         yield "!"
 
-    def _get_used_community_lists(self, communities: list[CommunityList], policies: list[RoutingPolicy]) -> list[
-        CommunityList]:
-        communities_dict = {c.name: c for c in communities}
-        used_communities: set[str] = set()
-        for policy in policies:
-            for statement in policy.statements:
-                condition: SingleCondition[Sequence[str]]
-                for match_field in (
-                        MatchField.community, MatchField.large_community,
-                        MatchField.extcommunity_rt, MatchField.extcommunity_soo
-                ):
-                    for condition in statement.match.find_all(match_field):
-                        if condition.operator == ConditionOperator.HAS_ANY and len(condition.value) > 1:
-                            united_name = mangle_united_community_list_name(condition.value)
-                            united_communities = [
-                                communities_dict[name] for name in condition.value
-                            ]
-                            if not all(united_communities[0].type == c.type for c in united_communities):
-                                raise ValueError(
-                                    f"Cannot apply HAS_ANY to communities of different types, "
-                                    f"found for policy: `{policy.name}`, statement: {statement.name}"
-                                )
-                            if not all(united_communities[0].use_regex == c.use_regex for c in united_communities):
-                                raise ValueError(
-                                    f"Cannot apply HAS_ANY to communities with different use_regex flag, "
-                                    f"found for policy: `{policy.name}`, statement: {statement.name}"
-                                )
-                            if any(c.logic is CommunityLogic.AND and len(c.members) > 1 for c in united_communities):
-                                raise ValueError(
-                                    f"Cannot use community list with AND logic for HAS_ANY rule, "
-                                    f"found for policy: `{policy.name}`, statement: {statement.name}"
-                                )
-                            members: set[str] = set()
-                            for clist in united_communities:
-                                members.update(clist.members)
-                            communities_dict[united_name] = CommunityList(
-                                name=united_name,
-                                use_regex=united_communities[0].use_regex,
-                                type=united_communities[0].type,
-                                logic=CommunityLogic.OR,
-                                members=list(members),
-                            )
-                            used_communities.add(united_name)
-                        else:
-                            used_communities.update(condition.value)
-                for then_field in (
-                        ThenField.community, ThenField.large_community,
-                        ThenField.extcommunity_rt, ThenField.extcommunity_soo
-                ):
-                    for action in statement.then.find_all(then_field):
-                        if action.value.replaced is not None:
-                            used_communities.update(action.value.replaced)
-                        used_communities.update(action.value.added)
-                        used_communities.update(action.value.removed)
-        return [
-            communities_dict[name] for name in sorted(used_communities)
-        ]
+    def get_used_united_community_lists(
+            self, communities: dict[str, CommunityList], policies: list[RoutingPolicy],
+    ) -> list[list[CommunityList]]:
+        return get_used_united_community_lists(communities=communities.values(), policies=policies)
 
     def _cumulus_community(
             self, name: str, cmd: str, member: str, use_regex: bool,
@@ -226,40 +168,43 @@ class CumulusPolicyGenerator(ABC):
             policies: list[RoutingPolicy],
     ) -> Iterable[Sequence[str]]:
         """ BGP community-lists section configuration """
-        if not communities.values():
+        community_unions = self.get_used_united_community_lists(communities, policies)
+        if not community_unions:
             return
+        for community_list_union in community_unions:
+            name = mangle_united_community_list_name([c.name for c in community_list_union])
 
-        for clist in communities.values():
-            if clist.type is CommunityType.BASIC:
-                member_prefix = ""
-                cmd = "bgp community-list"
-            elif clist.type is CommunityType.RT:
-                member_prefix = "rt "
-                cmd = "bgp extcommunity"
-            elif clist.type is CommunityType.SOO:
-                member_prefix = "soo "
-                cmd = "bgp extcommunity"
-            elif clist.type is CommunityType.LARGE:
-                member_prefix = ""
-                cmd = "bgp large-community-list"
-            else:
-                raise NotImplementedError(f"Community type {clist.type} is not supported on Cumulus")
-
-            if clist.logic == CommunityLogic.AND:
-                if clist.use_regex:
-                    if len(clist.members) > 1:
-                        raise NotImplementedError("Multiple regexes with AND logic are not supported on Cumulus")
-                    member = member_prefix + clist.members[0]
+            for clist in community_list_union:
+                if clist.type is CommunityType.BASIC:
+                    member_prefix = ""
+                    cmd = "bgp community-list"
+                elif clist.type is CommunityType.RT:
+                    member_prefix = "rt "
+                    cmd = "bgp extcommunity"
+                elif clist.type is CommunityType.SOO:
+                    member_prefix = "soo "
+                    cmd = "bgp extcommunity"
+                elif clist.type is CommunityType.LARGE:
+                    member_prefix = ""
+                    cmd = "bgp large-community-list"
                 else:
-                    member = " ".join(f"{member_prefix}{m}" for m in clist.members)
-                yield from self._cumulus_community(
-                    name=clist.name, cmd=cmd, member=member, use_regex=clist.use_regex,
-                )
-            else:
-                for member_value in clist.members:
+                    raise NotImplementedError(f"Community type {clist.type} is not supported on Cumulus")
+
+                if clist.logic == CommunityLogic.AND:
+                    if clist.use_regex:
+                        if len(clist.members) > 1:
+                            raise NotImplementedError("Multiple regexes with AND logic are not supported on Cumulus")
+                        member = member_prefix + clist.members[0]
+                    else:
+                        member = " ".join(f"{member_prefix}{m}" for m in clist.members)
                     yield from self._cumulus_community(
-                        name=clist.name, cmd=cmd, member=member_prefix + member_value, use_regex=clist.use_regex,
+                        name=name, cmd=cmd, member=member, use_regex=clist.use_regex,
                     )
+                else:
+                    for member_value in clist.members:
+                        yield from self._cumulus_community(
+                            name=name, cmd=cmd, member=member_prefix + member_value, use_regex=clist.use_regex,
+                        )
         yield "!"
 
     def _get_match_community_names(self, condition: SingleCondition[Sequence[str]]) -> Sequence[str]:

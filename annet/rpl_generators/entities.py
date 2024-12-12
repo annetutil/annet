@@ -50,6 +50,11 @@ def arista_well_known_community(community: str) -> str:
         return "GSHUT"
     return community
 
+
+def mangle_united_community_list_name(values: Sequence[str]) -> str:
+    """Name for a list used as HAS_ANY between multiple lists"""
+    return "_OR_".join(values)
+
 def mangle_ranged_prefix_list_name(name: str, greater_equal: Optional[int], less_equal: Optional[int]) -> str:
     if greater_equal is less_equal is None:
         return name
