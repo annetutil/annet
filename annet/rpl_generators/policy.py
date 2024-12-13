@@ -592,7 +592,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                     yield "set", "as-path match all replacement", *as_path_action_value.set
 
             if as_path_action_value.expand_last_as:
-                last_as_suffix = "last-as", as_path_action_value.expand_last_as
+                last_as_suffix: Sequence[str] = "last-as", as_path_action_value.expand_last_as
             else:
                 last_as_suffix = ()
 
