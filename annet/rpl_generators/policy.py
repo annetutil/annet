@@ -376,6 +376,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     ) -> Iterator[Sequence[str]]:
         if condition.field == MatchField.interface:
             yield "match interface", condition.value  # TODO extract number?
+            return
         if condition.field == MatchField.community:
             if condition.operator is ConditionOperator.HAS_ANY:
                 yield from self._arista_match_community(
@@ -578,7 +579,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         if action.field == ThenField.metric:
             if action.type is ActionType.ADD:
                 yield "set", f"metric + {action.value}"
-            if action.type is ActionType.REMOVE:
+            elif action.type is ActionType.REMOVE:
                 yield "set", f"metric - {action.value}"
             elif action.type is ActionType.SET:
                 yield "set", f"metric {action.value}"
@@ -616,7 +617,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 yield "set", f"ipv6 next-hop ::FFFF:{next_hop_action_value.addr}"
             else:
                 raise RuntimeError(f"Next_hop target {next_hop_action_value.target} is not supported for arista")
-
+            return
         if action.type is not ActionType.SET:
             raise NotImplementedError(f"Action type {action.type} for `{action.field}` is not supported for arista")
         if action.field not in ARISTA_THEN_COMMAND_MAP:
