@@ -325,6 +325,26 @@ class CumulusPolicyGenerator(ABC):
         for community_name in action.value.removed:
             raise NotImplementedError("SOO extcommunity remove is not supported for Cumulus")
 
+    def _cumulus_then_as_path(
+            self,
+            device: Any,
+            action: SingleAction[AsPathActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.prepend:
+            for path_item in action.value.prepend:
+                yield "set as-path prepend", path_item
+        if action.value.expand:
+            raise NotImplementedError("asp_path.expand is not supported for Cumulus")
+        if action.value.delete:
+            for path_item in action.value.delete:
+                yield "set as-path exclude", path_item
+        if action.value.set is not None:
+            yield "set as-path exclude all"
+            for path_item in action.value.set:
+                yield "set as-path prepend", path_item
+        if action.value.expand_last_as:
+            yield "set as-path prepend last-as", action.value.expand_last_as
+
     def _cumulus_policy_then(
             self,
             communities: dict[str, CommunityList],
@@ -370,20 +390,7 @@ class CumulusPolicyGenerator(ABC):
                 raise NotImplementedError(f"Action type {action.type} for metric is not supported for Cumulus")
             return
         if action.field == ThenField.as_path:
-            as_path_action_value = cast(AsPathActionValue, action.value)
-            if as_path_action_value.prepend:
-                for path_item in as_path_action_value.prepend:
-                    yield "set as-path prepend", path_item
-            if as_path_action_value.expand:  # same as prepend?
-                for path_item in as_path_action_value.expand:
-                    yield "set as-path prepend", path_item
-            if as_path_action_value.delete:
-                for path_item in as_path_action_value.delete:
-                    yield "set as-path exclude", path_item
-            if as_path_action_value.set is not None:
-                raise NotImplementedError("asp_path.set is not supported for Cumulus")
-            if as_path_action_value.expand_last_as:
-                raise NotImplementedError("asp_path.expand_last_as is not supported for Cumulus")
+            yield from self._cumulus_then_as_path(device, action)
             return
         if action.field == ThenField.next_hop:
             next_hop_action_value = cast(NextHopActionValue, action.value)

@@ -290,9 +290,8 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             if as_path_action_value.prepend:
                 for path_item in as_path_action_value.prepend:
                     yield "apply as-path", path_item, "additive"
-            if as_path_action_value.expand:  # same as prepend?
-                for path_item in as_path_action_value.expand:
-                    yield "apply as-path", path_item, "additive"
+            if as_path_action_value.expand:
+                raise RuntimeError("as_path.expand is not supported for huawei")
             if as_path_action_value.delete:
                 for path_item in as_path_action_value.delete:
                     yield "apply as-path", path_item, "delete"
@@ -591,16 +590,21 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                     yield "set", "as-path match all replacement", "none"
                 else:
                     yield "set", "as-path match all replacement", *as_path_action_value.set
+
+            if as_path_action_value.expand_last_as:
+                last_as_suffix = "last-as", as_path_action_value.expand_last_as
+            else:
+                last_as_suffix = ()
+
             if as_path_action_value.prepend:
                 for path_item in as_path_action_value.prepend:
-                    yield "set", "as-path prepend", path_item
-            if as_path_action_value.expand:  # same as prepend?
-                for path_item in as_path_action_value.expand:
-                    yield "set", "as-path prepend", path_item
+                    yield "set", "as-path prepend", path_item, *last_as_suffix
+            else:
+                yield "set", "as-path prepend", *last_as_suffix
+            if as_path_action_value.expand:
+                raise RuntimeError("as_path.expand is not supported for arista")
             if as_path_action_value.delete:
                 raise RuntimeError("as_path.delete is not supported for arista")
-            if as_path_action_value.expand_last_as:
-                yield "set", "as-path prepend last-as", as_path_action_value.expand_last_as
             return
         if action.field == ThenField.next_hop:
             next_hop_action_value = cast(NextHopActionValue, action.value)
