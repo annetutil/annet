@@ -94,6 +94,7 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                             continue
                         yield from self._huawei_prefix_list(mangled_name, "ipv6-prefix", cond.value, plists[name])
                         precessed_names.add(mangled_name)
+
     # arista
     def acl_arista(self, _):
         return r"""

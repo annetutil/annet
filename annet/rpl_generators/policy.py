@@ -396,7 +396,8 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                     device, "large-community", condition.value,
                 )
             else:
-                raise NotImplementedError(f"Large-community match operator {condition.field} is not supported on arista")
+                raise NotImplementedError(
+                    f"Large-community match operator {condition.field} is not supported on arista")
             return
         if condition.field == MatchField.extcommunity_rt:
             if condition.operator is ConditionOperator.HAS_ANY:
@@ -545,7 +546,6 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             community = communities[community_name]
             for comm_value in community.members:
                 yield "set", "extcommunity soo", self.comm_value, "delete"
-
 
     def _arista_then(
             self,

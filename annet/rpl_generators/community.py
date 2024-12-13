@@ -36,6 +36,7 @@ def get_used_community_lists(
         communities_dict[name] for name in sorted(used_communities)
     ]
 
+
 def get_used_united_community_lists(
         communities: Collection[CommunityList], policies: Collection[RoutingPolicy],
 ) -> list[list[CommunityList]]:
@@ -89,6 +90,7 @@ def get_used_united_community_lists(
     return [
         used_communities[name] for name in sorted(used_communities)
     ]
+
 
 class CommunityListGenerator(PartialGenerator, ABC):
     TAGS = ["policy", "rpl", "routing"]
