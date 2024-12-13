@@ -41,6 +41,7 @@ ARISTA_RESULT_MAP = {
     ResultType.NEXT: "permit"
 }
 ARISTA_MATCH_COMMAND_MAP: dict[str, str] = {
+    MatchField.interface: "interface {option_value}",
     MatchField.metric: "metric {option_value}",
     MatchField.as_path_filter: "as-path {option_value}",
     MatchField.protocol: "source-protocol {option_value}",
@@ -374,9 +375,6 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             communities: dict[str, CommunityList],
             rd_filters: dict[str, RDFilter],
     ) -> Iterator[Sequence[str]]:
-        if condition.field == MatchField.interface:
-            yield "match interface", condition.value  # TODO extract number?
-            return
         if condition.field == MatchField.community:
             if condition.operator is ConditionOperator.HAS_ANY:
                 yield from self._arista_match_community(
@@ -589,17 +587,20 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         if action.field == ThenField.as_path:
             as_path_action_value = cast(AsPathActionValue, action.value)
             if as_path_action_value.set is not None:
-                raise RuntimeError("as_path.set is not supported for arista")
+                if not as_path_action_value.set:
+                    yield "set", "as-path match all replacement", "none"
+                else:
+                    yield "set", "as-path match all replacement", *as_path_action_value.set
             if as_path_action_value.prepend:
                 for path_item in as_path_action_value.prepend:
-                    yield "as-path prepend", path_item
+                    yield "set", "as-path prepend", path_item
             if as_path_action_value.expand:  # same as prepend?
                 for path_item in as_path_action_value.expand:
-                    yield "as-path prepend", path_item, "additive"
+                    yield "set", "as-path prepend", path_item
             if as_path_action_value.delete:
                 raise RuntimeError("as_path.delete is not supported for arista")
             if as_path_action_value.expand_last_as:
-                raise RuntimeError("as_path.expand_last_as is not supported for arista")
+                yield "set", "as-path prepend last-as", as_path_action_value.expand_last_as
             return
         if action.field == ThenField.next_hop:
             next_hop_action_value = cast(NextHopActionValue, action.value)
