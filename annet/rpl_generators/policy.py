@@ -180,15 +180,14 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[CommunityActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
-            if not action.value.replaced:
+            if action.value.added or action.value.replaced:
+                raise NotImplementedError(
+                    "Cannot set community together with add/replace on huawei",
+                )
+            if action.value.replaced:
+                yield "apply", "community community-list", *action.value.replaced
+            else:
                 yield "apply", "community", "none"
-            first = True
-            for community_name in action.value.replaced:
-                if first:
-                    yield "apply", "community community-list", community_name
-                    first = False
-                else:
-                    yield "apply", "community community-list", community_name, "additive"
         for community_name in action.value.added:
             yield "apply", "community community-list", community_name, "additive"
         for community_name in action.value.removed:
@@ -201,19 +200,18 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[CommunityActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
-            if not action.value.replaced:
-                yield "apply", "large-community", "none"
-            first = True
-            for community_name in action.value.replaced:
-                if first:
-                    yield "apply", "large-community-list ", community_name, "overwrite"
-                    first = False
-                else:
-                    yield "apply", "large-community-list ", community_name, "additive"
+            if action.value.added or action.value.replaced:
+                raise NotImplementedError(
+                    "Cannot set large-community together with add/replace on huawei",
+                )
+            if action.value.replaced:
+                yield "apply", "large-community-list", *action.value.replaced, "overwrite"
+            else:
+                yield "apply", "large-community-list", "none"
         for community_name in action.value.added:
-            yield "apply", "large-community-list ", community_name, "additive"
+            yield "apply", "large-community-list", community_name, "additive"
         for community_name in action.value.removed:
-            yield "apply large-community-list ", community_name, "delete"
+            yield "apply large-community-list", community_name, "delete"
 
     def _huawei_then_extcommunity_rt(
             self,
@@ -244,6 +242,32 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 yield "apply", "extcommunity soo", comm_value, "additive"
         if action.value.removed:
             raise NotImplementedError("Extcommunity_soo remove is not supported for huawei")
+
+    def _huawei_then_as_path(
+            self,
+            device: Any,
+            action: SingleAction[AsPathActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.set is not None:
+            if not action.value.set:
+                yield "apply", "as_path", "none overwrite"
+            first = True
+            for path_item in action.value.set:
+                if first:
+                    yield "apply as-path", path_item, "overwrite"
+                    first = False
+                else:
+                    yield "apply as-path", path_item, "additive"
+        if action.value.prepend:
+            for path_item in action.value.prepend:
+                yield "apply as-path", path_item, "additive"
+        if action.value.expand:
+            raise RuntimeError("as_path.expand is not supported for huawei")
+        if action.value.delete:
+            for path_item in action.value.delete:
+                yield "apply as-path", path_item, "delete"
+        if action.value.expand_last_as:
+            raise RuntimeError("as_path.expand_last_as is not supported for huawei")
 
     def _huawei_then(
             self,
@@ -276,27 +300,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 raise NotImplementedError(f"Action type {action.type} for metric is not supported for huawei")
             return
         if action.field == ThenField.as_path:
-            as_path_action_value = cast(AsPathActionValue, action.value)
-            if as_path_action_value.set is not None:
-                if not as_path_action_value.set:
-                    yield "apply", "as_path", "none overwrite"
-                first = True
-                for path_item in as_path_action_value.set:
-                    if first:
-                        yield "apply as-path", path_item, "overwrite"
-                        first = False
-                    else:
-                        yield "apply as-path", path_item, "additive"
-            if as_path_action_value.prepend:
-                for path_item in as_path_action_value.prepend:
-                    yield "apply as-path", path_item, "additive"
-            if as_path_action_value.expand:
-                raise RuntimeError("as_path.expand is not supported for huawei")
-            if as_path_action_value.delete:
-                for path_item in as_path_action_value.delete:
-                    yield "apply as-path", path_item, "delete"
-            if as_path_action_value.expand_last_as:
-                raise RuntimeError("as_path.expand_last_as is not supported for huawei")
+            yield from self._huawei_then_as_path(device, cast(SingleAction[AsPathActionValue], action))
             return
         if action.field == ThenField.next_hop:
             next_hop_action_value = cast(NextHopActionValue, action.value)
@@ -463,7 +467,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         if condition.field not in ARISTA_MATCH_COMMAND_MAP:
             raise NotImplementedError(f"Match using `{condition.field}` is not supported for arista")
         cmd = ARISTA_MATCH_COMMAND_MAP[condition.field]
-        yield "if-match", cmd.format(option_value=condition.value)
+        yield "match", cmd.format(option_value=condition.value)
 
     def _arista_then_community(
             self,
@@ -472,25 +476,21 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[CommunityActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
-            if not action.value.replaced:
+            if action.value.added or action.value.replaced:
+                raise NotImplementedError(
+                    "Cannot set community together with add/replace on arista",
+                )
+
+            if action.value.replaced:
+                yield "set", "community community-list", *action.value.replaced
+            else:
                 yield "set", "community", "none"
-            first = True
-            for community_name in action.value.replaced:
-                community = communities[community_name]
-                for comm_value in community.members:
-                    if first:
-                        yield "set", "community community-list", arista_well_known_community(comm_value)
-                        first = False
-                    else:
-                        yield "set", "community community-list", arista_well_known_community(comm_value), "additive"
         for community_name in action.value.added:
-            community = communities[community_name]
-            for comm_value in community.members:
-                yield "set", "community community-list", arista_well_known_community(comm_value), "additive"
+            yield "set", "community community-list", community_name, "additive"
         for community_name in action.value.removed:
             community = communities[community_name]
             for comm_value in community.members:
-                yield "set comm-filter", arista_well_known_community(comm_value), "delete"
+                yield "set community", arista_well_known_community(comm_value), "delete"
 
     def _arista_then_large_community(
             self,
@@ -499,19 +499,24 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[CommunityActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
+            if action.value.added or action.value.replaced:
+                raise NotImplementedError(
+                    "Cannot set large-community together with add/replace on arista",
+                )
+
             if not action.value.replaced:
                 yield "set", "large-community", "none"
             first = True
             for community_name in action.value.replaced:
                 if first:
-                    yield "set", "large-community large-community-list ", community_name
+                    yield "set", "large-community large-community-list", community_name
                     first = False
                 else:
-                    yield "set", "large-community large-community-list ", community_name, "additive"
+                    yield "set", "large-community large-community-list", community_name, "additive"
         for community_name in action.value.added:
-            yield "set", "large-community large-community-list ", community_name, "additive"
+            yield "set", "large-community large-community-list", community_name, "additive"
         for community_name in action.value.removed:
-            yield "set large-community large-community-list ", community_name, "delete"
+            yield "set large-community large-community-list", community_name, "delete"
 
     def _arista_then_extcommunity_rt(
             self,
@@ -545,7 +550,33 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         for community_name in action.value.removed:
             community = communities[community_name]
             for comm_value in community.members:
-                yield "set", "extcommunity soo", self.comm_value, "delete"
+                yield "set", "extcommunity soo", comm_value, "delete"
+
+    def _arista_then_as_path(
+            self,
+            device: Any,
+            action: SingleAction[AsPathActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.set is not None:
+            if not action.value.set:
+                yield "set", "as-path match all replacement", "none"
+            else:
+                yield "set", "as-path match all replacement", *action.value.set
+
+        if action.value.expand_last_as:
+            last_as_suffix: Sequence[str] = "last-as", action.value.expand_last_as
+        else:
+            last_as_suffix = ()
+
+        if action.value.prepend:
+            for path_item in action.value.prepend:
+                yield "set", "as-path prepend", path_item, *last_as_suffix
+        else:
+            yield "set", "as-path prepend", *last_as_suffix
+        if action.value.expand:
+            raise RuntimeError("as_path.expand is not supported for arista")
+        if action.value.delete:
+            raise RuntimeError("as_path.delete is not supported for arista")
 
     def _arista_then(
             self,
@@ -584,27 +615,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 raise NotImplementedError(f"Action type {action.type} for metric is not supported for arista")
             return
         if action.field == ThenField.as_path:
-            as_path_action_value = cast(AsPathActionValue, action.value)
-            if as_path_action_value.set is not None:
-                if not as_path_action_value.set:
-                    yield "set", "as-path match all replacement", "none"
-                else:
-                    yield "set", "as-path match all replacement", *as_path_action_value.set
-
-            if as_path_action_value.expand_last_as:
-                last_as_suffix: Sequence[str] = "last-as", as_path_action_value.expand_last_as
-            else:
-                last_as_suffix = ()
-
-            if as_path_action_value.prepend:
-                for path_item in as_path_action_value.prepend:
-                    yield "set", "as-path prepend", path_item, *last_as_suffix
-            else:
-                yield "set", "as-path prepend", *last_as_suffix
-            if as_path_action_value.expand:
-                raise RuntimeError("as_path.expand is not supported for arista")
-            if as_path_action_value.delete:
-                raise RuntimeError("as_path.delete is not supported for arista")
+            yield from self._arista_then_as_path(device, cast(SingleAction[AsPathActionValue], action))
             return
         if action.field == ThenField.next_hop:
             next_hop_action_value = cast(NextHopActionValue, action.value)

@@ -268,21 +268,18 @@ class CumulusPolicyGenerator(ABC):
             action: SingleAction[CommunityActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
-            if not action.value.replaced:
+            if action.value.added or action.value.replaced:
+                raise NotImplementedError(
+                    "Cannot set community together with add/replace on cumulus",
+                )
+            members = [m for name in action.value.replaced for m in communities[name].members]
+            if members:
+                yield "set", "community", *members
+            else:
                 yield "set", "community", "none"
-            first = True
-            for community_name in action.value.replaced:
-                comminity = communities[community_name]
-                for comm_member in comminity.members:
-                    if first:
-                        yield "set", "community", comm_member
-                        first = False
-                    else:
-                        yield "set", "community", comm_member, "additive"
-        for community_name in action.value.added:
-            comminity = communities[community_name]
-            for comm_member in comminity.members:
-                yield "set", "community", comm_member, "additive"
+        if action.value.added:
+            members = [m for name in action.value.replaced for m in communities[name].added]
+            yield "set", "community", *members, "additive"
         for community_name in action.value.removed:
             yield "set comm-list", community_name, "delete"
 
