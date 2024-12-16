@@ -278,7 +278,7 @@ class CumulusPolicyGenerator(ABC):
             else:
                 yield "set", "community", "none"
         if action.value.added:
-            members = [m for name in action.value.replaced for m in communities[name].added]
+            members = [m for name in action.value.added for m in communities[name].members]
             yield "set", "community", *members, "additive"
         for community_name in action.value.removed:
             yield "set comm-list", community_name, "delete"
