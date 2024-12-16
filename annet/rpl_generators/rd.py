@@ -8,6 +8,8 @@ from .entities import RDFilter
 
 
 class RDFilterFilterGenerator(PartialGenerator, ABC):
+    TAGS = ["policy", "rpl", "routing"]
+
     @abstractmethod
     def get_routemap(self) -> RouteMap:
         raise NotImplementedError()
@@ -34,5 +36,5 @@ class RDFilterFilterGenerator(PartialGenerator, ABC):
     def run_huawei(self, device: Any):
         for rd_filter in self.get_used_rd_filters(device):
             for i, route_distinguisher in enumerate(rd_filter.members):
-                rd_id = (i + 1) * 10
+                rd_id = (i + 1) * 10 + 5
                 yield "ip rd-filter", rd_filter.number, f"index {rd_id}", "permit", route_distinguisher

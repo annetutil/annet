@@ -21,6 +21,8 @@ def get_used_prefix_lists(prefix_lists: Sequence[IpPrefixList], policies: list[R
 
 
 class PrefixListFilterGenerator(PartialGenerator, ABC):
+    TAGS = ["policy", "rpl", "routing"]
+
     @abstractmethod
     def get_routemap(self) -> RouteMap:
         raise NotImplementedError()
@@ -55,10 +57,10 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                 "ip",
                 prefix_type,
                 name,
-                f"index {i * 10}",
+                f"index {i * 10 + 5}",
                 "permit",
                 str(addr_mask.ip).upper(),
-                str(addr_mask.hostmask.max_prefixlen),
+                str(addr_mask.network.prefixlen),
             ) + (
                 ("greater-equal", str(match.greater_equal)) if match.greater_equal is not None else ()
             ) + (
@@ -115,10 +117,10 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                 prefix_type,
                 "prefix-list",
                 name,
-                f"seq {i * 10}",
+                f"seq {i * 10 + 5}",
                 "permit",
                 str(addr_mask.ip).upper(),
-                str(addr_mask.hostmask.max_prefixlen),
+                str(addr_mask.network.prefixlen),
             ) + (
                 ("ge", str(match.greater_equal)) if match.greater_equal is not None else ()
             ) + (

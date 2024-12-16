@@ -139,7 +139,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                     greater_equal=condition.value.greater_equal,
                     less_equal=condition.value.less_equal,
                 )
-                yield "if-match", "ip-prefix-filter", mangled_name
+                yield "if-match", "ip-prefix", mangled_name
             return
         if condition.field == MatchField.ipv6_prefix:
             for name in condition.value.names:
@@ -184,12 +184,14 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 raise NotImplementedError(
                     "Cannot set community together with add/remove on huawei",
                 )
-            if action.value.replaced:
-                yield "apply", "community community-list", *action.value.replaced
+            members = [m for name in action.value.replaced for m in communities[name].members]
+            if members:
+                yield "apply", "community", *members
             else:
                 yield "apply", "community", "none"
-        for community_name in action.value.added:
-            yield "apply", "community community-list", community_name, "additive"
+        if action.value.added:
+            members = [m for name in action.value.added for m in communities[name].members]
+            yield "apply", "community", *members, "additive"
         for community_name in action.value.removed:
             yield "apply comm-filter", community_name, "delete"
 
@@ -204,14 +206,17 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 raise NotImplementedError(
                     "Cannot set large-community together with add/remove on huawei",
                 )
-            if action.value.replaced:
-                yield "apply", "large-community-list", *action.value.replaced, "overwrite"
+            members = [m for name in action.value.replaced for m in communities[name].members]
+            if members:
+                yield "apply", "large-community", *members, "overwrite"
             else:
-                yield "apply", "large-community-list", "none"
-        for community_name in action.value.added:
-            yield "apply", "large-community-list", community_name, "additive"
-        for community_name in action.value.removed:
-            yield "apply large-community-list", community_name, "delete"
+                yield "apply", "large-community", "none"
+        if action.value.added:
+            members = [m for name in action.value.added for m in communities[name].members]
+            yield "apply", "large-community", *members, "additive"
+        if action.value.removed:
+            members = [m for name in action.value.removed for m in communities[name].members]
+            yield "apply large-community", *members, "delete"
 
     def _huawei_then_extcommunity_rt(
             self,
@@ -221,10 +226,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
             raise NotImplementedError("Extcommunity_rt replace is not supported for huawei")
-        for community_name in action.value.added:
-            community = communities[community_name]
-            for comm_value in community.members:
-                yield "apply", "extcommunity rt", comm_value, "additive"
+        if action.value.added:
+            members = [f"rt {m}" for name in action.value.added for m in communities[name].members]
+            yield "apply", "extcommunity", *members, "additive"
         for community_name in action.value.removed:
             yield "apply extcommunity-filter rt", community_name, "delete"
 
@@ -236,10 +240,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
             raise NotImplementedError("Extcommunity_soo replace is not supported for huawei")
-        for community_name in action.value.added:
-            community = communities[community_name]
-            for comm_value in community.members:
-                yield "apply", "extcommunity soo", comm_value, "additive"
+        if action.value.added:
+            members = [f"rt {m}" for name in action.value.added for m in communities[name].members]
+            yield "apply", "extcommunity", *members, "additive"
         if action.value.removed:
             raise NotImplementedError("Extcommunity_soo remove is not supported for huawei")
 

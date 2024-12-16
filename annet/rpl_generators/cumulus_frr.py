@@ -92,8 +92,8 @@ class CumulusPolicyGenerator(ABC):
                 ip_type,
                 "prefix-list",
                 name,
-                f"seq {i * 10}",
-                "permit", f"{addr_mask.ip}/{addr_mask.hostmask.max_prefixlen}",
+                f"seq {i * 10 + 5}",
+                "permit", f"{addr_mask.ip}/{addr_mask.network.prefixlen}",
             ) + (
                 ("ge", str(match.greater_equal)) if match.greater_equal is not None else ()
             ) + (
