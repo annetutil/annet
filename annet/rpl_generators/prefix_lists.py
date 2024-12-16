@@ -60,7 +60,7 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                 f"index {i * 10 + 5}",
                 "permit",
                 str(addr_mask.ip).upper(),
-                str(addr_mask.hostmask.max_prefixlen),
+                str(addr_mask.network.prefixlen),
             ) + (
                 ("greater-equal", str(match.greater_equal)) if match.greater_equal is not None else ()
             ) + (
@@ -117,10 +117,10 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                 prefix_type,
                 "prefix-list",
                 name,
-                f"seq {i * 10  + 5}",
+                f"seq {i * 10 + 5}",
                 "permit",
                 str(addr_mask.ip).upper(),
-                str(addr_mask.hostmask.max_prefixlen),
+                str(addr_mask.network.prefixlen),
             ) + (
                 ("ge", str(match.greater_equal)) if match.greater_equal is not None else ()
             ) + (
