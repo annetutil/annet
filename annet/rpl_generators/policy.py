@@ -139,7 +139,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                     greater_equal=condition.value.greater_equal,
                     less_equal=condition.value.less_equal,
                 )
-                yield "if-match", "ip-prefix-filter", mangled_name
+                yield "if-match", "ip-prefix", mangled_name
             return
         if condition.field == MatchField.ipv6_prefix:
             for name in condition.value.names:
