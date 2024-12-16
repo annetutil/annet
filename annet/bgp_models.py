@@ -244,6 +244,7 @@ class VrfOptions:
     ipv6_labeled_unicast: FamilyOptions
 
     vrf_name_global: Optional[str] = None
+    as_path_relax: bool = False
     rt_import: list[str] = field(default_factory=list)
     rt_export: list[str] = field(default_factory=list)
     rt_import_v4: list[str] = field(default_factory=list)
@@ -261,6 +262,7 @@ class GlobalOptions:
     ipv4_labeled_unicast: FamilyOptions
     ipv6_labeled_unicast: FamilyOptions
 
+    as_path_relax: bool = False
     local_as: ASN = ASN(None)
     loops: int = 0
     multipath: int = 0

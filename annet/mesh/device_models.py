@@ -61,6 +61,7 @@ class VrfOptions(_FamiliesMixin, BaseMeshModel):
 
     vrf_name: str
     vrf_name_global: Optional[str]
+    as_path_relax: bool
     import_policy: Optional[str]
     export_policy: Optional[str]
     rt_import: Annotated[tuple[str, ...], Concat()]
@@ -78,6 +79,7 @@ class GlobalOptionsDTO(_FamiliesMixin, BaseMeshModel):
         kwargs.setdefault("vrf", KeyDefaultDict(lambda x: VrfOptions(vrf_name=x)))
         super().__init__(**kwargs)
 
+    as_path_relax: bool
     local_as: Union[int, str]
     loops: int
     multipath: int
