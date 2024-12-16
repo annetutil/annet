@@ -182,7 +182,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         if action.value.replaced is not None:
             if action.value.added or action.value.replaced:
                 raise NotImplementedError(
-                    "Cannot set community together with add/replace on huawei",
+                    "Cannot set community together with add/remove on huawei",
                 )
             if action.value.replaced:
                 yield "apply", "community community-list", *action.value.replaced
@@ -202,7 +202,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         if action.value.replaced is not None:
             if action.value.added or action.value.replaced:
                 raise NotImplementedError(
-                    "Cannot set large-community together with add/replace on huawei",
+                    "Cannot set large-community together with add/remove on huawei",
                 )
             if action.value.replaced:
                 yield "apply", "large-community-list", *action.value.replaced, "overwrite"
@@ -249,18 +249,16 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[AsPathActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.set is not None:
-            if not action.value.set:
-                yield "apply", "as_path", "none overwrite"
-            first = True
-            for path_item in action.value.set:
-                if first:
-                    yield "apply as-path", path_item, "overwrite"
-                    first = False
-                else:
-                    yield "apply as-path", path_item, "additive"
+            if action.value.prepend:
+                raise NotImplementedError(
+                    "Cannot set as_path together with prepend on huawei",
+                )
+            if action.value.set:
+                yield "apply", "as-path", *action.value.set, "overwrite"
+            else:
+                yield "apply", "as-path", "none overwrite"
         if action.value.prepend:
-            for path_item in action.value.prepend:
-                yield "apply as-path", path_item, "additive"
+            yield "apply as-path", *action.value.prepend, "additive"
         if action.value.expand:
             raise RuntimeError("as_path.expand is not supported for huawei")
         if action.value.delete:
@@ -478,7 +476,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         if action.value.replaced is not None:
             if action.value.added or action.value.replaced:
                 raise NotImplementedError(
-                    "Cannot set community together with add/replace on arista",
+                    "Cannot set community together with add/remove on arista",
                 )
 
             if action.value.replaced:
@@ -501,7 +499,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         if action.value.replaced is not None:
             if action.value.added or action.value.replaced:
                 raise NotImplementedError(
-                    "Cannot set large-community together with add/replace on arista",
+                    "Cannot set large-community together with add/remove on arista",
                 )
 
             if not action.value.replaced:
@@ -558,6 +556,10 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[AsPathActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.set is not None:
+            if action.value.prepend:
+                raise NotImplementedError(
+                    "Cannot set as_path together with prepend on arista",
+                )
             if not action.value.set:
                 yield "set", "as-path match all replacement", "none"
             else:
