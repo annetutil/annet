@@ -43,3 +43,13 @@ class AsPathFilterGenerator(PartialGenerator, ABC):
         for as_path_filter in self.get_used_as_path_filters(device):
             values = "_".join((x for x in as_path_filter.filters if x != ".*"))
             yield "ip as-path-filter", as_path_filter.name, "index 10 permit", f"_{values}_"
+
+    def acl_arista(self, _):
+        return r"""
+        ip as-path access-list
+        """
+
+    def run_arista(self, device: Any):
+        for as_path_filter in self.get_used_as_path_filters(device):
+            values = "_".join((x for x in as_path_filter.filters if x != ".*"))
+            yield "ip as-path access-list", as_path_filter.name, "permit", f"_{values}_"
