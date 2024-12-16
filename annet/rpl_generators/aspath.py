@@ -21,6 +21,8 @@ def get_used_as_path_filters(
 
 
 class AsPathFilterGenerator(PartialGenerator, ABC):
+    TAGS = ["policy", "rpl", "routing"]
+
     @abstractmethod
     def get_routemap(self) -> RouteMap:
         raise NotImplementedError

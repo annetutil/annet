@@ -8,6 +8,8 @@ from .entities import RDFilter
 
 
 class RDFilterFilterGenerator(PartialGenerator, ABC):
+    TAGS = ["policy", "rpl", "routing"]
+
     @abstractmethod
     def get_routemap(self) -> RouteMap:
         raise NotImplementedError()

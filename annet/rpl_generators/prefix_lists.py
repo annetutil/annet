@@ -21,6 +21,8 @@ def get_used_prefix_lists(prefix_lists: Sequence[IpPrefixList], policies: list[R
 
 
 class PrefixListFilterGenerator(PartialGenerator, ABC):
+    TAGS = ["policy", "rpl", "routing"]
+
     @abstractmethod
     def get_routemap(self) -> RouteMap:
         raise NotImplementedError()
