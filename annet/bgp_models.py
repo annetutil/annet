@@ -1,3 +1,4 @@
+from collections.abc import Sequence, Iterable
 from dataclasses import dataclass, field
 from typing import Literal, Union, Optional
 
@@ -270,3 +271,28 @@ class GlobalOptions:
     vrf: dict[str, VrfOptions] = field(default_factory=dict)
 
     groups: list[PeerGroup] = field(default_factory=list)
+
+
+@dataclass
+class BgpConfig:
+    global_options: GlobalOptions
+    peers: list[Peer]
+
+
+def _used_policies(peer: Union[Peer, PeerGroup]) -> Iterable[str]:
+    if peer.import_policy:
+        yield peer.import_policy
+    if peer.export_policy:
+        yield peer.export_policy
+
+
+def extract_policies(config: BgpConfig) -> Sequence[str]:
+    result = []
+    for vrf in config.global_options.vrf.values():
+        for group in vrf.groups:
+            result.extend(_used_policies(group))
+    for group in config.global_options.groups:
+        result.extend(_used_policies(group))
+    for peer in config.peers:
+        result.extend(_used_policies(peer))
+    return result
