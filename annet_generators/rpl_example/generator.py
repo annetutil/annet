@@ -1,13 +1,16 @@
 from typing import Any
 
 from annet.generators import BaseGenerator, Entire
-from annet.rpl import RouteMap
+from annet.mesh import MeshExecutor
+from annet.rpl import RouteMap, RoutingPolicy
 from annet.rpl_generators import (
     CommunityListGenerator, RoutingPolicyGenerator, AsPathFilterGenerator, CommunityList, AsPathFilter,
-    RDFilterFilterGenerator, RDFilter, PrefixListFilterGenerator, IpPrefixList, CumulusPolicyGenerator
+    RDFilterFilterGenerator, RDFilter, PrefixListFilterGenerator, IpPrefixList, CumulusPolicyGenerator,
+    get_policies,
 )
 from annet.storage import Storage
 from .items import COMMUNITIES, AS_PATH_FILTERS, RD_FILTERS, PREFIX_LISTS
+from .mesh import registry
 from .route_policy import routemap
 
 
@@ -18,10 +21,21 @@ class CommunityGenerator(CommunityListGenerator):
     def get_routemap(self) -> RouteMap:
         return routemap
 
+    def get_policies(self, device: Any) -> list[RoutingPolicy]:
+        return get_policies(
+            routemap=routemap,
+            device=device,
+            mesh_executor=MeshExecutor(registry, self.storage),
+        )
+
 
 class PolicyGenerator(RoutingPolicyGenerator):
-    def get_routemap(self) -> RouteMap:
-        return routemap
+    def get_policies(self, device: Any) -> list[RoutingPolicy]:
+        return get_policies(
+            routemap=routemap,
+            device=device,
+            mesh_executor=MeshExecutor(registry, self.storage),
+        )
 
     def get_community_lists(self, device: Any) -> list[CommunityList]:
         return COMMUNITIES
@@ -31,24 +45,36 @@ class PolicyGenerator(RoutingPolicyGenerator):
 
 
 class AsPathGenerator(AsPathFilterGenerator):
-    def get_routemap(self) -> RouteMap:
-        return routemap
+    def get_policies(self, device: Any) -> list[RoutingPolicy]:
+        return get_policies(
+            routemap=routemap,
+            device=device,
+            mesh_executor=MeshExecutor(registry, self.storage),
+        )
 
     def get_as_path_filters(self, device: Any) -> list[AsPathFilter]:
         return AS_PATH_FILTERS
 
 
 class RDGenerator(RDFilterFilterGenerator):
-    def get_routemap(self) -> RouteMap:
-        return routemap
+    def get_policies(self, device: Any) -> list[RoutingPolicy]:
+        return get_policies(
+            routemap=routemap,
+            device=device,
+            mesh_executor=MeshExecutor(registry, self.storage),
+        )
 
     def get_rd_filters(self, device: Any) -> list[RDFilter]:
         return RD_FILTERS
 
 
 class PrefixListGenerator(PrefixListFilterGenerator):
-    def get_routemap(self) -> RouteMap:
-        return routemap
+    def get_policies(self, device: Any) -> list[RoutingPolicy]:
+        return get_policies(
+            routemap=routemap,
+            device=device,
+            mesh_executor=MeshExecutor(registry, self.storage),
+        )
 
     def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
         return PREFIX_LISTS
@@ -64,8 +90,12 @@ service integrated-vtysh-config"""
 
 
 class FrrGenerator(Entire, CumulusPolicyGenerator):
-    def get_routemap(self) -> RouteMap:
-        return routemap
+    def get_policies(self, device: Any) -> list[RoutingPolicy]:
+        return get_policies(
+            routemap=routemap,
+            device=device,
+            mesh_executor=MeshExecutor(registry, self.storage),
+        )
 
     def get_community_lists(self, device: Any) -> list[CommunityList]:
         return COMMUNITIES

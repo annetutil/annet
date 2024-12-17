@@ -62,7 +62,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     TAGS = ["policy", "rpl", "routing"]
 
     @abstractmethod
-    def get_routemap(self) -> RouteMap:
+    def get_policies(self, device: Any) -> list[RoutingPolicy]:
         raise NotImplementedError()
 
     @abstractmethod
@@ -353,7 +353,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         communities = {c.name: c for c in self.get_community_lists(device)}
         rd_filters = {f.name: f for f in self.get_rd_filters(device)}
 
-        for policy in self.get_routemap().apply(device):
+        for policy in self.get_policies(device):
             for statement in policy.statements:
                 yield from self._huawei_statement(communities, rd_filters, device, policy, statement)
 
@@ -671,6 +671,6 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         communities = {c.name: c for c in self.get_community_lists(device)}
         rd_filters = {f.name: f for f in self.get_rd_filters(device)}
 
-        for policy in self.get_routemap().apply(device):
+        for policy in self.get_policies(device):
             for statement in policy.statements:
                 yield from self._arista_statement(communities, rd_filters, device, policy, statement)

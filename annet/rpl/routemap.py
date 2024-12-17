@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Optional, Callable, Generic, TypeVar, Union
 
@@ -64,13 +65,14 @@ class RouteMap(Generic[DeviceT]):
     def include(self, other: "RouteMap[DeviceT]") -> None:
         self.submaps.append(other)
 
-    def apply(self, device: DeviceT) -> list[RoutingPolicy]:
+    def apply(self, device: DeviceT, rules: Optional[Sequence[str]]=None) -> list[RoutingPolicy]:
         result: list[RoutingPolicy] = []
-
         for handler in self.handlers:
+            if rules is not None and handler.name not in rules:
+                continue
             route = Route(handler.name)
             handler.func(device, route)
             result.append(RoutingPolicy(route.name, route.statements))
         for submap in self.submaps:
-            result.extend(submap.apply(device))
+            result.extend(submap.apply(device, rules))
         return result

@@ -24,7 +24,7 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
     TAGS = ["policy", "rpl", "routing"]
 
     @abstractmethod
-    def get_routemap(self) -> RouteMap:
+    def get_policies(self, device: Any) -> list[RoutingPolicy]:
         raise NotImplementedError()
 
     @abstractmethod
@@ -34,7 +34,7 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
     def get_used_prefix_lists(self, device: Any) -> Sequence[IpPrefixList]:
         return get_used_prefix_lists(
             prefix_lists=self.get_prefix_lists(device),
-            policies=self.get_routemap().apply(device),
+            policies=self.get_policies(device),
         )
 
     # huawei
@@ -69,7 +69,7 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
 
     def run_huawei(self, device: Any):
         plists = {p.name: p for p in self.get_used_prefix_lists(device)}
-        policies = self.get_routemap().apply(device)
+        policies = self.get_policies(device)
         precessed_names = set()
         for policy in policies:
             for statement in policy.statements:
@@ -129,7 +129,7 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
 
     def run_arista(self, device: Any):
         plists = {p.name: p for p in self.get_used_prefix_lists(device)}
-        policies = self.get_routemap().apply(device)
+        policies = self.get_policies(device)
         precessed_names = set()
         for policy in policies:
             for statement in policy.statements:
