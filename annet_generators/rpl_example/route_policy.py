@@ -63,5 +63,5 @@ def example2(device: NetboxDevice, route: Route):
 # this policy is not used in mesh model, so will be filtered out
 @routemap
 def unused(device: NetboxDevice, route: Route):
-    with route(R.interface=="invalid", number=3, name="n3") as rule:
+    with route(number=3, name="n3") as rule:
         rule.deny()

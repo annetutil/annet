@@ -65,7 +65,7 @@ class RouteMap(Generic[DeviceT]):
     def include(self, other: "RouteMap[DeviceT]") -> None:
         self.submaps.append(other)
 
-    def apply(self, device: DeviceT, rules: Optional[Sequence[str]]=None) -> list[RoutingPolicy]:
+    def apply(self, device: DeviceT, rules: Optional[Sequence[str]] = None) -> list[RoutingPolicy]:
         result: list[RoutingPolicy] = []
         for handler in self.handlers:
             if rules is not None and handler.name not in rules:

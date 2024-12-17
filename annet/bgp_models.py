@@ -287,7 +287,7 @@ def _used_policies(peer: Union[Peer, PeerGroup]) -> Iterable[str]:
 
 
 def extract_policies(config: BgpConfig) -> Sequence[str]:
-    result = []
+    result: list[str] = []
     for vrf in config.global_options.vrf.values():
         for group in vrf.groups:
             result.extend(_used_policies(group))
