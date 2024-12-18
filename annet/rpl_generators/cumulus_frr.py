@@ -4,7 +4,7 @@ from ipaddress import ip_interface
 from typing import Any, Literal, Iterable, Iterator, Optional, cast
 
 from annet.rpl import (
-    RouteMap, RoutingPolicy, PrefixMatchValue, SingleCondition, MatchField, RoutingPolicyStatement, ResultType,
+    RoutingPolicy, PrefixMatchValue, SingleCondition, MatchField, RoutingPolicyStatement, ResultType,
     SingleAction, ConditionOperator, ThenField, ActionType,
 )
 from annet.rpl.statement_builder import NextHopActionValue, AsPathActionValue, CommunityActionValue
@@ -44,7 +44,7 @@ FRR_INDENT = " "
 
 class CumulusPolicyGenerator(ABC):
     @abstractmethod
-    def get_routemap(self) -> RouteMap:
+    def get_policies(self, device: Any) -> list[RoutingPolicy]:
         raise NotImplementedError()
 
     @abstractmethod
@@ -60,7 +60,7 @@ class CumulusPolicyGenerator(ABC):
         raise NotImplementedError
 
     def generate_cumulus_rpl(self, device: Any) -> Iterator[Sequence[str]]:
-        policies = self.get_routemap().apply(device)
+        policies = self.get_policies(device)
         communities = {c.name: c for c in self.get_community_lists(device)}
         yield from self._cumulus_as_path_filters(device, policies)
         yield from self._cumulus_communities(device, communities, policies)

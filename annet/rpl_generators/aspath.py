@@ -24,8 +24,8 @@ class AsPathFilterGenerator(PartialGenerator, ABC):
     TAGS = ["policy", "rpl", "routing"]
 
     @abstractmethod
-    def get_routemap(self) -> RouteMap:
-        raise NotImplementedError
+    def get_policies(self, device: Any) -> list[RoutingPolicy]:
+        raise NotImplementedError()
 
     @abstractmethod
     def get_as_path_filters(self, device: Any) -> Sequence[AsPathFilter]:
@@ -33,7 +33,7 @@ class AsPathFilterGenerator(PartialGenerator, ABC):
 
     def get_used_as_path_filters(self, device: Any) -> Sequence[AsPathFilter]:
         filters = self.get_as_path_filters(device)
-        policies = self.get_routemap().apply(device)
+        policies = self.get_policies(device)
         return get_used_as_path_filters(filters, policies)
 
     def acl_huawei(self, _):

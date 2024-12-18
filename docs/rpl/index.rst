@@ -182,7 +182,7 @@ Main vendors
 
 .. code-block:: python
 
-    from annet.rpl_generators import RDFilterFilterGenerator, RDFilter
+    from annet.rpl_generators import RDFilterFilterGenerator, RDFilter, RoutingPolicy
 
 
 2. Inherit and override abstract methods:
@@ -190,11 +190,11 @@ Main vendors
 .. code-block:: python
 
     class MyRDGenerator(RDFilterFilterGenerator):
-        def get_routemap(self) -> RouteMap:
-            return routemap  # you route map used in RPLs
+        def get_policies(self, device: Any) -> list[RoutingPolicy]:
+            return routemap.apply(device)  # use your RouteMap used in RPLs
 
         def get_rd_filters(self, device: Any) -> list[RDFilter]:
-            return RD_FILTERS  # you RDFilter instances
+            return RD_FILTERS  # your RDFilter instances
 
 3. Repeat for other generators:
 
@@ -228,8 +228,8 @@ For Cumulus linux RPL is a part of FRR config, so instead of calling separate ge
 .. code-block:: python
 
     class FrrGenerator(Entire, CumulusPolicyGenerator):
-        def get_routemap(self) -> RouteMap:
-            return routemap  # you route map used in RPLs
+        def get_policies(self, device: Any) -> list[RoutingPolicy]:
+            return routemap.apply(device)  # use your RouteMap used in RPLs
 
         def get_community_lists(self, device: Any) -> list[CommunityList]:
             return COMMUNITIES
@@ -252,3 +252,28 @@ For Cumulus linux RPL is a part of FRR config, so instead of calling separate ge
             yield from self.generate_cumulus_rpl(device)  # add data from RPL generator
 
 4. Implement you ``get_generators`` logic
+
+
+Using with mesh model
+*************************
+
+To avoid generating to many policies you can filter them according to your mesh model.
+To do it, modify your ``get_policies`` method in each generator
+
+
+.. code-block:: python
+
+    from annet.mesh import MeshExecutor
+    from annet.rpl_generators import get_policies
+
+    class MyRDGenerator(RDFilterFilterGenerator):
+        def get_policies(self, device: Any) -> list[RoutingPolicy]:
+            return get_policies(
+                routemap=routemap,  # your RouteMap used in RPLs
+                device=device,
+                mesh_executor=MeshExecutor(
+                    registry,  # your MeshRulesRegistry
+                    self.storage,
+                ),
+            )
+        ...

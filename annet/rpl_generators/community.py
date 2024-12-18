@@ -96,7 +96,7 @@ class CommunityListGenerator(PartialGenerator, ABC):
     TAGS = ["policy", "rpl", "routing"]
 
     @abstractmethod
-    def get_routemap(self) -> RouteMap:
+    def get_policies(self, device: Any) -> list[RoutingPolicy]:
         raise NotImplementedError()
 
     @abstractmethod
@@ -106,13 +106,13 @@ class CommunityListGenerator(PartialGenerator, ABC):
     def get_used_community_lists(self, device: Any) -> list[CommunityList]:
         return get_used_community_lists(
             communities=self.get_community_lists(device),
-            policies=self.get_routemap().apply(device),
+            policies=self.get_policies(device),
         )
 
     def get_used_united_community_lists(self, device: Any) -> list[list[CommunityList]]:
         return get_used_united_community_lists(
             communities=self.get_community_lists(device),
-            policies=self.get_routemap().apply(device),
+            policies=self.get_policies(device),
         )
 
     def acl_huawei(self, _):

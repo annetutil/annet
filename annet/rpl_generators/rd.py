@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from annet.generators import PartialGenerator
-from annet.rpl import RouteMap, MatchField
+from annet.rpl import RouteMap, MatchField, RoutingPolicy
 from .entities import RDFilter
 
 
@@ -11,7 +11,7 @@ class RDFilterFilterGenerator(PartialGenerator, ABC):
     TAGS = ["policy", "rpl", "routing"]
 
     @abstractmethod
-    def get_routemap(self) -> RouteMap:
+    def get_policies(self, device: Any) -> list[RoutingPolicy]:
         raise NotImplementedError()
 
     @abstractmethod
@@ -20,7 +20,7 @@ class RDFilterFilterGenerator(PartialGenerator, ABC):
 
     def get_used_rd_filters(self, device: Any) -> Sequence[RDFilter]:
         filters = {c.name: c for c in self.get_rd_filters(device)}
-        policies = self.get_routemap().apply(device)
+        policies = self.get_policies(device)
         used_filters = set()
         for policy in policies:
             for statement in policy.statements:
