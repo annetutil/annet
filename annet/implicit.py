@@ -133,17 +133,29 @@ def _implicit_tree(device):
                         no shutdown
             """
     elif device.hw.Cisco:
-        text += r"""
-            !interface */\S*Ethernet\S+/
-                mtu 1500
-                no shutdown
-            !interface */Loopback[0-9.]+/
-                mtu 1500
-                no shutdown
-            !interface */port-channel[0-9.]+/
-                mtu 1500
-                no shutdown
-        """
+        # C2900/C3500/C3600 does not support the MTU on a per-interface basis
+        if device.hw.Cisco.Catalyst.C2900 or device.hw.Cisco.Catalyst.C3500 \
+           or device.hw.Cisco.Catalyst.C3600:
+            text += r"""
+                !interface */\S*Ethernet\S+/
+                    no shutdown
+                !interface */Loopback[0-9.]+/
+                    no shutdown
+                !interface */port-channel[0-9.]+/
+                    no shutdown
+            """
+        else:
+            text += r"""
+                !interface */\S*Ethernet\S+/
+                    mtu 1500
+                    no shutdown
+                !interface */Loopback[0-9.]+/
+                    mtu 1500
+                    no shutdown
+                !interface */port-channel[0-9.]+/
+                    mtu 1500
+                    no shutdown
+            """
         if device.hw.Cisco.Catalyst:
             # this configuration is not visible in running-config when enabled
             text += r"""
