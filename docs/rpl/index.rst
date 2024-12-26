@@ -171,12 +171,18 @@ Currently there is only en example of policy generator, but it will be improved 
 To apply RPL to a device you need to setup generators.
 Instead of writing policy and entity generators from scratch you can customize exising.
 
+For most of vendors scenario is following (see also :ref:`cumulus-generators`).
+Note, that not all features are supported on all vendors.
+
+Main vendors
+--------------------------------------
+
 
 1. Import generator and entity type
 
 .. code-block:: python
 
-    from annet.rpl_generators import RDFilterFilterGenerator, RDFilter
+    from annet.rpl_generators import RDFilterFilterGenerator, RDFilter, RoutingPolicy
 
 
 2. Inherit and override abstract methods:
@@ -184,11 +190,11 @@ Instead of writing policy and entity generators from scratch you can customize e
 .. code-block:: python
 
     class MyRDGenerator(RDFilterFilterGenerator):
-        def get_routemap(self) -> RouteMap:
-            return routemap  # you route map used in RPLs
+        def get_policies(self, device: Any) -> list[RoutingPolicy]:
+            return routemap.apply(device)  # use your RouteMap used in RPLs
 
         def get_rd_filters(self, device: Any) -> list[RDFilter]:
-            return RD_FILTERS  # you RDFilter instances
+            return RD_FILTERS  # your RDFilter instances
 
 3. Repeat for other generators:
 
@@ -200,3 +206,74 @@ Instead of writing policy and entity generators from scratch you can customize e
 Each of them has its own set of abstractmethods which need to be implemented.
 
 4. Implement you ``get_generators`` logic
+
+.. _cumulus-generators:
+
+Cumumlus Linux
+--------------------------------------
+
+For Cumulus linux RPL is a part of FRR config, so instead of calling separate generators you should include policy-specific logic in your code:
+
+1. Import generator and entity types:
+
+.. code-block:: python
+
+    from annet.rpl_generators import (
+        CommunityList, AsPathFilter, IpPrefixList, CumulusPolicyGenerator
+    )
+
+
+2. Inherit and override abstract methods:
+
+.. code-block:: python
+
+    class FrrGenerator(Entire, CumulusPolicyGenerator):
+        def get_policies(self, device: Any) -> list[RoutingPolicy]:
+            return routemap.apply(device)  # use your RouteMap used in RPLs
+
+        def get_community_lists(self, device: Any) -> list[CommunityList]:
+            return COMMUNITIES
+
+        def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
+            return PREFIX_LISTS
+
+        def get_as_path_filters(self, device: Any) -> list[AsPathFilter]:
+            raise AS_PATH_FILTERS
+
+3. Use rpl data in your generator:
+
+.. code-block:: python
+
+    class FrrGenerator(Entire, CumulusPolicyGenerator):
+        ...
+
+        def run(self, device):
+            # you frr generator logic
+            yield from self.generate_cumulus_rpl(device)  # add data from RPL generator
+
+4. Implement you ``get_generators`` logic
+
+
+Using with mesh model
+*************************
+
+To avoid generating to many policies you can filter them according to your mesh model.
+To do it, modify your ``get_policies`` method in each generator
+
+
+.. code-block:: python
+
+    from annet.mesh import MeshExecutor
+    from annet.rpl_generators import get_policies
+
+    class MyRDGenerator(RDFilterFilterGenerator):
+        def get_policies(self, device: Any) -> list[RoutingPolicy]:
+            return get_policies(
+                routemap=routemap,  # your RouteMap used in RPLs
+                device=device,
+                mesh_executor=MeshExecutor(
+                    registry,  # your MeshRulesRegistry
+                    self.storage,
+                ),
+            )
+        ...

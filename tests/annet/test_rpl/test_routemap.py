@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+import pytest
+
 from annet.rpl import Route, RouteMap, R, SingleAction, ActionType, SingleCondition, ConditionOperator
 
 DEVICE_NAME = "dev1"
@@ -66,3 +68,21 @@ def test_routemap():
         operator=ConditionOperator.BETWEEN_INCLUDED,
         value=(1, 10),
     )
+
+
+@pytest.mark.parametrize(["allowed_rules", "expected_rules"], [
+    (["example_rule1"], ["example_rule1"]),
+    (["invalid"], []),
+    (["invalid", "example_rule1"], ["example_rule1"]),
+])
+def test_routemap_filter(allowed_rules, expected_rules):
+    subroutemap = RouteMap[Device]()
+    subroutemap(example_rule1)
+
+    routemap = RouteMap[Device]()
+    routemap.include(subroutemap)
+
+    device = Device(DEVICE_NAME)
+    res = routemap.apply(device, allowed_rules)
+    found_rules = [r.name for r in res]
+    assert found_rules == expected_rules

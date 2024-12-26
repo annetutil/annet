@@ -4,7 +4,7 @@ AS_PATH_FILTERS = [
     AsPathFilter("ASP_EXAMPLE", [".*123456.*"]),
 ]
 COMMUNITIES = [
-    CommunityList("COMMUNITY_EXAMPLE_ADD", ["1234:1000"]),
+    CommunityList("COMMUNITY_EXAMPLE_ADD", ["1234:1000", "1234:1001"]),
     CommunityList("COMMUNITY_EXAMPLE_REMOVE", ["1234:999"]),
     CommunityList("EXTCOMMUNITY_EXAMPLE_ADD", ["12345:1000"], CommunityType.RT),
     CommunityList("EXTCOMMUNITY_EXAMPLE_REMOVE", ["12345:999"], CommunityType.RT),

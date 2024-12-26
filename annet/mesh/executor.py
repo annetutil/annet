@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from logging import getLogger
 from typing import Annotated, Callable, Optional, Union
 
-from annet.bgp_models import Peer, GlobalOptions
+from annet.bgp_models import Peer, GlobalOptions, BgpConfig
 from annet.storage import Device, Storage
 from .basemodel import merge, BaseMeshModel, Merge, UseLast, MergeForbiddenError
 from .device_models import GlobalOptionsDTO
@@ -20,12 +20,6 @@ from .registry import (
 )
 
 logger = getLogger(__name__)
-
-
-@dataclass
-class MeshExecutionResult:
-    global_options: GlobalOptions
-    peers: list[Peer]
 
 
 @dataclass(frozen=True)
@@ -308,7 +302,7 @@ class MeshExecutor:
     def _apply_virtual_interface_changes(self, device: Device, local: VirtualLocalDTO) -> str:
         return device.add_svi(local.svi).name  # we check if SVI configured in execute method
 
-    def execute_for(self, device: Device) -> MeshExecutionResult:
+    def execute_for(self, device: Device) -> BgpConfig:
         all_fqdns = self._storage.resolve_all_fdnds()
 
         global_options = self._to_bgp_global(self._execute_globals(device))
@@ -333,7 +327,7 @@ class MeshExecutor:
         for connected_pair in self._execute_indirect(device, all_fqdns):
             peers.append(self._to_bgp_peer(connected_pair, None))
 
-        return MeshExecutionResult(
+        return BgpConfig(
             global_options=global_options,
             peers=peers,
         )
