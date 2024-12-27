@@ -19,6 +19,7 @@ _VENDORS = {
     "ribbon": "Ribbon",
     "b4com": "B4com",
     "h3c": "H3C",
+    "moxa": "Moxa",
 }
 
 
@@ -54,6 +55,8 @@ def get_breed(manufacturer: str, model: str):
         return "bcom-os"
     elif manufacturer == "MikroTik":
         return "routeros"
+    elif manufacturer == "Moxa":
+        return "moxa"
     elif manufacturer == "PC":
         return "pc"
     return ""
