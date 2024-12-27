@@ -286,13 +286,30 @@ def _used_policies(peer: Union[Peer, PeerGroup]) -> Iterable[str]:
         yield peer.export_policy
 
 
+def _used_redistribute_policies(opts: Union[GlobalOptions, VrfOptions]) -> Iterable[str]:
+    for red in opts.ipv4_unicast.redistributes:
+        if red.policy:
+            yield red.policy
+    for red in opts.ipv6_unicast.redistributes:
+        if red.policy:
+            yield red.policy
+    for red in opts.ipv4_labeled_unicast.redistributes:
+        if red.policy:
+            yield red.policy
+    for red in opts.ipv6_labeled_unicast.redistributes:
+        if red.policy:
+            yield red.policy
+
+
 def extract_policies(config: BgpConfig) -> Sequence[str]:
     result: list[str] = []
     for vrf in config.global_options.vrf.values():
         for group in vrf.groups:
             result.extend(_used_policies(group))
+        result.extend(_used_redistribute_policies(vrf))
     for group in config.global_options.groups:
         result.extend(_used_policies(group))
     for peer in config.peers:
         result.extend(_used_policies(peer))
+    result.extend(_used_redistribute_policies(config.global_options))
     return result
