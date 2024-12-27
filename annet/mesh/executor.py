@@ -124,12 +124,20 @@ class MeshExecutor:
         # we merge them according to remote fqdn
         neighbor_peers: dict[PeerKey, Pair] = {}
         # TODO batch resolve
-        for rule in self._registry.lookup_direct(device.fqdn, device.neighbours_fqdns):
+        rules = self._registry.lookup_direct(device.fqdn, device.neighbours_fqdns)
+        fqdns = {
+            rule.name_right if rule.direct_order else rule.name_left
+            for rule in rules
+        }
+        neigbors = {
+            d.fqdn: d for d in self._storage.make_devices(list(fqdns))
+        }
+        for rule in rules:
             handler_name = self._handler_name(rule.handler)
             if rule.direct_order:
-                neighbor_device = self._storage.make_devices([rule.name_right])[0]
+                neighbor_device = neigbors[rule.name_right]
             else:
-                neighbor_device = self._storage.make_devices([rule.name_left])[0]
+                neighbor_device = neigbors[rule.name_left]
             all_connected_ports = [
                 (p1.name, p2.name)
                 for p1, p2 in self._storage.search_connections(device, neighbor_device)
@@ -200,17 +208,26 @@ class MeshExecutor:
         # we can have multiple rules for the same pair
         # we merge them according to remote fqdn
         connected_peers: dict[PeerKey, Pair] = {}
-        for rule in self._registry.lookup_indirect(device.fqdn, all_fqdns):
+
+        rules = self._registry.lookup_indirect(device.fqdn, all_fqdns)
+        fqdns = {
+            rule.name_right if rule.direct_order else rule.name_left
+            for rule in rules
+        }
+        connected_devices = {
+            d.fqdn: d for d in self._storage.make_devices(list(fqdns))
+        }
+        for rule in rules:
             session = MeshSession()
             handler_name = self._handler_name(rule.handler)
             logger.debug("Running indirect handler: %s", handler_name)
             if rule.direct_order:
-                connected_device = self._storage.make_devices([rule.name_right])[0]
+                connected_device = connected_devices[rule.name_right]
                 peer_device = IndirectPeer(rule.match_left, device)
                 peer_connected = IndirectPeer(rule.match_right, connected_device)
                 rule.handler(peer_device, peer_connected, session)
             else:
-                connected_device = self._storage.make_devices([rule.name_left])[0]
+                connected_device = connected_devices[rule.name_left]
                 peer_connected = IndirectPeer(rule.match_left, connected_device)
                 peer_device = IndirectPeer(rule.match_right, device)
                 rule.handler(peer_connected, peer_device, session)
