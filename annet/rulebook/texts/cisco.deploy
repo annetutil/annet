@@ -20,7 +20,7 @@
 crypto key generate rsa %timeout=60
     dialog: Do you really want to replace them? [yes/no]: ::: no
     dialog: How many bits in the modulus [512]: ::: 2048
-no username * privilege * secret 5 *
+no username * privilege * secret * *
     dialog: This operation will remove all username related configurations with same name.Do you want to continue? [confirm] ::: Y  %send_nl=0
 
 copy running-config startup-config
