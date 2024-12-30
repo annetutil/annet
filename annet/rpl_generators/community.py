@@ -164,7 +164,7 @@ class CommunityListGenerator(PartialGenerator, ABC):
                 yield self._huawei_community_filter(10, community_list, " ".join(members))
             elif community_list.logic == CommunityLogic.OR:
                 for i, member in enumerate(members):
-                    member_id = (i + 1) * 10 + 5
+                    member_id = (i + 1) * 10
                     yield self._huawei_community_filter(member_id, community_list, member)
             else:
                 raise NotImplementedError(f"Community logic {community_list.logic} is not implemented for huawei")
