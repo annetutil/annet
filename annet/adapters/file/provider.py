@@ -102,6 +102,9 @@ class Device(DeviceCls, DumpableView):
     def add_subif(self, interface: str, subif: int) -> Interface:
         raise NotImplementedError
 
+    def find_interface(self, name: str) -> Optional[Interface]:
+        raise NotImplementedError
+
     def neighbours_fqdns(self) -> list[str]:
         return []
 

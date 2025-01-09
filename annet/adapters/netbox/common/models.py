@@ -281,3 +281,9 @@ class NetboxDevice(Entity):
         )
         self.interfaces.append(target_port)
         return target_port
+
+    def find_interface(self, name: str) -> Optional[Interface]:
+        for iface in self.interfaces:
+            if iface.name == name:
+                return iface
+        return None

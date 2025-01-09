@@ -282,7 +282,7 @@ class MeshExecutor:
     def _to_bgp_global(self, global_options: GlobalOptionsDTO) -> GlobalOptions:
         return to_bgp_global_options(global_options)
 
-    def _apply_interface_changes(
+    def _apply_direct_interface_changes(
             self, device: Device, neighbor: Device, ports: list[str], changes: InterfaceChanges,
     ) -> str:
         # filter ports according to processed in pair
@@ -316,6 +316,24 @@ class MeshExecutor:
         target_interface.add_addr(changes.addr, changes.vrf)
         return target_interface.name
 
+    def _apply_indirect_interface_changes(
+            self, device: Device, neighbor: Device, ifname: Optional[str], changes: InterfaceChanges,
+    ) -> Optional[str]:
+        if changes.lag is not None:
+            raise ValueError("LAG creation unsupported for indirect peers")
+        elif changes.subif is not None:
+            target_interface = device.add_subif(ifname, changes.subif)
+        elif changes.svi is not None:
+            target_interface = device.add_svi(changes.svi)
+        elif not ifname:
+            return None
+        else:
+            target_interface = device.find_interface(ifname)
+            if not target_interface:
+                raise ValueError(f"Interface {ifname} not found for device {device.fqdn}")
+        target_interface.add_addr(changes.addr, changes.vrf)
+        return target_interface.name
+
     def _apply_virtual_interface_changes(self, device: Device, local: VirtualLocalDTO) -> str:
         return device.add_svi(local.svi).name  # we check if SVI configured in execute method
 
@@ -325,8 +343,9 @@ class MeshExecutor:
         global_options = self._to_bgp_global(self._execute_globals(device))
 
         peers = []
+        target_interface: Optional[str]
         for direct_pair in self._execute_direct(device):
-            target_interface = self._apply_interface_changes(
+            target_interface = self._apply_direct_interface_changes(
                 device,
                 direct_pair.device,
                 direct_pair.ports,
@@ -342,7 +361,13 @@ class MeshExecutor:
             peers.append(self._virtual_to_bgp_peer(virtual_pair, target_interface))
 
         for connected_pair in self._execute_indirect(device, all_fqdns):
-            peers.append(self._to_bgp_peer(connected_pair, None))
+            target_interface = self._apply_indirect_interface_changes(
+                device,
+                connected_pair.device,
+                getattr(connected_pair.local, "ifname", None),
+                to_interface_changes(connected_pair.local),
+            )
+            peers.append(self._to_bgp_peer(connected_pair, target_interface))
 
         return BgpConfig(
             global_options=global_options,
