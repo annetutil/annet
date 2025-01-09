@@ -95,6 +95,10 @@ class IndirectPeerDTO(MeshSession, _OptionsDTO):
     description: str
     update_source: str
 
+    ifname: Optional[str]
+    subif: int
+    svi: Optional[int]
+
 
 class VirtualLocalDTO(_OptionsDTO):
     asnum: int

@@ -168,6 +168,10 @@ class Device(Protocol):
         """Add sub interface or return existing one"""
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def find_interface(self, name: str) -> Optional[Interface]:
+        raise NotImplementedError
+
 
 def get_storage() -> tuple[StorageProvider, Dict[str, Any]]:
     connectors = storage_connector.get_all()
