@@ -483,8 +483,9 @@ class PCDeployerJob(DeployerJob):
                     old_text = jsontools.format_json(old_json_cfg)
                     new_text = jsontools.format_json(file_content_or_json_cfg)
                     diff_content = "\n".join(_diff_file(old_text, new_text))
-                if diff_content:
-                    self._has_diff = True
+                if not diff_content:
+                    continue
+                self._has_diff = True
                 upload_files[file], reload_cmds[file] = file_content.encode(), cmds.encode()
                 generator_types[file] = generator_type
                 self.cmd_lines.append("= Deploy cmds %s/%s " % (device.hostname, file))
