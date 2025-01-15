@@ -180,7 +180,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[CommunityActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
-            if action.value.added or action.value.replaced:
+            if action.value.added or action.value.removed:
                 raise NotImplementedError(
                     "Cannot set community together with add/remove on huawei",
                 )
@@ -202,7 +202,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[CommunityActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
-            if action.value.added or action.value.replaced:
+            if action.value.added or action.value.removed:
                 raise NotImplementedError(
                     "Cannot set large-community together with add/remove on huawei",
                 )
@@ -477,7 +477,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[CommunityActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
-            if action.value.added or action.value.replaced:
+            if action.value.added or action.value.removed:
                 raise NotImplementedError(
                     "Cannot set community together with add/remove on arista",
                 )
@@ -500,7 +500,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[CommunityActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
-            if action.value.added or action.value.replaced:
+            if action.value.added or action.value.removed:
                 raise NotImplementedError(
                     "Cannot set large-community together with add/remove on arista",
                 )
