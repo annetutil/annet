@@ -142,13 +142,14 @@ class CumulusPolicyGenerator(ABC):
         return get_used_united_community_lists(communities=communities.values(), policies=policies)
 
     def _cumulus_community(
-            self, name: str, cmd: str, member: str, use_regex: bool,
+            self, name: str, cmd: str, member: str, use_regex: bool, seq: int,
     ) -> Iterable[Sequence[str]]:
         if use_regex:
             yield (
                 cmd,
                 "expanded",
                 name,
+                f"seq {seq}",
                 "permit",
                 member,
             )
@@ -157,6 +158,7 @@ class CumulusPolicyGenerator(ABC):
                 cmd,
                 "standard",
                 name,
+                f"seq {seq}",
                 "permit",
                 member,
             )
@@ -198,12 +200,13 @@ class CumulusPolicyGenerator(ABC):
                     else:
                         member = " ".join(f"{member_prefix}{m}" for m in clist.members)
                     yield from self._cumulus_community(
-                        name=name, cmd=cmd, member=member, use_regex=clist.use_regex,
+                        name=name, cmd=cmd, member=member, use_regex=clist.use_regex, seq=10,
                     )
                 else:
-                    for member_value in clist.members:
+                    for i, member_value in enumerate(clist.members):
                         yield from self._cumulus_community(
                             name=name, cmd=cmd, member=member_prefix + member_value, use_regex=clist.use_regex,
+                            seq=(i + 1) * 10,
                         )
         yield "!"
 
