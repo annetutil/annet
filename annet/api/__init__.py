@@ -468,6 +468,9 @@ class PCDeployerJob(DeployerJob):
         elif not new_files and not new_json_fragment_files:
             return
 
+        enable_reload = self.args.entire_reload is not cli_args.EntireReloadFlag.no
+        force_reload = self.args.entire_reload is cli_args.EntireReloadFlag.force
+
         upload_files: Dict[str, bytes] = {}
         reload_cmds: Dict[str, bytes] = {}
         generator_types: Dict[str, GeneratorType] = {}
@@ -483,18 +486,23 @@ class PCDeployerJob(DeployerJob):
                     old_text = jsontools.format_json(old_json_cfg)
                     new_text = jsontools.format_json(file_content_or_json_cfg)
                     diff_content = "\n".join(_diff_file(old_text, new_text))
-                if diff_content:
-                    self._has_diff = True
-                upload_files[file], reload_cmds[file] = file_content.encode(), cmds.encode()
-                generator_types[file] = generator_type
-                self.cmd_lines.append("= Deploy cmds %s/%s " % (device.hostname, file))
-                self.cmd_lines.extend([cmds, ""])
-                self.cmd_lines.append("= %s/%s " % (device.hostname, file))
-                self.cmd_lines.extend([file_content, ""])
-                self.diff_lines.append("= %s/%s " % (device.hostname, file))
-                self.diff_lines.extend([diff_content, ""])
 
-        if upload_files:
+                if diff_content or force_reload:
+                    self._has_diff |= True
+
+                    upload_files[file] = file_content.encode()
+                    generator_types[file] = generator_type
+                    self.cmd_lines.append("= %s/%s " % (device.hostname, file))
+                    self.cmd_lines.extend([file_content, ""])
+                    self.diff_lines.append("= %s/%s " % (device.hostname, file))
+                    self.diff_lines.extend([diff_content, ""])
+
+                    if enable_reload:
+                        reload_cmds[file] = cmds.encode()
+                        self.cmd_lines.append("= Deploy cmds %s/%s " % (device.hostname, file))
+                        self.cmd_lines.extend([cmds, ""])
+
+        if self._has_diff:
             self.deploy_cmds[device] = {
                 "files": upload_files,
                 "cmds": reload_cmds,
@@ -534,13 +542,12 @@ class Deployer:
         self._filterer = filtering.filterer_connector.get()
 
     def parse_result(self, job: DeployerJob, result: ann_gen.OldNewResult):
-        entire_reload = self.args.entire_reload
         logger = get_logger(job.device.hostname)
 
         job.parse_result(result)
         self.failed_configs.update(job.failed_configs)
 
-        if job.has_diff() or entire_reload is entire_reload.force:
+        if job.has_diff():
             self.cmd_lines.extend(job.cmd_lines)
             self.deploy_cmds.update(job.deploy_cmds)
             self.diffs.update(job.diffs)
