@@ -175,6 +175,7 @@ class CumulusPolicyGenerator(ABC):
             return
         for community_list_union in community_unions:
             name = mangle_united_community_list_name([c.name for c in community_list_union])
+            comm_number=0
 
             for clist in community_list_union:
                 if clist.type is CommunityType.BASIC:
@@ -200,13 +201,14 @@ class CumulusPolicyGenerator(ABC):
                     else:
                         member = " ".join(f"{member_prefix}{m}" for m in clist.members)
                     yield from self._cumulus_community(
-                        name=name, cmd=cmd, member=member, use_regex=clist.use_regex, seq=10,
+                        name=name, cmd=cmd, member=member, use_regex=clist.use_regex, seq=(comm_number + 1) * 10,
                     )
+                    comm_number+=1
                 else:
-                    for i, member_value in enumerate(clist.members):
+                    for comm_number, member_value in enumerate(clist.members, start=comm_number):
                         yield from self._cumulus_community(
                             name=name, cmd=cmd, member=member_prefix + member_value, use_regex=clist.use_regex,
-                            seq=(i + 1) * 10,
+                            seq=(comm_number + 1) * 10,
                         )
         yield "!"
 
