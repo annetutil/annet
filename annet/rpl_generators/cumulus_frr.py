@@ -175,7 +175,7 @@ class CumulusPolicyGenerator(ABC):
             return
         for community_list_union in community_unions:
             name = mangle_united_community_list_name([c.name for c in community_list_union])
-            comm_number=0
+            comm_number = 0
 
             for clist in community_list_union:
                 if clist.type is CommunityType.BASIC:
