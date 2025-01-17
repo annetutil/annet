@@ -3,7 +3,9 @@ import logging
 import multiprocessing
 import os
 import platform
-import resource
+_platform = platform.system()
+if _platform != "Windows":
+    import resource
 import signal
 import statistics
 import time
@@ -478,8 +480,10 @@ def _get_remaining(tasks, pending, tasks_to_device):
         yield (tasks_to_device[task], task)
 
 
-_platform = platform.system()
-_fd_available = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
+if _platform == "Windows":
+    _fd_available = 1024
+else:
+    _fd_available = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
 
 
 def fd_left():

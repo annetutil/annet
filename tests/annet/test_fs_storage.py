@@ -5,7 +5,7 @@ import tempfile
 
 def test_fs():
     Device
-    with tempfile.NamedTemporaryFile() as f:
+    with tempfile.NamedTemporaryFile(delete=True, delete_on_close=False) as f:
         f.write(b"""
 devices:
   - hostname: hostname
