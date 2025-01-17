@@ -203,13 +203,13 @@ class CumulusPolicyGenerator(ABC):
                     yield from self._cumulus_community(
                         name=name, cmd=cmd, member=member, use_regex=clist.use_regex, seq=(comm_number + 1) * 10,
                     )
-                    comm_number+=1
                 else:
                     for comm_number, member_value in enumerate(clist.members, start=comm_number):
                         yield from self._cumulus_community(
                             name=name, cmd=cmd, member=member_prefix + member_value, use_regex=clist.use_regex,
                             seq=(comm_number + 1) * 10,
                         )
+                comm_number += 1
         yield "!"
 
     def _get_match_community_names(self, condition: SingleCondition[Sequence[str]]) -> Sequence[str]:
