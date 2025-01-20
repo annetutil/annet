@@ -57,6 +57,11 @@ class MeshExecutor:
             rule_global_opts = MeshGlobalOptions(rule.match, device)
             logger.debug("Running device handler: %s", handler_name)
             rule.handler(rule_global_opts)
+
+            if rule_global_opts.is_empty():
+                # nothing was set
+                continue
+
             try:
                 global_opts = merge(global_opts, rule_global_opts)
             except MergeForbiddenError as e:
@@ -79,7 +84,7 @@ class MeshExecutor:
             rule: MatchedDirectPair,
             ports: list[tuple[str, str]],
             all_connected_ports: list[tuple[str, str]],
-    ) -> Pair:
+    ) -> Optional[Pair]:
         session = MeshSession()
         handler_name = self._handler_name(rule.handler)
         logger.debug("Running direct handler: %s", handler_name)
@@ -101,6 +106,10 @@ class MeshExecutor:
             rule.handler(peer_device, peer_neighbor, session)
         else:
             rule.handler(peer_neighbor, peer_device, session)
+
+        if peer_neighbor.is_empty() and peer_device.is_empty() and session.is_empty():
+            # nothing was set
+            return None
 
         try:
             neighbor_dto = merge(DirectPeerDTO(), peer_neighbor, session)
@@ -144,6 +153,9 @@ class MeshExecutor:
             ]
             for ports in rule.port_processor(all_connected_ports):
                 pair = self._execute_direct_pair(device, neighbor_device, rule, ports, all_connected_ports)
+                if pair is None:
+                    # nothing was set
+                    continue
                 addr = getattr(pair.connected, "addr", None)
                 if addr is None:
                     raise ValueError(f"Handler `{handler_name}` returned no peer addr")
@@ -179,6 +191,9 @@ class MeshExecutor:
                 peer_virtual = VirtualPeer(num=order_number)
 
                 rule.handler(peer_device, peer_virtual, session)
+                if peer_virtual.is_empty() and peer_device.is_empty() and session.is_empty():
+                    # nothing was set
+                    continue
 
                 try:
                     virtual_dto = merge(VirtualPeerDTO(), peer_virtual, session)
@@ -231,6 +246,10 @@ class MeshExecutor:
                 peer_connected = IndirectPeer(rule.match_left, connected_device)
                 peer_device = IndirectPeer(rule.match_right, device)
                 rule.handler(peer_connected, peer_device, session)
+
+            if peer_connected.is_empty() and peer_device.is_empty() and session.is_empty():
+                # nothing was set
+                continue
 
             try:
                 connected_dto = merge(IndirectPeerDTO(), peer_connected, session)

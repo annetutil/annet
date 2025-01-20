@@ -21,6 +21,9 @@ class DirectPeer(DirectPeerDTO):
         self.ports = ports
         self.all_connected_ports = all_connected_ports
 
+    def is_empty(self):
+        return self.__dict__.keys() == {"match", "device", "ports", "all_connected_ports"}
+
 
 class IndirectPeer(IndirectPeerDTO):
     match: MatchedArgs
@@ -30,6 +33,9 @@ class IndirectPeer(IndirectPeerDTO):
         super().__init__()
         self.match = match
         self.device = device
+
+    def is_empty(self):
+        return self.__dict__.keys() == {"match", "device"}
 
 
 class VirtualLocal(VirtualLocalDTO):
@@ -41,9 +47,15 @@ class VirtualLocal(VirtualLocalDTO):
         self.match = match
         self.device = device
 
+    def is_empty(self):
+        return self.__dict__.keys() == {"match", "device"}
+
 
 class VirtualPeer(VirtualPeerDTO):
     num: int
+
+    def is_empty(self):
+        return self.__dict__.keys() == {"num"}
 
 
 class GlobalOptions(GlobalOptionsDTO):
@@ -54,6 +66,9 @@ class GlobalOptions(GlobalOptionsDTO):
         super().__init__()
         self.match = match
         self.device = device
+
+    def is_empty(self):
+        return self.__dict__.keys() == {"match", "device"}
 
 
 GlobalHandler = Callable[[GlobalOptions], None]
