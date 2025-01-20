@@ -11,10 +11,10 @@ from annet.rpl.statement_builder import NextHopActionValue, AsPathActionValue, C
 from .aspath import get_used_as_path_filters
 from .community import get_used_united_community_lists
 from .entities import (
-    AsPathFilter, IpPrefixList, mangle_ranged_prefix_list_name, CommunityList, CommunityLogic, CommunityType,
-    mangle_united_community_list_name,
+    AsPathFilter, IpPrefixList, CommunityList, CommunityLogic, CommunityType,
+    mangle_united_community_list_name, PrefixListNameGenerator,
 )
-from .prefix_lists import get_used_prefix_lists
+from .prefix_lists import get_used_prefix_lists, new_prefix_list_name_generator
 
 FRR_RESULT_MAP = {
     ResultType.ALLOW: "permit",
@@ -51,6 +51,12 @@ class CumulusPolicyGenerator(ABC):
     def get_prefix_lists(self, device: Any) -> Sequence[IpPrefixList]:
         raise NotImplementedError()
 
+    def get_used_prefix_lists(self, device: Any, name_generator: PrefixListNameGenerator) -> Sequence[IpPrefixList]:
+        return get_used_prefix_lists(
+            prefix_lists=self.get_prefix_lists(device),
+            name_generator=name_generator,
+        )
+
     @abstractmethod
     def get_community_lists(self, device: Any) -> list[CommunityList]:
         raise NotImplementedError()
@@ -61,11 +67,13 @@ class CumulusPolicyGenerator(ABC):
 
     def generate_cumulus_rpl(self, device: Any) -> Iterator[Sequence[str]]:
         policies = self.get_policies(device)
+        prefix_list_name_generator = new_prefix_list_name_generator(policies)
+
         communities = {c.name: c for c in self.get_community_lists(device)}
         yield from self._cumulus_as_path_filters(device, policies)
         yield from self._cumulus_communities(device, communities, policies)
-        yield from self._cumulus_prefix_lists(device, policies)
-        yield from self._cumulus_policy_config(device, communities, policies)
+        yield from self._cumulus_prefix_lists(device, policies, prefix_list_name_generator)
+        yield from self._cumulus_policy_config(device, communities, policies, prefix_list_name_generator)
 
     def _cumulus_as_path_filters(
             self,
@@ -100,11 +108,12 @@ class CumulusPolicyGenerator(ABC):
                 ("le", str(match.less_equal)) if match.less_equal is not None else ()
             )
 
-    def _cumulus_prefix_lists(self, device: Any, policies: list[RoutingPolicy]) -> Iterable[Sequence[str]]:
-        plists = {p.name: p for p in get_used_prefix_lists(
-            prefix_lists=self.get_prefix_lists(device),
-            policies=policies,
-        )}
+    def _cumulus_prefix_lists(
+            self, device: Any,
+            policies: list[RoutingPolicy],
+            prefix_list_name_generator: PrefixListNameGenerator,
+    ) -> Iterable[Sequence[str]]:
+        plists = {p.name: p for p in self.get_used_prefix_lists(device, prefix_list_name_generator)}
         if not plists.values():
             return
 
@@ -114,7 +123,7 @@ class CumulusPolicyGenerator(ABC):
                 cond: SingleCondition[PrefixMatchValue]
                 for cond in statement.match.find_all(MatchField.ip_prefix):
                     for name in cond.value.names:
-                        mangled_name = mangle_ranged_prefix_list_name(
+                        mangled_name = prefix_list_name_generator.get_prefix_name(
                             name=name,
                             greater_equal=cond.value.greater_equal,
                             less_equal=cond.value.less_equal,
@@ -125,7 +134,7 @@ class CumulusPolicyGenerator(ABC):
                         precessed_names.add(mangled_name)
                 for cond in statement.match.find_all(MatchField.ipv6_prefix):
                     for name in cond.value.names:
-                        mangled_name = mangle_ranged_prefix_list_name(
+                        mangled_name = prefix_list_name_generator.get_prefix_name(
                             name=name,
                             greater_equal=cond.value.greater_equal,
                             less_equal=cond.value.less_equal,
@@ -217,6 +226,7 @@ class CumulusPolicyGenerator(ABC):
             self,
             device: Any,
             condition: SingleCondition[Any],
+            prefix_list_name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         if condition.field == MatchField.community:
             for comm_name in self._get_match_community_names(condition):
@@ -236,7 +246,7 @@ class CumulusPolicyGenerator(ABC):
             return
         if condition.field == MatchField.ip_prefix:
             for name in condition.value.names:
-                mangled_name = mangle_ranged_prefix_list_name(
+                mangled_name = prefix_list_name_generator.get_prefix_name(
                     name=name,
                     greater_equal=condition.value.greater_equal,
                     less_equal=condition.value.less_equal,
@@ -245,7 +255,7 @@ class CumulusPolicyGenerator(ABC):
             return
         if condition.field == MatchField.ipv6_prefix:
             for name in condition.value.names:
-                mangled_name = mangle_ranged_prefix_list_name(
+                mangled_name = prefix_list_name_generator.get_prefix_name(
                     name=name,
                     greater_equal=condition.value.greater_equal,
                     less_equal=condition.value.less_equal,
@@ -421,11 +431,12 @@ class CumulusPolicyGenerator(ABC):
             device: Any,
             policy: RoutingPolicy,
             statement: RoutingPolicyStatement,
+            prefix_list_name_generator: PrefixListNameGenerator,
     ) -> Iterable[Sequence[str]]:
         yield "route-map", policy.name, FRR_RESULT_MAP[statement.result], str(statement.number)
 
         for condition in statement.match:
-            for row in self._cumulus_policy_match(device, condition):
+            for row in self._cumulus_policy_match(device, condition, prefix_list_name_generator):
                 yield FRR_INDENT, *row
         for action in statement.then:
             for row in self._cumulus_policy_then(communities, device, action):
@@ -439,6 +450,7 @@ class CumulusPolicyGenerator(ABC):
             device: Any,
             communities: dict[str, CommunityList],
             policies: list[RoutingPolicy],
+            prefix_list_name_generator: PrefixListNameGenerator,
     ) -> Iterable[Sequence[str]]:
         """ Route maps configuration """
 
@@ -454,5 +466,7 @@ class CumulusPolicyGenerator(ABC):
                     raise RuntimeError(
                         f"Multiple statements have same number {statement.number} for policy `{policy.name}`: "
                         f"`{statement.name}` and `{applied_stmts[statement.number]}`")
-                yield from self._cumulus_policy_statement(communities, device, policy, statement)
+                yield from self._cumulus_policy_statement(
+                    communities, device, policy, statement, prefix_list_name_generator,
+                )
                 applied_stmts[statement.number] = statement.name

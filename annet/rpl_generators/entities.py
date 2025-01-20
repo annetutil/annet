@@ -1,3 +1,4 @@
+from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
@@ -56,15 +57,27 @@ def mangle_united_community_list_name(values: Sequence[str]) -> str:
     return "_OR_".join(values)
 
 
-def mangle_ranged_prefix_list_name(name: str, greater_equal: Optional[int], less_equal: Optional[int]) -> str:
-    if greater_equal is less_equal is None:
-        return name
-    if greater_equal is None:
-        ge_str = "unset"
-    else:
-        ge_str = str(greater_equal)
-    if less_equal is None:
-        le_str = "unset"
-    else:
-        le_str = str(less_equal)
-    return f"{name}_{ge_str}_{le_str}"
+class PrefixListNameGenerator:
+    def __init__(self):
+        self._prefix_lists = defaultdict(set)
+
+    def add_prefix(self, name: str, greater_equal: Optional[int], less_equal: Optional[int]) -> None:
+        self._prefix_lists[name].add((greater_equal, less_equal))
+
+    def is_used(self, name: str):
+        return name in self._prefix_lists
+
+    def get_prefix_name(self, name: str, greater_equal: Optional[int], less_equal: Optional[int]) -> str:
+        if len(self._prefix_lists[name]) == 1:
+            return name
+        if greater_equal is less_equal is None:
+            return name
+        if greater_equal is None:
+            ge_str = "unset"
+        else:
+            ge_str = str(greater_equal)
+        if less_equal is None:
+            le_str = "unset"
+        else:
+            le_str = str(less_equal)
+        return f"{name}_{ge_str}_{le_str}"
