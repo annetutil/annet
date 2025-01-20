@@ -274,12 +274,14 @@ def patch(args: cli_args.ShowPatchOptions, loader: ann_gen.Loader):
 
 def _patch_worker(device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann_gen.Loader, filterer: filtering.Filterer):
     for res, _, patch_tree in res_diff_patch(device_id, args, stdin, loader, filterer):
+        old_files = res.old_files
         new_files = res.get_new_files(args.acl_safe)
         new_json_fragment_files = res.get_new_file_fragments(args.acl_safe)
         if new_files:
             for path, (cfg_text, _cmds) in new_files.items():
                 label = res.device.hostname + os.sep + path
-                yield label, cfg_text, False
+                if old_files.get(path) != cfg_text:
+                    yield label, cfg_text, False
         elif res.old_json_fragment_files or new_json_fragment_files:
             for path, (new_json_cfg, _cmds) in new_json_fragment_files.items():
                 label = res.device.hostname + os.sep + path
