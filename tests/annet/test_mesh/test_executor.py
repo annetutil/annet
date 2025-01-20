@@ -275,3 +275,19 @@ def test_2ports(storage_2ports, device_2ports):
         ([("192.168.1.1", None)], "if1"),
         ([("192.168.1.2", None)], "if2"),
     ]
+
+
+def do_nothing(*args, **kwargs):
+    return
+
+
+def test_empty_handler(storage, device1):
+    registry = MeshRulesRegistry()
+    registry.direct("{x:.*}", "{y:.*}")(do_nothing)
+    registry.indirect("{x:.*}", "{y:.*}")(do_nothing)
+    registry.virtual("{x:.*}", [1])(do_nothing)
+    registry.device("{x:.*}")(do_nothing)
+
+    r = MeshExecutor(registry, storage)
+    res = r.execute_for(device1)
+    assert res.peers == []

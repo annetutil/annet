@@ -133,6 +133,9 @@ class BaseMeshModel:
             raise AttributeError(f"{self.__class__.__name__} has no field {key}")
         super().__setattr__(key, value)
 
+    def is_empty(self):
+        return not self.__dict__
+
 
 ModelT = TypeVar("ModelT", bound=BaseMeshModel)
 
