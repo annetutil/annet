@@ -4,20 +4,28 @@ from ipaddress import ip_interface
 from typing import Any, Literal
 
 from annet.generators import PartialGenerator
-from annet.rpl import RouteMap, PrefixMatchValue, MatchField, SingleCondition, RoutingPolicy
-from .entities import IpPrefixList, mangle_ranged_prefix_list_name
+from annet.rpl import PrefixMatchValue, MatchField, SingleCondition, RoutingPolicy
+from .entities import IpPrefixList, PrefixListNameGenerator
 
 
-def get_used_prefix_lists(prefix_lists: Sequence[IpPrefixList], policies: list[RoutingPolicy]) -> list[IpPrefixList]:
-    plist_map = {c.name: c for c in prefix_lists}
-    used_names = set()
+def get_used_prefix_lists(
+        prefix_lists: Sequence[IpPrefixList], name_generator: PrefixListNameGenerator,
+) -> list[IpPrefixList]:
+    return [c for c in prefix_lists if name_generator.is_used(c.name)]
+
+
+def new_prefix_list_name_generator(policies: list[RoutingPolicy]) -> PrefixListNameGenerator:
+    name_gen = PrefixListNameGenerator()
     for policy in policies:
         for statement in policy.statements:
+            condition: SingleCondition[PrefixMatchValue]
             for condition in statement.match.find_all(MatchField.ipv6_prefix):
-                used_names.update(condition.value.names)
+                for name in condition.value.names:
+                    name_gen.add_prefix(name, condition.value.greater_equal, condition.value.less_equal)
             for condition in statement.match.find_all(MatchField.ip_prefix):
-                used_names.update(condition.value.names)
-    return [plist_map[name] for name in sorted(used_names)]
+                for name in condition.value.names:
+                    name_gen.add_prefix(name, condition.value.greater_equal, condition.value.less_equal)
+    return name_gen
 
 
 class PrefixListFilterGenerator(PartialGenerator, ABC):
@@ -31,10 +39,10 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
     def get_prefix_lists(self, device: Any) -> Sequence[IpPrefixList]:
         raise NotImplementedError()
 
-    def get_used_prefix_lists(self, device: Any) -> Sequence[IpPrefixList]:
+    def get_used_prefix_lists(self, device: Any, name_generator: PrefixListNameGenerator) -> Sequence[IpPrefixList]:
         return get_used_prefix_lists(
             prefix_lists=self.get_prefix_lists(device),
-            policies=self.get_policies(device),
+            name_generator=name_generator,
         )
 
     # huawei
@@ -68,15 +76,16 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
             )
 
     def run_huawei(self, device: Any):
-        plists = {p.name: p for p in self.get_used_prefix_lists(device)}
         policies = self.get_policies(device)
+        name_generator = new_prefix_list_name_generator(policies)
+        plists = {p.name: p for p in self.get_used_prefix_lists(device, name_generator)}
         precessed_names = set()
         for policy in policies:
             for statement in policy.statements:
                 cond: SingleCondition[PrefixMatchValue]
                 for cond in statement.match.find_all(MatchField.ip_prefix):
                     for name in cond.value.names:
-                        mangled_name = mangle_ranged_prefix_list_name(
+                        mangled_name = name_generator.get_prefix_name(
                             name=name,
                             greater_equal=cond.value.greater_equal,
                             less_equal=cond.value.less_equal,
@@ -87,7 +96,7 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                         precessed_names.add(mangled_name)
                 for cond in statement.match.find_all(MatchField.ipv6_prefix):
                     for name in cond.value.names:
-                        mangled_name = mangle_ranged_prefix_list_name(
+                        mangled_name = name_generator.get_prefix_name(
                             name=name,
                             greater_equal=cond.value.greater_equal,
                             less_equal=cond.value.less_equal,
@@ -128,15 +137,16 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
             )
 
     def run_arista(self, device: Any):
-        plists = {p.name: p for p in self.get_used_prefix_lists(device)}
         policies = self.get_policies(device)
+        name_generator = new_prefix_list_name_generator(policies)
+        plists = {p.name: p for p in self.get_used_prefix_lists(device, name_generator)}
         precessed_names = set()
         for policy in policies:
             for statement in policy.statements:
                 cond: SingleCondition[PrefixMatchValue]
                 for cond in statement.match.find_all(MatchField.ip_prefix):
                     for name in cond.value.names:
-                        mangled_name = mangle_ranged_prefix_list_name(
+                        mangled_name = name_generator.get_prefix_name(
                             name=name,
                             greater_equal=cond.value.greater_equal,
                             less_equal=cond.value.less_equal,
@@ -147,7 +157,7 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                         precessed_names.add(mangled_name)
                 for cond in statement.match.find_all(MatchField.ipv6_prefix):
                     for name in cond.value.names:
-                        mangled_name = mangle_ranged_prefix_list_name(
+                        mangled_name = name_generator.get_prefix_name(
                             name=name,
                             greater_equal=cond.value.greater_equal,
                             less_equal=cond.value.less_equal,
