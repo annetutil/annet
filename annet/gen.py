@@ -825,9 +825,8 @@ def _old_resolve_files(config: str,
         devices_with_files = [device for device in devices if device in files_to_download]
         if devices_with_files:
             fetcher = get_fetcher()
-            downloaded_files, failed_files = do_async(fetcher.fetch(devices_with_files,
-                                                                    files_to_download=files_to_download),
-                                                                    new_thread=True)
+            fetch_coro = fetcher.fetch(devices_with_files, files_to_download=files_to_download)
+            downloaded_files, failed_files = do_async(fetch_coro, new_thread=True)
     return downloaded_files, failed_files
 
 
