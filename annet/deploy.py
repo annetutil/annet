@@ -25,6 +25,8 @@ NCURSES_SIZE_T = 2 ** 15 - 1
 
 
 _DeployResultBase = namedtuple("_DeployResultBase", ("hostnames", "results", "durations", "original_states"))
+
+
 class ProgressBar(abc.ABC):
     @abc.abstractmethod
     def set_content(self, tile_name: str, content: str):

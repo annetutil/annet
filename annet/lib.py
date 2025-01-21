@@ -143,10 +143,12 @@ def repair_context_file() -> None:
 
 ReturnType = TypeVar("ReturnType")
 
-def do_async(coro: Awaitable[ReturnType], new_thread = False) -> ReturnType:
+
+def do_async(coro: Awaitable[ReturnType], new_thread=False) -> ReturnType:
     if new_thread:
         # start the new thread with the new event loop
         res: ReturnType = None
+
         def wrapper(main):
             nonlocal res
             res = asyncio.run(main)
