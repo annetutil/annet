@@ -25,6 +25,26 @@ NCURSES_SIZE_T = 2 ** 15 - 1
 
 
 _DeployResultBase = namedtuple("_DeployResultBase", ("hostnames", "results", "durations", "original_states"))
+class ProgressBar(abc.ABC):
+    @abc.abstractmethod
+    def set_content(self, tile_name: str, content: str):
+        ...
+
+    @abc.abstractmethod
+    def set_progress(self,
+                     tile_name: str,
+                     iteration: int,
+                     total: int,
+                     prefix: str = "",
+                     suffix: str = "",
+                     fill: str = "",
+                     error: bool = False,
+                     ):
+        ...
+
+    @abc.abstractmethod
+    def set_exception(self, tile_name: str, cmd_exc: str, last_cmd: str, progress_max: int):
+        ...
 
 
 class DeployResult(_DeployResultBase):  # noqa: E302
@@ -64,14 +84,20 @@ driver_connector = _DriverConnector()
 
 class Fetcher(abc.ABC):
     @abc.abstractmethod
-    def fetch_packages(self, devices: List[Device],
-                       processes: int = 1, max_slots: int = 0) -> Tuple[Dict[Device, str], Dict[Device, Any]]:
+    async def fetch_packages(self,
+                             devices: list[Device],
+                             processes: int = 1,
+                             max_slots: int = 0,
+                             ) -> tuple[dict[Device, str], dict[Device, Any]]:
         pass
 
     @abc.abstractmethod
-    def fetch(self, devices: List[Device],
-              files_to_download: Dict[str, List[str]] = None,
-              processes: int = 1, max_slots: int = 0):
+    async def fetch(self,
+                    devices: list[Device],
+                    files_to_download: dict[str, list[str]] | None = None,
+                    processes: int = 1,
+                    max_slots: int = 0,
+                    ):
         pass
 
 
@@ -83,7 +109,7 @@ def get_fetcher() -> Fetcher:
 
 class DeployDriver(abc.ABC):
     @abc.abstractmethod
-    async def bulk_deploy(self, deploy_cmds: dict, args: DeployOptions) -> DeployResult:
+    async def bulk_deploy(self, deploy_cmds: dict, args: DeployOptions, progress_bar: ProgressBar | None = None) -> DeployResult:
         pass
 
     @abc.abstractmethod

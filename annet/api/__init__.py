@@ -262,7 +262,7 @@ def patch(args: cli_args.ShowPatchOptions, loader: ann_gen.Loader):
     global live_configs  # pylint: disable=global-statement
     if args.config == "running":
         fetcher = annet.deploy.get_fetcher()
-        live_configs = fetcher.fetch(loader.devices, processes=args.parallel)
+        live_configs = annet.lib.do_async(fetcher.fetch(loader.devices, processes=args.parallel))
     stdin = args.stdin(filter_acl=args.filter_acl, config=args.config)
 
     filterer = filtering.filterer_connector.get()
@@ -667,10 +667,21 @@ def deploy(
     fetcher: Fetcher,
     deploy_driver: DeployDriver,
 ) -> ExitCode:
+    return annet.lib.do_async(adeploy(args, loader, deployer, filterer, fetcher, deploy_driver))
+
+
+async def adeploy(
+    args: cli_args.DeployOptions,
+    loader: ann_gen.Loader,
+    deployer: Deployer,
+    filterer: Filterer,
+    fetcher: Fetcher,
+    deploy_driver: DeployDriver,
+) -> ExitCode:
     """ Сгенерировать конфиг для устройств и задеплоить его """
     ret: ExitCode = 0
     global live_configs  # pylint: disable=global-statement
-    live_configs = fetcher.fetch(devices=loader.devices, processes=args.parallel)
+    live_configs = await fetcher.fetch(devices=loader.devices, processes=args.parallel)
     pool = ann_gen.OldNewParallel(args, loader, filterer)
 
     for res in pool.generated_configs(loader.devices):
@@ -695,7 +706,7 @@ def deploy(
         ans = deployer.ask_rollback()
         if rollback_cmds and ans == "y":
             rolled_back = True
-            annet.lib.do_async(deploy_driver.bulk_deploy(rollback_cmds, args))
+            await deploy_driver.bulk_deploy(rollback_cmds, args)
 
     if not args.no_check_diff and not rolled_back:
         deployer.check_diff(result, loader)

@@ -9,11 +9,17 @@ class StubFetcher(Fetcher, AdapterWithConfig):
     def with_config(cls, **kwargs: Dict[str, Any]) -> Fetcher:
         return cls(**kwargs)
 
-    def fetch_packages(self, devices: List[Device],
-                       processes: int = 1, max_slots: int = 0):
+    async def fetch_packages(self,
+                             devices: list[Device],
+                             processes: int = 1,
+                             max_slots: int = 0,
+                             ) -> tuple[dict[Device, str], dict[Device, Any]]:
         raise NotImplementedError()
 
-    def fetch(self, devices: List[Device],
-              files_to_download: Dict[str, List[str]] = None,
-              processes: int = 1, max_slots: int = 0):
+    async def fetch(self,
+                    devices: list[Device],
+                    files_to_download: dict[str, list[str]] | None = None,
+                    processes: int = 1,
+                    max_slots: int = 0,
+                    ):
         raise NotImplementedError()
