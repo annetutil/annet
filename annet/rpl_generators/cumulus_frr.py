@@ -278,7 +278,7 @@ class CumulusPolicyGenerator(ABC):
             action: SingleAction[CommunityActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
-            if action.value.added or action.value.replaced:
+            if action.value.added or action.value.removed:
                 raise NotImplementedError(
                     "Cannot set community together with add/replace on cumulus",
                 )
