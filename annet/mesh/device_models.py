@@ -48,6 +48,7 @@ class _FamiliesMixin:
     ipv6_unicast: Annotated[FamilyOptions, Merge()]
     ipv4_labeled_unicast: Annotated[FamilyOptions, Merge()]
     ipv6_labeled_unicast: Annotated[FamilyOptions, Merge()]
+    l2vpn_evpn: Annotated[FamilyOptions, Merge()]
 
 
 class VrfOptions(_FamiliesMixin, BaseMeshModel):
@@ -56,6 +57,7 @@ class VrfOptions(_FamiliesMixin, BaseMeshModel):
         kwargs.setdefault("ipv6_unicast", FamilyOptions(family="ipv6_unicast", vrf_name=vrf_name))
         kwargs.setdefault("ipv4_labeled_unicast", FamilyOptions(family="ipv4_labeled_unicast", vrf_name=vrf_name))
         kwargs.setdefault("ipv6_labeled_unicast", FamilyOptions(family="ipv6_labeled_unicast", vrf_name=vrf_name))
+        kwargs.setdefault("l2vpn_evpn", FamilyOptions(family="l2vpn_evpn", vrf_name=vrf_name))
         kwargs.setdefault("groups", KeyDefaultDict(lambda x: MeshPeerGroup(name=x)))
         super().__init__(vrf_name=vrf_name, **kwargs)
 

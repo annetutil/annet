@@ -68,7 +68,7 @@ class BFDTimers:
     multiplier: int = 4
 
 
-Family = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled_unicast", "ipv6_labeled_unicast"]
+Family = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled_unicast", "ipv6_labeled_unicast", "l2vpn_evpn"]
 
 
 @dataclass(frozen=True)
@@ -243,6 +243,7 @@ class VrfOptions:
     ipv6_unicast: FamilyOptions
     ipv4_labeled_unicast: FamilyOptions
     ipv6_labeled_unicast: FamilyOptions
+    l2vpn_evpn: FamilyOptions
 
     vrf_name_global: Optional[str] = None
     as_path_relax: bool = False
@@ -262,6 +263,7 @@ class GlobalOptions:
     ipv6_unicast: FamilyOptions
     ipv4_labeled_unicast: FamilyOptions
     ipv6_labeled_unicast: FamilyOptions
+    l2vpn_evpn: FamilyOptions
 
     as_path_relax: bool = False
     local_as: ASN = ASN(None)
@@ -297,6 +299,9 @@ def _used_redistribute_policies(opts: Union[GlobalOptions, VrfOptions]) -> Itera
         if red.policy:
             yield red.policy
     for red in opts.ipv6_labeled_unicast.redistributes:
+        if red.policy:
+            yield red.policy
+    for red in opts.l2vpn_evpn.redistributes:
         if red.policy:
             yield red.policy
 

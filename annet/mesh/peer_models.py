@@ -3,7 +3,7 @@ from typing import Literal, Annotated, Union, Optional
 from .basemodel import BaseMeshModel, Concat, Unite
 from ..bgp_models import BFDTimers
 
-FamilyName = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled_unicast", "ipv6_labeled_unicast"]
+FamilyName = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled_unicast", "ipv6_labeled_unicast", "l2vpn_evpn"]
 
 
 class _SharedOptionsDTO(BaseMeshModel):
