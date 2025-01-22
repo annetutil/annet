@@ -207,7 +207,7 @@ class PeerGroup:
     auth_key: bool = False
     add_path: bool = False
     multipath: bool = False
-    multihop: bool = False
+    multihop: Optional[int] = None
     multihop_no_nexthop_change: bool = False
     af_no_install: bool = False
     bfd: bool = False

@@ -53,7 +53,7 @@ class _OptionsDTO(_SharedOptionsDTO):
     advertise_bgp_static: bool
     allowas_in: bool
     auth_key: bool
-    multihop: bool
+    multihop: Optional[int]
     multihop_no_nexthop_change: bool
     af_no_install: bool
     rib: bool
