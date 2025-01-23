@@ -43,6 +43,7 @@ class _FamiliesMixin:
         kwargs.setdefault("ipv6_unicast", FamilyOptions(family="ipv6_unicast"))
         kwargs.setdefault("ipv4_labeled_unicast", FamilyOptions(family="ipv4_labeled_unicast"))
         kwargs.setdefault("ipv6_labeled_unicast", FamilyOptions(family="ipv6_labeled_unicast"))
+        kwargs.setdefault("l2vpn_evpn", FamilyOptions(family="l2vpn_evpn"))
         super().__init__(**kwargs)
     ipv4_unicast: Annotated[FamilyOptions, Merge()]
     ipv6_unicast: Annotated[FamilyOptions, Merge()]
