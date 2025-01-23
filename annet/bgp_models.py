@@ -246,6 +246,7 @@ class VrfOptions:
     l2vpn_evpn: FamilyOptions
 
     vrf_name_global: Optional[str] = None
+    l3vni: Optional[int] = None
     as_path_relax: bool = False
     rt_import: list[str] = field(default_factory=list)
     rt_export: list[str] = field(default_factory=list)

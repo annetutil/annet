@@ -67,6 +67,7 @@ class VrfOptions(_FamiliesMixin, BaseMeshModel):
     as_path_relax: bool
     import_policy: Optional[str]
     export_policy: Optional[str]
+    l3vni: Optional[int]
     rt_import: Annotated[tuple[str, ...], Concat()]
     rt_export: Annotated[tuple[str, ...], Concat()]
     rt_import_v4: Annotated[tuple[str, ...], Concat()]
