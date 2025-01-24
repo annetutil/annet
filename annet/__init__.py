@@ -49,11 +49,6 @@ def init(options: Namespace):
         colorama.init = lambda *_, **__: None
     colorama.init()
 
-    # Workaround for Python 3.8.0: https://bugs.python.org/issue38529
-    import asyncio.streams
-    if hasattr(asyncio.streams.StreamReaderProtocol, "_on_reader_gc"):
-        asyncio.streams.StreamReaderProtocol._on_reader_gc = lambda *args, **kwargs: None  # pylint: disable=protected-access
-
 
 def assert_python_version():
     if sys.version_info < (3, 10, 0):
