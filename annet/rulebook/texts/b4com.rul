@@ -13,6 +13,6 @@
 # Physical
 interface */(ce|xe)[0-9\/]+$/     %logic=common.permanent %diff_logic=cisco.iface.diff
     ipv6 address *
-    mtu *
+    mtu *                         %logic=b4com.iface.mtu
     lldp-agent
     ~         %rewrite %global
