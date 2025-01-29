@@ -11,8 +11,11 @@
 #                   Сделано в основном для того чтобы генерировать специальные команды для наливки
 # -----
 # Physical
+sflow *
+
 interface */(ce|xe)[0-9\/]+$/     %logic=common.permanent %diff_logic=cisco.iface.diff
     ipv6 address *
     mtu *                         %logic=b4com.iface.mtu
+    sflow *                       %logic=b4com.iface.sflow
     lldp-agent
     ~         %rewrite %global
