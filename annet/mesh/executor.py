@@ -57,6 +57,11 @@ class MeshExecutor:
             rule_global_opts = MeshGlobalOptions(rule.match, device)
             logger.debug("Running device handler: %s", handler_name)
             rule.handler(rule_global_opts)
+
+            if rule_global_opts.is_empty():
+                # nothing was set
+                continue
+
             try:
                 global_opts = merge(global_opts, rule_global_opts)
             except MergeForbiddenError as e:
@@ -79,7 +84,7 @@ class MeshExecutor:
             rule: MatchedDirectPair,
             ports: list[tuple[str, str]],
             all_connected_ports: list[tuple[str, str]],
-    ) -> Pair:
+    ) -> Optional[Pair]:
         session = MeshSession()
         handler_name = self._handler_name(rule.handler)
         logger.debug("Running direct handler: %s", handler_name)
@@ -101,6 +106,10 @@ class MeshExecutor:
             rule.handler(peer_device, peer_neighbor, session)
         else:
             rule.handler(peer_neighbor, peer_device, session)
+
+        if peer_neighbor.is_empty() and peer_device.is_empty() and session.is_empty():
+            # nothing was set
+            return None
 
         try:
             neighbor_dto = merge(DirectPeerDTO(), peer_neighbor, session)
@@ -124,18 +133,29 @@ class MeshExecutor:
         # we merge them according to remote fqdn
         neighbor_peers: dict[PeerKey, Pair] = {}
         # TODO batch resolve
-        for rule in self._registry.lookup_direct(device.fqdn, device.neighbours_fqdns):
+        rules = self._registry.lookup_direct(device.fqdn, device.neighbours_fqdns)
+        fqdns = {
+            rule.name_right if rule.direct_order else rule.name_left
+            for rule in rules
+        }
+        neigbors = {
+            d.fqdn: d for d in self._storage.make_devices(list(fqdns))
+        }
+        for rule in rules:
             handler_name = self._handler_name(rule.handler)
             if rule.direct_order:
-                neighbor_device = self._storage.make_devices([rule.name_right])[0]
+                neighbor_device = neigbors[rule.name_right]
             else:
-                neighbor_device = self._storage.make_devices([rule.name_left])[0]
+                neighbor_device = neigbors[rule.name_left]
             all_connected_ports = [
                 (p1.name, p2.name)
                 for p1, p2 in self._storage.search_connections(device, neighbor_device)
             ]
             for ports in rule.port_processor(all_connected_ports):
                 pair = self._execute_direct_pair(device, neighbor_device, rule, ports, all_connected_ports)
+                if pair is None:
+                    # nothing was set
+                    continue
                 addr = getattr(pair.connected, "addr", None)
                 if addr is None:
                     raise ValueError(f"Handler `{handler_name}` returned no peer addr")
@@ -171,6 +191,9 @@ class MeshExecutor:
                 peer_virtual = VirtualPeer(num=order_number)
 
                 rule.handler(peer_device, peer_virtual, session)
+                if peer_virtual.is_empty() and peer_device.is_empty() and session.is_empty():
+                    # nothing was set
+                    continue
 
                 try:
                     virtual_dto = merge(VirtualPeerDTO(), peer_virtual, session)
@@ -200,20 +223,33 @@ class MeshExecutor:
         # we can have multiple rules for the same pair
         # we merge them according to remote fqdn
         connected_peers: dict[PeerKey, Pair] = {}
-        for rule in self._registry.lookup_indirect(device.fqdn, all_fqdns):
+
+        rules = self._registry.lookup_indirect(device.fqdn, all_fqdns)
+        fqdns = {
+            rule.name_right if rule.direct_order else rule.name_left
+            for rule in rules
+        }
+        connected_devices = {
+            d.fqdn: d for d in self._storage.make_devices(list(fqdns))
+        }
+        for rule in rules:
             session = MeshSession()
             handler_name = self._handler_name(rule.handler)
             logger.debug("Running indirect handler: %s", handler_name)
             if rule.direct_order:
-                connected_device = self._storage.make_devices([rule.name_right])[0]
+                connected_device = connected_devices[rule.name_right]
                 peer_device = IndirectPeer(rule.match_left, device)
                 peer_connected = IndirectPeer(rule.match_right, connected_device)
                 rule.handler(peer_device, peer_connected, session)
             else:
-                connected_device = self._storage.make_devices([rule.name_left])[0]
+                connected_device = connected_devices[rule.name_left]
                 peer_connected = IndirectPeer(rule.match_left, connected_device)
                 peer_device = IndirectPeer(rule.match_right, device)
                 rule.handler(peer_connected, peer_device, session)
+
+            if peer_connected.is_empty() and peer_device.is_empty() and session.is_empty():
+                # nothing was set
+                continue
 
             try:
                 connected_dto = merge(IndirectPeerDTO(), peer_connected, session)
@@ -265,7 +301,7 @@ class MeshExecutor:
     def _to_bgp_global(self, global_options: GlobalOptionsDTO) -> GlobalOptions:
         return to_bgp_global_options(global_options)
 
-    def _apply_interface_changes(
+    def _apply_direct_interface_changes(
             self, device: Device, neighbor: Device, ports: list[str], changes: InterfaceChanges,
     ) -> str:
         # filter ports according to processed in pair
@@ -299,6 +335,24 @@ class MeshExecutor:
         target_interface.add_addr(changes.addr, changes.vrf)
         return target_interface.name
 
+    def _apply_indirect_interface_changes(
+            self, device: Device, neighbor: Device, ifname: Optional[str], changes: InterfaceChanges,
+    ) -> Optional[str]:
+        if changes.lag is not None:
+            raise ValueError("LAG creation unsupported for indirect peers")
+        elif changes.subif is not None:
+            target_interface = device.add_subif(ifname, changes.subif)
+        elif changes.svi is not None:
+            target_interface = device.add_svi(changes.svi)
+        elif not ifname:
+            return None
+        else:
+            target_interface = device.find_interface(ifname)
+            if not target_interface:
+                raise ValueError(f"Interface {ifname} not found for device {device.fqdn}")
+        target_interface.add_addr(changes.addr, changes.vrf)
+        return target_interface.name
+
     def _apply_virtual_interface_changes(self, device: Device, local: VirtualLocalDTO) -> str:
         return device.add_svi(local.svi).name  # we check if SVI configured in execute method
 
@@ -308,8 +362,9 @@ class MeshExecutor:
         global_options = self._to_bgp_global(self._execute_globals(device))
 
         peers = []
+        target_interface: Optional[str]
         for direct_pair in self._execute_direct(device):
-            target_interface = self._apply_interface_changes(
+            target_interface = self._apply_direct_interface_changes(
                 device,
                 direct_pair.device,
                 direct_pair.ports,
@@ -325,7 +380,13 @@ class MeshExecutor:
             peers.append(self._virtual_to_bgp_peer(virtual_pair, target_interface))
 
         for connected_pair in self._execute_indirect(device, all_fqdns):
-            peers.append(self._to_bgp_peer(connected_pair, None))
+            target_interface = self._apply_indirect_interface_changes(
+                device,
+                connected_pair.device,
+                getattr(connected_pair.local, "ifname", None),
+                to_interface_changes(connected_pair.local),
+            )
+            peers.append(self._to_bgp_peer(connected_pair, target_interface))
 
         return BgpConfig(
             global_options=global_options,

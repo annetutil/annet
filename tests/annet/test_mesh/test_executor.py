@@ -53,6 +53,7 @@ def on_direct_alt(local: DirectPeer, neighbor: DirectPeer, session: MeshSession)
 
 def on_indirect(local: IndirectPeer, neighbor: IndirectPeer, session: MeshSession):
     local.addr = "192.168.2.254"
+    local.svi = 100
     neighbor.addr = "192.168.2.10"
     local.mtu = 1505
     neighbor.mtu = 1506
@@ -181,7 +182,7 @@ def test_storage(registry, storage, device1):
     assert peer_indirect.families == {"ipv6_unicast"}
     assert peer_indirect.remote_as == 12340
     assert peer_indirect.description == ""
-    assert peer_indirect.interface is None
+    assert peer_indirect.interface == "Vlan100"
 
     assert peer_indirect_alt.addr == "192.168.2.11"
     assert peer_indirect_alt.options.mtu == 1506
@@ -274,3 +275,19 @@ def test_2ports(storage_2ports, device_2ports):
         ([("192.168.1.1", None)], "if1"),
         ([("192.168.1.2", None)], "if2"),
     ]
+
+
+def do_nothing(*args, **kwargs):
+    return
+
+
+def test_empty_handler(storage, device1):
+    registry = MeshRulesRegistry()
+    registry.direct("{x:.*}", "{y:.*}")(do_nothing)
+    registry.indirect("{x:.*}", "{y:.*}")(do_nothing)
+    registry.virtual("{x:.*}", [1])(do_nothing)
+    registry.device("{x:.*}")(do_nothing)
+
+    r = MeshExecutor(registry, storage)
+    res = r.execute_for(device1)
+    assert res.peers == []

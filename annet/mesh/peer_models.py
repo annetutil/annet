@@ -3,7 +3,7 @@ from typing import Literal, Annotated, Union, Optional
 from .basemodel import BaseMeshModel, Concat, Unite
 from ..bgp_models import BFDTimers
 
-FamilyName = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled_unicast", "ipv6_labeled_unicast"]
+FamilyName = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled_unicast", "ipv6_labeled_unicast", "l2vpn_evpn"]
 
 
 class _SharedOptionsDTO(BaseMeshModel):
@@ -53,7 +53,7 @@ class _OptionsDTO(_SharedOptionsDTO):
     advertise_bgp_static: bool
     allowas_in: bool
     auth_key: bool
-    multihop: bool
+    multihop: Optional[int]
     multihop_no_nexthop_change: bool
     af_no_install: bool
     rib: bool
@@ -94,6 +94,10 @@ class IndirectPeerDTO(MeshSession, _OptionsDTO):
     addr: str
     description: str
     update_source: str
+
+    ifname: Optional[str]
+    subif: int
+    svi: Optional[int]
 
 
 class VirtualLocalDTO(_OptionsDTO):

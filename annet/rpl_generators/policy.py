@@ -6,13 +6,14 @@ from annet.generators import PartialGenerator
 from annet.rpl import (
     CommunityActionValue,
     ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator, SingleCondition, SingleAction, ActionType,
-    RouteMap, MatchField,
+    MatchField,
 )
 from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, ThenField
 from annet.rpl_generators.entities import (
     arista_well_known_community,
-    CommunityList, RDFilter, mangle_ranged_prefix_list_name, CommunityLogic, mangle_united_community_list_name,
+    CommunityList, RDFilter, PrefixListNameGenerator, CommunityLogic, mangle_united_community_list_name,
 )
+from annet.rpl_generators.prefix_lists import new_prefix_list_name_generator
 
 HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.as_path_filter: "as-path-filter {option_value}",
@@ -86,6 +87,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             condition: SingleCondition[Any],
             communities: dict[str, CommunityList],
             rd_filters: dict[str, RDFilter],
+            prefix_name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         if condition.field == MatchField.community:
             if condition.operator is ConditionOperator.HAS:
@@ -134,7 +136,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             return
         if condition.field == MatchField.ip_prefix:
             for name in condition.value.names:
-                mangled_name = mangle_ranged_prefix_list_name(
+                mangled_name = prefix_name_generator.get_prefix_name(
                     name=name,
                     greater_equal=condition.value.greater_equal,
                     less_equal=condition.value.less_equal,
@@ -143,7 +145,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             return
         if condition.field == MatchField.ipv6_prefix:
             for name in condition.value.names:
-                mangled_name = mangle_ranged_prefix_list_name(
+                mangled_name = prefix_name_generator.get_prefix_name(
                     name=name,
                     greater_equal=condition.value.greater_equal,
                     less_equal=condition.value.less_equal,
@@ -180,7 +182,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[CommunityActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
-            if action.value.added or action.value.replaced:
+            if action.value.added or action.value.removed:
                 raise NotImplementedError(
                     "Cannot set community together with add/remove on huawei",
                 )
@@ -202,7 +204,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[CommunityActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
-            if action.value.added or action.value.replaced:
+            if action.value.added or action.value.removed:
                 raise NotImplementedError(
                     "Cannot set large-community together with add/remove on huawei",
                 )
@@ -334,6 +336,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             device: Any,
             policy: RoutingPolicy,
             statement: RoutingPolicyStatement,
+            prefix_name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         if statement.number is None:
             raise RuntimeError(f"Statement number should not be empty on Huawei (found for policy: {policy.name})")
@@ -343,19 +346,21 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 "node", statement.number
         ):
             for condition in statement.match:
-                yield from self._huawei_match(device, condition, communities, rd_filters)
+                yield from self._huawei_match(device, condition, communities, rd_filters, prefix_name_generator)
             for action in statement.then:
                 yield from self._huawei_then(communities, device, action)
             if statement.result is ResultType.NEXT:
                 yield "goto next-node"
 
     def run_huawei(self, device):
+        policies = self.get_policies(device)
         communities = {c.name: c for c in self.get_community_lists(device)}
         rd_filters = {f.name: f for f in self.get_rd_filters(device)}
+        prefix_name_generator = new_prefix_list_name_generator(policies)
 
         for policy in self.get_policies(device):
             for statement in policy.statements:
-                yield from self._huawei_statement(communities, rd_filters, device, policy, statement)
+                yield from self._huawei_statement(communities, rd_filters, device, policy, statement, prefix_name_generator)
 
     # arista
     def acl_arista(self, device):
@@ -378,6 +383,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             condition: SingleCondition[Any],
             communities: dict[str, CommunityList],
             rd_filters: dict[str, RDFilter],
+            prefix_name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         if condition.field == MatchField.community:
             if condition.operator is ConditionOperator.HAS_ANY:
@@ -430,7 +436,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             return
         if condition.field == MatchField.ip_prefix:
             for name in condition.value.names:
-                mangled_name = mangle_ranged_prefix_list_name(
+                mangled_name = prefix_name_generator.get_prefix_name(
                     name=name,
                     greater_equal=condition.value.greater_equal,
                     less_equal=condition.value.less_equal,
@@ -439,7 +445,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             return
         if condition.field == MatchField.ipv6_prefix:
             for name in condition.value.names:
-                mangled_name = mangle_ranged_prefix_list_name(
+                mangled_name = prefix_name_generator.get_prefix_name(
                     name=name,
                     greater_equal=condition.value.greater_equal,
                     less_equal=condition.value.less_equal,
@@ -477,7 +483,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[CommunityActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
-            if action.value.added or action.value.replaced:
+            if action.value.added or action.value.removed:
                 raise NotImplementedError(
                     "Cannot set community together with add/remove on arista",
                 )
@@ -500,7 +506,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[CommunityActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
-            if action.value.added or action.value.replaced:
+            if action.value.added or action.value.removed:
                 raise NotImplementedError(
                     "Cannot set large-community together with add/remove on arista",
                 )
@@ -653,6 +659,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             device: Any,
             policy: RoutingPolicy,
             statement: RoutingPolicyStatement,
+            prefix_name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         with self.block(
                 "route-map",
@@ -661,16 +668,20 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 statement.number,
         ):
             for condition in statement.match:
-                yield from self._arista_match(device, condition, communities, rd_filters)
+                yield from self._arista_match(device, condition, communities, rd_filters, prefix_name_generator)
             for action in statement.then:
                 yield from self._arista_then(communities, device, action)
             if statement.result is ResultType.NEXT:
                 yield "continue"
 
     def run_arista(self, device):
+        policies = self.get_policies(device)
+        prefix_name_generator = new_prefix_list_name_generator(policies)
         communities = {c.name: c for c in self.get_community_lists(device)}
         rd_filters = {f.name: f for f in self.get_rd_filters(device)}
 
-        for policy in self.get_policies(device):
+        for policy in policies:
             for statement in policy.statements:
-                yield from self._arista_statement(communities, rd_filters, device, policy, statement)
+                yield from self._arista_statement(
+                    communities, rd_filters, device, policy, statement, prefix_name_generator,
+                )

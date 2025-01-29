@@ -91,6 +91,12 @@ class FakeDevice(Device):
         ))
         return self.interfaces[-1]
 
+    def find_interface(self, name: str) -> Optional[Interface]:
+        for iface in self.interfaces:
+            if iface.name == name:
+                return iface
+        return None
+
 
 class FakeStorage(Storage):
     def __init__(self):
