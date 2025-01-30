@@ -167,21 +167,10 @@ class NetboxStorageV37(Storage):
             return []
         devices = []
         device_ids = set()
-        query_groups: dict[str, list[str]] = {"tag": [], "site": [], "name__ie": [], "name__ic": []}
-        for q in query.globs:
-            if ":" in q:
-                glob_type, param = q.split(":", 2)
-                if glob_type not in query_groups:
-                    raise Exception(f"Unknown query type: '{glob_type}'")
-                query_groups[glob_type].append(param)
-            else:
-                if self.exact_host_filter:
-                    grp = "name__ie"
-                else:
-                    query = _hostname_dot_hack(query)
-                    grp = "name__ic"
-                query_groups[grp].append(q)
-
+        query_groups = parse_glob(query.globs)
+        if self.exact_host_filter:
+            name_ies = [_hostname_dot_hack(query) for query in query_groups.pop("name__ic", [])]
+            query_groups["name__ie"].extend(name_ies)
         for grp, params in query_groups.items():
             if not params:
                 continue
@@ -290,7 +279,7 @@ def _match_query(query: NetboxQuery, device_data: api_models.Device) -> bool:
     return False
 
 
-def _hostname_dot_hack(netbox_query: NetboxQuery) -> NetboxQuery:
+def _hostname_dot_hack(raw_query: str) -> str:
     # there is no proper way to lookup host by its hostname
     # ie find "host" with fqdn "host.example.com"
     # besides using name__ic (ie startswith)
@@ -302,9 +291,23 @@ def _hostname_dot_hack(netbox_query: NetboxQuery) -> NetboxQuery:
             raw_query = raw_query + "."
         return raw_query
 
-    raw_query = netbox_query.query
     if isinstance(raw_query, list):
         for i, name in enumerate(raw_query):
             raw_query[i] = add_dot(name)
 
-    return NetboxQuery(raw_query)
+    return raw_query
+
+
+def parse_glob(globs: list[str]) -> dict[str, list[str]]:
+    query_groups: dict[str, list[str]] = {"tag": [], "site": [], "name__ic": []}
+    for q in globs:
+        if ":" in q:
+            glob_type, param = q.split(":", 2)
+            if glob_type not in query_groups:
+                raise Exception(f"unknown query type: '{glob_type}'")
+            if not param:
+                raise Exception(f"empty param for '{glob_type}'")
+            query_groups[glob_type].append(param)
+        else:
+            query_groups["name__ic"].append(q)
+    return query_groups
