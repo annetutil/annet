@@ -166,6 +166,7 @@ class NetboxStorageV37(Storage):
         if not query.globs:
             return []
         devices = []
+        device_ids = set()
         query_groups: dict[str, list[str]] = {"tag": [], "site": [], "name__ie": [], "name__ic": []}
         for q in query.globs:
             if ":" in q:
@@ -193,7 +194,10 @@ class NetboxStorageV37(Storage):
                 raise
             if grp == "name__ic":
                 new_devices = [device for device in new_devices if _match_query(query, device)]
-            devices.extend(new_devices)
+            for device in new_devices:
+                if device.id not in device_ids:
+                    device_ids.add(device.id)
+                    devices.extend(new_devices)
         return devices
 
     def _extend_interfaces(self, interfaces: List[models.Interface]) -> List[models.Interface]:
