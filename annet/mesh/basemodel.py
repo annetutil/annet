@@ -60,6 +60,11 @@ class Concat(Merger):
         return x + y  # type: ignore[operator]
 
 
+class Unite(Merger):
+    def _merge(self, name: str, x: T, y: T) -> T:
+        return x | y  # type: ignore[operator]
+
+
 class Merge(Merger):
     def _merge(self, name: str, x: "ModelT", y: "ModelT") -> "ModelT":  # type: ignore[override]
         return merge(x, y)
@@ -127,6 +132,9 @@ class BaseMeshModel:
         if key not in self._field_mergers:
             raise AttributeError(f"{self.__class__.__name__} has no field {key}")
         super().__setattr__(key, value)
+
+    def is_empty(self):
+        return not self.__dict__
 
 
 ModelT = TypeVar("ModelT", bound=BaseMeshModel)

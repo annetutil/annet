@@ -16,26 +16,26 @@ and NetBox as a storage.
 
     cat > ~/.annet/context.yml<<EOF
     fetcher:
-    default:
-        adapter: gnetcli
+        default:
+            adapter: gnetcli
     deployer:
-    default:
-        adapter: gnetcli
+        default:
+            adapter: gnetcli
     generators:
-    default:
-        - /path/to/myproject/my_generators/__init__.py
+        default:
+            - /path/to/myproject/my_generators/__init__.py
     storage:
-    netbox:
-        adapter: netbox
-        params:
-        url: http://127.0.0.1:8000
-        token: 1234567890abcdef01234567890abcdef0123456
+        default:
+            adapter: netbox
+            params:
+                url: http://127.0.0.1:8000
+                token: 1234567890abcdef01234567890abcdef0123456
     context:
-    default:
-        fetcher: default
-        deployer: default
-        generators: default
-        storage: default
+        default:
+            fetcher: default
+            deployer: default
+            generators: default
+            storage: default
     selected_context: default
     EOF
 

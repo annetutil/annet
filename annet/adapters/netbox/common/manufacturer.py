@@ -54,6 +54,8 @@ def get_breed(manufacturer: str, model: str):
         return "bcom-os"
     elif manufacturer == "MikroTik":
         return "routeros"
+    elif manufacturer == "Moxa":
+        return "moxa"
     elif manufacturer == "PC":
         return "pc"
     return ""

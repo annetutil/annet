@@ -1,3 +1,4 @@
+from collections.abc import Sequence, Iterable
 from dataclasses import dataclass, field
 from typing import Literal, Union, Optional
 
@@ -67,7 +68,7 @@ class BFDTimers:
     multiplier: int = 4
 
 
-Family = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled_unicast", "ipv6_labeled_unicast"]
+Family = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled_unicast", "ipv6_labeled_unicast", "l2vpn_evpn"]
 
 
 @dataclass(frozen=True)
@@ -206,7 +207,7 @@ class PeerGroup:
     auth_key: bool = False
     add_path: bool = False
     multipath: bool = False
-    multihop: bool = False
+    multihop: Optional[int] = None
     multihop_no_nexthop_change: bool = False
     af_no_install: bool = False
     bfd: bool = False
@@ -242,8 +243,11 @@ class VrfOptions:
     ipv6_unicast: FamilyOptions
     ipv4_labeled_unicast: FamilyOptions
     ipv6_labeled_unicast: FamilyOptions
+    l2vpn_evpn: FamilyOptions
 
     vrf_name_global: Optional[str] = None
+    l3vni: Optional[int] = None
+    as_path_relax: bool = False
     rt_import: list[str] = field(default_factory=list)
     rt_export: list[str] = field(default_factory=list)
     rt_import_v4: list[str] = field(default_factory=list)
@@ -260,7 +264,9 @@ class GlobalOptions:
     ipv6_unicast: FamilyOptions
     ipv4_labeled_unicast: FamilyOptions
     ipv6_labeled_unicast: FamilyOptions
+    l2vpn_evpn: FamilyOptions
 
+    as_path_relax: bool = False
     local_as: ASN = ASN(None)
     loops: int = 0
     multipath: int = 0
@@ -268,3 +274,48 @@ class GlobalOptions:
     vrf: dict[str, VrfOptions] = field(default_factory=dict)
 
     groups: list[PeerGroup] = field(default_factory=list)
+
+
+@dataclass
+class BgpConfig:
+    global_options: GlobalOptions
+    peers: list[Peer]
+
+
+def _used_policies(peer: Union[Peer, PeerGroup]) -> Iterable[str]:
+    if peer.import_policy:
+        yield peer.import_policy
+    if peer.export_policy:
+        yield peer.export_policy
+
+
+def _used_redistribute_policies(opts: Union[GlobalOptions, VrfOptions]) -> Iterable[str]:
+    for red in opts.ipv4_unicast.redistributes:
+        if red.policy:
+            yield red.policy
+    for red in opts.ipv6_unicast.redistributes:
+        if red.policy:
+            yield red.policy
+    for red in opts.ipv4_labeled_unicast.redistributes:
+        if red.policy:
+            yield red.policy
+    for red in opts.ipv6_labeled_unicast.redistributes:
+        if red.policy:
+            yield red.policy
+    for red in opts.l2vpn_evpn.redistributes:
+        if red.policy:
+            yield red.policy
+
+
+def extract_policies(config: BgpConfig) -> Sequence[str]:
+    result: list[str] = []
+    for vrf in config.global_options.vrf.values():
+        for group in vrf.groups:
+            result.extend(_used_policies(group))
+        result.extend(_used_redistribute_policies(vrf))
+    for group in config.global_options.groups:
+        result.extend(_used_policies(group))
+    for peer in config.peers:
+        result.extend(_used_policies(peer))
+    result.extend(_used_redistribute_policies(config.global_options))
+    return result

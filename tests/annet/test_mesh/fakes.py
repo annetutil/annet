@@ -57,11 +57,11 @@ class FakeDevice(Device):
 
     @property
     def neighbours_ids(self) -> list["str"]:
-        return [n.neighbor_fqdn for n in self.interfaces if n.neighbor_fqdn]
+        return list({n.neighbor_fqdn for n in self.interfaces if n.neighbor_fqdn})
 
     @property
     def neighbours_fqdns(self) -> list["str"]:
-        return [n.neighbor_fqdn for n in self.interfaces if n.neighbor_fqdn]
+        return list({n.neighbor_fqdn for n in self.interfaces if n.neighbor_fqdn})
 
     @property
     def breed(self):
@@ -90,6 +90,12 @@ class FakeDevice(Device):
             neighbor_fqdn=None,
         ))
         return self.interfaces[-1]
+
+    def find_interface(self, name: str) -> Optional[Interface]:
+        for iface in self.interfaces:
+            if iface.name == name:
+                return iface
+        return None
 
 
 class FakeStorage(Storage):

@@ -122,7 +122,7 @@ Device instance is accessible via ``.device`` attribute of ``GlobalOptions``, ``
     @registry.direct("host-{num}.{domain:.*}", "host-{num}.{domain:.*}")
     def bar(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):
         print(local.device.fqdn)
-        print(local.device.ports)
+        print(local.ports)
 
 
 
@@ -152,6 +152,27 @@ Bgp session is expected to be set on single interface and you can choose it from
 * svi
 
 The selection is done using ``lag``, ``svi`` or ``subif`` attributes correspondingly.
+
+
+Working with multiple direct connections
+-------------------------------------------
+
+Each BGP session is attached to a single interface with ip address assigned to it.
+If two devices have multiple direct interconnections you have several options:
+
+1. Setup LAG interface containing all of them. Just set ``device.lag = number``
+2. Select SVI interface. Set ``device.svi = number``
+3. Setup bgp session on each interface separately using ``port_processor`` option on handler registration.
+
+.. code-block:: python
+
+    from annet.mesh import separate_ports
+
+    @registry.direct("{host:.*}", "{host:.*}", port_processor=separate_ports)
+    def bar(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):
+        print(local.device.fqdn)
+        print(local.ports)  # current processing subset
+        print(local.all_connected_ports)  # all interconnections
 
 
 Accessing mesh data from generators

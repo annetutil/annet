@@ -1,7 +1,7 @@
 from annet.annlib.netdev.views.dump import DumpableView
 from annet.storage import Query
 from dataclasses import dataclass, fields
-from typing import List, Iterable, Optional, Any
+from typing import List, Iterable, Optional, Any, Sequence
 from annet.storage import StorageProvider, Storage
 from annet.connectors import AdapterWithName
 from annet.storage import Device as DeviceCls
@@ -56,6 +56,15 @@ class DeviceStorage:
 class Device(DeviceCls, DumpableView):
     dev: DeviceStorage
 
+    def __hash__(self):
+        return hash((self.id, type(self)))
+
+    def __eq__(self, other):
+        return type(self) is type(other) and self.fqdn == other.fqdn and self.vendor == other.vendor
+
+    def is_pc(self) -> bool:
+        return False
+
     @property
     def hostname(self) -> str:
         return self.dev.hostname
@@ -67,15 +76,6 @@ class Device(DeviceCls, DumpableView):
     @property
     def id(self):
         return self.dev.id
-
-    def __hash__(self):
-        return hash((self.id, type(self)))
-
-    def __eq__(self, other):
-        return type(self) is type(other) and self.fqdn == other.fqdn and self.vendor == other.vendor
-
-    def is_pc(self) -> bool:
-        return False
 
     @property
     def storage(self) -> Storage:
@@ -92,6 +92,21 @@ class Device(DeviceCls, DumpableView):
     @property
     def neighbours_ids(self):
         pass
+
+    def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: Optional[int]) -> Interface:
+        raise NotImplementedError
+
+    def add_svi(self, svi: int) -> Interface:
+        raise NotImplementedError
+
+    def add_subif(self, interface: str, subif: int) -> Interface:
+        raise NotImplementedError
+
+    def find_interface(self, name: str) -> Optional[Interface]:
+        raise NotImplementedError
+
+    def neighbours_fqdns(self) -> list[str]:
+        return []
 
 
 @dataclass
@@ -198,6 +213,12 @@ class FS(Storage):
 
     def flush_perf(self):
         pass
+
+    def resolve_all_fdnds(self) -> list[str]:
+        return [d.fqdn for d in self.inventory.devices]
+
+    def search_connections(self, device: "Device", neighbor: "Device") -> list[tuple["Interface", "Interface"]]:
+        return []
 
 
 def filter_query(devices: list[Device], query: Query) -> list[Device]:

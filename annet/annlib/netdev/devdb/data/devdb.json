@@ -70,8 +70,8 @@
     "Huawei.EI": "-EI(-|$)",
     "Huawei.HI": "-HI(-|$)",
     "Huawei.SI": "-SI(-|$)",
-    "Huawei.OptiXtrans": " OptiXtrans|DC",
-    "Huawei.OptiXtrans.DC": " DC",
+    "Huawei.OptiXtrans": " (OptiXtrans|DC\\d\\d\\d)",
+    "Huawei.OptiXtrans.DC": " DC\\d\\d\\d",
     "Huawei.OptiXtrans.DC.DC908": " DC908",
 
     "Juniper": "^[Jj]uniper",
@@ -104,9 +104,9 @@
     "Nokia.NS7750": " 7750",
     "Nokia.SR_1s": "SR-1s",
 
-    "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa|[Aa]sterfusion CX|[Uu]fi[Ss]pace)",
+    "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa|NVIDIA|[Aa]sterfusion CX|[Uu]fi[Ss]pace)",
 
-    "PC.Whitebox": "([Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Aa]sterfusion CX|[Uu]fi[Ss]pace)",
+    "PC.Whitebox": "([Mm]ellanox SN|[Ee]dge-?[Cc]ore|NVIDIA|[Aa]sterfusion CX|[Uu]fi[Ss]pace)",
     "PC.Whitebox.Mellanox": "[Mm]ellanox",
     "PC.Whitebox.Mellanox.SN": " SN",
     "PC.Whitebox.Mellanox.SN.SN2100": " SN2100",
@@ -116,8 +116,10 @@
     "PC.Whitebox.Edgecore": "[Ee]dge-?[Cc]ore",
     "PC.Whitebox.Edgecore.AS": "AS",
     "PC.Whitebox.Edgecore.AS9736": "AS9736",
+    "PC.Whitebox.Edgecore.AS9817": "AS9817",
     "PC.Whitebox.NVIDIA": "NVIDIA",
     "PC.Whitebox.NVIDIA.SN": " SN",
+    "PC.Whitebox.NVIDIA.SN.SN5400": " SN5400",
     "PC.Whitebox.NVIDIA.SN.SN5600": " SN5600",
     "PC.Moxa": "[Mm]oxa",
     "PC.Moxa.NPort": " [Nn][Pp]ort",
@@ -164,6 +166,8 @@
 
     "B4com": "^[Bb]4com",
     "B4com.CS2148P": "^[Bb]4com B4T-CS2148P.*",
+    "B4com.CS4100": "^[Bb]4com B4T-CS41.*",
+    "B4com.CS4132U": "^[Bb]4com B4T-CS4132U.*",
     "B4com.CS4148Q": "^[Bb]4com B4T-CS4148Q.*",
-    "B4com.CS4146U": "^[Bb]4com B4T-CS4146U.*"
+    "B4com.CS4164U": "^[Bb]4com B4T-CS4164U.*"
 }
