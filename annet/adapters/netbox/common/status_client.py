@@ -20,6 +20,6 @@ class NetboxStatusClient(BaseNetboxClient):
             name_mapping(name_style=NameStyle.LOWER_KEBAB)
         ])
 
-    @get("status")
+    @get("status/")
     def status(self) -> Status:
         ...
