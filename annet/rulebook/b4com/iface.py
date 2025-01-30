@@ -31,9 +31,12 @@ def sflow(rule, key, diff, **kwargs):
 
 
 def lldp(rule, key, diff, **kwargs):
+    """
+    Не удаляем все что начинается с set, т.к. set перезаписывает предыдущий конфиг
+    """
     result = common.default(rule, key, diff, **kwargs)
     for op, cmd, ch in result:
-        if diff[Op.REMOVED] and "chassis-id-tlv" in cmd:
+        if diff[Op.REMOVED] and "set lldp" in cmd:
             pass
         else:
             yield (op, cmd, ch)
