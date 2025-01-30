@@ -101,7 +101,7 @@ class IndirectPeerDTO(MeshSession, _OptionsDTO):
 
 
 class VirtualLocalDTO(_OptionsDTO):
-    asnum: int
+    asnum: Union[int, str]
     pod: int
     addr: str
     description: str
