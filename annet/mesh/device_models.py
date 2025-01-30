@@ -21,7 +21,7 @@ class FamilyOptions(BaseMeshModel):
         super().__init__(**kwargs)
     family: Family
     vrf_name: str
-    multipath: int = 0
+    multipath: int
     global_multipath: int
     aggregate: Annotated[Aggregate, Merge()]
     redistributes: Annotated[tuple[Redistribute, ...], Concat()]

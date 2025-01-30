@@ -210,9 +210,9 @@ class MeshRulesRegistry:
         found = []
         device = self._normalize_host(device)
         for neighbor in neighbors:
-            neighbor = self._normalize_host(neighbor)
+            neighbor_norm = self._normalize_host(neighbor)
             for rule in self.direct_rules:
-                if args := rule.matcher.match_pair(device, neighbor):
+                if args := rule.matcher.match_pair(device, neighbor_norm):
                     found.append(MatchedDirectPair(
                         handler=rule.handler,
                         port_processor=rule.port_processor,
@@ -222,7 +222,7 @@ class MeshRulesRegistry:
                         match_left=args[0],
                         match_right=args[1],
                     ))
-                if args := rule.matcher.match_pair(neighbor, device):
+                if args := rule.matcher.match_pair(neighbor_norm, device):
                     found.append(MatchedDirectPair(
                         handler=rule.handler,
                         port_processor=rule.port_processor,
