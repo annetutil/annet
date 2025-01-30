@@ -165,17 +165,35 @@ class NetboxStorageV37(Storage):
     def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
         if not query.globs:
             return []
-        if self.exact_host_filter:
-            devices = self.netbox.dcim_all_devices(name__ie=query.globs).results
-        else:
-            query = _hostname_dot_hack(query)
-            devices = [
-                device
-                for device in self.netbox.dcim_all_devices(
-                    name__ic=query.globs,
-                ).results
-                if _match_query(query, device)
-            ]
+        devices = []
+        query_groups: dict[str, list[str]] = {"tag": [], "site": [], "name__ie": [], "name__ic": []}
+        for q in query.globs:
+            if ":" in q:
+                glob_type, param = q.split(":", 2)
+                if glob_type not in query_groups:
+                    raise Exception(f"Unknown query type: '{glob_type}'")
+                query_groups[glob_type].append(param)
+            else:
+                if self.exact_host_filter:
+                    grp = "name__ie"
+                else:
+                    query = _hostname_dot_hack(query)
+                    grp = "name__ic"
+                query_groups[grp].append(q)
+
+        for grp, params in query_groups.items():
+            if not params:
+                continue
+            try:
+                new_devices = self.netbox.dcim_all_devices(**{grp:params}).results
+            except Exception as e:
+                # tag and site lookup returns 400 in case of unknown tag or site
+                if "is not one of the available choices" in str(e):
+                    continue
+                raise
+            if grp == "name__ic":
+                new_devices = [device for device in new_devices if _match_query(query, device)]
+            devices.extend(new_devices)
         return devices
 
     def _extend_interfaces(self, interfaces: List[models.Interface]) -> List[models.Interface]:
