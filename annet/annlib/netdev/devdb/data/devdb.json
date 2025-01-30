@@ -166,6 +166,8 @@
 
     "B4com": "^[Bb]4com",
     "B4com.CS2148P": "^[Bb]4com B4T-CS2148P.*",
+    "B4com.CS4100": "^[Bb]4com B4T-CS41.*",
+    "B4com.CS4132U": "^[Bb]4com B4T-CS4132U.*",
     "B4com.CS4148Q": "^[Bb]4com B4T-CS4148Q.*",
-    "B4com.CS4146U": "^[Bb]4com B4T-CS4146U.*"
+    "B4com.CS4164U": "^[Bb]4com B4T-CS4164U.*"
 }
