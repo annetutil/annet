@@ -185,7 +185,7 @@ class NetboxStorageV37(Storage):
             if not params:
                 continue
             try:
-                new_devices = self.netbox.dcim_all_devices(**{grp:params}).results
+                new_devices = self.netbox.dcim_all_devices(**{grp: params}).results
             except Exception as e:
                 # tag and site lookup returns 400 in case of unknown tag or site
                 if "is not one of the available choices" in str(e):
