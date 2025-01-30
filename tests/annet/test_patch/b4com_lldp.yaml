@@ -7,25 +7,23 @@ after: |
   interface xe26
    mtu 9216
    lldp-agent
-    set lldp enable txrx
-    set lldp chassis-id-tlv ip-address
-    set lldp port-id-tlv if-name
-    lldp tlv basic-mgmt system-name select
-    lldp tlv basic-mgmt system-description select
-    dcbx enable
+      set lldp enable txrx
+      set lldp chassis-id-tlv locally-assigned
+      set lldp port-id-tlv if-name
+      lldp tlv basic-mgmt system-name select
+      lldp tlv basic-mgmt system-description select
 
 patch: |
   conf t
   interface xe26
     lldp-agent
       set lldp enable txrx
-      set lldp chassis-id-tlv ip-address
+      set lldp chassis-id-tlv locally-assigned
       set lldp port-id-tlv if-name
       lldp tlv basic-mgmt system-name select
       lldp tlv basic-mgmt system-description select
-      dcbx enable
       exit
     exit
-  exit
   commit
+  end
   write

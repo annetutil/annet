@@ -28,3 +28,12 @@ def sflow(rule, key, diff, **kwargs):
             else:
                 yield (op, cmd, ch)
     return result
+
+
+def lldp(rule, key, diff, **kwargs):
+    result = common.default(rule, key, diff, **kwargs)
+    for op, cmd, ch in result:
+        if diff[Op.REMOVED] and "chassis-id-tlv" in cmd:
+            pass
+        else:
+            yield (op, cmd, ch)

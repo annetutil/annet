@@ -18,7 +18,6 @@ interface */(ce|xe)[0-9\/]+$/     %logic=common.permanent %diff_logic=cisco.ifac
     mtu *                         %logic=b4com.iface.mtu
     sflow *                       %logic=b4com.iface.sflow
     lldp-agent
-        ~ %global
-        set lldp chassis-id-tlv
+        ~ %global                 %logic=b4com.iface.lldp
         !dcbx *
         !exit
