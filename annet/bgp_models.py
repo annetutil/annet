@@ -142,7 +142,6 @@ class Peer:
 class Aggregate:
     policy: str = ""
     routes: tuple[str, ...] = ()  # "182.168.1.0/24",
-    export_policy: str = ""
     as_path: str = ""
     reference: str = ""
     suppress: bool = False
@@ -290,21 +289,18 @@ def _used_policies(peer: Union[Peer, PeerGroup]) -> Iterable[str]:
 
 
 def _used_redistribute_policies(opts: Union[GlobalOptions, VrfOptions]) -> Iterable[str]:
-    for red in opts.ipv4_unicast.redistributes:
-        if red.policy:
-            yield red.policy
-    for red in opts.ipv6_unicast.redistributes:
-        if red.policy:
-            yield red.policy
-    for red in opts.ipv4_labeled_unicast.redistributes:
-        if red.policy:
-            yield red.policy
-    for red in opts.ipv6_labeled_unicast.redistributes:
-        if red.policy:
-            yield red.policy
-    for red in opts.l2vpn_evpn.redistributes:
-        if red.policy:
-            yield red.policy
+    for family_opts in (
+        opts.ipv4_unicast,
+        opts.ipv6_unicast,
+        opts.ipv4_labeled_unicast,
+        opts.ipv6_labeled_unicast,
+        opts.l2vpn_evpn,
+    ):
+        for red in family_opts.redistributes:
+            if red.policy:
+                yield red.policy
+        if family_opts.aggregate and family_opts.aggregate.policy:
+            yield family_opts.aggregate.policy
 
 
 def extract_policies(config: BgpConfig) -> Sequence[str]:

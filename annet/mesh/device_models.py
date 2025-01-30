@@ -8,7 +8,6 @@ from .peer_models import MeshPeerGroup
 class Aggregate(BaseMeshModel):
     policy: str
     routes: Annotated[tuple[str, ...], Concat()]
-    export_policy: str
     as_path: str
     reference: str
     suppress: bool

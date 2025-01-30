@@ -25,9 +25,9 @@ def on_device_x(device: GlobalOptions):
     device.vrf[VRF].groups[GROUP].remote_as = 22222
     device.vrf[VRF].groups[GROUP].families = {"ipv4_unicast"}
     device.vrf[VRF].groups[GROUP].export_policy = EXPORT_POLICY1
-    device.vrf[VRF].ipv4_unicast.aggregate.export_policy = EXPORT_POLICY1
+    device.vrf[VRF].ipv4_unicast.aggregate.policy = EXPORT_POLICY1
     device.vrf[VRF].as_path_relax = True
-    device.ipv6_unicast.aggregate.export_policy = EXPORT_POLICY2
+    device.ipv6_unicast.aggregate.policy = EXPORT_POLICY2
     device.ipv4_unicast.redistributes = (Redistribute(
         protocol="ipv4", policy="sss",
     ),)
@@ -142,7 +142,7 @@ def test_storage(registry, storage, device1):
 
     assert res.global_options.ipv6_unicast.vrf_name == ""
     assert res.global_options.ipv6_unicast.family == "ipv6_unicast"
-    assert res.global_options.ipv6_unicast.aggregate.export_policy == EXPORT_POLICY2
+    assert res.global_options.ipv6_unicast.aggregate.policy == EXPORT_POLICY2
 
     assert res.global_options.groups == []
     assert res.global_options.vrf.keys() == {VRF}
@@ -158,7 +158,7 @@ def test_storage(registry, storage, device1):
     assert vrf.groups[0].export_policy == EXPORT_POLICY1
     assert vrf.ipv4_unicast.vrf_name == VRF
     assert vrf.ipv4_unicast.family == "ipv4_unicast"
-    assert vrf.ipv4_unicast.aggregate.export_policy == EXPORT_POLICY1
+    assert vrf.ipv4_unicast.aggregate.policy == EXPORT_POLICY1
     assert vrf.as_path_relax
 
     res.peers.sort(key=lambda p: p.addr)
