@@ -165,17 +165,28 @@ class NetboxStorageV37(Storage):
     def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
         if not query.globs:
             return []
+        devices = []
+        device_ids = set()
+        query_groups = parse_glob(query.globs)
         if self.exact_host_filter:
-            devices = self.netbox.dcim_all_devices(name__ie=query.globs).results
-        else:
-            query = _hostname_dot_hack(query)
-            devices = [
-                device
-                for device in self.netbox.dcim_all_devices(
-                    name__ic=query.globs,
-                ).results
-                if _match_query(query, device)
-            ]
+            name_ies = [_hostname_dot_hack(query) for query in query_groups.pop("name__ic", [])]
+            query_groups["name__ie"].extend(name_ies)
+        for grp, params in query_groups.items():
+            if not params:
+                continue
+            try:
+                new_devices = self.netbox.dcim_all_devices(**{grp: params}).results
+            except Exception as e:
+                # tag and site lookup returns 400 in case of unknown tag or site
+                if "is not one of the available choices" in str(e):
+                    continue
+                raise
+            if grp == "name__ic":
+                new_devices = [device for device in new_devices if _match_query(query, device)]
+            for device in new_devices:
+                if device.id not in device_ids:
+                    device_ids.add(device.id)
+                    devices.extend(new_devices)
         return devices
 
     def _extend_interfaces(self, interfaces: List[models.Interface]) -> List[models.Interface]:
@@ -268,7 +279,7 @@ def _match_query(query: NetboxQuery, device_data: api_models.Device) -> bool:
     return False
 
 
-def _hostname_dot_hack(netbox_query: NetboxQuery) -> NetboxQuery:
+def _hostname_dot_hack(raw_query: str) -> str:
     # there is no proper way to lookup host by its hostname
     # ie find "host" with fqdn "host.example.com"
     # besides using name__ic (ie startswith)
@@ -280,9 +291,23 @@ def _hostname_dot_hack(netbox_query: NetboxQuery) -> NetboxQuery:
             raw_query = raw_query + "."
         return raw_query
 
-    raw_query = netbox_query.query
     if isinstance(raw_query, list):
         for i, name in enumerate(raw_query):
             raw_query[i] = add_dot(name)
 
-    return NetboxQuery(raw_query)
+    return raw_query
+
+
+def parse_glob(globs: list[str]) -> dict[str, list[str]]:
+    query_groups: dict[str, list[str]] = {"tag": [], "site": [], "name__ic": []}
+    for q in globs:
+        if ":" in q:
+            glob_type, param = q.split(":", 2)
+            if glob_type not in query_groups:
+                raise Exception(f"unknown query type: '{glob_type}'")
+            if not param:
+                raise Exception(f"empty param for '{glob_type}'")
+            query_groups[glob_type].append(param)
+        else:
+            query_groups["name__ic"].append(q)
+    return query_groups

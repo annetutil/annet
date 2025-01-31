@@ -1,6 +1,10 @@
 CLI Usage
 ================
 
+Almost all annet calls expect hosts identifiers, like ``ann gen HOST1 HOST2``.
+These host identifiers are resolved by the storage adapter. For example, NetBox adapter supports for globs: ``myhost tag:mytag site:mysite`` - will search
+for a host with name ``myhost`` or hosts with tag ``mytag`` or hosts with site ``mysite``.
+
 annet gen
 ******************
 
