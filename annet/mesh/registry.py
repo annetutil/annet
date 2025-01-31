@@ -208,11 +208,11 @@ class MeshRulesRegistry:
 
     def lookup_direct(self, device: str, neighbors: list[str]) -> list[MatchedDirectPair]:
         found = []
-        device = self._normalize_host(device)
+        device_norm = self._normalize_host(device)
         for neighbor in neighbors:
-            neighbor = self._normalize_host(neighbor)
+            neighbor_norm = self._normalize_host(neighbor)
             for rule in self.direct_rules:
-                if args := rule.matcher.match_pair(device, neighbor):
+                if args := rule.matcher.match_pair(device_norm, neighbor_norm):
                     found.append(MatchedDirectPair(
                         handler=rule.handler,
                         port_processor=rule.port_processor,
@@ -222,7 +222,7 @@ class MeshRulesRegistry:
                         match_left=args[0],
                         match_right=args[1],
                     ))
-                if args := rule.matcher.match_pair(neighbor, device):
+                if args := rule.matcher.match_pair(neighbor_norm, device_norm):
                     found.append(MatchedDirectPair(
                         handler=rule.handler,
                         port_processor=rule.port_processor,
@@ -238,11 +238,11 @@ class MeshRulesRegistry:
 
     def lookup_indirect(self, device: str, devices: list[str]) -> list[MatchedIndirectPair]:
         found = []
-        device = self._normalize_host(device)
+        device_norm = self._normalize_host(device)
         for other_device in devices:
-            other_device = self._normalize_host(other_device)
+            other_device_norm = self._normalize_host(other_device)
             for rule in self.indirect_rules:
-                if args := rule.matcher.match_pair(device, other_device):
+                if args := rule.matcher.match_pair(device_norm, other_device_norm):
                     found.append(MatchedIndirectPair(
                         handler=rule.handler,
                         direct_order=True,
@@ -251,7 +251,7 @@ class MeshRulesRegistry:
                         match_left=args[0],
                         match_right=args[1],
                     ))
-                if args := rule.matcher.match_pair(other_device, device):
+                if args := rule.matcher.match_pair(other_device_norm, device_norm):
                     found.append(MatchedIndirectPair(
                         handler=rule.handler,
                         direct_order=False,
@@ -266,9 +266,9 @@ class MeshRulesRegistry:
 
     def lookup_virtual(self, device: str) -> list[MatchedVirtualPair]:
         found = []
-        device = self._normalize_host(device)
+        device_norm = self._normalize_host(device)
         for rule in self.virtual_rules:
-            if args := rule.matcher.match_one(device):
+            if args := rule.matcher.match_one(device_norm):
                 found.append(MatchedVirtualPair(
                     handler=rule.handler,
                     match=args,
@@ -280,9 +280,9 @@ class MeshRulesRegistry:
 
     def lookup_global(self, device: str) -> list[MatchedGlobal]:
         found = []
-        device = self._normalize_host(device)
+        device_norm = self._normalize_host(device)
         for rule in self.global_rules:
-            if args := rule.matcher.match_one(device):
+            if args := rule.matcher.match_one(device_norm):
                 found.append(MatchedGlobal(
                     handler=rule.handler,
                     match=args,

@@ -144,8 +144,17 @@ class MeshExecutor:
         for rule in rules:
             handler_name = self._handler_name(rule.handler)
             if rule.direct_order:
+                if rule.name_right not in neigbors:
+                    print(list(neigbors), flush=True)
+                    raise ValueError(
+                        f"Device `{device.fqdn}` has no neighbor `{rule.name_right}` required for `{handler_name}`. {list(neigbors)}",
+                    )
                 neighbor_device = neigbors[rule.name_right]
             else:
+                if rule.name_left not in neigbors:
+                    raise ValueError(
+                        f"Device `{device.fqdn}` has no neighbor `{rule.name_left}` required for `{handler_name}`",
+                    )
                 neighbor_device = neigbors[rule.name_left]
             all_connected_ports = [
                 (p1.name, p2.name)
