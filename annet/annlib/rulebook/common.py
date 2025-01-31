@@ -346,14 +346,14 @@ def apply(hw, do_commit, do_finalize, **_):
         after.add_cmd(Command("exit"))
     elif hw.B4com.CS2148P:
         before.add_cmd(Command("conf t"))
-        after.add_cmd(Command("exit"))
+        after.add_cmd(Command("end"))
         if do_finalize:
             after.add_cmd(Command("write", timeout=40))
     elif hw.B4com:
         before.add_cmd(Command("conf t"))
-        after.add_cmd(Command("exit"))
         if do_commit:
             after.add_cmd(Command("commit"))
+            after.add_cmd(Command("end"))
         if do_finalize:
             after.add_cmd(Command("write", timeout=40))
     elif hw.H3C:
