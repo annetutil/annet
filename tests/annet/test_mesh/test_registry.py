@@ -1,7 +1,10 @@
+from types import SimpleNamespace
+
 import pytest
 
+from annet.mesh import united_ports
 from annet.mesh.match_args import Left, Right
-from annet.mesh.registry import MeshRulesRegistry
+from annet.mesh.registry import MeshRulesRegistry, MatchedIndirectPair, MatchedDirectPair
 
 
 def foo(*args, **kwargs) -> None:
@@ -75,7 +78,15 @@ def test_direct(short):
         ["right1-2.example.com", "right2-2.example.com"],
     )
     if short:
-        assert short_found == found
+        assert short_found == [MatchedDirectPair(
+            handler=foo,
+            port_processor=united_ports,
+            direct_order=True,
+            name_left="left1-1.example.com",
+            match_left=SimpleNamespace(x=1),
+            name_right="right1-2.example.com",
+            match_right=SimpleNamespace(x=2),
+        )]
     else:
         assert short_found == []
 
@@ -101,7 +112,14 @@ def test_indirect(short):
         ["right1-2.example.com", "right2-2.example.com"],
     )
     if short:
-        assert short_found == found
+        assert short_found == [MatchedIndirectPair(
+            handler=foo,
+            direct_order=True,
+            name_left="left1-1.example.com",
+            match_left=SimpleNamespace(x=1),
+            name_right="right1-2.example.com",
+            match_right=SimpleNamespace(x=2),
+        )]
     else:
         assert short_found == []
 
