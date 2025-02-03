@@ -297,13 +297,15 @@ def _hostname_dot_hack(raw_query: str) -> str:
     return raw_query
 
 
-ALLOWED_GROUPS = ["site", "tag"]
+ALLOWED_GLOB_GROUPS = ["site", "tag"]
+
+
 def parse_glob(exact_host_filter: bool, globs: list[str]) -> dict[str, list[str]]:
     query_groups: defaultdict[str, list[str]] = defaultdict(list)
     for q in globs:
         if ":" in q:
             glob_type, param = q.split(":", 2)
-            if glob_type not in ALLOWED_GROUPS:
+            if glob_type not in ALLOWED_GLOB_GROUPS:
                 raise Exception(f"unknown query type: '{glob_type}'")
             if not param:
                 raise Exception(f"empty param for '{glob_type}'")
