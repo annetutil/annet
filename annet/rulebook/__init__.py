@@ -98,7 +98,7 @@ class DefaultRulebookProvider(RulebookProvider):
             return self._escaped_rul_cache[name]
         for root_dir in self.root_dir:
             try:
-                with open(path.join(root_dir, "texts", name), "r") as f:
+                with open(path.join(root_dir, "texts", name), "r", encoding="utf-8") as f:
                     self._escaped_rul_cache[name] = self._escape_mako(f.read())
                     return self._escaped_rul_cache[name]
             except FileNotFoundError:
