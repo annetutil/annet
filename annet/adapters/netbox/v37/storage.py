@@ -297,7 +297,7 @@ def _hostname_dot_hack(raw_query: str) -> str:
     return raw_query
 
 
-ALLOWED_GLOB_GROUPS = ["site", "tag"]
+ALLOWED_GLOB_GROUPS = ["site", "tag", "role"]
 
 
 def parse_glob(exact_host_filter: bool, globs: list[str]) -> dict[str, list[str]]:
