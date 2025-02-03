@@ -167,10 +167,7 @@ class NetboxStorageV37(Storage):
             return []
         devices = []
         device_ids = set()
-        query_groups = parse_glob(query.globs)
-        if self.exact_host_filter:
-            name_ies = [_hostname_dot_hack(query) for query in query_groups.pop("name__ic", [])]
-            query_groups["name__ie"].extend(name_ies)
+        query_groups = parse_glob(self.exact_host_filter, query.globs)
         for grp, params in query_groups.items():
             if not params:
                 continue
@@ -294,20 +291,28 @@ def _hostname_dot_hack(raw_query: str) -> str:
     if isinstance(raw_query, list):
         for i, name in enumerate(raw_query):
             raw_query[i] = add_dot(name)
+    elif isinstance(raw_query, str):
+        raw_query = add_dot(raw_query)
 
     return raw_query
 
 
-def parse_glob(globs: list[str]) -> dict[str, list[str]]:
-    query_groups: dict[str, list[str]] = {"tag": [], "site": [], "name__ic": []}
+ALLOWED_GROUPS = ["site", "tag"]
+def parse_glob(exact_host_filter: bool, globs: list[str]) -> dict[str, list[str]]:
+    query_groups: defaultdict[str, list[str]] = defaultdict(list)
     for q in globs:
         if ":" in q:
             glob_type, param = q.split(":", 2)
-            if glob_type not in query_groups:
+            if glob_type not in ALLOWED_GROUPS:
                 raise Exception(f"unknown query type: '{glob_type}'")
             if not param:
                 raise Exception(f"empty param for '{glob_type}'")
             query_groups[glob_type].append(param)
         else:
-            query_groups["name__ic"].append(q)
+            if exact_host_filter:
+                query_groups["name__ie"].append(q)
+            else:
+                query_groups["name__ic"].append(_hostname_dot_hack(q))
+
+    query_groups.default_factory = None
     return query_groups
