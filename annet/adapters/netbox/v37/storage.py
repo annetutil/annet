@@ -168,9 +168,12 @@ class NetboxStorageV37(Storage):
         devices = []
         device_ids = set()
         query_groups = parse_glob(query.globs)
-        if self.exact_host_filter:
-            name_ies = [_hostname_dot_hack(query) for query in query_groups.pop("name__ic", [])]
-            query_groups["name__ie"].extend(name_ies)
+        self.exact_host_filter=True
+        if not self.exact_host_filter:
+            name_ics = [_hostname_dot_hack(query) for query in query_groups.pop("name__ie", [])]
+            query_groups.setdefault("name__ic", []).extend(name_ics)
+            # ie - Exact match (case-insensitive)
+            # ic - Contains (case-insensitive)
         for grp, params in query_groups.items():
             if not params:
                 continue
@@ -286,20 +289,13 @@ def _hostname_dot_hack(raw_query: str) -> str:
     # since there is no direct analogue for this field in netbox
     # so we need to add a dot to hostnames (top-level fqdn part)
     # so we would not receive devices with a common name prefix
-    def add_dot(raw_query: Any) -> Any:
-        if isinstance(raw_query, str) and "." not in raw_query:
-            raw_query = raw_query + "."
-        return raw_query
-
-    if isinstance(raw_query, list):
-        for i, name in enumerate(raw_query):
-            raw_query[i] = add_dot(name)
-
+    if  "." not in raw_query:
+        raw_query = raw_query + "."
     return raw_query
 
 
 def parse_glob(globs: list[str]) -> dict[str, list[str]]:
-    query_groups: dict[str, list[str]] = {"tag": [], "site": [], "name__ic": []}
+    query_groups: dict[str, list[str]] = {"tag": [], "site": [], "name__ie": []}
     for q in globs:
         if ":" in q:
             glob_type, param = q.split(":", 2)
@@ -309,5 +305,5 @@ def parse_glob(globs: list[str]) -> dict[str, list[str]]:
                 raise Exception(f"empty param for '{glob_type}'")
             query_groups[glob_type].append(param)
         else:
-            query_groups["name__ic"].append(q)
+            query_groups["name__ie"].append(q)
     return query_groups
