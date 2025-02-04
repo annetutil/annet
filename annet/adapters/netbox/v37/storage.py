@@ -2,7 +2,7 @@ import ssl
 from collections import defaultdict
 from ipaddress import ip_interface
 from logging import getLogger
-from typing import Any, Optional, List, Union, Dict
+from typing import Any, Optional, List, Union, Dict, cast
 
 from adaptix import P
 from adaptix.conversion import impl_converter, link, link_constant
@@ -13,7 +13,7 @@ from annet.adapters.netbox.common import models
 from annet.adapters.netbox.common.manufacturer import (
     get_hw, get_breed,
 )
-from annet.adapters.netbox.common.query import NetboxQuery
+from annet.adapters.netbox.common.query import NetboxQuery, FIELD_VALUE_SEPARATOR
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.storage import Storage, Device, Interface
@@ -140,7 +140,7 @@ class NetboxStorageV37(Storage):
             query = NetboxQuery.new(query)
 
         devices = []
-        if is_host_query(query):
+        if query.is_host_query():
             globs = []
             for glob in query.globs:
                 if glob in self._name_devices:
@@ -206,7 +206,7 @@ class NetboxStorageV37(Storage):
     def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
         if not query.globs:
             return []
-        query_groups = parse_glob(self.exact_host_filter, query.globs)
+        query_groups = parse_glob(self.exact_host_filter, query)
         return [
             device
             for device in self.netbox.dcim_all_devices(**query_groups).results
@@ -306,7 +306,7 @@ def _match_query(exact_host_filter: bool, query: NetboxQuery, device_data: api_m
     """
     if exact_host_filter:
         return True  # nothing to check, all filtering is done by netbox
-    hostnames = [subquery.strip() for subquery in query.globs if ":" not in subquery]
+    hostnames = [subquery.strip() for subquery in query.globs if FIELD_VALUE_SEPARATOR not in subquery]
     if not hostnames:
         return True  # no hostnames to check
     short_name = device_data.name.split(".")[0]
@@ -337,33 +337,11 @@ def _hostname_dot_hack(raw_query: str) -> str:
     return raw_query
 
 
-ALLOWED_GLOB_GROUPS = ["site", "tag", "role"]
-
-
-def parse_glob(exact_host_filter: bool, globs: list[str]) -> dict[str, list[str]]:
-    query_groups: defaultdict[str, list[str]] = defaultdict(list)
-    for q in globs:
-        if ":" in q:
-            glob_type, param = q.split(":", 2)
-            if glob_type not in ALLOWED_GLOB_GROUPS:
-                raise Exception(f"unknown query type: '{glob_type}'")
-            if not param:
-                raise Exception(f"empty param for '{glob_type}'")
-            query_groups[glob_type].append(param)
+def parse_glob(exact_host_filter: bool, query: NetboxQuery) -> dict[str, list[str]]:
+    query_groups = cast(dict[str, list[str]], query.parse_query())
+    if names := query_groups.pop("name", None):
+        if exact_host_filter:
+            query_groups["name__ie"] = names
         else:
-            if exact_host_filter:
-                query_groups["name__ie"].append(q)
-            else:
-                query_groups["name__ic"].append(_hostname_dot_hack(q))
-
-    query_groups.default_factory = None
+            query_groups["name__ic"] = [_hostname_dot_hack(name) for name in names]
     return query_groups
-
-
-def is_host_query(query: NetboxQuery) -> bool:
-    if not query.globs:
-        return False
-    for q in query.globs:
-        if ":" in q:
-            return False
-    return True
