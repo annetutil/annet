@@ -103,6 +103,7 @@ class NetboxStorageV37(Storage):
         self._all_fqdns: Optional[list[str]] = None
         self._id_devices: dict[int, models.NetboxDevice] = {}
         self._name_devices: dict[str, models.NetboxDevice] = {}
+        self._short_name_devices: dict[str, models.NetboxDevice] = {}
 
     def __enter__(self):
         return self
@@ -145,6 +146,8 @@ class NetboxStorageV37(Storage):
             for glob in query.globs:
                 if glob in self._name_devices:
                     devices.append(self._name_devices[glob])
+                if glob in self._short_name_devices:
+                    devices.append(self._short_name_devices[glob])
                 else:
                     globs.append(glob)
             if not globs:
@@ -198,10 +201,10 @@ class NetboxStorageV37(Storage):
 
     def _record_device(self, device: models.NetboxDevice):
         self._id_devices[device.id] = device
-        self._name_devices[device.name] = device
+        self._short_name_devices[device.name] = device
         if not self.exact_host_filter:
             short_name = device.name.split(".")[0]
-            self._name_devices[short_name] = device
+            self._short_name_devices[short_name] = device
 
     def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
         if not query.globs:
