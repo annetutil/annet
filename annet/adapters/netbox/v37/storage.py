@@ -165,26 +165,12 @@ class NetboxStorageV37(Storage):
     def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
         if not query.globs:
             return []
-        devices = []
-        device_ids = set()
         query_groups = parse_glob(self.exact_host_filter, query.globs)
-        for grp, params in query_groups.items():
-            if not params:
-                continue
-            try:
-                new_devices = self.netbox.dcim_all_devices(**{grp: params}).results
-            except Exception as e:
-                # tag and site lookup returns 400 in case of unknown tag or site
-                if "is not one of the available choices" in str(e):
-                    continue
-                raise
-            if grp == "name__ic":
-                new_devices = [device for device in new_devices if _match_query(query, device)]
-            for device in new_devices:
-                if device.id not in device_ids:
-                    device_ids.add(device.id)
-                    devices.extend(new_devices)
-        return devices
+        return [
+            device
+            for device in self.netbox.dcim_all_devices(**query_groups).results
+            if _match_query(self.exact_host_filter, query, device)
+        ]
 
     def _extend_interfaces(self, interfaces: List[models.Interface]) -> List[models.Interface]:
         extended_ifaces = {
@@ -269,9 +255,18 @@ class NetboxStorageV37(Storage):
         return res
 
 
-def _match_query(query: NetboxQuery, device_data: api_models.Device) -> bool:
-    for subquery in query.globs:
-        if subquery.strip() in device_data.name:
+def _match_query(exact_host_filter: bool, query: NetboxQuery, device_data: api_models.Device) -> bool:
+    """
+    Additional filtering after netbox due to limited backend logic.
+    """
+    if exact_host_filter:
+        return True  # nothing to check, all filtering is done by netbox
+    hostnames = [subquery.strip() for subquery in query.globs if ":" not in subquery]
+    if not hostnames:
+        return True  # no hostnames to check
+    short_name = device_data.name.split(".")[0]
+    for hostname in hostnames:
+        if short_name == hostname or device_data.name == hostname:
             return True
     return False
 
