@@ -1,8 +1,8 @@
+import ssl
+from collections import defaultdict
+from ipaddress import ip_interface
 from logging import getLogger
 from typing import Any, Optional, List, Union, Dict
-from ipaddress import ip_interface
-from collections import defaultdict
-import ssl
 
 from adaptix import P
 from adaptix.conversion import impl_converter, link, link_constant
@@ -101,6 +101,8 @@ class NetboxStorageV37(Storage):
             self.exact_host_filter = opts.exact_host_filter
         self.netbox = NetboxV37(url=url, token=token, ssl_context=ctx)
         self._all_fqdns: Optional[list[str]] = None
+        self._id_devices: dict[int, models.NetboxDevice] = {}
+        self._name_devices: dict[str, models.NetboxDevice] = {}
 
     def __enter__(self):
         return self
@@ -136,6 +138,35 @@ class NetboxStorageV37(Storage):
     ) -> List[models.NetboxDevice]:
         if isinstance(query, list):
             query = NetboxQuery.new(query)
+
+        devices = []
+        if is_host_query(query):
+            globs = []
+            for glob in query.globs:
+                if glob in self._name_devices:
+                    devices.append(self._name_devices[glob])
+                else:
+                    globs.append(glob)
+            if not globs:
+                return devices
+            query = NetboxQuery.new(globs)
+
+        return devices + self._make_devices(
+            query=query,
+            preload_neighbors=preload_neighbors,
+            use_mesh=use_mesh,
+            preload_extra_fields=preload_extra_fields,
+            **kwargs
+        )
+
+    def _make_devices(
+            self,
+            query: NetboxQuery,
+            preload_neighbors=False,
+            use_mesh=None,
+            preload_extra_fields=False,
+            **kwargs,
+    ) -> List[models.NetboxDevice]:
         device_ids = {
             device.id: extend_device(
                 device=device,
@@ -147,6 +178,9 @@ class NetboxStorageV37(Storage):
         }
         if not device_ids:
             return []
+
+        for device in device_ids.values():
+            self._record_device(device)
 
         interfaces = self._load_interfaces(list(device_ids))
         neighbours = {x.id: x for x in self._load_neighbours(interfaces)}
@@ -161,6 +195,13 @@ class NetboxStorageV37(Storage):
                     device_ids[interface.device.id].neighbours.append(neighbour)
 
         return list(device_ids.values())
+
+    def _record_device(self, device: models.NetboxDevice):
+        self._id_devices[device.id] = device
+        self._name_devices[device.name] = device
+        if not self.exact_host_filter:
+            short_name = device.name.split(".")[0]
+            self._name_devices[short_name] = device
 
     def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
         if not query.globs:
@@ -221,6 +262,9 @@ class NetboxStorageV37(Storage):
             self, obj_id, preload_neighbors=False, use_mesh=None,
             **kwargs,
     ) -> models.NetboxDevice:
+        if obj_id in self._id_devices:
+            return self._id_devices[obj_id]
+
         device = self.netbox.dcim_device(obj_id)
         interfaces = self._load_interfaces([device.id])
         neighbours = self._load_neighbours(interfaces)
@@ -231,6 +275,7 @@ class NetboxStorageV37(Storage):
             interfaces=interfaces,
             neighbours=neighbours,
         )
+        self._record_device(res)
         return res
 
     def flush_perf(self):
@@ -313,3 +358,12 @@ def parse_glob(exact_host_filter: bool, globs: list[str]) -> dict[str, list[str]
 
     query_groups.default_factory = None
     return query_groups
+
+
+def is_host_query(query: NetboxQuery) -> bool:
+    if not query.globs:
+        return False
+    for q in query.globs:
+        if ":" in q:
+            return False
+    return True
