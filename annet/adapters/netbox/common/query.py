@@ -1,7 +1,18 @@
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, Union, Iterable, Optional
+from typing import cast, List, Union, Iterable, Optional, TypedDict
 
 from annet.storage import Query
+
+FIELD_VALUE_SEPARATOR = ":"
+ALLOWED_GLOB_GROUPS = ["site", "tag", "role"]
+
+
+class Filter(TypedDict, total=False):
+    site: list[str]
+    tag: list[str]
+    role: list[str]
+    name: list[str]
 
 
 @dataclass
@@ -22,5 +33,29 @@ class NetboxQuery(Query):
         # We process every query host as a glob
         return self.query
 
+    def parse_query(self) -> Filter:
+        query_groups = defaultdict(list)
+        for q in self.globs:
+            if FIELD_VALUE_SEPARATOR in q:
+                glob_type, param = q.split(FIELD_VALUE_SEPARATOR, 2)
+                if glob_type not in ALLOWED_GLOB_GROUPS:
+                    raise Exception(f"unknown query type: '{glob_type}'")
+                if not param:
+                    raise Exception(f"empty param for '{glob_type}'")
+                query_groups[glob_type].append(param)
+            else:
+                query_groups["name"].append(q)
+
+        query_groups.default_factory = None
+        return cast(Filter, query_groups)
+
     def is_empty(self) -> bool:
         return len(self.query) == 0
+
+    def is_host_query(self) -> bool:
+        if not self.globs:
+            return False
+        for q in self.globs:
+            if FIELD_VALUE_SEPARATOR in q:
+                return False
+        return True
