@@ -22,6 +22,8 @@ from typing import (
 )
 
 import colorama
+import annet.deploy
+import annet.deploy_ui
 import annet.lib
 from annet.annlib import jsontools
 from annet.annlib.netdev.views.hardware import HardwareView
@@ -567,7 +569,7 @@ class Deployer:
             if not diff_obj:
                 self.empty_diff_hostnames.update(dev.hostname for dev in devices)
             if not self.args.no_ask_deploy:
-                # разобъем список устройств на несколько линий
+                # разобьём список устройств на несколько линий
                 dest_name = ""
                 try:
                     _, term_columns_str = os.popen("stty size", "r").read().split()
@@ -596,18 +598,18 @@ class Deployer:
         return diff_lines
 
     def ask_deploy(self) -> str:
-        return self._ask("y", annet.deploy.AskConfirm(
+        return self._ask("y", annet.deploy_ui.AskConfirm(
             text="\n".join(self.diff_lines()),
             alternative_text="\n".join(self.cmd_lines),
         ))
 
     def ask_rollback(self) -> str:
-        return self._ask("n", annet.deploy.AskConfirm(
+        return self._ask("n", annet.deploy_ui.AskConfirm(
             text="Execute rollback?\n",
             alternative_text="",
         ))
 
-    def _ask(self, default_ans: str, ask: annet.deploy.AskConfirm) -> str:
+    def _ask(self, default_ans: str, ask: annet.deploy_ui.AskConfirm) -> str:
         # если filter_acl из stdin то с ним уже не получится работать как с терминалом
         ans = default_ans
         if not self.args.no_ask_deploy:
@@ -698,7 +700,18 @@ async def adeploy(
         ans = deployer.ask_deploy()
         if ans != "y":
             return 2 ** 2
-        result = annet.lib.do_async(deploy_driver.bulk_deploy(deploy_cmds, args))
+        progress_bar = None
+        if sys.stdout.isatty() and not args.no_progress:
+            progress_bar = annet.deploy_ui.ProgressBars(odict([(device.fqdn, {}) for device in deploy_cmds]))
+            progress_bar.init()
+            with progress_bar:
+                progress_bar.start_terminal_refresher()
+                result = await deploy_driver.bulk_deploy(deploy_cmds, args, progress_bar=progress_bar)
+                await progress_bar.wait_for_exit()
+            progress_bar.screen.clear()
+            progress_bar.stop_terminal_refresher()
+        else:
+            result = await deploy_driver.bulk_deploy(deploy_cmds, args)
 
     rolled_back = False
     rollback_cmds = {deployer.fqdn_to_device[x]: cc for x, cc in result.original_states.items() if cc}
