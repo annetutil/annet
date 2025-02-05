@@ -407,7 +407,7 @@ def old_new(
         files_to_download = _get_files_to_download(devices, gens)
         devices_with_files = [device for device in devices if device in files_to_download]
         fetcher = get_fetcher()
-        fetched_packages, failed_packages = do_async(fetcher.fetch_packages(devices_with_files))
+        fetched_packages, failed_packages = do_async(fetcher.fetch_packages(devices_with_files), new_thread=True)
 
     ctx = OldNewDeviceContext(
         config=config,
