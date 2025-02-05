@@ -128,8 +128,7 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                 name,
                 f"seq {i * 5 + 5}",
                 "permit",
-                str(addr_mask.ip).upper(),
-                str(addr_mask.network.prefixlen),
+                addr_mask.with_prefixlen,
             ) + (
                 ("ge", str(match.greater_equal)) if match.greater_equal is not None else ()
             ) + (
