@@ -104,6 +104,9 @@
     "Nokia.NS7750": " 7750",
     "Nokia.SR_1s": "SR-1s",
 
+    "Mellanox" : "Mellanox",
+    "Mellanox.MQM": "Infiniband",    
+
     "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa|NVIDIA|[Aa]sterfusion CX|[Uu]fi[Ss]pace)",
 
     "PC.Whitebox": "([Mm]ellanox SN|[Ee]dge-?[Cc]ore|NVIDIA|[Aa]sterfusion CX|[Uu]fi[Ss]pace)",
