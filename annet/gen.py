@@ -40,7 +40,7 @@ from annet.generators import (
     PartialGenerator,
     RefGenerator,
 )
-from annet.lib import merge_dicts, percentile
+from annet.lib import merge_dicts, percentile, do_async
 from annet.output import output_driver_connector
 from annet.parallel import Parallel
 from annet.storage import Device, Storage, storage_connector
@@ -407,7 +407,7 @@ def old_new(
         files_to_download = _get_files_to_download(devices, gens)
         devices_with_files = [device for device in devices if device in files_to_download]
         fetcher = get_fetcher()
-        fetched_packages, failed_packages = fetcher.fetch_packages(devices_with_files)
+        fetched_packages, failed_packages = do_async(fetcher.fetch_packages(devices_with_files))
 
     ctx = OldNewDeviceContext(
         config=config,
@@ -807,7 +807,7 @@ def _old_resolve_running(config: str, devices: List[Device]) -> Tuple[Dict[Devic
         if live_configs is None:
             # предварительно прочесть все конфиги прямо по ssh
             fetcher = get_fetcher()
-            running, failed_running = fetcher.fetch(devices)
+            running, failed_running = do_async(fetcher.fetch(devices), new_thread=True)
         else:
             running, failed_running = live_configs  # pylint: disable=unpacking-non-sequence
     return running, failed_running
@@ -825,8 +825,8 @@ def _old_resolve_files(config: str,
         devices_with_files = [device for device in devices if device in files_to_download]
         if devices_with_files:
             fetcher = get_fetcher()
-            downloaded_files, failed_files = fetcher.fetch(devices_with_files,
-                                                           files_to_download=files_to_download)
+            fetch_coro = fetcher.fetch(devices_with_files, files_to_download=files_to_download)
+            downloaded_files, failed_files = do_async(fetch_coro, new_thread=True)
     return downloaded_files, failed_files
 
 

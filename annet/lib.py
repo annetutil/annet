@@ -2,9 +2,10 @@ import asyncio
 import os
 import shutil
 import sys
+import threading
 from functools import lru_cache
 from pathlib import Path
-from typing import Awaitable, Optional
+from typing import Awaitable, Optional, TypeVar
 
 import yaml
 from annet.annlib.lib import (  # pylint: disable=unused-import
@@ -140,5 +141,20 @@ def repair_context_file() -> None:
             yaml.dump(data, f, sort_keys=False)
 
 
-def do_async(coro: Awaitable):
-    return asyncio.run(coro)
+ReturnType = TypeVar("ReturnType")
+
+
+def do_async(coro: Awaitable[ReturnType], new_thread=False) -> ReturnType:
+    if new_thread:
+        # start the new thread with the new event loop
+        res: ReturnType = None
+
+        def wrapper(main):
+            nonlocal res
+            res = asyncio.run(main)
+        thread = threading.Thread(target=wrapper, args=(coro,))
+        thread.start()
+        thread.join()
+        return res
+    else:
+        return asyncio.run(coro)
