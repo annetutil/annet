@@ -312,8 +312,10 @@ def _match_query(exact_host_filter: bool, query: NetboxQuery, device_data: api_m
     hostnames = [subquery.strip() for subquery in query.globs if FIELD_VALUE_SEPARATOR not in subquery]
     if not hostnames:
         return True  # no hostnames to check
+
     short_name = device_data.name.split(".")[0]
     for hostname in hostnames:
+        hostname = hostname.strip().rstrip(".")
         if short_name == hostname or device_data.name == hostname:
             return True
     return False
