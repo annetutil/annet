@@ -104,7 +104,7 @@
     "Nokia.NS7750": " 7750",
     "Nokia.SR_1s": "SR-1s",
 
-    "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa|NVIDIA|[Aa]sterfusion CX|[Uu]fi[Ss]pace)",
+    "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa|NVIDIA|Nebius|[Aa]sterfusion CX|[Uu]fi[Ss]pace)",
 
     "PC.Whitebox": "([Mm]ellanox SN|[Ee]dge-?[Cc]ore|NVIDIA|[Aa]sterfusion CX|[Uu]fi[Ss]pace)",
     "PC.Whitebox.Mellanox": "[Mm]ellanox",
@@ -132,6 +132,8 @@
     "PC.Whitebox.Ufispace.S": " S",
     "PC.Whitebox.Ufispace.S.S9100": " S91\\d\\d",
     "PC.Whitebox.Ufispace.S.S9100.S9110_32X": " S9110-32X",
+    "PC.Nebius": "^Nebius",
+    "PC.Nebius.NB-E-BR-DCU-AST2600": "^Nebius NB-E-BR-DCU-AST2600",
 
     "RouterOS": "^([Rr]outer[Oo][Ss]|[Mm]ikro[Tt]ik)",
 

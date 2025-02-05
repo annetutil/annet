@@ -214,7 +214,8 @@ class NetboxDevice(Entity):
         return type(self) is type(other) and self.url == other.url
 
     def is_pc(self) -> bool:
-        return self.device_type.manufacturer.name in ("Mellanox", "NVIDIA", "Moxa") or self.breed == "pc"
+        custom_breed_pc = ("Mellanox", "NVIDIA", "Moxa", "Nebius")
+        return self.device_type.manufacturer.name in custom_breed_pc or self.breed == "pc"
 
     def _make_interface(self, name: str, type: InterfaceType) -> Interface:
         return Interface(
