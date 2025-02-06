@@ -245,8 +245,10 @@ class VrfOptions:
     l2vpn_evpn: FamilyOptions
 
     vrf_name_global: Optional[str] = None
-    l3vni: Optional[int] = None
+    import_policy: str = ""
+    export_policy: str = ""
     as_path_relax: bool = False
+    l3vni: Optional[int] = None
     rt_import: list[str] = field(default_factory=list)
     rt_export: list[str] = field(default_factory=list)
     rt_import_v4: list[str] = field(default_factory=list)
@@ -281,7 +283,7 @@ class BgpConfig:
     peers: list[Peer]
 
 
-def _used_policies(peer: Union[Peer, PeerGroup]) -> Iterable[str]:
+def _used_policies(peer: Union[Peer, PeerGroup, VrfOptions]) -> Iterable[str]:
     if peer.import_policy:
         yield peer.import_policy
     if peer.export_policy:
@@ -309,6 +311,7 @@ def extract_policies(config: BgpConfig) -> Sequence[str]:
         for group in vrf.groups:
             result.extend(_used_policies(group))
         result.extend(_used_redistribute_policies(vrf))
+        result.extend(_used_policies(vrf))
     for group in config.global_options.groups:
         result.extend(_used_policies(group))
     for peer in config.peers:
