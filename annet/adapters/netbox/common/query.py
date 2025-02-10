@@ -13,6 +13,7 @@ class Filter(TypedDict, total=False):
     tag: list[str]
     role: list[str]
     name: list[str]
+    device_type: list[str]
 
 
 @dataclass
