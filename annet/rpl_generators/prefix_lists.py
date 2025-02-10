@@ -110,7 +110,9 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
     def acl_arista(self, _):
         return r"""
         ip prefix-list
+            seq
         ipv6 prefix-list
+            seq
         """
 
     def _arista_prefix_list(
@@ -120,20 +122,18 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
             match: PrefixMatchValue,
             plist: IpPrefixList,
     ) -> Iterable[Sequence[str]]:
-        for i, prefix in enumerate(plist.members):
-            addr_mask = ip_interface(prefix)
-            yield (
-                prefix_type,
-                "prefix-list",
-                name,
-                f"seq {i * 5 + 5}",
-                "permit",
-                addr_mask.with_prefixlen,
-            ) + (
-                ("ge", str(match.greater_equal)) if match.greater_equal is not None else ()
-            ) + (
-                ("le", str(match.less_equal)) if match.less_equal is not None else ()
-            )
+        with self.block(prefix_type, "prefix-list", name):
+            for i, prefix in enumerate(plist.members):
+                addr_mask = ip_interface(prefix)
+                yield (
+                    f"seq {i * 10 + 10}",
+                    "permit",
+                    addr_mask.with_prefixlen,
+                ) + (
+                    ("ge", str(match.greater_equal)) if match.greater_equal is not None else ()
+                ) + (
+                    ("le", str(match.less_equal)) if match.less_equal is not None else ()
+                )
 
     def run_arista(self, device: Any):
         policies = self.get_policies(device)
