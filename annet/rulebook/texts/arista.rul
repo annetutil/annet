@@ -5,7 +5,7 @@ qos profile *
     ~ %global
 
 username * ssh-key
-username *
+username *                %logic=arista.aaa.user
 
 aaa group ~
     ~ %global
