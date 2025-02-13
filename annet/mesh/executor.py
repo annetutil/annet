@@ -132,30 +132,31 @@ class MeshExecutor:
         # we can have multiple rules for the same pair
         # we merge them according to remote fqdn
         neighbor_peers: dict[PeerKey, Pair] = {}
-        # TODO batch resolve
         rules = self._registry.lookup_direct(device.fqdn, device.neighbours_fqdns)
         fqdns = {
             rule.name_right if rule.direct_order else rule.name_left
             for rule in rules
         }
-        neigbors = {
+        logger.debug("Loading neighbor devices: %s", fqdns)
+        neighbors = {
             d.fqdn: d for d in self._storage.make_devices(list(fqdns))
         }
         for rule in rules:
             handler_name = self._handler_name(rule.handler)
             if rule.direct_order:
-                if rule.name_right not in neigbors:
-                    print(list(neigbors), flush=True)
+                if rule.name_right not in neighbors:
+                    print(list(neighbors), flush=True)
                     raise ValueError(
-                        f"Device `{device.fqdn}` has no neighbor `{rule.name_right}` required for `{handler_name}`. {list(neigbors)}",
+                        f"Device `{device.fqdn}` has no neighbor `{rule.name_right}` "
+                        f"required for `{handler_name}`. {list(neighbors)}",
                     )
-                neighbor_device = neigbors[rule.name_right]
+                neighbor_device = neighbors[rule.name_right]
             else:
-                if rule.name_left not in neigbors:
+                if rule.name_left not in neighbors:
                     raise ValueError(
                         f"Device `{device.fqdn}` has no neighbor `{rule.name_left}` required for `{handler_name}`",
                     )
-                neighbor_device = neigbors[rule.name_left]
+                neighbor_device = neighbors[rule.name_left]
             all_connected_ports = [
                 (p1.name, p2.name)
                 for p1, p2 in self._storage.search_connections(device, neighbor_device)
@@ -238,6 +239,7 @@ class MeshExecutor:
             rule.name_right if rule.direct_order else rule.name_left
             for rule in rules
         }
+        logger.debug("Loading indirect connected devices: %s", fqdns)
         connected_devices = {
             d.fqdn: d for d in self._storage.make_devices(list(fqdns))
         }
