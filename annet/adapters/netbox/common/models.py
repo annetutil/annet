@@ -192,20 +192,25 @@ class NetboxDevice(Entity):
     breed: str
 
     interfaces: List[Interface]
-    neighbours: Optional[List["NetboxDevice"]]
+
+    @property
+    def neighbors(self) -> List["Entity"]:
+        return [
+            endpoint.device
+            for iface in self.interfaces
+            if iface.connected_endpoints
+            for endpoint in iface.connected_endpoints
+            if endpoint.device
+        ]
 
     # compat
     @property
     def neighbours_fqdns(self) -> list[str]:
-        if not self.neighbours:
-            return []
-        return [dev.fqdn for dev in self.neighbours]
+        return [dev.name for dev in self.neighbors]
 
     @property
     def neighbours_ids(self):
-        if not self.neighbours:
-            return []
-        return [dev.id for dev in self.neighbours]
+        return [dev.id for dev in self.neighbors]
 
     def __hash__(self):
         return hash((self.id, type(self)))
