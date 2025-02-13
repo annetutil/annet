@@ -145,7 +145,6 @@ class MeshExecutor:
             handler_name = self._handler_name(rule.handler)
             if rule.direct_order:
                 if rule.name_right not in neighbors:
-                    print(list(neighbors), flush=True)
                     raise ValueError(
                         f"Device `{device.fqdn}` has no neighbor `{rule.name_right}` "
                         f"required for `{handler_name}`. {list(neighbors)}",
