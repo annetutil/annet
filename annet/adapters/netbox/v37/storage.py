@@ -39,7 +39,6 @@ def extend_device_base(
 def extend_device(
         device: api_models.Device,
         interfaces: List[models.Interface],
-        neighbours: Optional[List[models.NetboxDevice]],
         storage: Storage,
 ) -> models.NetboxDevice:
     platform_name: str = ""
@@ -64,7 +63,6 @@ def extend_device(
         hw=hw,
         storage=storage,
     )
-    res.neighbours = neighbours
     return res
 
 
@@ -91,6 +89,7 @@ class NetboxStorageV37(Storage):
         url = ""
         token = ""
         self.exact_host_filter = False
+        threads = 1
         if opts:
             if opts.insecure:
                 ctx = ssl.create_default_context()
@@ -98,8 +97,10 @@ class NetboxStorageV37(Storage):
                 ctx.verify_mode = ssl.CERT_NONE
             url = opts.url
             token = opts.token
+            threads = opts.threads
             self.exact_host_filter = opts.exact_host_filter
-        self.netbox = NetboxV37(url=url, token=token, ssl_context=ctx)
+
+        self.netbox = NetboxV37(url=url, token=token, ssl_context=ctx, threads=threads)
         self._all_fqdns: Optional[list[str]] = None
         self._id_devices: dict[int, models.NetboxDevice] = {}
         self._name_devices: dict[str, models.NetboxDevice] = {}
@@ -174,7 +175,6 @@ class NetboxStorageV37(Storage):
             device.id: extend_device(
                 device=device,
                 interfaces=[],
-                neighbours=[],
                 storage=self,
             )
             for device in self._load_devices(query)
@@ -186,16 +186,8 @@ class NetboxStorageV37(Storage):
             self._record_device(device)
 
         interfaces = self._load_interfaces(list(device_ids))
-        neighbours = {x.id: x for x in self._load_neighbours(interfaces)}
-        neighbours_seen: dict[str, set] = defaultdict(set)
-
         for interface in interfaces:
             device_ids[interface.device.id].interfaces.append(interface)
-            for e in interface.connected_endpoints or []:
-                neighbour = neighbours[e.device.id]
-                if neighbour.id not in neighbours_seen[interface.device.id]:
-                    neighbours_seen[interface.device.id].add(neighbour.id)
-                    device_ids[interface.device.id].neighbours.append(neighbour)
 
         return list(device_ids.values())
 
@@ -233,33 +225,13 @@ class NetboxStorageV37(Storage):
             extended_ifaces[ip.assigned_object_id].ip_addresses.append(ip)
         return list(extended_ifaces.values())
 
-    def _load_interfaces(self, device_ids: List[int]) -> List[
-        models.Interface]:
+    def _load_interfaces(self, device_ids: List[int]) -> List[models.Interface]:
         interfaces = self.netbox.dcim_all_interfaces(device_id=device_ids)
         return self._extend_interfaces(interfaces.results)
 
     def _load_interfaces_by_id(self, ids: List[int]) -> List[models.Interface]:
         interfaces = self.netbox.dcim_all_interfaces_by_id(id=ids)
         return self._extend_interfaces(interfaces.results)
-
-    def _load_neighbours(self, interfaces: List[models.Interface]) -> List[models.NetboxDevice]:
-        endpoints = [e for i in interfaces for e in i.connected_endpoints or []]
-        remote_interfaces_ids = [e.id for e in endpoints]
-        neighbours_ids = [e.device.id for e in endpoints]
-        neighbours_ifaces_dics = defaultdict(list)
-        # load only the connected interface to speed things up
-        for iface in self._load_interfaces_by_id(remote_interfaces_ids):
-            neighbours_ifaces_dics[iface.device.id].append(iface)
-        neighbours = []
-        for neighbour in self.netbox.dcim_all_devices_by_id(id=neighbours_ids).results:
-            extended_neighbour = extend_device(
-                device=neighbour,
-                storage=self,
-                interfaces=neighbours_ifaces_dics[neighbour.id],
-                neighbours=None,  # do not load recursively
-            )
-            neighbours.append(extended_neighbour)
-        return neighbours
 
     def get_device(
             self, obj_id, preload_neighbors=False, use_mesh=None,
@@ -270,13 +242,11 @@ class NetboxStorageV37(Storage):
 
         device = self.netbox.dcim_device(obj_id)
         interfaces = self._load_interfaces([device.id])
-        neighbours = self._load_neighbours(interfaces)
 
         res = extend_device(
             device=device,
             storage=self,
             interfaces=interfaces,
-            neighbours=neighbours,
         )
         self._record_device(res)
         return res
