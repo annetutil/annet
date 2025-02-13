@@ -24,7 +24,6 @@ logger = getLogger(__name__)
 @impl_converter(recipe=[
     link(P[api_models.Device].name, P[models.NetboxDevice].hostname),
     link(P[api_models.Device].name, P[models.NetboxDevice].fqdn),
-    link_constant(P[models.NetboxDevice].neighbours, value=None),
 ])
 def extend_device_base(
         device: api_models.Device,
