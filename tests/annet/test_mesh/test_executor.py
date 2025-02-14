@@ -18,6 +18,7 @@ VRF = "testvrf"
 GROUP = "test_group"
 EXPORT_POLICY1 = "EXPORT_POLICY1"
 EXPORT_POLICY2 = "EXPORT_POLICY2"
+PEER_FILTER = "peer_filter1"
 
 def on_device_x(device: GlobalOptions):
     device.vrf[VRF].export_policy = EXPORT_POLICY1
@@ -26,6 +27,7 @@ def on_device_x(device: GlobalOptions):
     device.vrf[VRF].groups[GROUP].remote_as = 22222
     device.vrf[VRF].groups[GROUP].families = {"ipv4_unicast"}
     device.vrf[VRF].groups[GROUP].export_policy = EXPORT_POLICY1
+    device.vrf[VRF].groups[GROUP].peer_filter = PEER_FILTER
     device.vrf[VRF].ipv4_unicast.aggregate.policy = EXPORT_POLICY1
     device.vrf[VRF].as_path_relax = True
     device.ipv6_unicast.aggregate.policy = EXPORT_POLICY2
@@ -160,6 +162,7 @@ def test_storage(registry, storage, device1):
     assert vrf.groups[0].name == GROUP
     assert vrf.groups[0].export_policy == EXPORT_POLICY1
     assert vrf.groups[0].import_policy == ""
+    assert vrf.groups[0].peer_filter == PEER_FILTER
     assert vrf.ipv4_unicast.vrf_name == VRF
     assert vrf.ipv4_unicast.family == "ipv4_unicast"
     assert vrf.ipv4_unicast.aggregate.policy == EXPORT_POLICY1
