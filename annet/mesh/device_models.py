@@ -76,10 +76,21 @@ class VrfOptions(_FamiliesMixin, BaseMeshModel):
     groups: Annotated[dict[str, MeshPeerGroup], DictMerge(Merge())]
 
 
+class L2VpnOptions(BaseMeshModel):
+    name: str
+    vid: list[str| int]  # list of VLAN ID, possible values are 1 to 4094, ranges can be set as strings
+    l2vni: int  # VNI, possible values are 1 to 2**24-1
+    route_distinguisher: str  # like in VrfOptions
+    rt_import: Annotated[tuple[str, ...], Concat()]  # like in VrfOptions
+    rt_export: Annotated[tuple[str, ...], Concat()]  # like in VrfOptions
+    advertise_host_routes: bool  # advertise IP+MAC routes into L3VNI
+
+
 class GlobalOptionsDTO(_FamiliesMixin, BaseMeshModel):
     def __init__(self, **kwargs):
         kwargs.setdefault("groups", KeyDefaultDict(lambda x: MeshPeerGroup(name=x)))
         kwargs.setdefault("vrf", KeyDefaultDict(lambda x: VrfOptions(vrf_name=x)))
+        kwargs.setdefault("l2vpn", KeyDefaultDict(lambda x: L2VpnOptions(name=x)))
         super().__init__(**kwargs)
 
     as_path_relax: bool
@@ -89,3 +100,4 @@ class GlobalOptionsDTO(_FamiliesMixin, BaseMeshModel):
     router_id: str
     vrf: Annotated[dict[str, VrfOptions], DictMerge(Merge())]
     groups: Annotated[dict[str, MeshPeerGroup], DictMerge(Merge())]
+    l2vpn: Annotated[dict[str, L2VpnOptions], DictMerge(Merge())]

@@ -19,6 +19,7 @@ GROUP = "test_group"
 EXPORT_POLICY1 = "EXPORT_POLICY1"
 EXPORT_POLICY2 = "EXPORT_POLICY2"
 PEER_FILTER = "peer_filter1"
+L2VPN = "evpn1"
 
 def on_device_x(device: GlobalOptions):
     device.vrf[VRF].export_policy = EXPORT_POLICY1
@@ -34,6 +35,8 @@ def on_device_x(device: GlobalOptions):
     device.ipv4_unicast.redistributes = (Redistribute(
         protocol="ipv4", policy="sss",
     ),)
+    device.l2vpn[L2VPN].vid = [1000]
+    device.l2vpn[L2VPN].l2vni = 100
 
 
 def on_direct(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):
@@ -167,6 +170,16 @@ def test_storage(registry, storage, device1):
     assert vrf.ipv4_unicast.family == "ipv4_unicast"
     assert vrf.ipv4_unicast.aggregate.policy == EXPORT_POLICY1
     assert vrf.as_path_relax
+
+    assert len(res.global_options.l2vpn) == 1
+    l2vpn = res.global_options.l2vpn[L2VPN]
+    assert l2vpn.name == L2VPN
+    assert l2vpn.vid == [1000]
+    assert l2vpn.l2vni == 100
+    assert not l2vpn.rt_export
+    assert not l2vpn.rt_import
+    assert l2vpn.advertise_host_routes
+    assert not l2vpn.route_distinguisher
 
     res.peers.sort(key=lambda p: p.addr)
     peer_direct, peer_direct_alt, peer_indirect, peer_indirect_alt, *virtual = res.peers

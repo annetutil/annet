@@ -7,7 +7,7 @@ from adaptix import Retort, loader, Chain, name_mapping, as_is_loader
 from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO, VirtualLocalDTO
 from ..bgp_models import (
     Aggregate, GlobalOptions, VrfOptions, FamilyOptions, Peer, PeerGroup, ASN, PeerOptions,
-    Redistribute, BFDTimers,
+    Redistribute, BFDTimers, L2VpnOptions,
 )
 
 
@@ -51,6 +51,7 @@ retort = Retort(
         loader(ASN, ASN),
         loader(GlobalOptions, ObjMapping, Chain.FIRST),
         loader(VrfOptions, ObjMapping, Chain.FIRST),
+        loader(L2VpnOptions, ObjMapping, Chain.FIRST),
         loader(FamilyOptions, ObjMapping, Chain.FIRST),
         loader(Aggregate, ObjMapping, Chain.FIRST),
         loader(PeerOptions, ObjMapping, Chain.FIRST),

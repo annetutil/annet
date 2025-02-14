@@ -236,6 +236,17 @@ class PeerGroup:
 
 
 @dataclass
+class L2VpnOptions:
+    name: str
+    vid: list[str| int]  # list of VLAN ID, possible values are 1 to 4094, ranges can be set as strings
+    l2vni: int  # VNI, possible values are 1 to 2**24-1
+    route_distinguisher: str = ""  # like in VrfOptions
+    rt_import: list[str]= field(default_factory=list)  # like in VrfOptions
+    rt_export: list[str] = field(default_factory=list)  # like in VrfOptions
+    advertise_host_routes: bool = True  # advertise IP+MAC routes into L3VNI
+
+
+@dataclass
 class VrfOptions:
     vrf_name: str
 
@@ -274,8 +285,8 @@ class GlobalOptions:
     multipath: int = 0
     router_id: str = ""
     vrf: dict[str, VrfOptions] = field(default_factory=dict)
-
     groups: list[PeerGroup] = field(default_factory=list)
+    l2vpn: dict[str, L2VpnOptions] = field(default_factory=dict)
 
 
 @dataclass
