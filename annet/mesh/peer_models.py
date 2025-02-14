@@ -126,6 +126,7 @@ class MeshPeerGroup(_OptionsDTO):
     internal_name: str
     update_source: str
     description: str
+    peer_filter: str
 
     import_policy: str
     export_policy: str

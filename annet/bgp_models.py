@@ -182,6 +182,7 @@ class PeerGroup:
     internal_name: str = ""
     description: str = ""
     update_source: str = ""
+    peer_filter: str = ""
     import_policy: str = ""
     export_policy: str = ""
 
