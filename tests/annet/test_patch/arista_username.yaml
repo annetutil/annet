@@ -1,0 +1,75 @@
+# add user
+- vendor: Arista
+  diff: |
+    + username someuser privilege 15 role network-admin secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+  patch: |
+    conf s
+    username someuser privilege 15 role network-admin secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+    commit
+    write memory
+
+# remove user
+- vendor: Arista
+  diff: |
+    - username someuser privilege 15 role network-admin secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+  patch: |
+    conf s
+    no username someuser
+    commit
+    write memory
+
+# change user privilege
+# user01 15 -> 10
+# user02 15 -> 1
+# user03 1 -> 15
+- vendor: Arista
+  diff: |
+    - username user01 privilege 15 role network-admin secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+    - username user02 privilege 15 role network-admin secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+    - username user03 role network-admin secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+    + username user01 privilege 10 role network-admin secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+    + username user02 role network-admin secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+    + username user03 privilege 15 role network-admin secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+  patch: |
+    conf s
+    username user01 privilege 10
+    username user02 privilege 1
+    username user03 privilege 15
+    commit
+    write memory
+
+# change/remove user role
+# user01 network-operator -> network-admin
+# user02 network-admin -> no role
+- vendor: Arista
+  diff: |
+    - username user01 privilege 15 role network-operator secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+    - username user02 privilege 15 role network-admin secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+    + username user01 privilege 15 role network-admin secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+    + username user02 privilege 15 secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+  patch: |
+    conf s
+    username user01 role network-admin
+    no username user02 role
+    commit
+    write memory
+
+# change/remove user password
+# user01: change password
+# user02: add password 
+# user03: remove password
+- vendor: Arista
+  diff: |
+    - username user01 privilege 15 role network-admin secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+    - username user02 privilege 15 role network-admin nopassword
+    - username user03 privilege 15 role network-admin secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+    + username user01 privilege 15 role network-admin secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ9876543210
+    + username user02 privilege 15 role network-admin secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+    + username user03 privilege 15 role network-admin nopassword
+  patch: |
+    conf s
+    username user01 secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ9876543210
+    username user02 secret sha512 $6$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+    username user03 nopassword
+    commit
+    write memory
