@@ -7,7 +7,7 @@ from adaptix import Retort, loader, Chain, name_mapping, as_is_loader
 from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO, VirtualLocalDTO
 from ..bgp_models import (
     Aggregate, GlobalOptions, VrfOptions, FamilyOptions, Peer, PeerGroup, ASN, PeerOptions,
-    Redistribute, BFDTimers, L2VpnOptions,
+    Redistribute, BFDTimers, L2VpnOptions, VidCollection,
 )
 
 
@@ -49,6 +49,7 @@ retort = Retort(
     recipe=[
         loader(InterfaceChanges, ObjMapping, Chain.FIRST),
         loader(ASN, ASN),
+        loader(VidCollection, VidCollection.parse),
         loader(GlobalOptions, ObjMapping, Chain.FIRST),
         loader(VrfOptions, ObjMapping, Chain.FIRST),
         loader(L2VpnOptions, ObjMapping, Chain.FIRST),

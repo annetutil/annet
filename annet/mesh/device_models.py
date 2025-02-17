@@ -78,7 +78,7 @@ class VrfOptions(_FamiliesMixin, BaseMeshModel):
 
 class L2VpnOptions(BaseMeshModel):
     name: str
-    vid: list[str| int]  # list of VLAN ID, possible values are 1 to 4094, ranges can be set as strings
+    vid: str | int  # VLAN ID, possible values are 1 to 4094, ranges can be set as strings
     l2vni: int  # VNI, possible values are 1 to 2**24-1
     route_distinguisher: str  # like in VrfOptions
     rt_import: Annotated[tuple[str, ...], Concat()]  # like in VrfOptions

@@ -3,6 +3,73 @@ from dataclasses import dataclass, field
 from typing import Literal, Union, Optional
 
 
+class VidRange:
+    def __init__(self, start: int, stop: int) -> None:
+        self.start = start
+        self.stop = stop
+
+    def is_single(self):
+        return self.start == self.stop
+
+    def __iter__(self):
+        return iter(range(self.start, self.stop + 1))
+
+    def __str__(self):
+        if self.is_single():
+            return str(self.start)
+        return f"{self.start}-{self.stop}"
+
+    def __repr__(self):
+        return f"VlanRange({self.start}, {self.stop})"
+
+    def __eq__(self, other: "VidRange") -> bool:
+        return self.start == other.start and self.stop == other.stop
+
+
+def _parse_vlan_ranges(ranges: str) -> Iterable[VidRange]:
+    for range in ranges.split(","):
+        start, sep, stop = range.strip().partition("-")
+        try:
+            if not sep:
+                int_start = int(start)
+                yield VidRange(int_start, int_start)
+            elif not stop or not start:
+                raise ValueError(f"Cannot parse range {range!r}. Expected `start-stop`")
+            else:
+                yield VidRange(int(start), int(stop))
+        except ValueError:
+            raise ValueError(f"Cannot parse range {range!r}. Expected `vid1-vid2` or `vid`")
+
+
+class VidCollection:
+    @staticmethod
+    def parse(ranges: int | str) -> "VidCollection":
+        if isinstance(ranges, int):
+            return VidCollection([VidRange(ranges, ranges)])
+        elif isinstance(ranges, str):
+            return VidCollection(list(_parse_vlan_ranges(ranges)))
+        elif isinstance(ranges, VidCollection):
+            return VidCollection(ranges.ranges)
+        else:
+            raise TypeError(f"Expected str or int, got {type(ranges)}")
+
+    def __init__(self, ranges: list[VidRange]) -> None:
+        self.ranges = ranges
+
+    def __str__(self):
+        return ",".join(map(str, self.ranges))
+
+    def __repr__(self):
+        return f"VlanCollection({str(self)!r})"
+
+    def __iter__(self):
+        for range in self.ranges:
+            yield from range
+
+    def __eq__(self, other: "VidCollection") -> bool:
+        return self.ranges == other.ranges
+
+
 class ASN(int):
     """
     Stores ASN number and formats it as в AS1.AS2
@@ -238,10 +305,10 @@ class PeerGroup:
 @dataclass
 class L2VpnOptions:
     name: str
-    vid: list[str| int]  # list of VLAN ID, possible values are 1 to 4094, ranges can be set as strings
+    vid: VidCollection
     l2vni: int  # VNI, possible values are 1 to 2**24-1
     route_distinguisher: str = ""  # like in VrfOptions
-    rt_import: list[str]= field(default_factory=list)  # like in VrfOptions
+    rt_import: list[str] = field(default_factory=list)  # like in VrfOptions
     rt_export: list[str] = field(default_factory=list)  # like in VrfOptions
     advertise_host_routes: bool = True  # advertise IP+MAC routes into L3VNI
 

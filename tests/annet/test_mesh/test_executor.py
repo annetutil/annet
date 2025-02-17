@@ -1,6 +1,6 @@
 import pytest
 
-from annet.bgp_models import BFDTimers, Redistribute
+from annet.bgp_models import BFDTimers, Redistribute, VidCollection, VidRange
 from annet.mesh import (
     MeshExecutor,
     MeshRulesRegistry,
@@ -35,7 +35,7 @@ def on_device_x(device: GlobalOptions):
     device.ipv4_unicast.redistributes = (Redistribute(
         protocol="ipv4", policy="sss",
     ),)
-    device.l2vpn[L2VPN].vid = [1000]
+    device.l2vpn[L2VPN].vid = "5, 1000-1004"
     device.l2vpn[L2VPN].l2vni = 100
 
 
@@ -174,7 +174,7 @@ def test_storage(registry, storage, device1):
     assert len(res.global_options.l2vpn) == 1
     l2vpn = res.global_options.l2vpn[L2VPN]
     assert l2vpn.name == L2VPN
-    assert l2vpn.vid == [1000]
+    assert l2vpn.vid == VidCollection([VidRange(5,5), VidRange(1000, 1004)])
     assert l2vpn.l2vni == 100
     assert not l2vpn.rt_export
     assert not l2vpn.rt_import
