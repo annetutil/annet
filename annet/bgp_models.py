@@ -22,8 +22,10 @@ class VidRange:
     def __repr__(self):
         return f"VlanRange({self.start}, {self.stop})"
 
-    def __eq__(self, other: "VidRange") -> bool:
-        return self.start == other.start and self.stop == other.stop
+    def __eq__(self, other: object) -> bool:
+        if type(other) is VidRange:
+            return self.start == other.start and self.stop == other.stop
+        return NotImplemented
 
 
 def _parse_vlan_ranges(ranges: str) -> Iterable[VidRange]:
@@ -66,8 +68,10 @@ class VidCollection:
         for range in self.ranges:
             yield from range
 
-    def __eq__(self, other: "VidCollection") -> bool:
-        return self.ranges == other.ranges
+    def __eq__(self, other: object) -> bool:
+        if type(other) is VidCollection:
+            return self.ranges == other.ranges
+        return False
 
 
 class ASN(int):
