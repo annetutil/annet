@@ -309,7 +309,7 @@ Run environment
 
 Now we can run netbox and lab:
 
-.. code:: bash
+.. code:: none
 
   docker compose up -d
 
@@ -317,7 +317,7 @@ Check that Netbox is accessible by the url http://localhost:8000/
 
 You need to create a superuser by script:
 
-.. code:: bash
+.. code:: none
 
   docker-compose run netbox python manage.py createsuperuser
 
@@ -325,13 +325,13 @@ To be on same page use ``annet`` for login and password. But you can change them
 
 Try to connect to cEOS CLI:
 
-.. code:: bash
+.. code:: none
 
   docker exec -it r1 Cli
 
 Try to connect to cEOS SSH use ``annet:annet``:
 
-.. code:: bash
+.. code:: none
 
   ssh annet@172.20.0.101
 
@@ -458,7 +458,7 @@ Let's check!
 
 Try to get netbox device model:
 
-.. code:: bash
+.. code:: none
 
   > annet show device-dump r1.lab
   device.asset_tag = None
@@ -480,7 +480,7 @@ Try to get netbox device model:
 
 Try to get current configuration of the device:
 
-.. code::
+.. code:: none
 
   > annet show current r1.lab
   # -------------------- r1.lab.cfg --------------------
@@ -597,7 +597,7 @@ And update file ``generators/__init__.py``:
 
 Check the list of generators:
 
-.. code:: bash
+.. code:: none
 
   > annet show generators
   | PARTIAL-Class   | Tags               | Module                                              | Description                            |
@@ -607,7 +607,7 @@ Check the list of generators:
 
 Get generated configuration for all three devices:
 
-.. code:: bash
+.. code:: none
 
   > annet gen -g description r1.lab r2.lab r3.lab
   # -------------------- r1.lab.cfg --------------------
@@ -649,13 +649,13 @@ Look at diff:
 
 And deploy it:
 
-.. code:: bash
+.. code:: none
 
   > annet deploy -g description r1.lab r2.lab r3.lab
 
 Verify the result:
 
-.. code:: bash
+.. code:: none
 
   > ssh annet@172.20.0.101
   (annet@172.20.0.101) Password:
@@ -851,7 +851,7 @@ Again, update ``generators/__init__.py``:
 
 Look at list of generators:
 
-.. code:: bash
+.. code:: none
 
   > annet show generators
   | PARTIAL-Class   | Tags               | Module                                                  | Description                                          |
@@ -875,11 +875,11 @@ Look at diff:
   - username annet privilege 15 role network-admin secret sha512 $6$ycnCXwDzpQPU6WqS$6u0MD.hyOKaRh6r8Tnb97S8zFQVYeXaQuo8nkFHCez7VlBxeJmGsbbgeTePg.k23hEdK.LN1TB5sCjfkS7Mdu.
   + username annet privilege 15 role network-admin secret sha512 $6$i5LaTWzHeAJx/vLu$rYUKKATawfpjItHKJJie3Fgsa2EqkMyH0XYY2.1Dl/2G.uNVzuntS5poblWuf6urafiurknH2/NotkUHiamoP.
 
-We notice that user annet has different hash on r2 and r3, it is ok because we created users annet by default configuration with plain text password.
+We notice that user annet has different hash on ``r2`` and ``r3``, it is ok because we created users annet by default configuration with plain text password.
 
 Look at patch:
 
-.. code:: bash
+.. code:: none
 
   > annet patch r2.lab r3.lab
   # -------------------- r2.lab.patch --------------------
@@ -889,16 +889,15 @@ Look at patch:
 
 And deploy it:
 
-.. code:: bash
+.. code:: none
 
   > annet deploy r2.lab r3.lab
 
 Again look at diff:
 
-.. code:: bash
+.. code:: none
 
   > annet diff r1.lab r2.lab r3.lab
-
 
 No diff found - everything is ok for now.
 
@@ -1111,7 +1110,7 @@ Adding new generators for BGP configuration - ``generators/bgp.py``:
 
 Checks list of generators:
 
-.. code:: bash
+.. code:: none
 
   > annet show generators
   | PARTIAL-Class   | Tags               | Module                                                  | Description                                          |
@@ -1175,14 +1174,13 @@ Checks the diff:
 
 Looks great! Do deploy it to the devices:
 
-.. code:: bash
+.. code:: none
 
   > annet deploy r1.lab r2.lab r3.lab
 
-
 Checks result:
 
-.. code::
+.. code:: none
 
   > ssh annet@172.20.0.101
   (annet@172.20.0.101) Password:
@@ -1353,6 +1351,7 @@ Next two files contains community and prefix lists definitions.
   ]
 
 Looks not so difficult, but we should create three generators of:
+
 - policy
 - community
 - prefix list
@@ -1657,7 +1656,7 @@ Let's check the diff:
 
 And patch:
 
-.. code::
+.. code:: none
 
   > annet patch r1.lab
   # -------------------- r1.lab.patch --------------------
@@ -1701,7 +1700,7 @@ And deploy on all three routers:
 
 Check the result:
 
-.. code::
+.. code:: none
 
   > ssh annet@172.20.0.101
   (annet@172.20.0.101) Password:
@@ -2139,7 +2138,7 @@ Look at diff and patch
   + route-map PERMIT_ANY permit 10
 
 
-.. code::
+.. code:: none
 
   > annet patch r1.lab r2.lab r3.lab
   # -------------------- r1.lab.patch --------------------
@@ -2235,7 +2234,7 @@ And deploy it
 
 And check result:
 
-.. code::
+.. code:: none
 
   ssh annet@172.20.0.102
   (annet@172.20.0.102) Password:
