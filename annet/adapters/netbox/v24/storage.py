@@ -4,7 +4,7 @@ from typing import Optional, List, Union
 from annetbox.v24 import models as api_models
 from annetbox.v24.client_sync import NetboxV24
 
-from annet.adapters.netbox.common import models
+from annet.adapters.netbox.v24 import models
 from annet.adapters.netbox.common.manufacturer import (
    get_hw, get_breed,
 )

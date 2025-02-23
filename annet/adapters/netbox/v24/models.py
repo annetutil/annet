@@ -53,7 +53,7 @@ class DeviceIp(DumpableView):
 class Prefix(DumpableView):
     id: int
     prefix: str
-    # `site` deprecated since v4.2, replace in derived classes.
+    site: Optional[Entity]
     vrf: Optional[Entity]
     tenant: Optional[Entity]
     vlan: Optional[Entity]
@@ -168,7 +168,7 @@ class NetboxDevice(Entity):
 
     display: str
     device_type: DeviceType
-    # `device_role` deprecated since v4.0, replace in derived classes.
+    device_role: Entity
     tenant: Optional[Entity]
     platform: Optional[Entity]
     serial: str
