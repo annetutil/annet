@@ -1,23 +1,23 @@
 Annet Tutorial
-===============================================
+==============
 
-The tutorial tested on MacOS, but should work on Linux also. I'm not sure that Windows WSL supports it too, but why not?
+This tutorial has been tested on MacOS but should also work on Linux. While it's unclear if Windows WSL supports it, there's no harm in trying!
 
-Prepare environment
+Prepare Environment
 -------------------
 
-We will use docker compose for lab environment, feel free to use any other kind of virtualization environment. Docker compose looks like easier way and supports no only on linux, but also on macOS and Windows.
+We'll use Docker Compose to set up the lab environment. You're welcome to use any other virtualization tool, but Docker Compose is straightforward and works across Linux, macOS, and Windows.
 
-To work on MacOS with docker we recommend to use `Docker Desktop for Mac <https://docs.docker.com/desktop/mac/install/>`__ or `orbstack <https://orbstack.dev/>`__.
+For MacOS, we recommend using `Docker Desktop for Mac <https://docs.docker.com/desktop/mac/install/>`__ or `orbstack <https://orbstack.dev/>`__.
 
 Arista cEOS
 ^^^^^^^^^^^
 
-We are choose use Containerized Arista EOS since Arista EOS is widely use and have easy to understand Cisco like interface. But the most important point for us is the image can be `downloaded from official site <https://www.arista.com/en/support/software-download>`__ for free by any register users.
+We've chosen to use Containerized Arista EOS because Arista EOS is widely used and has a Cisco-like interface that's easy to understand. The key advantage is that the image can be `downloaded from the official site <https://www.arista.com/en/support/software-download>`__ for free by any registered user.
 
-.. note:: Use your own domain or corporate domain for registered email because Arista is not allowed to use common email providers domains, e.g. gmail.
+.. note:: Use your own domain or corporate email for registration, as Arista doesn't allow common email providers like Gmail.
 
-Download image and import it to docker:
+Download the image and import it into Docker:
 
 .. code:: bash
 
@@ -44,10 +44,9 @@ Topology
     ║        ║.12  10.2.3.0/24 .13║        ║
     ╚════════╝                    ╚════════╝
 
+The network consists of three routers directly connected to each other.
 
-There is a network with three routers with direct connection between each other.
-
-Out of band management IP addresses are:
+Out-of-band management IP addresses are:
 
 +--------+------------------+
 | Router |        MGMT      |
@@ -62,11 +61,11 @@ Out of band management IP addresses are:
 Netbox
 ^^^^^^
 
-.. note:: Currently supported 3.7 version (2025q1). Newer versions will be supported soon.
+.. note:: Currently, version 3.7 is supported (2025q1). Support for newer versions will be added soon.
 
-If you like to use your own installation of netbox, you can skip that section. But read the notices at the beginning of next section.
+If you prefer to use your own Netbox installation, you can skip this section. However, make sure to read the notes at the beginning of the next section.
 
-The easiest way to install netbox is to use dockerized version of netbox.
+The easiest way to install Netbox is to use the dockerized version.
 
 .. code:: bash
 
@@ -88,22 +87,21 @@ The easiest way to install netbox is to use dockerized version of netbox.
   # e.g. multiply all the timeouts by 10 in your favorite editor, or use sed:
   sed -i.bak 's/0s/00s/g' docker-compose.yml
 
-
-Docker compose override file
+Docker Compose Override File
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Some important notice:
+Some important notes:
 
-1. The directories ``lab/ceos-rX.flash`` are needed to store saved configuration of cEOS.
-2. Before run cEOS, we should prepare ``startup-config`` with mgmt IP address and local user ``annet:annet``.
-3. ``depends_on`` part added to every cEOS service to avoid overload resources on weaked hardware.
-4. The docker-compose contains strict definition of version cEOS, if you use another version, you need to change it in the docker-compose file.
-5. If you use your own netbox, you need to
+1. The directories ``lab/ceos-rX.flash`` are required to store the saved configuration of cEOS.
+2. Before running cEOS, prepare the ``startup-config`` with the management IP address and a local user ``annet:annet``.
+3. The ``depends_on`` section is added to each cEOS service to avoid overloading resources on weaker hardware.
+4. The docker-compose file specifies the cEOS version. If you use a different version, update the file accordingly.
+5. If you use your own Netbox, you need to:
 
-   - create directory  ``netbox-docker``;
-   - change it in the ``docker-compose.override.yml`` to ``docker-compose.yml``;
-   - remove ``services/netbox`` part form the docker-compose file;
-   - remove ``depends_on`` part from cEOS services.
+   - Create a directory ``netbox-docker``;
+   - Change ``docker-compose.override.yml`` to ``docker-compose.yml``;
+   - Remove the ``services/netbox`` section from the docker-compose file;
+   - Remove the ``depends_on`` section from the cEOS services.
 
 .. code:: bash
 
@@ -304,67 +302,67 @@ Some important notice:
   EOF
 
 
-Run environment
+Run Environment
 ^^^^^^^^^^^^^^^
 
-Now we can run netbox and lab:
+Now, let's run Netbox and the lab:
 
 .. code:: none
 
   docker compose up -d
 
-Check that Netbox is accessible by the url http://localhost:8000/
+Ensure Netbox is accessible at http://localhost:8000/.
 
-You need to create a superuser by script:
+Create a superuser using the script:
 
 .. code:: none
 
   docker-compose run netbox python manage.py createsuperuser
 
-To be on same page use ``annet`` for login and password. But you can change them to what you like. But in any case you can easily change them in any time.
+For consistency, use ``annet`` for both the login and password. You can change these later if needed.
 
-Try to connect to cEOS CLI:
+Try connecting to the cEOS CLI:
 
 .. code:: none
 
   docker exec -it r1 Cli
 
-Try to connect to cEOS SSH use ``annet:annet``:
+Try connecting to cEOS via SSH using ``annet:annet``:
 
 .. code:: none
 
   ssh annet@172.20.0.101
 
-Update netbox database
+Update Netbox Database
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Annet will use data from netbox to generate configuration. Of course the data should be there before we start to work with annet.
+Annet uses data from Netbox to generate configurations. Ensure the data is in place before working with Annet.
 
-1. In **Organisation/Site** add Site - name: ``lab``, slug: ``lab``.
-2. In **Devices/Manufacturers** add Manufacturer - name: ``Arista``, slug: ``arista``.
-3. In **Devices/Device Types** add Device Type - Manufacturer: ``Arista``, name: ``cEOS``, slug: ``ceos``.
-4. In **Devices/Device Roles** add Device Role - name: ``switch``, slug: ``switch``, color: choose what you like.
-5. In **Devices/Devices** add three Device
+1. In **Organisation/Site**, add a Site - name: ``lab``, slug: ``lab``.
+2. In **Devices/Manufacturers**, add a Manufacturer - name: ``Arista``, slug: ``arista``.
+3. In **Devices/Device Types**, add a Device Type - Manufacturer: ``Arista``, name: ``cEOS``, slug: ``ceos``.
+4. In **Devices/Device Roles**, add a Device Role - name: ``switch``, slug: ``switch``, color: choose any.
+5. In **Devices/Devices**, add three Devices:
 
    - name: ``r1.lab``, device role: ``switch``, device type: ``cEOS``, site: ``lab``;
    - name: ``r2.lab``, device role: ``switch``, device type: ``cEOS``, site: ``lab``;
    - name: ``r3.lab``, device role: ``switch``, device type: ``cEOS``, site: ``lab``.
 
-6. For each device add interfaces in **Add Components/Interfaces**:
+6. For each device, add interfaces in **Add Components/Interfaces**:
 
    - name: ``Ethernet1``, type: ``1000Base-T``;
    - name: ``Ethernet2``, type: ``1000Base-T``;
    - name: ``Ethernet3``, type: ``1000Base-T``;
    - name: ``Management0``, type: ``1000Base-T``, Management only: ``True``.
 
-7. For each device add IP address in tab **Interfaces**:
+7. For each device, add an IP address in the **Interfaces** tab:
 
    - device: ``r1.lab``, interface: ``Management0``, IP address: ``172.20.0.101/24``;
    - device: ``r2.lab``, interface: ``Management0``, IP address: ``172.20.0.102/24``;
    - device: ``r3.lab``, interface: ``Management0``, IP address: ``172.20.0.103/24``.
 
-8. For each device assign **Primary IPv4**, in edit mode assign **Primary IPv4** to ``172.20.0.101``, ``172.20.0.102``, ``172.20.0.103`` respectively.
-9. And finally create connection between devices follow the topology. In tab Interfaces add cables between:
+8. For each device, assign a **Primary IPv4** address. In edit mode, assign **Primary IPv4** to ``172.20.0.101``, ``172.20.0.102``, and ``172.20.0.103`` respectively.
+9. Finally, create connections between devices following the topology. In the **Interfaces** tab, add cables between:
 
    - device: ``r1.lab``, interface: ``Ethernet1``, connected to device: ``r2.lab``, interface: ``Ethernet1``;
    - device: ``r1.lab``, interface: ``Ethernet2``, connected to device: ``r3.lab``, interface: ``Ethernet1``;
@@ -373,7 +371,7 @@ Annet will use data from netbox to generate configuration. Of course the data sh
 Annet Installation
 ----------------------
 
-Create Virtual environment and install annet and requirements packages. We recommend to use Python 3.12 and later.
+Create a virtual environment and install Annet along with the required packages. We recommend using Python 3.12 or later.
 
 .. code:: bash
 
@@ -390,9 +388,9 @@ Create Virtual environment and install annet and requirements packages. We recom
 gnetcli
 ^^^^^^^
 
-Before we start we should install gentcli server binary
+Before we start, we need to install the gnetcli server binary.
 
-.. note:: The step requires to have installed golang. You also can just download binary for your platform from https://github.com/annetutil/gnetcli/releases. Annet will use it, be sure that folder with the binary is added to PATH environments.
+.. note:: This step requires Golang to be installed. Alternatively, you can download the binary for your platform from https://github.com/annetutil/gnetcli/releases. Annet will use this binary, so ensure the folder containing it is added to your PATH environment variable.
 
 .. code:: bash
 
@@ -400,14 +398,13 @@ Before we start we should install gentcli server binary
   export PATH=$PATH:$GOPATH/bin
   go install github.com/annetutil/gnetcli/cmd/gnetcli_server@latest
 
-
-Annet configuration
+Annet Configuration
 -------------------
 
-Annet will work with devices and netbox, for that reason we should define:
+Annet interacts with devices and Netbox, so we need to define:
 
-1. Device credentials, we use annet:annet for lab environment.
-2. Netbox token. Open netbox and go to **Admins/API Tokens**, add new one for user annet.
+1. Device credentials. For the lab environment, we use ``annet:annet``.
+2. A Netbox token. Open Netbox, go to **Admins/API Tokens**, and add a new token for the user ``annet``.
 
 .. code:: bash
 
@@ -454,9 +451,9 @@ Annet will work with devices and netbox, for that reason we should define:
   # define path to configuration file:
   export ANN_CONTEXT_CONFIG_PATH=annet_config.yaml
 
-Let's check!
+Let's check if everything works!
 
-Try to get netbox device model:
+Try to get the Netbox device model:
 
 .. code:: none
 
@@ -477,8 +474,7 @@ Try to get netbox device model:
   device.hw.Arista = True
   ...
 
-
-Try to get current configuration of the device:
+Try to get the current configuration of a device:
 
 .. code:: none
 
@@ -534,15 +530,15 @@ Try to get current configuration of the device:
   !
   end
 
-Let's play with annet
+Let's Play with Annet
 ----------------------
 
-Create first generator
+Create First Generator
 ^^^^^^^^^^^^^^^^^^^^^^
 
-For now, we create generator of interface descriptions.
+For now, let's create a generator for interface descriptions.
 
-Create file ``generators/description.py``.
+Create a file ``generators/description.py``:
 
 .. code:: python
 
@@ -577,8 +573,7 @@ Create file ``generators/description.py``.
                       remote_iface = interface.connected_endpoints[0].name
                       yield f"description {remote_device}@{remote_iface}"
 
-
-And update file ``generators/__init__.py``:
+And update the file ``generators/__init__.py``:
 
 .. code:: python
 
@@ -604,8 +599,7 @@ Check the list of generators:
   |-----------------+--------------------+-----------------------------------------------------+----------------------------------------|
   | Description     | description, iface | Users_gslv_annet_generators___init___py.description | Generator of description on interfaces |
 
-
-Get generated configuration for all three devices:
+Get the generated configuration for all three devices:
 
 .. code:: none
 
@@ -626,7 +620,7 @@ Get generated configuration for all three devices:
   interface Ethernet2
     description r2@Ethernet2
 
-Look at diff:
+Look at the diff:
 
 .. code:: diff
 
@@ -667,14 +661,14 @@ Verify the result:
   Ma0                            up             up
   r1#
 
-Extend coverage
+Extend Coverage
 ^^^^^^^^^^^^^^^
 
-Because of ACL, we can add new configuration parts to annet step by step, do not touch other parts of the configuration.
+Thanks to ACL, we can add new configuration parts to Annet step by step without affecting other parts of the configuration.
 
-Add generators for aaa, hostname, ip address, routing and stp.
+Add generators for AAA, hostname, IP address, routing, and STP.
 
-Create files:
+Create the following files:
 
 ``generators/aaa.py``:
 
@@ -719,7 +713,7 @@ Create files:
               attributes_line = " ".join(f"{key} {value}" for key, value in attributes.items())
               yield f"username {username} {attributes_line}"
 
-``generators/hostnmae.py``:
+``generators/hostname.py``:
 
 .. code:: python
 
@@ -849,7 +843,7 @@ Again, update ``generators/__init__.py``:
           stp.Stp(store),
       ]
 
-Look at list of generators:
+Look at the list of generators:
 
 .. code:: none
 
@@ -863,7 +857,7 @@ Look at list of generators:
   | Routing         | routing            | Users_gslv_dev_annet_generators___init___py.routing     | Generator of Routing                                 |
   | Stp             | stp                | Users_gslv_dev_annet_generators___init___py.stp         | Generator of STP                                     |
 
-Look at diff:
+Look at the diff:
 
 .. code:: diff
 
@@ -875,9 +869,9 @@ Look at diff:
   - username annet privilege 15 role network-admin secret sha512 $6$ycnCXwDzpQPU6WqS$6u0MD.hyOKaRh6r8Tnb97S8zFQVYeXaQuo8nkFHCez7VlBxeJmGsbbgeTePg.k23hEdK.LN1TB5sCjfkS7Mdu.
   + username annet privilege 15 role network-admin secret sha512 $6$i5LaTWzHeAJx/vLu$rYUKKATawfpjItHKJJie3Fgsa2EqkMyH0XYY2.1Dl/2G.uNVzuntS5poblWuf6urafiurknH2/NotkUHiamoP.
 
-We notice that user annet has different hash on ``r2`` and ``r3``, it is ok because we created users annet by default configuration with plain text password.
+We notice that the user ``annet`` has a different hash on ``r2`` and ``r3``. This is fine because we created the user ``annet`` with a plain text password in the default configuration.
 
-Look at patch:
+Look at the patch:
 
 .. code:: none
 
@@ -893,7 +887,7 @@ And deploy it:
 
   > annet deploy r2.lab r3.lab
 
-Again look at diff:
+Again look at the diff:
 
 .. code:: none
 
@@ -901,7 +895,7 @@ Again look at diff:
 
 No diff found - everything is ok for now.
 
-Look at doff without ACL to check what's configurations lines is still not covered by annet:
+Look at the diff without ACL to check what's configurations lines is still not covered by annet:
 
 .. code:: diff
 
@@ -920,17 +914,17 @@ Look at doff without ACL to check what's configurations lines is still not cover
   - end
   - no service interface inactive port-id allocation disabled
 
-We are skipped them, but if you want, you can create some new generators to add therm to annet.
+We've skipped them, but if you want, you can create new generators to add them to Annet.
 
-BGP configuration
+BGP Configuration
 ^^^^^^^^^^^^^^^^^
 
-Annet has brilliance tool to create BGP peers - mesh. It allows us to create templates for BGP peers and apply them to netbox device. Annet takes connections between devices from netbox and passed them through templates. As result, we got a list of local and remote peers pairs. The list can be used in generators.
-Someone calls mesh templates as network design in Python code!
+Annet has a brilliant tool for creating BGP peers — mesh. It allows us to create templates for BGP peers and apply them to Netbox devices. Annet takes connections between devices from Netbox and passes them through templates. As a result, we get a list of local and remote peer pairs. This list can be used in generators.
+Some people call mesh templates "network design in Python code!"
 
-Imagine that we need to have BGP session between r1, r2 and r3 over direct links to exchange IPv4 routes.
+Imagine we need to have BGP sessions between ``r1``, ``r2``, and ``r3`` over direct links to exchange IPv4 routes.
 
-Create mesh template ``generators/mesh_views/routers.py``
+Create a mesh template ``generators/mesh_views/routers.py``:
 
 .. code:: python
 
@@ -974,7 +968,7 @@ Create mesh template ``generators/mesh_views/routers.py``
       router2.families = {"ipv4_unicast"}
       router2.group_name = "ROUTERS"
 
-Create init file ``generators/mesh_views/__init__.py``
+Create an init file ``generators/mesh_views/__init__.py``:
 
 .. code:: python
 
@@ -986,8 +980,7 @@ Create init file ``generators/mesh_views/__init__.py``
   registry = MeshRulesRegistry(match_short_name=True)
   registry.include(routers.registry)
 
-
-Now we should use mesh data in generators. First of all update L3Addresses generators ``generators/l3_addresses.py``:
+Now, we should use mesh data in generators. First, update the L3Addresses generator ``generators/l3_addresses.py``:
 
 .. code:: python
 
@@ -1027,7 +1020,7 @@ Now we should use mesh data in generators. First of all update L3Addresses gener
                   if interface.name.startswith("Ethernet"):
                       yield "no switchport"
 
-Adding new generators for BGP configuration - ``generators/bgp.py``:
+Add a new generator for BGP configuration — ``generators/bgp.py``:
 
 .. code:: python
 
@@ -1108,7 +1101,7 @@ Adding new generators for BGP configuration - ``generators/bgp.py``:
                   yield "neighbor", peer.addr, "peer group", peer.group_name
                   yield "neighbor", peer.addr, "remote-as", peer.remote_as
 
-Checks list of generators:
+Check the list of generators:
 
 .. code:: none
 
@@ -1123,7 +1116,8 @@ Checks list of generators:
   | Routing         | routing            | Users_gslv_dev_annet_generators___init___py.routing     | Generator of Routing                                 |
   | Stp             | stp                | Users_gslv_dev_annet_generators___init___py.stp         | Generator of STP                                     |
 
-Checks the diff:
+
+Check the diff:
 
 .. code:: diff
 
@@ -1171,14 +1165,13 @@ Checks the diff:
   +   neighbor 10.2.3.12 peer group ROUTERS
   +   neighbor 10.2.3.12 remote-as 65002
 
-
-Looks great! Do deploy it to the devices:
+Looks great! Deploy it to the devices:
 
 .. code:: none
 
   > annet deploy r1.lab r2.lab r3.lab
 
-Checks result:
+Check the result:
 
 .. code:: none
 
@@ -1194,12 +1187,12 @@ Checks result:
     10.1.3.13 4 65003              4         4    0    0 00:00:05 Estab   0      0
   r1#
 
-Redistribute connected
+Redistribute Connected
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Go deeper, the task for now is configuring redistribute connected network to BGP.
+Let's go deeper. The task now is to configure the redistribution of connected networks into BGP.
 
-Create on each router interface ``loopback10`` with address in Netbox follow the table:
+Create a ``loopback10`` interface on each router with an address in Netbox, following the table:
 
 +--------+--------------------+
 | Router | Loopback10 address |
@@ -1211,11 +1204,11 @@ Create on each router interface ``loopback10`` with address in Netbox follow the
 |   r3   | ``192.168.3.1/24`` |
 +--------+--------------------+
 
-Go to router page press **Add Components**, choose **Interfaces**. Use name: ``loopback10`` and type: ``Virtual``. Next, add IP address to the interface follow the table.
+Go to the router page, click **Add Components**, and choose **Interfaces**. Use the name ``loopback10`` and type ``Virtual``. Next, add an IP address to the interface following the table.
 
-For now, we should add to mesh redistribute connected network to BGP. Moreover, we want to filter prefixes between routers!
+Now, we need to add the redistribution of connected networks to BGP in the mesh. Additionally, we want to filter prefixes between routers!
 
-To do that update file ``generators/mesh_views/routers.py``:
+To do this, update the file ``generators/mesh_views/routers.py``:
 
 .. code:: python
 
@@ -1272,11 +1265,11 @@ To do that update file ``generators/mesh_views/routers.py``:
       router2.export_policy = "ROUTERS_EXPORT"
       router2.send_community = True
 
-You can notice that redistribute has link to policy ``IMPORT_CONNECTED``. It can be defined by new generator as plain config, but annet has special tool to work with policies. For now supported only Huawei VRP, Arista EOS and FRR (2025q1). But we expect that it will be updated soon.
+You'll notice that the redistribution has a link to the policy ``IMPORT_CONNECTED``. This can be defined by a new generator as plain config, but Annet has a special tool for working with policies. Currently, only Huawei VRP, Arista EOS, and FRR (2025q1) are supported, but we expect this to be updated soon.
 
-First of all create a new module by touch empty file ``generators/rpl_views/__init__.py``. There is module will contain policies and their elements.
+First, create a new module by creating an empty file ``generators/rpl_views/__init__.py``. This module will contain policies and their elements.
 
-Create Python file with the policies - ``generators/rpl_views/routemap.py``:
+Create a Python file with the policies—``generators/rpl_views/routemap.py``:
 
 .. code:: python
 
@@ -1324,9 +1317,9 @@ Create Python file with the policies - ``generators/rpl_views/routemap.py``:
       with route(number=20) as rule:
           rule.deny()
 
-More details how to use rpl you can find in `documentation <https://annetutil.github.io/annet/main/rpl/index.html>`__.
+For more details on how to use RPL, refer to the `documentation <https://annetutil.github.io/annet/main/rpl/index.html>`__.
 
-Next two files contains community and prefix lists definitions.
+The next two files contain community and prefix list definitions.
 
 ``generators/rpl_views/community.py``:
 
@@ -1350,13 +1343,13 @@ Next two files contains community and prefix lists definitions.
       IpPrefixList(name="LOCAL_NETS", members=["192.168.0.0/16"])
   ]
 
-Looks not so difficult, but we should create three generators of:
+This doesn't look too difficult, but we need to create three generators for:
 
-- policy
-- community
-- prefix list
+- Policy
+- Community
+- Prefix list
 
-Policy generator - ``generators/route_map.py``:
+Policy generator — ``generators/route_map.py``:
 
 .. code:: python
 
@@ -1419,7 +1412,7 @@ Policy generator - ``generators/route_map.py``:
 
           return []
 
-Community generator - ``generators/community.py``:
+Community generator — ``generators/community.py``:
 
 .. code:: python
 
@@ -1455,7 +1448,7 @@ Community generator - ``generators/community.py``:
 
           return community.COMMUNITIES
 
-Prefix list generator - ``generators/prefix_list.py``:
+Prefix list generator — ``generators/prefix_list.py``:
 
 .. code:: python
 
@@ -1491,7 +1484,7 @@ Prefix list generator - ``generators/prefix_list.py``:
 
           return prefix_list.PREFIX_LISTS
 
-And again, update ``generators/__init__.py``:
+Again, update ``generators/__init__.py``:
 
 .. code:: python
 
@@ -1528,7 +1521,7 @@ And again, update ``generators/__init__.py``:
           stp.Stp(store),
       ]
 
-Do not forget update BGP generator to support import/export policies and send community - ``generators/bgp.py``:
+Don't forget to update the BGP generator to support import/export policies and send communities — ``generators/bgp.py``:
 
 .. code:: python
 
@@ -1654,7 +1647,7 @@ Let's check the diff:
   +   neighbor ROUTERS route-map ROUTERS_EXPORT out
   +   neighbor ROUTERS send-community
 
-And patch:
+And the patch:
 
 .. code:: none
 
@@ -1691,12 +1684,11 @@ And patch:
     neighbor ROUTERS send-community
     exit
 
-And deploy on all three routers:
+Deploy it on all three routers:
 
 .. code:: bash
 
   annet deploy r1.lab r2.lab r3.lab
-
 
 Check the result:
 
@@ -1726,9 +1718,9 @@ Check the result:
 Indirect BGP
 ^^^^^^^^^^^^
 
-We are going to create IS-IS peering between ``r2`` and ``r3`` to exchange Loopback0 addresses. After we established indirect BGP peering between ``r2`` and ``r3`` instead of direct peering. Also, we change ASN on ``r2`` and ``r3`` to ``65004``.
+We're going to create IS-IS peering between ``r2`` and ``r3`` to exchange ``Loopback0`` addresses. After that, we'll establish indirect BGP peering between ``r2`` and ``r3`` instead of direct peering. We'll also change the ASN on ``r2`` and ``r3`` to ``65004``.
 
-The details are presented on diagram:
+The details are presented in the diagram:
 
 ::
 
@@ -1753,16 +1745,15 @@ The details are presented on diagram:
         |                             |
         +------------iBGP-------------+
 
-
-First of all we change mesh. What steps we need to do:
-1. Add interface ``Loopback0`` with ip addresses to ``r2`` and ``r3`` follow the diagram.
+First, we need to change the mesh. Here are the steps:
+1. Add a ``Loopback0`` interface with IP addresses to ``r2`` and ``r3``, following the diagram.
 2. Disable direct peering between ``r2`` and ``r3``.
 3. Create a simple policy ``PERMIT_ANY`` for indirect peering.
-4. Create indirect peering between ``r2`` and ``r3`` by using interfaces ``Loopback0``.
+4. Create indirect peering between ``r2`` and ``r3`` using the ``Loopback0`` interfaces.
 
-To add new loopback interface repeat actions from (Redistribute connected)[#Redistribute connected] step.
+To add a new loopback interface, repeat the steps from the **Redistribute Connected** section.
 
-Disabling direct peering easy to achieve by adding additional equation which just return nothing. Configuring indirect peering required to use ``@registry.indirect`` decorator. This is updated mesh - ``generators/mesh_views/routers.py``
+Disabling direct peering is easy — just add an additional condition that returns nothing. Configuring indirect peering requires using the ``@registry.indirect`` decorator. Here's the updated mesh—``generators/mesh_views/routers.py``:
 
 .. code:: python
 
@@ -1862,7 +1853,7 @@ Disabling direct peering easy to achieve by adding additional equation which jus
       router2.send_community = True
       router2.update_source = device.ifname
 
-Also we updated policy view - ``generators/rpl_views/route_map.py``:
+We also updated the policy view—``generators/rpl_views/route_map.py``:
 
 .. code:: python
 
@@ -1916,9 +1907,9 @@ Also we updated policy view - ``generators/rpl_views/route_map.py``:
       with route(number=10) as rule:
           rule.allow()
 
-Ok, what else? We should configure IGP to provide connectivity between loopbacks! Unfortunately mesh doesn't support any protocols except BGP for now (2025q1). We need to assign IP addresses to interfaces and create new generator for ISIS protocol.
+What else? We need to configure an IGP to provide connectivity between loopbacks! Unfortunately, the mesh doesn't support any protocols except BGP for now (2025q1). We need to assign IP addresses to interfaces and create a new generator for the ISIS protocol.
 
-Let's assign IP addresses follow the table:
+Let's assign IP addresses following the table:
 
 +--------+------------------+
 | Router |   Eth2 address   |
@@ -1928,7 +1919,7 @@ Let's assign IP addresses follow the table:
 |   r3   | ``10.2.3.13/24`` |
 +--------+------------------+
 
-This is ISIS generator and updated init file:
+Here's the ISIS generator and updated init file:
 ``generators/isis.py``:
 
 .. code:: python
@@ -2037,7 +2028,7 @@ This is ISIS generator and updated init file:
           stp.Stp(store),
       ]
 
-Look at diff and patch
+Look at the diff and patch:
 
 .. code:: diff
 
@@ -2225,14 +2216,13 @@ Look at diff and patch
     neighbor 1.1.1.2 remote-as 65004
     exit
 
-And deploy it
+Deploy it:
 
-.. code:: bash
+.. code:: none
 
   annet deploy r1.lab r2.lab r3.lab
 
-
-And check result:
+And check the result:
 
 .. code:: none
 
