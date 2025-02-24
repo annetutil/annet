@@ -6,6 +6,28 @@ configurations into sequnce of commands. This feature is vital for CLI-based dev
 such as Huawei, Cisco IOS, Cisco NX-OS, Juniper. Devices configured via separate config
 files, Linux, FreeBSD and Cumulus are also supported.
 
+List of supported Network Operation Systems:
+
++----------+---------------------------+------------------------------------------------------------------------------+
+| Vendor   | Network Operation Systems | `Supported in RPL <https://annetutil.github.io/annet/main/rpl/index.html>`__ |
++==========+===========================+==============================================================================+
+| Cisco    | IOS/IOS-XE, NXOS          | No                                                                           |
++----------+---------------------------+------------------------------------------------------------------------------+
+| Juniper  | JunOS                     | No                                                                           |
++----------+---------------------------+------------------------------------------------------------------------------+
+| Huawei   | VRP 5, VRP 8              | Yes                                                                          |
++----------+---------------------------+------------------------------------------------------------------------------+
+| Arista   | EOS                       | Yes                                                                          |
++----------+---------------------------+------------------------------------------------------------------------------+
+| Nokia    | TiMOS                     | No                                                                           |
++----------+---------------------------+------------------------------------------------------------------------------+
+| Mikrotik | RouterOS                  | No                                                                           |
++----------+---------------------------+------------------------------------------------------------------------------+
+| SONiC    | /etc/sonic/config_db.json | No                                                                           |
++----------+---------------------------+------------------------------------------------------------------------------+
+| FRR      | /etc/frr/frr.conf         | Yes                                                                          |
++----------+---------------------------+------------------------------------------------------------------------------+
+
 It works this way. Annet **gen**\ erates configuration for a device by running Python code,
 which usually goes to the Network Source of Truth, like NetBox. Annet then gets the **diff**\ erence
 by getting the configuration from the device and comparing it. Finally, Annet translates the difference
@@ -29,6 +51,7 @@ Usage help can be obtained by calling ``annet -h`` or for a specific command, su
    :caption: Basic usage:
 
    usage/install.rst
+   usage/tutorial.rst
    usage/cli.rst
    usage/config.rst
    usage/gen.rst
