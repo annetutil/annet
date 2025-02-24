@@ -72,4 +72,4 @@ sphinx-build -M html docs docs-build
 ## Links
 
 * [Online Documentation](https://annetutil.github.io/annet/)
-* [Tutorial](https://annetutil.github.io/annet/usage/tutorial.html)
+* [Tutorial](https://annetutil.github.io/annet/main/usage/tutorial.html)
