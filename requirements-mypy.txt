@@ -1,7 +1,6 @@
 types-PyYAML
 types-Pygments
 types-colorama
-types-psutil
 types-python-dateutil
 types-requests
 types-tabulate
