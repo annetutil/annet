@@ -1,18 +1,13 @@
 import asyncio
-import logging
 import os
 import statistics
 from abc import ABC, abstractmethod
 from functools import partial
 from operator import itemgetter
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 import colorama
 from annet.annlib.command import Command, CommandList, Question  # noqa: F401
-from annet.storage import Device
-
-
-_logger = logging.getLogger(__name__)
 
 
 class CommandResult(ABC):
@@ -40,19 +35,6 @@ class Connector(ABC):
 
     @abstractmethod
     async def aclose(self) -> str:
-        pass
-
-
-class Executor(ABC):
-    # method for bulk config downloading TODO: remove in favor Connector.cmd
-    @abstractmethod
-    def fetch(self,
-              devices: List[Device],
-              files_to_download: Dict[str, List[str]] = None) -> Tuple[Dict[Device, str], Dict[Device, Any]]:
-        pass
-
-    @abstractmethod
-    async def amake_connection(self, device: Device) -> Connector:
         pass
 
 
