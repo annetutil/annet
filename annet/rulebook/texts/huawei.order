@@ -1,3 +1,4 @@
+# vim: set syntax=annrulebook:
 # В этом файле определяется порядок команд, в котором их следует подавать на устройство.
 # - Если порядок команды не важен - ее можно не писать сюда совсем.
 # - Если команда начинается с undo и прописан параметр %order_reverse - команда считается
@@ -384,5 +385,4 @@ undo sflow %order_reverse
 # индекс референсится в логике патчинга префикс-листа huawei.misc.prefix_list
 undo ip */(ip|ipv6)/-prefix * index 99999999  %order_reverse
 
-# vim: set syntax=annrulebook:
-~ %global
+~
