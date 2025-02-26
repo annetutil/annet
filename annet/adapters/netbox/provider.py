@@ -16,7 +16,7 @@ from .v42.storage import NetboxStorageV42
 def storage_factory(opts: NetboxStorageOpts) -> Storage:
     client = NetboxStatusClient(opts.url, opts.token, opts.insecure)
     version_class_map = {
-        "3.": NetboxStorageV37,
+        "3.7": NetboxStorageV37,
         "4.0": NetboxStorageV41,
         "4.1": NetboxStorageV41,
         "4.2": NetboxStorageV42,
@@ -27,7 +27,7 @@ def storage_factory(opts: NetboxStorageOpts) -> Storage:
     try:
         status = client.status()
         for version_prefix, storage_class in version_class_map.items():
-            if status.netbox_version.startswith(version_prefix):
+            if version_prefix == status.minor_version:
                 return storage_class(opts)
 
     except ClientError as e:

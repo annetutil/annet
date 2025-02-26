@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
+import warnings
 
 from annet.adapters.netbox.common.models import Entity, IpAddress, NetboxDevice, DeviceIp, IpFamily, Prefix
 
@@ -15,12 +16,6 @@ class IpAddressV41(IpAddress):
 
 
 @dataclass
-class DeviceRole:
-    id: int
-    url: str
-
-
-@dataclass
 class DeviceIpV41(DeviceIp):
     id: int
     display: str
@@ -30,10 +25,19 @@ class DeviceIpV41(DeviceIp):
 
 @dataclass
 class NetboxDeviceV41(NetboxDevice):
-    role: DeviceRole
+    role: Entity
     primary_ip: Optional[DeviceIpV41]
     primary_ip4: Optional[DeviceIpV41]
     primary_ip6: Optional[DeviceIpV41]
+
+    @property
+    def device_role(self):
+        warnings.warn(
+            "'device_role' is deprecated, use 'role' instead.", 
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return self.role
 
     def __hash__(self):
         return hash((self.id, type(self)))
