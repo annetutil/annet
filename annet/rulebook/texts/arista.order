@@ -1,3 +1,4 @@
+# vim: set syntax=annrulebook:
 # В этом файле определяется порядок команд, в котором их следует подавать на устройство.
 # - Если порядок команды не важен - ее можно не писать сюда совсем.
 # - Если команда начинается с undo и прописан параметр %order_reverse - команда считается
@@ -29,7 +30,7 @@ ntp
 
 
 qos profile *
-    ~ %global
+    ~
 
 
 snmp-server
@@ -49,7 +50,7 @@ tacacs-server
 
 
 aaa group
-    ~ %global
+    ~
 
 
 aaa
@@ -59,7 +60,7 @@ username
 
 
 role
-    ~ %global
+    ~
 
 
 vlan
@@ -73,14 +74,14 @@ mpls ip
 mpls ldp
 
 router isis
-    ~ %global
+    ~
 
 interface
-    ~ %global
+    ~
 
 
 (?:ip|ipv6) access-list
-    ~ %global
+    ~
 
 
 (?:ip|ipv6) route
@@ -101,15 +102,15 @@ qos map
 
 
 route-map * (?:permit|deny) *
-    ~ %global
+    ~
 
 
 router bfd
-    ~ %global
+    ~
 
 
 router bgp
-    ~ %global
+    ~
 
 
 router multicast
@@ -119,8 +120,7 @@ ip tacacs
 
 
 management
-    ~ %global
+    ~
 
 
-# vim: set syntax=annrulebook:
-~ %global
+~
