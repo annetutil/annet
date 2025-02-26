@@ -16,6 +16,10 @@ def compile_ordering_text(text, vendor):
                 "validator": valid_bool,
                 "default":   False,
             },
+            "global": {
+                "validator": valid_bool,
+                "default": False,
+            }
         }),
         reverse_prefix=platform.VENDOR_REVERSES[vendor],
     )
@@ -44,6 +48,7 @@ def _compile_ordering(tree, reverse_prefix):
                         syntax.compile_row_regexp(re.sub(r"^%s\s+" % (reverse_prefix), "", attrs["row"]))
                     ),
                     "order_reverse": attrs["params"]["order_reverse"],
+                    "global": attrs["params"]["global"],
                     "raw_rule": attrs["raw_rule"],
                     "context": attrs["context"],
                 },

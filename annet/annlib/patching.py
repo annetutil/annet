@@ -186,6 +186,9 @@ class Orderer:
         block_exit = platform.VENDOR_EXIT[self.vendor]
 
         for (order, (raw_rule, rule)) in enumerate(ordering.items()):
+            if rule["attrs"]["global"]:
+                children.append((raw_rule, rule))
+
             direct_matched = bool(rule["attrs"]["direct_regexp"].match(row))
             if not rule["attrs"]["order_reverse"] and (direct_matched or rule["attrs"]["reverse_regexp"].match(row)):
                 # если не указано order_reverse - правило считается прямым
@@ -395,7 +398,7 @@ def make_patch(pre, rb, hw, add_comments, orderer=None, _root_pre=None, do_commi
         for (key, diff) in content["items"].items():
             # чтобы logic не мог поменять атрибуты
             rule_pre = content.copy()
-            attrs = rule_pre["attrs"].copy()
+            attrs = copy.deepcopy(rule_pre["attrs"])
 
             iterable = attrs["logic"](
                 rule=attrs,
@@ -544,8 +547,7 @@ def _select_match(matches, rules):
         for (rule, is_cr_allowed) in map(operator.itemgetter(0), matches):
             if is_cr_allowed:
                 local_children = merge_dicts(local_children, rule["children"]["local"])
-            # optional break on is_cr_allowed==False?
-
+                # optional break on is_cr_allowed==False?
                 global_children = merge_dicts(global_children, rule["children"]["global"])
 
     global_children = merge_dicts(global_children, rules["global"])
@@ -555,9 +557,10 @@ def _select_match(matches, rules):
         "global": global_children,
     }
 
-    match = {"attrs": f_rule["attrs"]}
+    match = {"attrs": copy.deepcopy(f_rule["attrs"])}
     match.update(f_other)
-    return (match, children_rules)
+
+    return match, children_rules
 
 
 def _rules_local_global(rules):
