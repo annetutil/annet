@@ -1,14 +1,15 @@
+import abc
+import difflib
 import re
 from itertools import groupby
-from typing import Generator, List, Mapping, Tuple, Union
+from pathlib import Path
+from typing import Generator, List, Mapping, Tuple, Union, Protocol
 
 from annet.annlib.diff import (  # pylint: disable=unused-import
-    colorize_line,
-    diff_cmp,
-    diff_ops,
     gen_pre_as_diff,
     resort_diff,
 )
+from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.output import format_file_diff
 
 from annet import patching
@@ -82,3 +83,26 @@ def collapse_diffs(diffs: Mapping[Device, Diff]) -> Mapping[Tuple[Device, ...], 
         res[tuple(x[0] for x in collapsed_diff)] = collapsed_diff[0][1][0]
 
     return res
+
+
+class DeviceFileDiffer(Protocol):
+    @abc.abstractmethod
+    def diff_file(self, hw: HardwareView, path: str|Path, old: str, new: str) -> list[str]:
+        raise NotImplementedError
+
+
+class PrintableDeviceDiffer(DeviceFileDiffer):
+    def __init__(self):
+        self.context: int = 3
+
+    def diff_file(self, hw: HardwareView, path: str|Path, old: str, new: str) -> list[str]:
+        if Path(path).name == "frr.conf":
+            pass # TODO
+        return self._diff_text_file(old, new)
+
+    def _diff_text_file(self, old, new):
+        context = self.context
+        old_lines = old.splitlines() if old else []
+        new_lines = new.splitlines() if new else []
+        context = max(len(old_lines), len(new_lines)) if context is None else context
+        return list(difflib.unified_diff(old_lines, new_lines, n=context, lineterm=""))

@@ -1,6 +1,7 @@
 import pytest
 from typing import Dict, Any
 
+from annet.annlib.netdev.views.hardware import HardwareView
 from annet.api import _json_fragment_diff
 import annet.annlib.jsontools as jsontools
 
@@ -329,7 +330,7 @@ def test_diff(diff_old, edgecore_json_config, diff_result):
     new_files = {"filename": (edgecore_json_config, "test")}
     hostname = "localhost"
 
-    diff_lines = next(_json_fragment_diff(hostname, old_files, new_files)).diff_lines
+    diff_lines = next(_json_fragment_diff(HardwareView("pc", ""), hostname, old_files, new_files)).diff_lines
     res_lines = diff_result.split("\n")
 
     assert len(diff_lines) == len(res_lines)
