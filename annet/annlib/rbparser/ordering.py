@@ -2,7 +2,7 @@ import functools
 import re
 from collections import OrderedDict as odict
 
-from valkit.common import valid_bool
+from valkit.common import valid_bool, valid_string_list
 
 from . import platform, syntax
 
@@ -19,6 +19,10 @@ def compile_ordering_text(text, vendor):
             "global": {
                 "validator": valid_bool,
                 "default": False,
+            },
+            "scope": {
+                "validator": valid_string_list,
+                "default": None,
             }
         }),
         reverse_prefix=platform.VENDOR_REVERSES[vendor],
@@ -49,6 +53,7 @@ def _compile_ordering(tree, reverse_prefix):
                     ),
                     "order_reverse": attrs["params"]["order_reverse"],
                     "global": attrs["params"]["global"],
+                    "scope": attrs["params"]["scope"],
                     "raw_rule": attrs["raw_rule"],
                     "context": attrs["context"],
                 },
