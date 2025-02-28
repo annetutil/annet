@@ -24,7 +24,6 @@ from annet.annlib.lib import (  # pylint: disable=unused-import
     huawei_expand_vlandb,
     huawei_iface_ranges,
     is_relative,
-    jinja_render,
     jun_activate,
     jun_is_inactive,
     juniper_fmt_prefix_lists_acl,
