@@ -4,7 +4,7 @@ import statistics
 from abc import ABC, abstractmethod
 from functools import partial
 from operator import itemgetter
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional
 
 import colorama
 from annet.annlib.command import Command, CommandList, Question  # noqa: F401
@@ -13,28 +13,6 @@ from annet.annlib.command import Command, CommandList, Question  # noqa: F401
 class CommandResult(ABC):
     @abstractmethod
     def get_out(self) -> str:
-        pass
-
-
-class Connector(ABC):
-    @abstractmethod
-    async def cmd(self, cmd: Union[Command, str]) -> CommandResult:
-        pass
-
-    @abstractmethod
-    async def download(self, files: List[str]) -> Dict[str, str]:
-        pass
-
-    @abstractmethod
-    async def upload(self, files: Dict[str, str]):
-        pass
-
-    @abstractmethod
-    def get_conn_trace(self) -> str:
-        pass
-
-    @abstractmethod
-    async def aclose(self) -> str:
         pass
 
 
