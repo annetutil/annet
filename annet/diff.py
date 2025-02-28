@@ -6,6 +6,9 @@ from pathlib import Path
 from typing import Generator, List, Mapping, Tuple, Union, Protocol
 
 from annet.annlib.diff import (  # pylint: disable=unused-import
+    colorize_line,
+    diff_cmp,
+    diff_ops,
     gen_pre_as_diff,
     resort_diff,
 )
@@ -88,7 +91,7 @@ def collapse_diffs(diffs: Mapping[Device, Diff]) -> Mapping[Tuple[Device, ...], 
 
 class DeviceFileDiffer(Protocol):
     @abc.abstractmethod
-    def diff_file(self, hw: HardwareView, path: str|Path, old: str, new: str) -> list[str]:
+    def diff_file(self, hw: HardwareView, path: str | Path, old: str, new: str) -> list[str]:
         raise NotImplementedError
 
 
@@ -96,7 +99,7 @@ class PrintableDeviceDiffer(DeviceFileDiffer):
     def __init__(self):
         self.context: int = 3
 
-    def diff_file(self, hw: HardwareView, path: str|Path, old: str, new: str) -> list[str]:
+    def diff_file(self, hw: HardwareView, path: str | Path, old: str, new: str) -> list[str]:
         """Calculate the differences for config files.
 
         Args:
@@ -108,7 +111,7 @@ class PrintableDeviceDiffer(DeviceFileDiffer):
         Returns:
             List[str]: List of difference lines.
         """
-        if (hw.PC.Mellanox or hw.PC.NVIDIA) and path=="/etc/frr/frr.conf":
+        if (hw.PC.Mellanox or hw.PC.NVIDIA) and (path == "/etc/frr/frr.conf"):
             return self._diff_frr_conf(old, new)
         return self._diff_text_file(old, new)
 
