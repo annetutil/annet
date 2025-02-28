@@ -2,7 +2,7 @@ import copy
 import operator
 import textwrap
 from collections import OrderedDict as odict
-from typing import (  # pylint: disable=unused-import
+from typing import (
     Any,
     Dict,
     Iterator,
@@ -177,7 +177,7 @@ class Orderer:
     def rule_weight(self, row, rule, regexp_key):
         return len(set(row).intersection(set(rule["attrs"][regexp_key].pattern))) / len(row)
 
-    def get_order(self, row, cmd_direct):
+    def get_order(self, row, cmd_direct, scope: str | None = None):
         f_order = None
         f_weight = 0
         f_rule = ""
@@ -186,6 +186,12 @@ class Orderer:
         block_exit = platform.VENDOR_EXIT[self.vendor]
 
         for (order, (raw_rule, rule)) in enumerate(ordering.items()):
+            if (
+                (rule_scope := rule["attrs"]["scope"]) is not None
+                and scope not in rule_scope
+            ):
+                continue
+
             if rule["attrs"]["global"]:
                 children.append((raw_rule, rule))
 
@@ -419,7 +425,7 @@ def make_patch(pre, rb, hw, add_comments, orderer=None, _root_pre=None, do_commi
                             patch_row = "%s %s" % (row, comments)
 
                     # pylint: disable=unused-variable
-                    (order, order_direct, ordering, order_rule) = orderer.get_order(row, direct)
+                    (order, order_direct, ordering, order_rule) = orderer.get_order(row, direct, scope="patch")
                     fmt_row = patch_row
                     # fmt_row += "  # %s" % str(order_rule)  # uncomment to debug ordering
 

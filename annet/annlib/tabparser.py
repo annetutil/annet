@@ -458,6 +458,13 @@ class JuniperFormatter(CommonFormatter):
     def patch_plain(self, patch):
         return list(self.cmd_paths(patch).keys())
 
+    def _blocks(self, tree: "PatchTree", is_patch: bool):
+        for row in super()._blocks(tree, is_patch):
+            if isinstance(row, str) and row.startswith(self.Comment.begin):
+                yield f"{self.Comment.begin} {self.Comment.loads(row).comment} {self.Comment.end}"
+            else:
+                yield row
+
     def _formatted_blocks(self, blocks):
         level = 0
         line = None
@@ -469,7 +476,7 @@ class JuniperFormatter(CommonFormatter):
             elif new_line is BlockEnd:
                 level -= 1
                 if isinstance(line, str):
-                    yield line + self._statement_end
+                    yield line + ("" if line.endswith(self.Comment.end) else self._statement_end)
                 yield self._indent * level + self._block_end
             elif isinstance(line, str):
                 yield line + ("" if line.endswith(self.Comment.end) else self._statement_end)
