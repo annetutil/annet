@@ -1,5 +1,4 @@
 import abc
-import difflib
 import os
 import re
 import sys
@@ -37,7 +36,7 @@ from annet import diff as ann_diff
 from annet import filtering
 from annet import gen as ann_gen
 from annet import patching, rulebook, tabparser, tracing
-from annet.diff import PrintableDeviceDiffer
+from annet.diff import device_file_differ_connector
 from annet.rulebook import deploying
 from annet.filtering import Filterer
 from annet.hardware import hardware_connector
@@ -245,7 +244,7 @@ def gen(args: cli_args.ShowGenOptions, loader: ann_gen.Loader):
 # =====
 def _diff_files(hw, old_files, new_files):
     ret = {}
-    differ = PrintableDeviceDiffer()
+    differ = device_file_differ_connector.get()
     for (path, (new_text, reload_data)) in new_files.items():
         old_text = old_files.get(path)
         is_new = old_text is None
@@ -473,7 +472,7 @@ class PCDeployerJob(DeployerJob):
         upload_files: Dict[str, bytes] = {}
         reload_cmds: Dict[str, bytes] = {}
         generator_types: Dict[str, GeneratorType] = {}
-        differ = PrintableDeviceDiffer()
+        differ = device_file_differ_connector.get()
         for generator_type, pc_files in [(GeneratorType.ENTIRE, new_files), (GeneratorType.JSON_FRAGMENT, new_json_fragment_files)]:
             for file, (file_content_or_json_cfg, cmds) in pc_files.items():
                 if generator_type == GeneratorType.ENTIRE:
