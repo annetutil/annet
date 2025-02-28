@@ -1,3 +1,4 @@
+from ipaddress import IPv4Network, IPv6Network, ip_network
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -40,10 +41,29 @@ class AsPathFilter:
     filters: Sequence[str]
 
 
-@dataclass(frozen=True)
+@dataclass
+class IpPrefixListMember:
+    prefix: IPv4Network | IPv6Network
+
+    def __init__(
+            self,
+            prefix: IPv4Network | IPv6Network | str,
+        ):
+        self.prefix = ip_network(prefix)
+
+
+@dataclass
 class IpPrefixList:
     name: str
-    members: Sequence[str]
+    members: list[IpPrefixListMember]
+
+    def __init__(self, name: str, members: Sequence[IpPrefixListMember | str]):
+        self.name = name
+        self.members = []
+        for m in members:
+            if isinstance(m, str):
+                m = IpPrefixListMember(m)
+            self.members.append(m)
 
 
 def arista_well_known_community(community: str) -> str:

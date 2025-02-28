@@ -59,16 +59,15 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
             match: PrefixMatchValue,
             plist: IpPrefixList,
     ) -> Iterable[Sequence[str]]:
-        for i, prefix in enumerate(plist.members):
-            addr_mask = ip_interface(prefix)
+        for i, m in enumerate(plist.members):
             yield (
                 "ip",
                 prefix_type,
                 name,
                 f"index {i * 5 + 5}",
                 "permit",
-                str(addr_mask.ip).upper(),
-                str(addr_mask.network.prefixlen),
+                str(m.prefix.network_address).upper(),
+                str(m.prefix.prefixlen),
             ) + (
                 ("greater-equal", str(match.greater_equal)) if match.greater_equal is not None else ()
             ) + (
@@ -123,12 +122,11 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
             plist: IpPrefixList,
     ) -> Iterable[Sequence[str]]:
         with self.block(prefix_type, "prefix-list", name):
-            for i, prefix in enumerate(plist.members):
-                addr_mask = ip_interface(prefix)
+            for i, m in enumerate(plist.members):
                 yield (
                     f"seq {i * 10 + 10}",
                     "permit",
-                    addr_mask.with_prefixlen,
+                    str(m.prefix),
                 ) + (
                     ("ge", str(match.greater_equal)) if match.greater_equal is not None else ()
                 ) + (

@@ -94,14 +94,13 @@ class CumulusPolicyGenerator(ABC):
             match: PrefixMatchValue,
             plist: IpPrefixList,
     ) -> Iterable[Sequence[str]]:
-        for i, prefix in enumerate(plist.members):
-            addr_mask = ip_interface(prefix)
+        for i, m in enumerate(plist.members):
             yield (
                 ip_type,
                 "prefix-list",
                 name,
                 f"seq {i * 5 + 5}",
-                "permit", f"{addr_mask.ip}/{addr_mask.network.prefixlen}",
+                "permit", str(m.prefix),
             ) + (
                 ("ge", str(match.greater_equal)) if match.greater_equal is not None else ()
             ) + (

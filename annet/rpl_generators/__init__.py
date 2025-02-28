@@ -10,6 +10,7 @@ __all__ = [
     "RDFilterFilterGenerator",
     "RDFilter",
     "IpPrefixList",
+    "IpPrefixListMember",
     "PrefixListFilterGenerator",
     "get_policies",
 ]
@@ -17,7 +18,7 @@ __all__ = [
 from .aspath import AsPathFilterGenerator
 from .community import CommunityListGenerator
 from .cumulus_frr import CumulusPolicyGenerator
-from .entities import CommunityList, AsPathFilter, CommunityType, CommunityLogic, RDFilter, IpPrefixList
+from .entities import CommunityList, AsPathFilter, CommunityType, CommunityLogic, RDFilter, IpPrefixList, IpPrefixListMember
 from .execute import get_policies
 from .policy import RoutingPolicyGenerator
 from .prefix_lists import PrefixListFilterGenerator
