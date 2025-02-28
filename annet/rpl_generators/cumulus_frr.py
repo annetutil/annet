@@ -84,22 +84,21 @@ class CumulusPolicyGenerator(ABC):
 
     def _cumulus_prefix_list(
             self,
-            name: str,
             ip_type: Literal["ipv6", "ip"],
-            match: PrefixMatchValue,
             plist: IpPrefixList,
     ) -> Iterable[Sequence[str]]:
         for i, m in enumerate(plist.members):
+            ge, le = m.or_longer
             yield (
                 ip_type,
                 "prefix-list",
-                name,
+                plist.name,
                 f"seq {i * 5 + 5}",
                 "permit", str(m.prefix),
             ) + (
-                ("ge", str(match.greater_equal)) if match.greater_equal is not None else ()
+                ("ge", str(ge)) if ge is not None else ()
             ) + (
-                ("le", str(match.less_equal)) if match.less_equal is not None else ()
+                ("le", str(le)) if le is not None else ()
             )
 
     def _cumulus_prefix_lists(
@@ -116,14 +115,14 @@ class CumulusPolicyGenerator(ABC):
                         plist = name_generator.get_prefix(name, cond.value)
                         if plist.name in processed_names:
                             continue
-                        yield from self._cumulus_prefix_list(plist.name, "ip", cond.value, plist)
+                        yield from self._cumulus_prefix_list("ip", plist)
                         processed_names.add(plist.name)
                 for cond in statement.match.find_all(MatchField.ipv6_prefix):
                     for name in cond.value.names:
                         plist = name_generator.get_prefix(name, cond.value)
                         if plist.name in processed_names:
                             continue
-                        yield from self._cumulus_prefix_list(plist.name, "ipv6", cond.value, plist)
+                        yield from self._cumulus_prefix_list("ipv6", plist)
                         processed_names.add(plist.name)
         yield "!"
 

@@ -28,24 +28,23 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
 
     def _huawei_prefix_list(
             self,
-            name: str,
             prefix_type: Literal["ipv6-prefix", "ip-prefix"],
-            match: PrefixMatchValue,
             plist: IpPrefixList,
     ) -> Iterable[Sequence[str]]:
         for i, m in enumerate(plist.members):
+            ge, le = m.or_longer
             yield (
                 "ip",
                 prefix_type,
-                name,
+                plist.name,
                 f"index {i * 5 + 5}",
                 "permit",
                 str(m.prefix.network_address).upper(),
                 str(m.prefix.prefixlen),
             ) + (
-                ("greater-equal", str(match.greater_equal)) if match.greater_equal is not None else ()
+                ("greater-equal", str(ge)) if ge is not None else ()
             ) + (
-                ("less-equal", str(match.less_equal)) if match.less_equal is not None else ()
+                ("less-equal", str(le)) if le is not None else ()
             )
 
     def run_huawei(self, device: Any):
@@ -62,14 +61,14 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                         plist = name_generator.get_prefix(name, cond.value)
                         if plist.name in processed_names:
                             continue
-                        yield from self._huawei_prefix_list(plist.name, "ip-prefix", cond.value, plist)
+                        yield from self._huawei_prefix_list("ip-prefix", plist)
                         processed_names.add(plist.name)
                 for cond in statement.match.find_all(MatchField.ipv6_prefix):
                     for name in cond.value.names:
                         plist = name_generator.get_prefix(name, cond.value)
                         if plist.name in processed_names:
                             continue
-                        yield from self._huawei_prefix_list(plist.name, "ipv6-prefix", cond.value, plist)
+                        yield from self._huawei_prefix_list("ipv6-prefix", plist)
                         processed_names.add(plist.name)
 
     # arista
@@ -83,21 +82,20 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
 
     def _arista_prefix_list(
             self,
-            name: str,
             prefix_type: Literal["ipv6", "ip"],
-            match: PrefixMatchValue,
             plist: IpPrefixList,
     ) -> Iterable[Sequence[str]]:
-        with self.block(prefix_type, "prefix-list", name):
+        with self.block(prefix_type, "prefix-list", plist.name):
             for i, m in enumerate(plist.members):
+                ge, le = m.or_longer
                 yield (
                     f"seq {i * 10 + 10}",
                     "permit",
                     str(m.prefix),
                 ) + (
-                    ("ge", str(match.greater_equal)) if match.greater_equal is not None else ()
+                    ("ge", str(ge)) if ge is not None else ()
                 ) + (
-                    ("le", str(match.less_equal)) if match.less_equal is not None else ()
+                    ("le", str(le)) if le is not None else ()
                 )
 
     def run_arista(self, device: Any):
@@ -113,12 +111,12 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                         plist = name_generator.get_prefix(name, cond.value)
                         if plist.name in processed_names:
                             continue
-                        yield from self._arista_prefix_list(plist.name, "ip", cond.value, plist)
+                        yield from self._arista_prefix_list("ip", plist)
                         processed_names.add(plist.name)
                 for cond in statement.match.find_all(MatchField.ipv6_prefix):
                     for name in cond.value.names:
                         plist = name_generator.get_prefix(name, cond.value)
                         if plist.name in processed_names:
                             continue
-                        yield from self._arista_prefix_list(plist.name, "ipv6", cond.value, plist)
+                        yield from self._arista_prefix_list("ipv6", plist)
                         processed_names.add(plist.name)

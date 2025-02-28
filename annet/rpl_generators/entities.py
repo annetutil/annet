@@ -46,12 +46,15 @@ class AsPathFilter:
 @dataclass
 class IpPrefixListMember:
     prefix: IPv4Network | IPv6Network
+    or_longer: tuple[Optional[int], Optional[int]] = (None, None)
 
     def __init__(
             self,
             prefix: IPv4Network | IPv6Network | str,
+            or_longer: tuple[Optional[int], Optional[int]] = (None, None)
         ):
         self.prefix = ip_network(prefix)
+        self.or_longer = or_longer
 
 
 @dataclass
@@ -113,5 +116,11 @@ class PrefixListNameGenerator:
 
         return IpPrefixList(
             name=name,
-            members=orig_prefix.members,
+            members=[
+                IpPrefixListMember(
+                    x.prefix,
+                    or_longer=(greater_equal, less_equal)
+                )
+                for x in orig_prefix.members
+            ],
         )
