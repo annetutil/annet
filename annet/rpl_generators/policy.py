@@ -12,8 +12,9 @@ from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, T
 from annet.rpl_generators.entities import (
     arista_well_known_community,
     CommunityList, RDFilter, PrefixListNameGenerator, CommunityLogic, mangle_united_community_list_name,
+    IpPrefixList,
 )
-from annet.rpl_generators.prefix_lists import new_prefix_list_name_generator
+
 
 HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.as_path_filter: "as-path-filter {option_value}",
@@ -63,6 +64,10 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     TAGS = ["policy", "rpl", "routing"]
 
     @abstractmethod
+    def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
+        raise NotImplementedError()
+
+    @abstractmethod
     def get_policies(self, device: Any) -> list[RoutingPolicy]:
         raise NotImplementedError()
 
@@ -87,7 +92,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             condition: SingleCondition[Any],
             communities: dict[str, CommunityList],
             rd_filters: dict[str, RDFilter],
-            prefix_name_generator: PrefixListNameGenerator,
+            name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         if condition.field == MatchField.community:
             if condition.operator is ConditionOperator.HAS:
@@ -136,21 +141,13 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             return
         if condition.field == MatchField.ip_prefix:
             for name in condition.value.names:
-                mangled_name = prefix_name_generator.get_prefix_name(
-                    name=name,
-                    greater_equal=condition.value.greater_equal,
-                    less_equal=condition.value.less_equal,
-                )
-                yield "if-match", "ip-prefix", mangled_name
+                plist = name_generator.get_prefix(name, condition.value)
+                yield "if-match", "ip-prefix", plist.name
             return
         if condition.field == MatchField.ipv6_prefix:
             for name in condition.value.names:
-                mangled_name = prefix_name_generator.get_prefix_name(
-                    name=name,
-                    greater_equal=condition.value.greater_equal,
-                    less_equal=condition.value.less_equal,
-                )
-                yield "if-match", "ipv6 address prefix-list", mangled_name
+                plist = name_generator.get_prefix(name, condition.value)
+                yield "if-match", "ipv6 address prefix-list", plist.name
             return
         if condition.field == MatchField.as_path_length:
             if condition.operator is ConditionOperator.EQ:
@@ -353,10 +350,11 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 yield "goto next-node"
 
     def run_huawei(self, device):
+        prefix_lists = self.get_prefix_lists(device)
         policies = self.get_policies(device)
         communities = {c.name: c for c in self.get_community_lists(device)}
         rd_filters = {f.name: f for f in self.get_rd_filters(device)}
-        prefix_name_generator = new_prefix_list_name_generator(policies)
+        prefix_name_generator = PrefixListNameGenerator(prefix_lists, policies)
 
         for policy in self.get_policies(device):
             for statement in policy.statements:
@@ -383,7 +381,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             condition: SingleCondition[Any],
             communities: dict[str, CommunityList],
             rd_filters: dict[str, RDFilter],
-            prefix_name_generator: PrefixListNameGenerator,
+            name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         if condition.field == MatchField.community:
             if condition.operator is ConditionOperator.HAS_ANY:
@@ -436,21 +434,13 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             return
         if condition.field == MatchField.ip_prefix:
             for name in condition.value.names:
-                mangled_name = prefix_name_generator.get_prefix_name(
-                    name=name,
-                    greater_equal=condition.value.greater_equal,
-                    less_equal=condition.value.less_equal,
-                )
-                yield "match", "ip address prefix-list", mangled_name
+                plist = name_generator.get_prefix(name, condition.value)
+                yield "match", "ip address prefix-list", plist.name
             return
         if condition.field == MatchField.ipv6_prefix:
             for name in condition.value.names:
-                mangled_name = prefix_name_generator.get_prefix_name(
-                    name=name,
-                    greater_equal=condition.value.greater_equal,
-                    less_equal=condition.value.less_equal,
-                )
-                yield "match", "ipv6 address prefix-list", mangled_name
+                plist = name_generator.get_prefix(name, condition.value)
+                yield "match", "ipv6 address prefix-list", plist.name
             return
         if condition.field == MatchField.as_path_length:
             if condition.operator is ConditionOperator.EQ:
@@ -675,8 +665,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 yield "continue"
 
     def run_arista(self, device):
+        prefix_lists = self.get_prefix_lists(device)
         policies = self.get_policies(device)
-        prefix_name_generator = new_prefix_list_name_generator(policies)
+        prefix_name_generator = PrefixListNameGenerator(prefix_lists, policies)
         communities = {c.name: c for c in self.get_community_lists(device)}
         rd_filters = {f.name: f for f in self.get_rd_filters(device)}
 
