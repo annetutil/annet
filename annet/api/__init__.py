@@ -700,7 +700,7 @@ async def adeploy(
         ans = deployer.ask_deploy()
         if ans != "y":
             return 2 ** 2
-        progress_bar = None
+
         if sys.stdout.isatty() and not args.no_progress:
             progress_bar = annet.deploy_ui.ProgressBars(odict([(device.fqdn, {}) for device in deploy_cmds]))
             progress_bar.init()
