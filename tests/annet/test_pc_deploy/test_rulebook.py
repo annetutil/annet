@@ -3,13 +3,14 @@ import annet
 
 from os import path
 from unittest import mock
-from unittest.mock import MagicMock
 
 from annet.api import DeployerJob, Device
 from annet.gen import OldNewResult
 from annet.deploy import CommandList, DeployDriver, Fetcher
 from annet.output import OutputDriver
 from annet.rulebook import DefaultRulebookProvider
+from annet.diff import UnifiedFileDiffer
+from annet.storage import StorageProvider
 
 from .. import MockDevice
 
@@ -30,17 +31,22 @@ def mocks():
     orig_storage_connector_classes = annet.storage.storage_connector._classes
     orig_rulebook_provider_classes = annet.rulebook.rulebook_provider_connector._classes
     orig_rulebook_provider_cache = annet.rulebook.rulebook_provider_connector._cache
+    orig_device_file_differ_connector_classes = annet.diff.file_differ_connector._classes
+    orig_device_file_differ_connector_cache = annet.diff.file_differ_connector._cache
     orig_get_deployer = annet.deploy.get_deployer
 
     fetcher_connector = mock.MagicMock(spec=Fetcher)
     output_driver = mock.MagicMock(spec=OutputDriver)
-    storage_provider = mock.MagicMock(spec=annet.storage.StorageProvider)
+    storage_provider = mock.MagicMock(spec=StorageProvider)
 
     annet.deploy.fetcher_connector._classes = [fetcher_connector]
     annet.output.output_driver_connector._classes = [output_driver]
     annet.storage.storage_connector._classes = [storage_provider]
     annet.rulebook.rulebook_provider_connector._classes = [MockDefaultRulebookProvider]
     annet.rulebook.rulebook_provider_connector._cache = None
+    annet.diff.file_differ_connector._classes = [UnifiedFileDiffer]
+    annet.diff.file_differ_connector._cache = None
+
     deployer = mock.MagicMock(spec=DeployDriver)
     deployer.build_configuration_cmdlist.return_value = (CommandList(), CommandList())
     annet.deploy.get_deployer = mock.MagicMock(spec=annet.deploy.get_deployer)
@@ -50,6 +56,8 @@ def mocks():
     )
     yield ret
 
+    annet.diff.file_differ_connector._classes = orig_device_file_differ_connector_classes
+    annet.diff.file_differ_connector._cache = orig_device_file_differ_connector_cache
     annet.deploy.fetcher_connector._classes = orig_fetcher_connector_classes
     annet.deploy.driver_connector._classes = orig_driver_connector_classes
     annet.output.output_driver_connector._classes = orig_output_driver_connector_classes

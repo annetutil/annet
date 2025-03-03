@@ -1,5 +1,4 @@
 import abc
-import difflib
 import os
 import re
 import sys
@@ -37,6 +36,7 @@ from annet import diff as ann_diff
 from annet import filtering
 from annet import gen as ann_gen
 from annet import patching, rulebook, tabparser, tracing
+from annet.diff import file_differ_connector
 from annet.rulebook import deploying
 from annet.filtering import Filterer
 from annet.hardware import hardware_connector
@@ -242,19 +242,13 @@ def gen(args: cli_args.ShowGenOptions, loader: ann_gen.Loader):
 
 
 # =====
-def _diff_file(old_text: Optional[str], new_text: Optional[str], context=3):
-    old_lines = old_text.splitlines() if old_text else []
-    new_lines = new_text.splitlines() if new_text else []
-    context = max(len(old_lines), len(new_lines)) if context is None else context
-    return list(difflib.unified_diff(old_lines, new_lines, n=context, lineterm=""))
-
-
-def _diff_files(old_files, new_files, context=3):
+def _diff_files(hw, old_files, new_files):
     ret = {}
+    differ = file_differ_connector.get()
     for (path, (new_text, reload_data)) in new_files.items():
         old_text = old_files.get(path)
         is_new = old_text is None
-        diff_lines = _diff_file(old_text, new_text, context=context)
+        diff_lines = differ.diff_file(hw, path, old_text, new_text)
         ret[path] = (diff_lines, reload_data, is_new)
     return ret
 
@@ -355,9 +349,9 @@ def diff(
 
         pc_diff_files = []
         if res.old_files or new_files:
-            pc_diff_files.extend(_pc_diff(device.hostname, res.old_files, new_files))
+            pc_diff_files.extend(_pc_diff(res.device.hw, device.hostname, res.old_files, new_files))
         if res.old_json_fragment_files or new_json_fragment_files:
-            pc_diff_files.extend(_json_fragment_diff(device.hostname, res.old_json_fragment_files, new_json_fragment_files))
+            pc_diff_files.extend(_json_fragment_diff(res.device.hw, device.hostname, res.old_json_fragment_files, new_json_fragment_files))
 
         if pc_diff_files:
             pc_diff_files.sort(key=lambda f: f.label)
@@ -478,18 +472,19 @@ class PCDeployerJob(DeployerJob):
         upload_files: Dict[str, bytes] = {}
         reload_cmds: Dict[str, bytes] = {}
         generator_types: Dict[str, GeneratorType] = {}
+        differ = file_differ_connector.get()
         for generator_type, pc_files in [(GeneratorType.ENTIRE, new_files), (GeneratorType.JSON_FRAGMENT, new_json_fragment_files)]:
             for file, (file_content_or_json_cfg, cmds) in pc_files.items():
                 if generator_type == GeneratorType.ENTIRE:
                     file_content: str = file_content_or_json_cfg
-                    diff_content = "\n".join(_diff_file(old_files.get(file), file_content))
+                    diff_content = "\n".join(differ.diff_file(res.device.hw, file, old_files.get(file), file_content))
                 else:  # generator_type == GeneratorType.JSON_FRAGMENT
                     old_json_cfg = old_json_fragment_files[file]
                     json_patch = jsontools.make_patch(old_json_cfg, file_content_or_json_cfg)
                     file_content = jsontools.format_json(json_patch)
                     old_text = jsontools.format_json(old_json_cfg)
                     new_text = jsontools.format_json(file_content_or_json_cfg)
-                    diff_content = "\n".join(_diff_file(old_text, new_text))
+                    diff_content = "\n".join(differ.diff_file(res.device.hw, file, old_text, new_text))
 
                 if diff_content or force_reload:
                     self._has_diff |= True
@@ -746,12 +741,16 @@ def file_diff(args: cli_args.FileDiffOptions):
 def file_diff_worker(old_new: Tuple[str, str], args: cli_args.FileDiffOptions) -> Generator[
     Tuple[str, str, bool], None, None]:
     old_path, new_path = old_new
+    hw = args.hw
+    if isinstance(args.hw, str):
+        hw = HardwareView(args.hw, "")
+
     if os.path.isdir(old_path) and os.path.isdir(new_path):
         hostname = os.path.basename(new_path)
         new_files = {relative_cfg_path: (cfg_text, "") for relative_cfg_path, cfg_text in
                      ann_gen.load_pc_config(new_path).items()}
         old_files = ann_gen.load_pc_config(old_path)
-        for diff_file in _pc_diff(hostname, old_files, new_files):
+        for diff_file in _pc_diff(hw, hostname, old_files, new_files):
             diff_text = (
                 "\n".join(diff_file.diff_lines)
                 if args.no_color
@@ -791,8 +790,8 @@ def file_patch_worker(old_new: Tuple[str, str], args: cli_args.FileDiffOptions) 
             yield dest_name, patch_text, False
 
 
-def _pc_diff(hostname: str, old_files: Dict[str, str], new_files: Dict[str, str]) -> Generator[PCDiffFile, None, None]:
-    sorted_lines = sorted(_diff_files(old_files, new_files).items())
+def _pc_diff(hw, hostname: str, old_files: Dict[str, str], new_files: Dict[str, str]) -> Generator[PCDiffFile, None, None]:
+    sorted_lines = sorted(_diff_files(hw, old_files, new_files).items())
     for (path, (diff_lines, _reload_data, is_new)) in sorted_lines:
         if not diff_lines:
             continue
@@ -803,6 +802,7 @@ def _pc_diff(hostname: str, old_files: Dict[str, str], new_files: Dict[str, str]
 
 
 def _json_fragment_diff(
+        hw,
         hostname: str,
         old_files: Dict[str, Any],
         new_files: Dict[str, Tuple[Any, Optional[str]]],
@@ -820,7 +820,7 @@ def _json_fragment_diff(
             ret[path] = (jsontools.format_json(cfg), reload_cmd)
         return ret
     jold, jnew = jsonify_multi(old_files), jsonify_multi_with_cmd(new_files)
-    return _pc_diff(hostname, jold, jnew)
+    return _pc_diff(hw, hostname, jold, jnew)
 
 
 def guess_hw(config_text: str):

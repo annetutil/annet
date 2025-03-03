@@ -1,6 +1,9 @@
+import abc
+import difflib
 import re
 from itertools import groupby
-from typing import Generator, List, Mapping, Tuple, Union
+from pathlib import Path
+from typing import Generator, List, Mapping, Tuple, Union, Protocol
 
 from annet.annlib.diff import (  # pylint: disable=unused-import
     colorize_line,
@@ -9,10 +12,12 @@ from annet.annlib.diff import (  # pylint: disable=unused-import
     gen_pre_as_diff,
     resort_diff,
 )
+from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.output import format_file_diff
 
-from annet import patching
+from annet import patching, rulebook, tabparser, hardware
 from annet.cli_args import ShowDiffOptions
+from annet.connectors import CachedConnector
 from annet.output import output_driver_connector
 from annet.storage import Device
 from annet.tabparser import make_formatter
@@ -82,3 +87,67 @@ def collapse_diffs(diffs: Mapping[Device, Diff]) -> Mapping[Tuple[Device, ...], 
         res[tuple(x[0] for x in collapsed_diff)] = collapsed_diff[0][1][0]
 
     return res
+
+
+class FileDiffer(Protocol):
+    @abc.abstractmethod
+    def diff_file(self, hw: HardwareView, path: str | Path, old: str, new: str) -> list[str]:
+        raise NotImplementedError
+
+
+class UnifiedFileDiffer(FileDiffer):
+    def __init__(self):
+        self.context: int = 3
+
+    def diff_file(self, hw: HardwareView, path: str | Path, old: str, new: str) -> list[str]:
+        """Calculate the differences for config files.
+
+        Args:
+            hw: device hardware info
+            path: path to file on a device
+            old (Optional[str]): The old file content.
+            new (Optional[str]): The new file content.
+
+        Returns:
+            List[str]: List of difference lines.
+        """
+        return self._diff_text_file(old, new)
+
+    def _diff_text_file(self, old, new):
+        """Calculate the differences for plaintext files."""
+        context = self.context
+        old_lines = old.splitlines() if old else []
+        new_lines = new.splitlines() if new else []
+        context = max(len(old_lines), len(new_lines)) if context is None else context
+        return list(difflib.unified_diff(old_lines, new_lines, n=context, lineterm=""))
+
+
+class FrrFileDiffer(UnifiedFileDiffer):
+    def diff_file(self, hw: HardwareView, path: str | Path, old: str, new: str) -> list[str]:
+        if (hw.PC.Mellanox or hw.PC.NVIDIA) and (path == "/etc/frr/frr.conf"):
+            return self._diff_frr_conf(hw, old, new)
+        return super().diff_file(hw, path, old, new)
+
+    def _diff_frr_conf(self,  hw: HardwareView, old_text: str | None, new_text: str | None) -> list[str]:
+        """Calculate the differences for frr.conf files."""
+        indent = "  "
+        rb = rulebook.rulebook_provider_connector.get()
+        rulebook_data = rb.get_rulebook(hw)
+        formatter = tabparser.make_formatter(hw, indent=indent)
+
+        old_tree = tabparser.parse_to_tree(old_text or "", splitter=formatter.split)
+        new_tree = tabparser.parse_to_tree(new_text or "", splitter=formatter.split)
+
+        diff_tree = patching.make_diff(old_tree, new_tree, rulebook_data, [])
+        pre_diff = patching.make_pre(diff_tree)
+        diff_iterator = gen_pre_as_diff(pre_diff, show_rules=False, indent=indent, no_color=True)
+
+        return [line.rstrip() for line in diff_iterator if "frr version" not in line]
+
+
+class _FileDifferConnector(CachedConnector[FileDiffer]):
+    name = "Device file diff processor"
+    ep_name = "file_differ"
+
+
+file_differ_connector = _FileDifferConnector()
