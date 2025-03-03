@@ -89,13 +89,13 @@ def collapse_diffs(diffs: Mapping[Device, Diff]) -> Mapping[Tuple[Device, ...], 
     return res
 
 
-class DeviceFileDiffer(Protocol):
+class FileDiffer(Protocol):
     @abc.abstractmethod
     def diff_file(self, hw: HardwareView, path: str | Path, old: str, new: str) -> list[str]:
         raise NotImplementedError
 
 
-class PrintableDeviceDiffer(DeviceFileDiffer):
+class UnifiedFileDiffer(FileDiffer):
     def __init__(self):
         self.context: int = 3
 
@@ -111,8 +111,6 @@ class PrintableDeviceDiffer(DeviceFileDiffer):
         Returns:
             List[str]: List of difference lines.
         """
-        if (hw.PC.Mellanox or hw.PC.NVIDIA) and (path == "/etc/frr/frr.conf"):
-            return self._diff_frr_conf(old, new)
         return self._diff_text_file(old, new)
 
     def _diff_text_file(self, old, new):
@@ -123,12 +121,17 @@ class PrintableDeviceDiffer(DeviceFileDiffer):
         context = max(len(old_lines), len(new_lines)) if context is None else context
         return list(difflib.unified_diff(old_lines, new_lines, n=context, lineterm=""))
 
-    def _diff_frr_conf(self, old_text: str | None, new_text: str | None) -> list[str]:
+
+class FrrFileDiffer(FileDiffer):
+    def diff_file(self, hw: HardwareView, path: str | Path, old: str, new: str) -> list[str]:
+        if (hw.PC.Mellanox or hw.PC.NVIDIA) and (path == "/etc/frr/frr.conf"):
+            return self._diff_frr_conf(hw, old, new)
+        return super().diff_file(hw, path, old, new)
+
+    def _diff_frr_conf(self,  hw: HardwareView, old_text: str | None, new_text: str | None) -> list[str]:
         """Calculate the differences for frr.conf files."""
         indent = "  "
-        hw_provider = hardware.hardware_connector.get()
         rb = rulebook.rulebook_provider_connector.get()
-        hw = hw_provider.vendor_to_hw("pc")  # Assuming "pc" is correct. Replace if necessary.
         rulebook_data = rb.get_rulebook(hw)
         formatter = tabparser.make_formatter(hw, indent=indent)
 
@@ -142,9 +145,9 @@ class PrintableDeviceDiffer(DeviceFileDiffer):
         return [line.rstrip() for line in diff_iterator if "frr version" not in line]
 
 
-class _DeviceFileDifferConnector(CachedConnector[DeviceFileDiffer]):
-    name = "Device file diff prcoessor"
+class _FileDifferConnector(CachedConnector[FileDiffer]):
+    name = "Device file diff processor"
     ep_name = "file_differ"
 
 
-device_file_differ_connector = _DeviceFileDifferConnector()
+file_differ_connector = _FileDifferConnector()

@@ -328,15 +328,15 @@ def test_acl_filter_wildcards(edgecore_json_config, acl_filter4, filter4_result)
 
 @pytest.fixture()
 def _set_differ():
-    orig_device_file_differ_connector_classes = annet.diff.device_file_differ_connector._classes
-    orig_device_file_differ_connector_cache = annet.diff.device_file_differ_connector._cache
+    orig_device_file_differ_connector_classes = annet.diff.file_differ_connector._classes
+    orig_device_file_differ_connector_cache = annet.diff.file_differ_connector._cache
 
-    annet.diff.device_file_differ_connector._classes = [annet.diff.PrintableDeviceDiffer]
-    annet.diff.device_file_differ_connector._cache = None
+    annet.diff.file_differ_connector._classes = [annet.diff.PrintableDeviceDiffer]
+    annet.diff.file_differ_connector._cache = None
     yield
 
-    annet.diff.device_file_differ_connector._classes = orig_device_file_differ_connector_classes
-    annet.diff.device_file_differ_connector._cache = orig_device_file_differ_connector_cache
+    annet.diff.file_differ_connector._classes = orig_device_file_differ_connector_classes
+    annet.diff.file_differ_connector._cache = orig_device_file_differ_connector_cache
 
 def test_diff(diff_old, edgecore_json_config, diff_result, _set_differ):
     old_files = {"filename": (diff_old, "test")}

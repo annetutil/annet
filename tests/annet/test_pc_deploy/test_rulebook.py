@@ -31,8 +31,8 @@ def mocks():
     orig_storage_connector_classes = annet.storage.storage_connector._classes
     orig_rulebook_provider_classes = annet.rulebook.rulebook_provider_connector._classes
     orig_rulebook_provider_cache = annet.rulebook.rulebook_provider_connector._cache
-    orig_device_file_differ_connector_classes = annet.diff.device_file_differ_connector._classes
-    orig_device_file_differ_connector_cache = annet.diff.device_file_differ_connector._cache
+    orig_device_file_differ_connector_classes = annet.diff.file_differ_connector._classes
+    orig_device_file_differ_connector_cache = annet.diff.file_differ_connector._cache
     orig_get_deployer = annet.deploy.get_deployer
 
     fetcher_connector = mock.MagicMock(spec=Fetcher)
@@ -44,8 +44,8 @@ def mocks():
     annet.storage.storage_connector._classes = [storage_provider]
     annet.rulebook.rulebook_provider_connector._classes = [MockDefaultRulebookProvider]
     annet.rulebook.rulebook_provider_connector._cache = None
-    annet.diff.device_file_differ_connector._classes = [PrintableDeviceDiffer]
-    annet.diff.device_file_differ_connector._cache = None
+    annet.diff.file_differ_connector._classes = [PrintableDeviceDiffer]
+    annet.diff.file_differ_connector._cache = None
 
     deployer = mock.MagicMock(spec=DeployDriver)
     deployer.build_configuration_cmdlist.return_value = (CommandList(), CommandList())
@@ -56,8 +56,8 @@ def mocks():
     )
     yield ret
 
-    annet.diff.device_file_differ_connector._classes = orig_device_file_differ_connector_classes
-    annet.diff.device_file_differ_connector._cache = orig_device_file_differ_connector_cache
+    annet.diff.file_differ_connector._classes = orig_device_file_differ_connector_classes
+    annet.diff.file_differ_connector._cache = orig_device_file_differ_connector_cache
     annet.deploy.fetcher_connector._classes = orig_fetcher_connector_classes
     annet.deploy.driver_connector._classes = orig_driver_connector_classes
     annet.output.output_driver_connector._classes = orig_output_driver_connector_classes

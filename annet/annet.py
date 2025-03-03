@@ -13,7 +13,7 @@ def main():
     cli.fill_base_args(parser, annet.__name__, "configs/logging.yaml")
     rulebook.rulebook_provider_connector.set(rulebook.DefaultRulebookProvider)
     hardware.hardware_connector.set(hardware.AnnetHardwareProvider)
-    diff.device_file_differ_connector.set(diff.PrintableDeviceDiffer)
+    diff.file_differ_connector.set(diff.UnifiedFileDiffer)
 
     parser.add_commands(parser.find_subcommands(cli.list_subcommands()))
     try:
