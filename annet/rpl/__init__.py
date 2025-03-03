@@ -16,11 +16,12 @@ __all__ = [
     "RoutingPolicy",
     "CommunityActionValue",
     "PrefixMatchValue",
+    "OrLonger",
 ]
 
 from .action import Action, ActionType, SingleAction
 from .condition import AndCondition, Condition, ConditionOperator, SingleCondition
-from .match_builder import R, MatchField, PrefixMatchValue
+from .match_builder import R, MatchField, PrefixMatchValue, OrLonger
 from .policy import RoutingPolicyStatement, RoutingPolicy
 from .result import ResultType
 from .routemap import RouteMap, Route

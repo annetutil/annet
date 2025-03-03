@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from annet.rpl import RoutingPolicy, PrefixMatchValue, SingleCondition, MatchField
+from annet.rpl import RoutingPolicy, PrefixMatchValue, SingleCondition, MatchField, OrLonger
 
 
 class CommunityLogic(Enum):
@@ -46,12 +46,12 @@ class AsPathFilter:
 @dataclass
 class IpPrefixListMember:
     prefix: IPv4Network | IPv6Network
-    or_longer: tuple[Optional[int], Optional[int]] = (None, None)
+    or_longer: OrLonger = (None, None)
 
     def __init__(
             self,
             prefix: IPv4Network | IPv6Network | str,
-            or_longer: tuple[Optional[int], Optional[int]] = (None, None)
+            or_longer: OrLonger = (None, None)
         ):
         self.prefix = ip_network(prefix)
         self.or_longer = or_longer
@@ -90,7 +90,7 @@ class PrefixListNameGenerator:
     def get_prefix(self, name: str, match: PrefixMatchValue) -> IpPrefixList:
         orig_prefix = self._prefix_lists[name]
         override_name: Optional[str] = None
-        override_orlonger: Optional[tuple[int | None, int | None]] = None
+        override_orlonger: Optional[OrLonger] = None
 
         if any(match.or_longer):
             ge, le = match.or_longer
