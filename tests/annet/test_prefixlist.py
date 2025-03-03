@@ -1,7 +1,7 @@
 from typing import Any, Sequence
 from unittest.mock import Mock
 from annet.tabparser import make_formatter, parse_to_tree
-from annet.rpl_generators import IpPrefixList, PrefixListFilterGenerator, CumulusPolicyGenerator
+from annet.rpl_generators import IpPrefixList, PrefixListFilterGenerator, CumulusPolicyGenerator, IpPrefixListMember
 from annet.rpl import R, RouteMap, Route, RoutingPolicy
 
 from . import MockDevice
@@ -87,8 +87,8 @@ def test_huawei_prefixlist_with_match_orlonger():
 
     result = gen(routemaps, plists, huawei())
     expected = scrub("""
-ip ip-prefix IPV4_LIST index 5 permit 10.0.0.0 8 greater-equal 8 less-equal 32
-ip ipv6-prefix IPV6_LIST index 5 permit 2001:DB8:1234:: 64 greater-equal 64 less-equal 128
+ip ip-prefix IPV4_LIST_8_32 index 5 permit 10.0.0.0 8 greater-equal 8 less-equal 32
+ip ipv6-prefix IPV6_LIST_64_128 index 5 permit 2001:DB8:1234:: 64 greater-equal 64 less-equal 128
 """)
     assert result == expected
 
@@ -108,9 +108,9 @@ def test_arista_prefixlist_match_orlonger():
 
     result = gen(routemaps, plists, arista())
     expected = scrub("""
-ip prefix-list IPV4_LIST
+ip prefix-list IPV4_LIST_8_32
   seq 10 permit 10.0.0.0/8 ge 8 le 32
-ipv6 prefix-list IPV6_LIST
+ipv6 prefix-list IPV6_LIST_64_128
   seq 10 permit 2001:db8:1234::/64 ge 64 le 128
 """)
     assert result == expected
@@ -131,8 +131,8 @@ def test_cumulus_prefixlist_match_orlonger():
 
     result = gen(routemaps, plists, cumulus())
     expected = scrub("""
-ip prefix-list IPV4_LIST seq 5 permit 10.0.0.0/8 ge 8 le 32
-ipv6 prefix-list IPV6_LIST seq 5 permit 2001:db8:1234::/64 ge 64 le 128
+ip prefix-list IPV4_LIST_8_32 seq 5 permit 10.0.0.0/8 ge 8 le 32
+ipv6 prefix-list IPV6_LIST_64_128 seq 5 permit 2001:db8:1234::/64 ge 64 le 128
 """)
     assert result == expected
 
@@ -164,26 +164,26 @@ ip ipv6-prefix IPV6_LIST_64_128 index 5 permit 2001:DB8:1234:: 64 greater-equal 
     assert result == expected
 
 
-# def test_huawei_prefixlist_embedded_orlonger():
-#     plists = [
-#         IpPrefixList("IPV4_LIST", [IpPrefixListMember("10.0.0.0/8", or_longer=(8, 32))]),
-#         IpPrefixList("IPV6_LIST", [IpPrefixListMember("2001:db8:1234::/64", or_longer=(64, 128))]),
-#     ]
-#     routemaps = RouteMap[Mock]()
-#     @routemaps
-#     def policy(device: Mock, route: Route):
-#         with route(R.match_v4("IPV4_LIST")) as rule:
-#             rule.allow()
-#         with route(R.match_v6("IPV6_LIST")) as rule:
-#             rule.allow()
+def test_huawei_prefixlist_embedded_orlonger():
+    plists = [
+        IpPrefixList("IPV4_LIST", [IpPrefixListMember("10.0.0.0/8", (8, 32))]),
+        IpPrefixList("IPV6_LIST", [IpPrefixListMember("2001:db8:1234::/64", (64, 128))]),
+    ]
+    routemaps = RouteMap[Mock]()
+    @routemaps
+    def policy(device: Mock, route: Route):
+        with route(R.match_v4("IPV4_LIST")) as rule:
+            rule.allow()
+        with route(R.match_v6("IPV6_LIST")) as rule:
+            rule.allow()
 
 
-#     result = gen(routemaps, plists, huawei())
-#     expected = scrub("""
-# ip ip-prefix IPV4_LIST_8_32 index 5 permit 10.0.0.0 8 greater-equal 8 less-equal 32
-# ip ipv6-prefix IPV6_LIST_64_128 index 5 permit 2001:DB8:1234:: 64 greater-equal 64 less-equal 128
-# """)
-#     assert result == expected
+    result = gen(routemaps, plists, huawei())
+    expected = scrub("""
+ip ip-prefix IPV4_LIST index 5 permit 10.0.0.0 8 greater-equal 8 less-equal 32
+ip ipv6-prefix IPV6_LIST index 5 permit 2001:DB8:1234:: 64 greater-equal 64 less-equal 128
+""")
+    assert result == expected
 
 
 def gen(routemaps: RouteMap, plists: list[IpPrefixList], dev: MockDevice) -> str:

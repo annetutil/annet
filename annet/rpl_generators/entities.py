@@ -85,39 +85,26 @@ def mangle_united_community_list_name(values: Sequence[str]) -> str:
 class PrefixListNameGenerator:
     def __init__(self, prefix_lists: Sequence[IpPrefixList], policies: Sequence[RoutingPolicy]):
         self._prefix_lists = {x.name: x for x in prefix_lists}
-        self._orlongers = defaultdict(set)
-
-        for policy in policies:
-            for statement in policy.statements:
-                condition: SingleCondition[PrefixMatchValue]
-                for condition in statement.match.find_all(MatchField.ipv6_prefix):
-                    for name in condition.value.names:
-                        self._orlongers[name].add(condition.value.or_longer)
-                for condition in statement.match.find_all(MatchField.ip_prefix):
-                    for name in condition.value.names:
-                        self._orlongers[name].add(condition.value.or_longer)
+        self._policies = {x.name: x for x in policies}  # this is here for a later use ~azryve@
 
     def get_prefix(self, name: str, match: PrefixMatchValue) -> IpPrefixList:
         orig_prefix = self._prefix_lists[name]
-        orig_name = orig_prefix.name
-        or_longer = match.or_longer
+        override_name: Optional[str] = None
+        override_orlonger: Optional[tuple[int | None, int | None]] = None
 
-        if len(self._orlongers[orig_name]) == 1:
-            name = orig_name
-        elif not any(match.or_longer):
-            name = orig_name
-        else:
-            ge, le = or_longer
+        if any(match.or_longer):
+            ge, le = match.or_longer
             ge_str = "unset" if ge is None else str(ge)
             le_str = "unset" if le is None else str(le)
-            name = f"{orig_name}_{ge_str}_{le_str}"
+            override_name = f"{orig_prefix.name}_{ge_str}_{le_str}"
+            override_orlonger = match.or_longer
 
         return IpPrefixList(
-            name=name,
+            name=override_name or name,
             members=[
                 IpPrefixListMember(
                     x.prefix,
-                    or_longer=or_longer,
+                    or_longer=override_orlonger or x.or_longer,
                 )
                 for x in orig_prefix.members
             ],
