@@ -63,11 +63,15 @@ class SetConditionFactory(Generic[ValueT]):
         return SingleCondition(self.field, ConditionOperator.HAS_ANY, values)
 
 
+# OrLonger represents a pair of (le, ge)
+# for prefix mask length match in prefix-lists
+OrLonger = tuple[Optional[int], Optional[int]]
+
+
 @dataclass(frozen=True)
 class PrefixMatchValue:
     names: tuple[str, ...]
-    greater_equal: Optional[int]
-    less_equal: Optional[int]
+    or_longer: OrLonger = (None, None)
 
 
 class Checkable:
@@ -91,23 +95,23 @@ class Checkable:
     def match_v6(
             self,
             *names: str,
-            or_longer: tuple[Optional[int], Optional[int]] = (None, None),
+            or_longer: OrLonger = (None, None),
     ) -> SingleCondition[PrefixMatchValue]:
         return SingleCondition(
             MatchField.ipv6_prefix,
             ConditionOperator.CUSTOM,
-            PrefixMatchValue(names, greater_equal=or_longer[0], less_equal=or_longer[1]),
+            PrefixMatchValue(names, or_longer),
         )
 
     def match_v4(
             self,
             *names: str,
-            or_longer: tuple[Optional[int], Optional[int]] = (None, None),
+            or_longer: OrLonger = (None, None),
     ) -> SingleCondition[PrefixMatchValue]:
         return SingleCondition(
             MatchField.ip_prefix,
             ConditionOperator.CUSTOM,
-            PrefixMatchValue(names, greater_equal=or_longer[0], less_equal=or_longer[1]),
+            PrefixMatchValue(names, or_longer),
         )
 
 

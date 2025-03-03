@@ -14,7 +14,7 @@ from .entities import (
     AsPathFilter, IpPrefixList, CommunityList, CommunityLogic, CommunityType,
     mangle_united_community_list_name, PrefixListNameGenerator,
 )
-from .prefix_lists import get_used_prefix_lists, new_prefix_list_name_generator
+
 
 FRR_RESULT_MAP = {
     ResultType.ALLOW: "permit",
@@ -51,12 +51,6 @@ class CumulusPolicyGenerator(ABC):
     def get_prefix_lists(self, device: Any) -> Sequence[IpPrefixList]:
         raise NotImplementedError()
 
-    def get_used_prefix_lists(self, device: Any, name_generator: PrefixListNameGenerator) -> Sequence[IpPrefixList]:
-        return get_used_prefix_lists(
-            prefix_lists=self.get_prefix_lists(device),
-            name_generator=name_generator,
-        )
-
     @abstractmethod
     def get_community_lists(self, device: Any) -> list[CommunityList]:
         raise NotImplementedError()
@@ -66,8 +60,9 @@ class CumulusPolicyGenerator(ABC):
         raise NotImplementedError
 
     def generate_cumulus_rpl(self, device: Any) -> Iterator[Sequence[str]]:
+        prefix_lists = self.get_prefix_lists(device)
         policies = self.get_policies(device)
-        prefix_list_name_generator = new_prefix_list_name_generator(policies)
+        prefix_list_name_generator = PrefixListNameGenerator(prefix_lists, policies)
 
         communities = {c.name: c for c in self.get_community_lists(device)}
         yield from self._cumulus_as_path_filters(device, policies)
@@ -89,60 +84,46 @@ class CumulusPolicyGenerator(ABC):
 
     def _cumulus_prefix_list(
             self,
-            name: str,
             ip_type: Literal["ipv6", "ip"],
-            match: PrefixMatchValue,
             plist: IpPrefixList,
     ) -> Iterable[Sequence[str]]:
-        for i, prefix in enumerate(plist.members):
-            addr_mask = ip_interface(prefix)
+        for i, m in enumerate(plist.members):
+            ge, le = m.or_longer
             yield (
                 ip_type,
                 "prefix-list",
-                name,
+                plist.name,
                 f"seq {i * 5 + 5}",
-                "permit", f"{addr_mask.ip}/{addr_mask.network.prefixlen}",
+                "permit", str(m.prefix),
             ) + (
-                ("ge", str(match.greater_equal)) if match.greater_equal is not None else ()
+                ("ge", str(ge)) if ge is not None else ()
             ) + (
-                ("le", str(match.less_equal)) if match.less_equal is not None else ()
+                ("le", str(le)) if le is not None else ()
             )
 
     def _cumulus_prefix_lists(
             self, device: Any,
             policies: list[RoutingPolicy],
-            prefix_list_name_generator: PrefixListNameGenerator,
+            name_generator: PrefixListNameGenerator,
     ) -> Iterable[Sequence[str]]:
-        plists = {p.name: p for p in self.get_used_prefix_lists(device, prefix_list_name_generator)}
-        if not plists.values():
-            return
-
-        precessed_names = set()
+        processed_names = set()
         for policy in policies:
             for statement in policy.statements:
                 cond: SingleCondition[PrefixMatchValue]
                 for cond in statement.match.find_all(MatchField.ip_prefix):
                     for name in cond.value.names:
-                        mangled_name = prefix_list_name_generator.get_prefix_name(
-                            name=name,
-                            greater_equal=cond.value.greater_equal,
-                            less_equal=cond.value.less_equal,
-                        )
-                        if mangled_name in precessed_names:
+                        plist = name_generator.get_prefix(name, cond.value)
+                        if plist.name in processed_names:
                             continue
-                        yield from self._cumulus_prefix_list(mangled_name, "ip", cond.value, plists[name])
-                        precessed_names.add(mangled_name)
+                        yield from self._cumulus_prefix_list("ip", plist)
+                        processed_names.add(plist.name)
                 for cond in statement.match.find_all(MatchField.ipv6_prefix):
                     for name in cond.value.names:
-                        mangled_name = prefix_list_name_generator.get_prefix_name(
-                            name=name,
-                            greater_equal=cond.value.greater_equal,
-                            less_equal=cond.value.less_equal,
-                        )
-                        if mangled_name in precessed_names:
+                        plist = name_generator.get_prefix(name, cond.value)
+                        if plist.name in processed_names:
                             continue
-                        yield from self._cumulus_prefix_list(mangled_name, "ipv6", cond.value, plists[name])
-                        precessed_names.add(mangled_name)
+                        yield from self._cumulus_prefix_list("ipv6", plist)
+                        processed_names.add(plist.name)
         yield "!"
 
     def get_used_united_community_lists(
@@ -231,7 +212,7 @@ class CumulusPolicyGenerator(ABC):
             self,
             device: Any,
             condition: SingleCondition[Any],
-            prefix_list_name_generator: PrefixListNameGenerator,
+            name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         if condition.field == MatchField.community:
             for comm_name in self._get_match_community_names(condition):
@@ -251,21 +232,13 @@ class CumulusPolicyGenerator(ABC):
             return
         if condition.field == MatchField.ip_prefix:
             for name in condition.value.names:
-                mangled_name = prefix_list_name_generator.get_prefix_name(
-                    name=name,
-                    greater_equal=condition.value.greater_equal,
-                    less_equal=condition.value.less_equal,
-                )
-                yield "match", "ip address prefix-list", mangled_name
+                plist = name_generator.get_prefix(name, condition.value)
+                yield "match", "ip address prefix-list", plist.name
             return
         if condition.field == MatchField.ipv6_prefix:
             for name in condition.value.names:
-                mangled_name = prefix_list_name_generator.get_prefix_name(
-                    name=name,
-                    greater_equal=condition.value.greater_equal,
-                    less_equal=condition.value.less_equal,
-                )
-                yield "match", "ipv6 address prefix-list", mangled_name
+                plist = name_generator.get_prefix(name, condition.value)
+                yield "match", "ipv6 address prefix-list", plist.name
             return
         if condition.operator is not ConditionOperator.EQ:
             raise NotImplementedError(
