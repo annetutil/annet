@@ -48,13 +48,8 @@ class IpPrefixListMember:
     prefix: IPv4Network | IPv6Network
     or_longer: OrLonger = (None, None)
 
-    def __init__(
-            self,
-            prefix: IPv4Network | IPv6Network | str,
-            or_longer: OrLonger = (None, None)
-        ):
-        self.prefix = ip_network(prefix)
-        self.or_longer = or_longer
+    def __post_init__(self):
+        self.prefix = ip_network(self.prefix)
 
 
 @dataclass
@@ -62,13 +57,27 @@ class IpPrefixList:
     name: str
     members: list[IpPrefixListMember]
 
-    def __init__(self, name: str, members: Sequence[IpPrefixListMember | str]):
-        self.name = name
-        self.members = []
-        for m in members:
+    def __post_init__(self):
+        for (i, m) in enumerate(self.members):
             if isinstance(m, str):
-                m = IpPrefixListMember(m)
-            self.members.append(m)
+                self.members[i] = IpPrefixListMember(m)
+
+
+def ip_prefix_list(
+        name: str,
+        members: Sequence[IpPrefixListMember | str],
+        or_longer: OrLonger = (None, None),
+) -> IpPrefixList:
+    for (i, m) in enumerate(members):
+        if isinstance(m, str):
+            m = IpPrefixListMember(m, or_longer)
+        elif m.or_longer == (None, None):
+            m.or_longer = or_longer
+        members[i] = m
+    return IpPrefixList(
+        name=name,
+        members=members,
+    )
 
 
 def arista_well_known_community(community: str) -> str:

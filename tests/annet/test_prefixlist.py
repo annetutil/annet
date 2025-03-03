@@ -1,16 +1,49 @@
 from typing import Any, Sequence
+from ipaddress import IPv4Network, IPv6Network
 from unittest.mock import Mock
 from annet.tabparser import make_formatter, parse_to_tree
-from annet.rpl_generators import IpPrefixList, PrefixListFilterGenerator, CumulusPolicyGenerator, IpPrefixListMember
+from annet.rpl_generators import ip_prefix_list, IpPrefixList, IpPrefixListMember, PrefixListFilterGenerator, CumulusPolicyGenerator
 from annet.rpl import R, RouteMap, Route, RoutingPolicy
 
 from . import MockDevice
 
 
+def test_ip_prefix_list():
+    assert ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"]) == IpPrefixList(
+        name="IPV4_LIST",
+        members=[
+            IpPrefixListMember(
+                prefix=IPv4Network("10.0.0.0/8"),
+                or_longer=(None, None),
+            ),
+        ])
+
+    assert ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"], (None, 32)) == IpPrefixList(
+        name="IPV4_LIST",
+        members=[
+            IpPrefixListMember(
+                prefix=IPv4Network("10.0.0.0/8"),
+                or_longer=(None, 32),
+            ),
+        ])
+
+    assert ip_prefix_list("IPV4_LIST", [IpPrefixListMember(IPv4Network("10.0.0.0/8"), (8, 32)), "11.0.0.0/8"], (None, 32)) == IpPrefixList(
+        name="IPV4_LIST",
+        members=[
+            IpPrefixListMember(
+                prefix=IPv4Network("10.0.0.0/8"),
+                or_longer=(8, 32),
+            ),
+            IpPrefixListMember(
+                prefix=IPv4Network("11.0.0.0/8"),
+                or_longer=(None, 32),
+            ),
+        ])
+
 def test_huawei_prefixlist_basic():
     plists = [
-        IpPrefixList("IPV4_LIST", ["10.0.0.0/8"]),
-        IpPrefixList("IPV6_LIST", ["2001:db8:1234::/64"]),
+        ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"]),
+        ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
     ]
     routemaps = RouteMap[Mock]()
     @routemaps
@@ -30,8 +63,8 @@ ip ipv6-prefix IPV6_LIST index 5 permit 2001:DB8:1234:: 64
 
 def test_arista_prefixlist_basic():
     plists = [
-        IpPrefixList("IPV4_LIST", ["10.0.0.0/8"]),
-        IpPrefixList("IPV6_LIST", ["2001:db8:1234::/64"]),
+        ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"]),
+        ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
     ]
     routemaps = RouteMap[Mock]()
     @routemaps
@@ -53,8 +86,8 @@ ipv6 prefix-list IPV6_LIST
 
 def test_cumulus_prefixlist_basic():
     plists = [
-        IpPrefixList("IPV4_LIST", ["10.0.0.0/8"]),
-        IpPrefixList("IPV6_LIST", ["2001:db8:1234::/64"]),
+        ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"]),
+        ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
     ]
     routemaps = RouteMap[Mock]()
     @routemaps
@@ -74,8 +107,8 @@ ipv6 prefix-list IPV6_LIST seq 5 permit 2001:db8:1234::/64
 
 def test_huawei_prefixlist_with_match_orlonger():
     plists = [
-        IpPrefixList("IPV4_LIST", ["10.0.0.0/8"]),
-        IpPrefixList("IPV6_LIST", ["2001:db8:1234::/64"]),
+        ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"]),
+        ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
     ]
     routemaps = RouteMap[Mock]()
     @routemaps
@@ -95,8 +128,8 @@ ip ipv6-prefix IPV6_LIST_64_128 index 5 permit 2001:DB8:1234:: 64 greater-equal 
 
 def test_arista_prefixlist_match_orlonger():
     plists = [
-        IpPrefixList("IPV4_LIST", ["10.0.0.0/8"]),
-        IpPrefixList("IPV6_LIST", ["2001:db8:1234::/64"]),
+        ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"]),
+        ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
     ]
     routemaps = RouteMap[Mock]()
     @routemaps
@@ -118,8 +151,8 @@ ipv6 prefix-list IPV6_LIST_64_128
 
 def test_cumulus_prefixlist_match_orlonger():
     plists = [
-        IpPrefixList("IPV4_LIST", ["10.0.0.0/8"]),
-        IpPrefixList("IPV6_LIST", ["2001:db8:1234::/64"]),
+        ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"]),
+        ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
     ]
     routemaps = RouteMap[Mock]()
     @routemaps
@@ -139,8 +172,8 @@ ipv6 prefix-list IPV6_LIST_64_128 seq 5 permit 2001:db8:1234::/64 ge 64 le 128
 
 def test_huawei_prefixlist_with_match_both():
     plists = [
-        IpPrefixList("IPV4_LIST", ["10.0.0.0/8"]),
-        IpPrefixList("IPV6_LIST", ["2001:db8:1234::/64"]),
+        ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"]),
+        ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
     ]
     routemaps = RouteMap[Mock]()
     @routemaps
@@ -166,8 +199,8 @@ ip ipv6-prefix IPV6_LIST_64_128 index 5 permit 2001:DB8:1234:: 64 greater-equal 
 
 def test_huawei_prefixlist_embedded_orlonger():
     plists = [
-        IpPrefixList("IPV4_LIST", [IpPrefixListMember("10.0.0.0/8", (8, 32))]),
-        IpPrefixList("IPV6_LIST", [IpPrefixListMember("2001:db8:1234::/64", (64, 128))]),
+        ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"], (8, 32)),
+        ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"], (64, 128)),
     ]
     routemaps = RouteMap[Mock]()
     @routemaps
