@@ -247,8 +247,7 @@ def gen(routemaps: RouteMap, plists: list[IpPrefixList], dev: MockDevice) -> str
         # <ip|ipv6> prefix-list ...
         result = (x for x in result if len(x) > 2)
         result = (x for x in result if x[1] == "prefix-list") 
-        result = (" ".join(x) for x in result)
-        text = "\n".join(result)
+        text = "\n".join((" ".join(x) for x in result))
     else: 
         storage = Mock()
         generator = TestPrefixListFilterGenerator(storage)

@@ -1,11 +1,10 @@
 from ipaddress import IPv4Network, IPv6Network, ip_network
-from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
-from annet.rpl import RoutingPolicy, PrefixMatchValue, SingleCondition, MatchField, OrLonger
+from annet.rpl import RoutingPolicy, PrefixMatchValue, OrLonger
 
 
 class CommunityLogic(Enum):
@@ -65,15 +64,22 @@ class IpPrefixList:
 
 def ip_prefix_list(
         name: str,
-        members: Sequence[IpPrefixListMember | str],
+        members_or_str: Sequence[IpPrefixListMember | str],
         or_longer: OrLonger = (None, None),
 ) -> IpPrefixList:
-    for (i, m) in enumerate(members):
+    members: List[IpPrefixListMember] = []
+    for m in members_or_str:
         if isinstance(m, str):
-            m = IpPrefixListMember(m, or_longer)
+            m = IpPrefixListMember(
+                prefix=ip_network(m),
+                or_longer=or_longer,
+            )
         elif m.or_longer == (None, None):
-            m.or_longer = or_longer
-        members[i] = m
+            m = IpPrefixListMember(
+                prefix=m.prefix,
+                or_longer=or_longer,
+            )
+        members.append(m)
     return IpPrefixList(
         name=name,
         members=members,
