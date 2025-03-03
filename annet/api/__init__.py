@@ -477,14 +477,14 @@ class PCDeployerJob(DeployerJob):
             for file, (file_content_or_json_cfg, cmds) in pc_files.items():
                 if generator_type == GeneratorType.ENTIRE:
                     file_content: str = file_content_or_json_cfg
-                    diff_content = differ.diff_file(res.device.hw, file, old_files.get(file), file_content)
+                    diff_content = "\n".join(differ.diff_file(res.device.hw, file, old_files.get(file), file_content))
                 else:  # generator_type == GeneratorType.JSON_FRAGMENT
                     old_json_cfg = old_json_fragment_files[file]
                     json_patch = jsontools.make_patch(old_json_cfg, file_content_or_json_cfg)
                     file_content = jsontools.format_json(json_patch)
                     old_text = jsontools.format_json(old_json_cfg)
                     new_text = jsontools.format_json(file_content_or_json_cfg)
-                    diff_content = differ.diff_file(res.device.hw, file, old_text, new_text)
+                    diff_content = "\n".join(differ.diff_file(res.device.hw, file, old_text, new_text))
 
                 if diff_content or force_reload:
                     self._has_diff |= True
