@@ -92,26 +92,24 @@ class PrefixListNameGenerator:
                 condition: SingleCondition[PrefixMatchValue]
                 for condition in statement.match.find_all(MatchField.ipv6_prefix):
                     for name in condition.value.names:
-                        orlonger = (condition.value.greater_equal, condition.value.less_equal)
-                        self._orlongers[name].add(orlonger)
+                        self._orlongers[name].add(condition.value.or_longer)
                 for condition in statement.match.find_all(MatchField.ip_prefix):
                     for name in condition.value.names:
-                        orlonger = (condition.value.greater_equal, condition.value.less_equal)
-                        self._orlongers[name].add(orlonger)
+                        self._orlongers[name].add(condition.value.or_longer)
 
     def get_prefix(self, name: str, match: PrefixMatchValue) -> IpPrefixList:
         orig_prefix = self._prefix_lists[name]
         orig_name = orig_prefix.name
-        greater_equal = match.greater_equal
-        less_equal = match.less_equal
+        or_longer = match.or_longer
 
         if len(self._orlongers[orig_name]) == 1:
             name = orig_name
-        elif greater_equal is less_equal is None:
+        elif not any(match.or_longer):
             name = orig_name
         else:
-            ge_str = "unset" if greater_equal is None else str(greater_equal)
-            le_str = "unset" if less_equal is None else str(less_equal)
+            ge, le = or_longer
+            ge_str = "unset" if ge is None else str(ge)
+            le_str = "unset" if le is None else str(le)
             name = f"{orig_name}_{ge_str}_{le_str}"
 
         return IpPrefixList(
@@ -119,7 +117,7 @@ class PrefixListNameGenerator:
             members=[
                 IpPrefixListMember(
                     x.prefix,
-                    or_longer=(greater_equal, less_equal)
+                    or_longer=or_longer,
                 )
                 for x in orig_prefix.members
             ],

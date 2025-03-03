@@ -66,8 +66,7 @@ class SetConditionFactory(Generic[ValueT]):
 @dataclass(frozen=True)
 class PrefixMatchValue:
     names: tuple[str, ...]
-    greater_equal: Optional[int]
-    less_equal: Optional[int]
+    or_longer: tuple[Optional[int], Optional[int]] = (None, None)
 
 
 class Checkable:
@@ -96,7 +95,7 @@ class Checkable:
         return SingleCondition(
             MatchField.ipv6_prefix,
             ConditionOperator.CUSTOM,
-            PrefixMatchValue(names, greater_equal=or_longer[0], less_equal=or_longer[1]),
+            PrefixMatchValue(names, or_longer),
         )
 
     def match_v4(
@@ -107,7 +106,7 @@ class Checkable:
         return SingleCondition(
             MatchField.ip_prefix,
             ConditionOperator.CUSTOM,
-            PrefixMatchValue(names, greater_equal=or_longer[0], less_equal=or_longer[1]),
+            PrefixMatchValue(names, or_longer),
         )
 
 
