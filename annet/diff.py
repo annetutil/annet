@@ -122,7 +122,7 @@ class UnifiedFileDiffer(FileDiffer):
         return list(difflib.unified_diff(old_lines, new_lines, n=context, lineterm=""))
 
 
-class FrrFileDiffer(FileDiffer):
+class FrrFileDiffer(UnifiedFileDiffer):
     def diff_file(self, hw: HardwareView, path: str | Path, old: str, new: str) -> list[str]:
         if (hw.PC.Mellanox or hw.PC.NVIDIA) and (path == "/etc/frr/frr.conf"):
             return self._diff_frr_conf(hw, old, new)
