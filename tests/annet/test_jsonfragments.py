@@ -331,7 +331,7 @@ def _set_differ():
     orig_device_file_differ_connector_classes = annet.diff.file_differ_connector._classes
     orig_device_file_differ_connector_cache = annet.diff.file_differ_connector._cache
 
-    annet.diff.file_differ_connector._classes = [annet.diff.PrintableDeviceDiffer]
+    annet.diff.file_differ_connector._classes = [annet.diff.UnifiedFileDiffer]
     annet.diff.file_differ_connector._cache = None
     yield
 

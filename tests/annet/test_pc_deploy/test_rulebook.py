@@ -9,7 +9,7 @@ from annet.gen import OldNewResult
 from annet.deploy import CommandList, DeployDriver, Fetcher
 from annet.output import OutputDriver
 from annet.rulebook import DefaultRulebookProvider
-from annet.diff import PrintableDeviceDiffer
+from annet.diff import UnifiedFileDiffer
 from annet.storage import StorageProvider
 
 from .. import MockDevice
@@ -44,7 +44,7 @@ def mocks():
     annet.storage.storage_connector._classes = [storage_provider]
     annet.rulebook.rulebook_provider_connector._classes = [MockDefaultRulebookProvider]
     annet.rulebook.rulebook_provider_connector._cache = None
-    annet.diff.file_differ_connector._classes = [PrintableDeviceDiffer]
+    annet.diff.file_differ_connector._classes = [UnifiedFileDiffer]
     annet.diff.file_differ_connector._cache = None
 
     deployer = mock.MagicMock(spec=DeployDriver)
