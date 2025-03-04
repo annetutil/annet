@@ -1,8 +1,11 @@
-/annet.egg-info
 __pycache__
 /.coverage
-/.idea/
-/.tox-logs/
+/.idea
+/.mypy_cache
+/.pytest_cache
+/.tox
+/.tox-logs
+/annet.egg-info
 /coverage.xml
 /build
 venv
