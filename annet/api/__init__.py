@@ -52,8 +52,6 @@ from annet.storage import Device, get_storage
 from annet.types import Diff, ExitCode, OldNewResult, Op, PCDiff, PCDiffFile
 
 
-live_configs = ann_gen.live_configs
-
 DEFAULT_INDENT = "  "
 
 
@@ -255,10 +253,9 @@ def _diff_files(hw, old_files, new_files):
 
 def patch(args: cli_args.ShowPatchOptions, loader: ann_gen.Loader):
     """ Сгенерировать патч для устройств """
-    global live_configs  # pylint: disable=global-statement
     if args.config == "running":
         fetcher = annet.deploy.get_fetcher()
-        live_configs = annet.lib.do_async(fetcher.fetch(loader.devices, processes=args.parallel))
+        ann_gen.live_configs = annet.lib.do_async(fetcher.fetch(loader.devices, processes=args.parallel))
     stdin = args.stdin(filter_acl=args.filter_acl, config=args.config)
 
     filterer = filtering.filterer_connector.get()
@@ -619,7 +616,6 @@ class Deployer:
         return ans
 
     def check_diff(self, result: annet.deploy.DeployResult, loader: ann_gen.Loader):
-        global live_configs  # pylint: disable=global-statement
         success_device_ids = []
         for host, hres in result.results.items():
             device = self.fqdn_to_device[host]
@@ -634,7 +630,7 @@ class Deployer:
             config="running",
         )
         if diff_args.query:
-            live_configs = None
+            ann_gen.live_configs = None
             diffs = diff(diff_args, loader, success_device_ids, self._filterer)
             non_pc_diffs = {dev: diff for dev, diff in diffs.items() if not isinstance(diff, PCDiff)}
             devices_to_diff = ann_diff.collapse_diffs(non_pc_diffs)
@@ -677,13 +673,23 @@ async def adeploy(
 ) -> ExitCode:
     """ Сгенерировать конфиг для устройств и задеплоить его """
     ret: ExitCode = 0
-    global live_configs  # pylint: disable=global-statement
-    live_configs = await fetcher.fetch(devices=loader.devices, processes=args.parallel)
-    pool = ann_gen.OldNewParallel(args, loader, filterer)
+    ann_gen.live_configs = await fetcher.fetch(devices=loader.devices, processes=args.parallel)
 
-    for res in pool.generated_configs(loader.devices):
+    device_ids = [d.id for d in loader.devices]
+    for res in ann_gen.old_new(
+        args,
+        config=args.config,
+        loader=loader,
+        no_new=args.clear,
+        stdin=args.stdin(filter_acl=args.filter_acl, config=args.config),
+        do_files_download=True,
+        device_ids=device_ids,
+        filterer=filterer,
+    ):
         # Меняем exit code если хоть один device ловил exception
         if res.err is not None:
+            if not args.tolerate_fails:
+                raise res.err
             get_logger(res.device.hostname).error("error generating configs", exc_info=res.err)
             ret |= 2 ** 3
         job = DeployerJob.from_device(res.device, args)
