@@ -674,11 +674,22 @@ async def adeploy(
     """ Сгенерировать конфиг для устройств и задеплоить его """
     ret: ExitCode = 0
     ann_gen.live_configs = await fetcher.fetch(devices=loader.devices, processes=args.parallel)
-    pool = ann_gen.OldNewParallel(args, loader, filterer)
 
-    for res in pool.generated_configs(loader.devices):
+    device_ids = [d.id for d in loader.devices]
+    for res in ann_gen.old_new(
+        args,
+        config=args.config,
+        loader=loader,
+        no_new=args.clear,
+        stdin=args.stdin(filter_acl=args.filter_acl, config=args.config),
+        do_files_download=True,
+        device_ids=device_ids,
+        filterer=filterer,
+    ):
         # Меняем exit code если хоть один device ловил exception
         if res.err is not None:
+            if not args.tolerate_fails:
+                raise res.err
             get_logger(res.device.hostname).error("error generating configs", exc_info=res.err)
             ret |= 2 ** 3
         job = DeployerJob.from_device(res.device, args)
