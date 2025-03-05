@@ -492,12 +492,15 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 yield "set", "community community-list", *action.value.replaced
             else:
                 yield "set", "community", "none"
-        for community_name in action.value.added:
-            yield "set", "community community-list", community_name, "additive"
-        for community_name in action.value.removed:
-            community = communities[community_name]
-            for comm_value in community.members:
-                yield "set community", arista_well_known_community(comm_value), "delete"
+        if action.value.added:
+            yield "set", "community community-list", *action.value.added, "additive"
+        if action.value.removed:
+            members = [
+                arista_well_known_community(member)
+                for community_name in action.value.removed
+                for member in communities[community_name].members
+            ]
+            yield "set community", *members, "delete"
 
     def _arista_then_large_community(
             self,
@@ -520,10 +523,10 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                     first = False
                 else:
                     yield "set", "large-community large-community-list", community_name, "additive"
-        for community_name in action.value.added:
-            yield "set", "large-community large-community-list", community_name, "additive"
-        for community_name in action.value.removed:
-            yield "set large-community large-community-list", community_name, "delete"
+        if action.value.added:
+            yield "set", "large-community large-community-list",  *action.value.added, "additive"
+        if action.value.removed:
+            yield "set large-community large-community-list", *action.value.removed, "delete"
 
     def _arista_then_extcommunity_rt(
             self,
@@ -533,14 +536,20 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
             raise NotImplementedError("Extcommunity_rt replace is not supported for arista")
-        for community_name in action.value.added:
-            community = communities[community_name]
-            for comm_value in community.members:
-                yield "set", "extcommunity rt", comm_value, "additive"
-        for community_name in action.value.removed:
-            community = communities[community_name]
-            for comm_value in community.members:
-                yield "set extcommunity rt", comm_value, "delete"
+        if action.value.added:
+            members = [
+                f"rt {member}"
+                for community_name in action.value.removed
+                for member in communities[community_name].members
+            ]
+            yield "set", "extcommunity", *members, "additive"
+        if action.value.removed:
+            members = [
+                f"rt {member}"
+                for community_name in action.value.removed
+                for member in communities[community_name].members
+            ]
+            yield "set extcommunity", *members, "delete"
 
     def _arista_then_extcommunity_soo(
             self,
@@ -550,14 +559,20 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
             raise NotImplementedError("Extcommunity_soo replace is not supported for arista")
-        for community_name in action.value.added:
-            community = communities[community_name]
-            for comm_value in community.members:
-                yield "set", "extcommunity soo", comm_value, "additive"
-        for community_name in action.value.removed:
-            community = communities[community_name]
-            for comm_value in community.members:
-                yield "set", "extcommunity soo", comm_value, "delete"
+        if action.value.added:
+            members = [
+                f"soo {member}"
+                for community_name in action.value.removed
+                for member in communities[community_name].members
+            ]
+            yield "set", "extcommunity", *members, "additive"
+        if action.value.removed:
+            members = [
+                f"soo {member}"
+                for community_name in action.value.removed
+                for member in communities[community_name].members
+            ]
+            yield "set", "extcommunity", *members, "delete"
 
     def _arista_then_as_path(
             self,
