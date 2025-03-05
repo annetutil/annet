@@ -334,8 +334,20 @@ class CumulusPolicyGenerator(ABC):
             raise NotImplementedError("Replacing SOO extcommunity is not supported for Cumulus")
         for community_name in action.value.added:
             yield "set", "extcommunity soo", community_name, "additive"
-        for community_name in action.value.removed:
+        if action.value.removed:
             raise NotImplementedError("SOO extcommunity remove is not supported for Cumulus")
+
+    def _cumulus_then_extcommunity(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[Any],
+    ):
+        if action.type is not ActionType.SET:
+            raise NotImplementedError("Only set none operation is supported for extcommunity on Cumulus")
+        if action.value is not None:
+            raise NotImplementedError("Cannot set extcommunity to other than None on Cumulus")
+        yield "set", "extcommunity", "none"
 
     def _cumulus_then_as_path(
             self,
@@ -376,6 +388,9 @@ class CumulusPolicyGenerator(ABC):
                 device,
                 cast(SingleAction[CommunityActionValue], action),
             )
+            return
+        if action.field == ThenField.extcommunity:
+            yield from self._cumulus_then_extcommunity(communities, device, action)
             return
         if action.field == ThenField.extcommunity_rt:
             yield from self._cumulus_then_rt_community(

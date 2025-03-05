@@ -574,6 +574,18 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             ]
             yield "set", "extcommunity", *members, "delete"
 
+    def _arista_then_extcommunity(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[Any],
+    ):
+        if action.type is not ActionType.SET:
+            raise NotImplementedError("Only set none operation is supported for extcommunity on arista")
+        if action.value is not None:
+            raise NotImplementedError("Cannot set extcommunity to other than None on arista")
+        yield "set", "extcommunity", "none"
+
     def _arista_then_as_path(
             self,
             device: Any,
@@ -619,6 +631,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             yield from self._arista_then_large_community(
                 communities, device, cast(SingleAction[CommunityActionValue], action),
             )
+            return
+        if action.field == ThenField.extcommunity:
+            yield from self._arista_then_extcommunity(communities, device, action)
             return
         if action.field == ThenField.extcommunity_rt:
             yield from self._arista_then_extcommunity_rt(

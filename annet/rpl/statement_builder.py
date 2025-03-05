@@ -14,6 +14,7 @@ class ThenField(str, Enum):
     large_community = "large_community"
     extcommunity_rt = "extcommunity_rt"
     extcommunity_soo = "extcommunity_soo"
+    extcommunity = "extcommunity"  # only used for set None
     as_path = "as_path"
     local_pref = "local_pref"
     metric = "metric"
@@ -160,6 +161,9 @@ class StatementBuilder:
     @property
     def community(self) -> CommunityActionBuilder:
         return CommunityActionBuilder(self._community)
+
+    def reset_extcommunity(self) -> None:
+        self._set(ThenField.extcommunity, None)
 
     @property
     def large_community(self) -> CommunityActionBuilder:
