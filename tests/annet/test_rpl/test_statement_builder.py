@@ -81,6 +81,13 @@ def test_community_action():
             removed=["XYZ"],
         ),
     )
+    with StatementBuilder(stmt := new_statement()) as b:
+        b.reset_extcommunity()
+    assert single_action(stmt) == SingleAction(
+        field="extcommunity",
+        type=ActionType.SET,
+        value=None,
+    )
 
 
 def test_as_path_action():
