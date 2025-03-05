@@ -33,7 +33,7 @@ class NetboxDeviceV41(NetboxDevice):
     @property
     def device_role(self):
         warnings.warn(
-            "'device_role' is deprecated, use 'role' instead.", 
+            "'device_role' is deprecated, use 'role' instead.",
             DeprecationWarning,
             stacklevel=2
         )

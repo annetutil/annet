@@ -32,7 +32,7 @@ class BaseNetboxStorage(Storage):
         ipaddress_model: The model for Netbox IP addresses.
     """
     netbox_class = None
-    api_models = api_models 
+    api_models = api_models
     device_model = models.NetboxDevice
     prefix_model = models.Prefix
     interface_model = models.Interface
@@ -106,7 +106,6 @@ class BaseNetboxStorage(Storage):
             )
             return res
 
-
         @impl_converter(
             recipe=[link_constant(P[self.interface_model].lag_min_links, value=None)],
         )
@@ -115,7 +114,6 @@ class BaseNetboxStorage(Storage):
                 ip_addresses: List[self.ipaddress_model],
         ) -> self.interface_model:
             ...
-
 
         @impl_converter
         def extend_ip_address(

@@ -15,7 +15,7 @@ class IpAddressV37(IpAddress):
 
 @dataclass
 class NetboxDeviceV37(NetboxDevice):
-    device_role: Entity 
+    device_role: Entity
 
     def __hash__(self):
         return hash((self.id, type(self)))

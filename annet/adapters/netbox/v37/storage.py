@@ -11,4 +11,3 @@ class NetboxStorageV37(BaseNetboxStorage):
     device_model = NetboxDeviceV37
     prefix_model = PrefixV37
     ipaddress_model = IpAddressV37
-
