@@ -81,3 +81,12 @@ class PrefixListNameGenerator:
         else:
             le_str = str(less_equal)
         return f"{name}_{ge_str}_{le_str}"
+
+def group_community_members(
+    all_communities: dict[str, CommunityList], communities: list[str],
+) -> dict[CommunityType, list[str]]:
+    members: dict[CommunityType, list[str]] = defaultdict(list)
+    for community_name in communities:
+        community = all_communities[community_name]
+        members[community.type].extend(community.members)
+    return members

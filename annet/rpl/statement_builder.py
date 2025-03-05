@@ -1,3 +1,4 @@
+import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
@@ -14,7 +15,7 @@ class ThenField(str, Enum):
     large_community = "large_community"
     extcommunity_rt = "extcommunity_rt"
     extcommunity_soo = "extcommunity_soo"
-    extcommunity = "extcommunity"  # only used for set None
+    extcommunity = "extcommunity"
     as_path = "as_path"
     local_pref = "local_pref"
     metric = "metric"
@@ -145,6 +146,7 @@ class StatementBuilder:
         self._added_as_path: list[int] = []
         self._community = CommunityActionValue()
         self._large_community = CommunityActionValue()
+        self._extcommunity = CommunityActionValue()
         self._extcommunity_rt = CommunityActionValue()
         self._extcommunity_soo = CommunityActionValue()
         self._as_path = AsPathActionValue()
@@ -170,11 +172,17 @@ class StatementBuilder:
         return CommunityActionBuilder(self._large_community)
 
     @property
+    def extcommunity(self) -> CommunityActionBuilder:
+        return CommunityActionBuilder(self._extcommunity)
+
+    @property
     def extcommunity_rt(self) -> CommunityActionBuilder:
+        warnings.warn(message="extcommunity_rt is deprecated, use extcommunity", category=DeprecationWarning)
         return CommunityActionBuilder(self._extcommunity_rt)
 
     @property
     def extcommunity_soo(self) -> CommunityActionBuilder:
+        warnings.warn(message="extcommunity_soo is deprecated, use extcommunity", category=DeprecationWarning)
         return CommunityActionBuilder(self._extcommunity_soo)
 
     def _set(self, field: str, value: ValueT) -> None:
@@ -248,7 +256,13 @@ class StatementBuilder:
             self._statement.then.append(SingleAction(
                 field=ThenField.large_community,
                 type=ActionType.CUSTOM,
-                value=self._extcommunity_rt,
+                value=self._large_community,
+            ))
+        if self._extcommunity:
+            self._statement.then.append(SingleAction(
+                field=ThenField.extcommunity,
+                type=ActionType.CUSTOM,
+                value=self._extcommunity,
             ))
         if self._extcommunity_rt:
             self._statement.then.append(SingleAction(
@@ -260,7 +274,7 @@ class StatementBuilder:
             self._statement.then.append(SingleAction(
                 field=ThenField.extcommunity_soo,
                 type=ActionType.CUSTOM,
-                value=self._extcommunity_rt,
+                value=self._extcommunity_soo,
             ))
         if self._as_path:
             self._statement.then.append(SingleAction(

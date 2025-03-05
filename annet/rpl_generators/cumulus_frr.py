@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABC
+from collections import defaultdict
 from collections.abc import Sequence
 from ipaddress import ip_interface
 from typing import Any, Literal, Iterable, Iterator, Optional, cast
@@ -12,7 +13,7 @@ from .aspath import get_used_as_path_filters
 from .community import get_used_united_community_lists
 from .entities import (
     AsPathFilter, IpPrefixList, CommunityList, CommunityLogic, CommunityType,
-    mangle_united_community_list_name, PrefixListNameGenerator,
+    mangle_united_community_list_name, PrefixListNameGenerator, group_community_members,
 )
 from .prefix_lists import get_used_prefix_lists, new_prefix_list_name_generator
 
@@ -337,17 +338,38 @@ class CumulusPolicyGenerator(ABC):
         if action.value.removed:
             raise NotImplementedError("SOO extcommunity remove is not supported for Cumulus")
 
+    def _cumulus_extcommunity_type_str(self, comm_type: CommunityType) -> str:
+        if comm_type is CommunityType.SOO:
+            return "soo"
+        elif comm_type is CommunityType.RT:
+            return "rt"
+        elif comm_type is CommunityType.LARGE:
+            raise ValueError("Large community is not subtype of extcommunity")
+        elif comm_type is CommunityType.BASIC:
+            raise ValueError("Basic community is not subtype of extcommunity")
+        else:
+            raise NotImplementedError(f"Community type {comm_type} is not supported on cumulus")
+
     def _cumulus_then_extcommunity(
             self,
             communities: dict[str, CommunityList],
             device: Any,
-            action: SingleAction[Any],
+            action: SingleAction[CommunityActionValue],
     ):
-        if action.type is not ActionType.SET:
-            raise NotImplementedError("Only set none operation is supported for extcommunity on Cumulus")
-        if action.value is not None:
-            raise NotImplementedError("Cannot set extcommunity to other than None on Cumulus")
-        yield "set", "extcommunity", "none"
+        if action.value.replaced is not None:
+            if action.value.added or action.value.removed:
+                raise NotImplementedError(
+                    "Cannot set extcommunity together with add/delete on cumulus",
+                )
+            members = group_community_members(communities, action.value.replaced)
+            for community_type, replaced_members in members.items():
+                type_str = self._cumulus_extcommunity_type_str(community_type)
+                yield "set", "extcommunity", type_str, *members
+        if action.value.added:
+            raise NotImplementedError("extcommunity add is not supported for Cumulus")
+        if action.value.removed:
+            raise NotImplementedError("extcommunity remove is not supported for Cumulus")
+
 
     def _cumulus_then_as_path(
             self,
