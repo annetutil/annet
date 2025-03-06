@@ -5,7 +5,7 @@ from annet.tabparser import make_formatter, parse_to_tree
 from annet.rpl_generators import ip_prefix_list, IpPrefixList, IpPrefixListMember, PrefixListFilterGenerator, CumulusPolicyGenerator, RoutingPolicyGenerator
 from annet.rpl import R, RouteMap, Route, RoutingPolicy
 
-from . import MockDevice
+from .. import MockDevice
 
 
 def test_ip_prefix_list():
