@@ -343,7 +343,6 @@ class CumulusPolicyGenerator(ABC):
         if action.value.removed:
             raise NotImplementedError("extcommunity remove is not supported for Cumulus")
 
-
     def _cumulus_then_as_path(
             self,
             device: Any,

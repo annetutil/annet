@@ -247,7 +247,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
 
     def _huawei_render_ext_community_members(
             self, comm_type: CommunityType, members: list[str]
-    ) -> Iterable[str]:
+    ) -> Sequence[Sequence[str]]:
         if comm_type is CommunityType.SOO:
             return "soo", *members
         if comm_type is CommunityType.RT:
@@ -283,8 +283,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 rendered_memebers = self._huawei_render_ext_community_members(community_type, added_members)
                 yield "set", "extcommunity", *rendered_memebers, "additive"
         if action.value.removed:
-                raise NotImplementedError("Cannot remove extcommunity on huawei")
-
+            raise NotImplementedError("Cannot remove extcommunity on huawei")
 
     def _huawei_then_as_path(
             self,
@@ -619,7 +618,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
 
     def _arista_render_ext_community_members(
             self, all_communities: dict[str, CommunityList], communities: list[str],
-    ) -> Iterable[str]:
+    ) -> Iterator[str]:
         for community_name in communities:
             community = all_communities[community_name]
             comm_type = self._arista_extcommunity_type_str(community.type)

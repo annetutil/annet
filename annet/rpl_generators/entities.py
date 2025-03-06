@@ -126,6 +126,7 @@ class PrefixListNameGenerator:
             ],
         )
 
+
 def group_community_members(
     all_communities: dict[str, CommunityList], communities: list[str],
 ) -> dict[CommunityType, list[str]]:
