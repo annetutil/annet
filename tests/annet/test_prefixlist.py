@@ -1,8 +1,8 @@
 from typing import Any, Sequence
-from ipaddress import IPv4Network, IPv6Network
+from ipaddress import IPv4Network
 from unittest.mock import Mock
 from annet.tabparser import make_formatter, parse_to_tree
-from annet.rpl_generators import ip_prefix_list, IpPrefixList, IpPrefixListMember, PrefixListFilterGenerator, CumulusPolicyGenerator
+from annet.rpl_generators import ip_prefix_list, IpPrefixList, IpPrefixListMember, PrefixListFilterGenerator, CumulusPolicyGenerator, RoutingPolicyGenerator
 from annet.rpl import R, RouteMap, Route, RoutingPolicy
 
 from . import MockDevice
@@ -219,7 +219,69 @@ ip ipv6-prefix IPV6_LIST index 5 permit 2001:DB8:1234:: 64 greater-equal 64 less
     assert result == expected
 
 
-def gen(routemaps: RouteMap, plists: list[IpPrefixList], dev: MockDevice) -> str:
+def test_arista_tutorial():
+    plists = [
+        ip_prefix_list("LOCAL_NETS", ["192.168.0.0/16"], (16, 32)),
+    ]
+    routemap = RouteMap[Mock]()
+    @routemap
+    def IMPORT_CONNECTED(_: Mock, route: Route):
+        with route(
+                R.protocol == "connected",
+                R.match_v4("LOCAL_NETS"),
+                number=10
+        ) as rule:
+            rule.community.set("ADVERTISE")
+            rule.allow()
+        with route(number=20) as rule:
+            rule.deny()
+
+
+    @routemap
+    def ROUTERS_IMPORT(_: Mock, route: Route):
+        with route(
+                R.match_v4("LOCAL_NETS", or_longer=(16, 24)),  # custom ge/le
+                R.community.has("ADVERTISE"),
+                number=10
+        ) as rule:
+            rule.allow()
+        with route(number=20) as rule:
+            rule.deny()
+
+
+    @routemap
+    def ROUTERS_EXPORT(_: Mock, route: Route):
+        with route(
+                R.community.has("ADVERTISE"),
+                number=10
+        ) as rule:
+            rule.allow()
+        with route(number=20) as rule:
+            rule.deny()
+
+    result = gen(routemap, plists, arista(), with_policies=True)
+    expected = scrub("""
+ip prefix-list LOCAL_NETS
+  seq 10 permit 192.168.0.0/16 ge 16 le 32
+ip prefix-list LOCAL_NETS_16_24
+  seq 10 permit 192.168.0.0/16 ge 16 le 24
+route-map IMPORT_CONNECTED permit 10
+  match source-protocol connected
+  match ip address prefix-list LOCAL_NETS
+  set community community-list ADVERTISE
+route-map IMPORT_CONNECTED deny 20
+route-map ROUTERS_IMPORT permit 10
+  match ip address prefix-list LOCAL_NETS_16_24
+  match community ADVERTISE
+route-map ROUTERS_IMPORT deny 20
+route-map ROUTERS_EXPORT permit 10
+  match community ADVERTISE
+route-map ROUTERS_EXPORT deny 20
+""")
+    assert result == expected
+
+
+def gen(routemaps: RouteMap, plists: list[IpPrefixList], dev: MockDevice, with_policies: bool = False) -> str:
     class TestPrefixListFilterGenerator(PrefixListFilterGenerator):
         def get_policies(self, device: Any) -> list[RoutingPolicy]:
             return routemaps.apply(device)
@@ -227,11 +289,11 @@ def gen(routemaps: RouteMap, plists: list[IpPrefixList], dev: MockDevice) -> str
         def get_prefix_lists(self, device: Any) -> Sequence[IpPrefixList]:
             return plists
 
-    class TestCumulusPolicyGenerator(CumulusPolicyGenerator):
+    class TestPolicyGenerator(RoutingPolicyGenerator):
         def get_policies(self, device: Any) -> list[RoutingPolicy]:
             return routemaps.apply(device)
 
-        def get_prefix_lists(self, device: Any) -> Sequence[IpPrefixList]:
+        def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
             return plists
 
         def get_community_lists(self, _: Any) -> list:
@@ -240,20 +302,44 @@ def gen(routemaps: RouteMap, plists: list[IpPrefixList], dev: MockDevice) -> str
         def get_as_path_filters(self, _: Any) -> list:
             return []
 
+        def get_rd_filters(self, _: Any) -> list:
+            return []
+
+    class TestCumulusPolicyGenerator(CumulusPolicyGenerator):
+        def get_policies(self, device: Any) -> list[RoutingPolicy]:
+            return routemaps.apply(device)
+
+        def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
+            return plists
+
+        def get_community_lists(self, _: Any) -> list:
+            return []
+
+        def get_as_path_filters(self, _: Any) -> list:
+            return []
+
+    result: list[str] = []
     if dev.hw.soft.startswith("Cumulus"):
         generator = TestCumulusPolicyGenerator()
-        result = generator.generate_cumulus_rpl(dev)
-        # leave only prefix-list related commands
-        # <ip|ipv6> prefix-list ...
-        result = (x for x in result if len(x) > 2)
-        result = (x for x in result if x[1] == "prefix-list") 
-        text = "\n".join((" ".join(x) for x in result))
+        genoutput = generator.generate_cumulus_rpl(dev)
+        if not with_policies:
+            # frr contains both plists and policies
+            # leave only prefix-list related commands
+            # <ip|ipv6> prefix-list ...
+            genoutput = (x for x in genoutput if len(x) > 2)
+            genoutput = (x for x in genoutput if x[1] == "prefix-list")
+        result = [" ".join(x) for x in genoutput]
+        text = "\n".join(result)
     else: 
         storage = Mock()
         generator = TestPrefixListFilterGenerator(storage)
-        result = generator(dev) 
+        result.append(generator(dev))
+        if with_policies:
+            # run policies generator too
+            generator = TestPolicyGenerator(storage)
+            result.append(generator(dev))
         fmtr = make_formatter(dev.hw)
-        tree = parse_to_tree(result, fmtr.split)
+        tree = parse_to_tree("\n".join(result), fmtr.split)
         text = fmtr.join(tree)
     return scrub(text)
 
