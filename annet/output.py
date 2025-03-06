@@ -155,8 +155,15 @@ class OutputDriverBasic(OutputDriver):
             ret.append((label, getattr(exc, "formatted_output", f"{repr(exc)} (formatted_output is absent)"), True))
         return ret
 
-    def cfg_file_names(self, device: Device) -> List[str]:
-        return [f"{device.hostname}.cfg"]
+    def cfg_file_names(self, device: Device) -> list[str]:
+        res = []
+        if device.hostname:
+            res.append(f"{device.hostname}.cfg")
+        if device.id is not None and device.id != "":
+            res.append(f"_id_{device.id}.cfg")
+        if not res:
+            raise RuntimeError("Neither hostname nor id is known for device")
+        return res
 
     def entire_config_dest_path(self, device, config_path: str) -> str:
         """Формирует путь к конфигу в директории destname.

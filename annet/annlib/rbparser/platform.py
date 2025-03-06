@@ -25,7 +25,7 @@ VENDOR_DIFF = {
     "routeros": "common.default_diff",
     "aruba": "aruba.default_diff",
     "pc": "common.default_diff",
-    "ribbon": "common.default_diff",
+    "ribbon": "juniper.default_diff",
     "b4com": "common.default_diff",
 }
 
@@ -40,7 +40,7 @@ VENDOR_DIFF_ORDERED = {
     "routeros": "common.ordered_diff",
     "aruba": "common.ordered_diff",
     "pc": "common.ordered_diff",
-    "ribbon": "common.ordered_diff",
+    "ribbon": "juniper.ordered_diff",
     "b4com": "common.ordered_diff",
 }
 

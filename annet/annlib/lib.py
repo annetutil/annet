@@ -18,7 +18,6 @@ from functools import lru_cache
 from typing import List, NamedTuple, Optional, Tuple, Union
 
 import contextlog
-import jinja2
 import mako.template
 
 _logger = contextlog.get_logger()
@@ -287,19 +286,6 @@ def mako_render(template, dedent=False, **kwargs):
         return mako.template.Template(template)
 
     ret = _compile_mako(template, dedent).render(**kwargs)
-    if dedent:
-        ret = ret.strip()
-    return ret
-
-
-def jinja_render(template, dedent=False, **kwargs):
-    @lru_cache(None)
-    def _compile_jinja(template, dedent):
-        if dedent:
-            template = textwrap.dedent(template).strip()
-        return jinja2.Template(template)
-
-    ret = _compile_jinja(template, dedent).render(**kwargs)
     if dedent:
         ret = ret.strip()
     return ret

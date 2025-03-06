@@ -1287,7 +1287,7 @@ Create a Python file with the policies—``generators/rpl_views/routemap.py``:
   def IMPORT_CONNECTED(_: NetboxDevice, route: Route):
       with route(
               R.protocol == "connected",
-              R.match_v4("LOCAL_NETS", or_longer=(24, 32)),
+              R.match_v4("LOCAL_NETS"),
               number=10
       ) as rule:
           rule.community.set("ADVERTISE")
@@ -1299,6 +1299,7 @@ Create a Python file with the policies—``generators/rpl_views/routemap.py``:
   @routemap
   def ROUTERS_IMPORT(_: NetboxDevice, route: Route):
       with route(
+              R.match_v4("LOCAL_NETS", or_longer=(16, 24)),  # custom ge/le
               R.community.has("ADVERTISE"),
               number=10
       ) as rule:
@@ -1627,14 +1628,18 @@ Let's check the diff:
   # -------------------- r1.lab.cfg --------------------
   + interface Loopback10
   +   ip address 192.168.1.1/24
-  + ip prefix-list LOCAL_NETS seq 5 permit 192.168.0.0/16 ge 24 le 32
   + ip community-list ADVERTISE permit 65000:1
+  + ip prefix-list LOCAL_NETS
+  +   seq 10 permit 192.168.0.0/16 ge 16 le 32
+  + ip prefix-list LOCAL_NETS_16_24
+  +   seq 10 permit 192.168.0.0/16 ge 16 le 24
   + route-map IMPORT_CONNECTED permit 10
   +   match source-protocol connected
   +   match ip address prefix-list LOCAL_NETS
   +   set community community-list ADVERTISE
   + route-map IMPORT_CONNECTED deny 20
   + route-map ROUTERS_IMPORT permit 10
+  +   match ip address prefix-list LOCAL_NETS_16_24
   +   match community ADVERTISE
   + route-map ROUTERS_IMPORT deny 20
   + route-map ROUTERS_EXPORT permit 10
@@ -1656,8 +1661,13 @@ And the patch:
   interface Loopback10
     ip address 192.168.1.1/24
     exit
-  ip prefix-list LOCAL_NETS seq 5 permit 192.168.0.0/16 ge 24 le 32
   ip community-list ADVERTISE permit 65000:1
+  ip prefix-list LOCAL_NETS
+    seq 10 permit 192.168.0.0/16 ge 16 le 32
+    exit
+  ip prefix-list LOCAL_NETS_16_24
+    seq 10 permit 192.168.0.0/16 ge 16 le 24
+    exit
   route-map IMPORT_CONNECTED permit 10
     match source-protocol connected
     match ip address prefix-list LOCAL_NETS
@@ -1666,6 +1676,7 @@ And the patch:
   route-map IMPORT_CONNECTED deny 20
     exit
   route-map ROUTERS_IMPORT permit 10
+    match ip address prefix-list LOCAL_NETS_16_24
     match community ADVERTISE
     exit
   route-map ROUTERS_IMPORT deny 20

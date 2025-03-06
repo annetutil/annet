@@ -24,7 +24,6 @@ from annet.annlib.lib import (  # pylint: disable=unused-import
     huawei_expand_vlandb,
     huawei_iface_ranges,
     is_relative,
-    jinja_render,
     jun_activate,
     jun_is_inactive,
     juniper_fmt_prefix_lists_acl,
@@ -151,10 +150,15 @@ def do_async(coro: Awaitable[ReturnType], new_thread=False) -> ReturnType:
 
         def wrapper(main):
             nonlocal res
-            res = asyncio.run(main)
+            try:
+                res = asyncio.run(main)
+            except BaseException as e:
+                res = e
         thread = threading.Thread(target=wrapper, args=(coro,))
         thread.start()
         thread.join()
+        if isinstance(res, BaseException):
+            raise res
         return res
     else:
         return asyncio.run(coro)
