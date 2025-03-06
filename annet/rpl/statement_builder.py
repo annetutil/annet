@@ -174,12 +174,12 @@ class StatementBuilder:
 
     @property
     def extcommunity_rt(self) -> CommunityActionBuilder:
-        warnings.warn(message="extcommunity_rt is deprecated, use extcommunity", category=DeprecationWarning)
+        warnings.warn("extcommunity_rt is deprecated, use extcommunity", DeprecationWarning, stacklevel=2)
         return CommunityActionBuilder(self._extcommunity_rt)
 
     @property
     def extcommunity_soo(self) -> CommunityActionBuilder:
-        warnings.warn(message="extcommunity_soo is deprecated, use extcommunity", category=DeprecationWarning)
+        warnings.warn("extcommunity_soo is deprecated, use extcommunity", DeprecationWarning, stacklevel=2)
         return CommunityActionBuilder(self._extcommunity_soo)
 
     def _set(self, field: str, value: ValueT) -> None:
