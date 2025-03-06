@@ -164,9 +164,6 @@ class StatementBuilder:
     def community(self) -> CommunityActionBuilder:
         return CommunityActionBuilder(self._community)
 
-    def reset_extcommunity(self) -> None:
-        self._set(ThenField.extcommunity, None)
-
     @property
     def large_community(self) -> CommunityActionBuilder:
         return CommunityActionBuilder(self._large_community)
