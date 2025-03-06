@@ -334,10 +334,13 @@ class CumulusPolicyGenerator(ABC):
                 raise NotImplementedError(
                     "Cannot set extcommunity together with add/delete on cumulus",
                 )
+            if not action.value.replaced:
+                yield "set", "extcommunity", "none"
+                return
             members = group_community_members(communities, action.value.replaced)
             for community_type, replaced_members in members.items():
                 type_str = self._cumulus_extcommunity_type_str(community_type)
-                yield "set", "extcommunity", type_str, *members
+                yield "set", "extcommunity", type_str, *replaced_members
         if action.value.added:
             raise NotImplementedError("extcommunity add is not supported for Cumulus")
         if action.value.removed:

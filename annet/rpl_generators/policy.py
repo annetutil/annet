@@ -266,12 +266,13 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[CommunityActionValue],
     ):
         if action.value.replaced is not None:
-            if not action.value.replaced:
-                yield "set", "extcommunity", "none"
             if action.value.added or action.value.removed:
                 raise NotImplementedError(
                     "Cannot set extcommunity together with add/delete on huawei",
                 )
+            if not action.value.replaced:
+                yield "set", "extcommunity", "none"
+                return
 
             members = group_community_members(communities, action.value.replaced)
             for community_type, replaced_members in members.items():
@@ -322,6 +323,10 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         if action.field == ThenField.large_community:
             yield from self._huawei_then_large_community(communities, device,
                                                          cast(SingleAction[CommunityActionValue], action))
+            return
+        if action.field == ThenField.extcommunity:
+            yield from self._huawei_then_extcommunity(communities, device,
+                                                      cast(SingleAction[CommunityActionValue], action))
             return
         if action.field == ThenField.extcommunity_rt:
             yield from self._huawei_then_extcommunity_rt(communities, device,
@@ -632,12 +637,13 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[CommunityActionValue],
     ):
         if action.value.replaced is not None:
-            if not action.value.replaced:
-                yield "set", "extcommunity", "none"
             if action.value.added or action.value.removed:
                 raise NotImplementedError(
                     "Cannot set extcommunity together with add/delete on arista",
                 )
+            if not action.value.replaced:
+                yield "set", "extcommunity", "none"
+                return
             members = list(self._arista_render_ext_community_members(communities, action.value.replaced))
             yield "set extcommunity", *members
             return
