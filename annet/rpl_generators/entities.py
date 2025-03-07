@@ -1,4 +1,5 @@
 from ipaddress import IPv4Network, IPv6Network, ip_network
+from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
@@ -124,3 +125,13 @@ class PrefixListNameGenerator:
                 for x in orig_prefix.members
             ],
         )
+
+
+def group_community_members(
+    all_communities: dict[str, CommunityList], communities: list[str],
+) -> dict[CommunityType, list[str]]:
+    members: dict[CommunityType, list[str]] = defaultdict(list)
+    for community_name in communities:
+        community = all_communities[community_name]
+        members[community.type].extend(community.members)
+    return members

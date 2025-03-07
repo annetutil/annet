@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABC
+from collections import defaultdict
 from collections.abc import Sequence
 from ipaddress import ip_interface
 from typing import Any, Literal, Iterable, Iterator, Optional, cast
@@ -12,7 +13,7 @@ from .aspath import get_used_as_path_filters
 from .community import get_used_united_community_lists
 from .entities import (
     AsPathFilter, IpPrefixList, CommunityList, CommunityLogic, CommunityType,
-    mangle_united_community_list_name, PrefixListNameGenerator,
+    mangle_united_community_list_name, PrefixListNameGenerator, group_community_members,
 )
 
 
@@ -307,8 +308,43 @@ class CumulusPolicyGenerator(ABC):
             raise NotImplementedError("Replacing SOO extcommunity is not supported for Cumulus")
         for community_name in action.value.added:
             yield "set", "extcommunity soo", community_name, "additive"
-        for community_name in action.value.removed:
+        if action.value.removed:
             raise NotImplementedError("SOO extcommunity remove is not supported for Cumulus")
+
+    def _cumulus_extcommunity_type_str(self, comm_type: CommunityType) -> str:
+        if comm_type is CommunityType.SOO:
+            return "soo"
+        elif comm_type is CommunityType.RT:
+            return "rt"
+        elif comm_type is CommunityType.LARGE:
+            raise ValueError("Large community is not subtype of extcommunity")
+        elif comm_type is CommunityType.BASIC:
+            raise ValueError("Basic community is not subtype of extcommunity")
+        else:
+            raise NotImplementedError(f"Community type {comm_type} is not supported on cumulus")
+
+    def _cumulus_then_extcommunity(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ):
+        if action.value.replaced is not None:
+            if action.value.added or action.value.removed:
+                raise NotImplementedError(
+                    "Cannot set extcommunity together with add/delete on cumulus",
+                )
+            if not action.value.replaced:
+                yield "set", "extcommunity", "none"
+                return
+            members = group_community_members(communities, action.value.replaced)
+            for community_type, replaced_members in members.items():
+                type_str = self._cumulus_extcommunity_type_str(community_type)
+                yield "set", "extcommunity", type_str, *replaced_members
+        if action.value.added:
+            raise NotImplementedError("extcommunity add is not supported for Cumulus")
+        if action.value.removed:
+            raise NotImplementedError("extcommunity remove is not supported for Cumulus")
 
     def _cumulus_then_as_path(
             self,
@@ -349,6 +385,9 @@ class CumulusPolicyGenerator(ABC):
                 device,
                 cast(SingleAction[CommunityActionValue], action),
             )
+            return
+        if action.field == ThenField.extcommunity:
+            yield from self._cumulus_then_extcommunity(communities, device, action)
             return
         if action.field == ThenField.extcommunity_rt:
             yield from self._cumulus_then_rt_community(

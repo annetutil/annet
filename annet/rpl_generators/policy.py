@@ -12,7 +12,7 @@ from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, T
 from annet.rpl_generators.entities import (
     arista_well_known_community,
     CommunityList, RDFilter, PrefixListNameGenerator, CommunityLogic, mangle_united_community_list_name,
-    IpPrefixList,
+    IpPrefixList, group_community_members, CommunityType,
 )
 
 
@@ -245,6 +245,52 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         if action.value.removed:
             raise NotImplementedError("Extcommunity_soo remove is not supported for huawei")
 
+    def _huawei_render_ext_community_members(
+            self, comm_type: CommunityType, members: list[str]
+    ) -> Sequence[Sequence[str]]:
+        if comm_type is CommunityType.SOO:
+            return "soo", *members
+        if comm_type is CommunityType.RT:
+            return [f"rt {member}" for member in members]
+        elif comm_type is CommunityType.LARGE:
+            raise ValueError("Large community is not subtype of extcommunity")
+        elif comm_type is CommunityType.BASIC:
+            raise ValueError("Basic community is not subtype of extcommunity")
+        else:
+            raise NotImplementedError(f"Community type {comm_type} is not supported on huawei")
+
+    def _huawei_then_extcommunity(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ):
+        if action.value.replaced is not None:
+            if action.value.added or action.value.removed:
+                raise NotImplementedError(
+                    "Cannot set extcommunity together with add/delete on huawei",
+                )
+            if not action.value.replaced:
+                raise NotImplementedError(
+                    "Cannot reset extcommunity on huawei",
+                )
+
+            members = group_community_members(communities, action.value.replaced)
+            for community_type, replaced_members in members.items():
+                if community_type is CommunityType.SOO:
+                    raise NotImplementedError(
+                        "Cannot set extcommunity soo on huawei",
+                    )
+                rendered_memebers = self._huawei_render_ext_community_members(community_type, replaced_members)
+                yield "apply", "extcommunity", *rendered_memebers
+        if action.value.added:
+            members = group_community_members(communities, action.value.added)
+            for community_type, added_members in members.items():
+                rendered_memebers = self._huawei_render_ext_community_members(community_type, added_members)
+                yield "apply", "extcommunity", *rendered_memebers, "additive"
+        if action.value.removed:
+            raise NotImplementedError("Cannot remove extcommunity on huawei")
+
     def _huawei_then_as_path(
             self,
             device: Any,
@@ -282,6 +328,10 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         if action.field == ThenField.large_community:
             yield from self._huawei_then_large_community(communities, device,
                                                          cast(SingleAction[CommunityActionValue], action))
+            return
+        if action.field == ThenField.extcommunity:
+            yield from self._huawei_then_extcommunity(communities, device,
+                                                      cast(SingleAction[CommunityActionValue], action))
             return
         if action.field == ThenField.extcommunity_rt:
             yield from self._huawei_then_extcommunity_rt(communities, device,
@@ -564,6 +614,51 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             ]
             yield "set", "extcommunity", *members, "delete"
 
+    def _arista_extcommunity_type_str(self, comm_type: CommunityType) -> str:
+        if comm_type is CommunityType.SOO:
+            return "soo"
+        elif comm_type is CommunityType.RT:
+            return "rt"
+        elif comm_type is CommunityType.LARGE:
+            raise ValueError("Large community is not subtype of extcommunity")
+        elif comm_type is CommunityType.BASIC:
+            raise ValueError("Basic community is not subtype of extcommunity")
+        else:
+            raise NotImplementedError(f"Community type {comm_type} is not supported on arista")
+
+    def _arista_render_ext_community_members(
+            self, all_communities: dict[str, CommunityList], communities: list[str],
+    ) -> Iterator[str]:
+        for community_name in communities:
+            community = all_communities[community_name]
+            comm_type = self._arista_extcommunity_type_str(community.type)
+            for member in community.members:
+                yield f"{comm_type} {member}"
+
+    def _arista_then_extcommunity(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ):
+        if action.value.replaced is not None:
+            if action.value.added or action.value.removed:
+                raise NotImplementedError(
+                    "Cannot set extcommunity together with add/delete on arista",
+                )
+            if not action.value.replaced:
+                yield "set", "extcommunity", "none"
+                return
+            members = list(self._arista_render_ext_community_members(communities, action.value.replaced))
+            yield "set extcommunity", *members
+            return
+        if action.value.added:
+            members = list(self._arista_render_ext_community_members(communities, action.value.added))
+            yield "set extcommunity", *members, "additive"
+        if action.value.removed:
+            members = list(self._arista_render_ext_community_members(communities, action.value.removed))
+            yield "set extcommunity", *members, "delete"
+
     def _arista_then_as_path(
             self,
             device: Any,
@@ -609,6 +704,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             yield from self._arista_then_large_community(
                 communities, device, cast(SingleAction[CommunityActionValue], action),
             )
+            return
+        if action.field == ThenField.extcommunity:
+            yield from self._arista_then_extcommunity(communities, device, action)
             return
         if action.field == ThenField.extcommunity_rt:
             yield from self._arista_then_extcommunity_rt(

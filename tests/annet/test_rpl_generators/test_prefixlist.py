@@ -5,7 +5,8 @@ from annet.tabparser import make_formatter, parse_to_tree
 from annet.rpl_generators import ip_prefix_list, IpPrefixList, IpPrefixListMember, PrefixListFilterGenerator, CumulusPolicyGenerator, RoutingPolicyGenerator
 from annet.rpl import R, RouteMap, Route, RoutingPolicy
 
-from . import MockDevice
+from .. import MockDevice
+from .helpers import scrub, huawei, arista, cumulus
 
 
 def test_ip_prefix_list():
@@ -342,31 +343,3 @@ def gen(routemaps: RouteMap, plists: list[IpPrefixList], dev: MockDevice, with_p
         tree = parse_to_tree("\n".join(result), fmtr.split)
         text = fmtr.join(tree)
     return scrub(text)
-
-
-def scrub(text: str) -> str:
-    splitted = text.split("\n")
-    return "\n".join(filter(None, splitted))
-
-
-def huawei():
-    return MockDevice(
-        "Huawei CE6870-48S6CQ-EI", 
-        "VRP V200R001C00SPC700 + V200R001SPH002",
-        "vrp85",
-    )
-
-
-def arista():
-    return MockDevice(
-        "Arista DCS-7368", 
-        "EOS 4.29.9.1M",
-        "arista",
-    )
-
-def cumulus():
-    return MockDevice(
-        "Mellanox SN3700-VS2RO",
-        "Cumulus Linux 5.4.0",
-        "pc",
-    )
