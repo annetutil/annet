@@ -278,7 +278,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             members = group_community_members(communities, action.value.replaced)
             for community_type, replaced_members in members.items():
                 if community_type is CommunityType.SOO:
-                    raise  NotImplementedError(
+                    raise NotImplementedError(
                         "Cannot set extcommunity soo on huawei",
                     )
                 rendered_memebers = self._huawei_render_ext_community_members(community_type, replaced_members)
