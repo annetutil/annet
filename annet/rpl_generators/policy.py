@@ -271,18 +271,23 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                     "Cannot set extcommunity together with add/delete on huawei",
                 )
             if not action.value.replaced:
-                yield "set", "extcommunity", "none"
-                return
+                raise NotImplementedError(
+                    "Cannot reset extcommunity on huawei",
+                )
 
             members = group_community_members(communities, action.value.replaced)
             for community_type, replaced_members in members.items():
+                if community_type is CommunityType.SOO:
+                    raise  NotImplementedError(
+                        "Cannot set extcommunity soo on huawei",
+                    )
                 rendered_memebers = self._huawei_render_ext_community_members(community_type, replaced_members)
-                yield "set", "extcommunity", *rendered_memebers
+                yield "apply", "extcommunity", *rendered_memebers
         if action.value.added:
             members = group_community_members(communities, action.value.added)
             for community_type, added_members in members.items():
                 rendered_memebers = self._huawei_render_ext_community_members(community_type, added_members)
-                yield "set", "extcommunity", *rendered_memebers, "additive"
+                yield "apply", "extcommunity", *rendered_memebers, "additive"
         if action.value.removed:
             raise NotImplementedError("Cannot remove extcommunity on huawei")
 

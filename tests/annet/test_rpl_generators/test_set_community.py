@@ -68,9 +68,6 @@ def test_huawei_set_comm_ext():
 
     @routemaps
     def policy(device: Mock, route: Route):
-        with route(number=0) as rule:
-            rule.extcommunity.set()
-            rule.allow()
         with route(number=1) as rule:
             rule.extcommunity.set(RT_CLIST)
             rule.allow()
@@ -80,13 +77,11 @@ def test_huawei_set_comm_ext():
 
     result = gen(routemaps, CLISTS, huawei())
     expected = scrub("""
-route-policy policy permit node 0
-  set extcommunity none
 route-policy policy permit node 1
-  set extcommunity rt 100:2
+  apply extcommunity rt 100:2
 route-policy policy permit node 2
-  set extcommunity rt 100:2 additive
-  set extcommunity soo 100:3 100:4 additive
+  apply extcommunity rt 100:2 additive
+  apply extcommunity soo 100:3 100:4 additive
 """)
     assert result == expected
 
@@ -131,7 +126,7 @@ def test_cumulus_set_comm_ext():
             rule.extcommunity.set()
             rule.allow()
         with route(number=1) as rule:
-            rule.extcommunity.set(RT_CLIST)
+            rule.extcommunity.set(RT_CLIST, SOO_CLIST)
             rule.allow()
 
     result = gen(routemaps, CLISTS, cumulus())
@@ -142,6 +137,7 @@ route-map policy permit 0
 !
 route-map policy permit 1
   set extcommunity rt 100:2
+  set extcommunity soo 100:3 100:4
 !
 """)
     assert result == expected
