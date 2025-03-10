@@ -8,6 +8,7 @@ import asyncio
 import textwrap
 import time
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Any
 
 from contextlog import get_logger
@@ -348,6 +349,18 @@ def init_colors():
     }
 
 
+@dataclass
+class Tile:
+    win: curses.window
+    content: str
+    title: list[str]
+    height: int
+    width: int
+    need_draw: bool = True
+    total: int = 0
+    iteration: int = 0
+
+
 class ProgressBars:
     TAIL_MODE_UNIFORM = 1  # экран разбивается на несколько равнозначных частей и в них есть заголовок и текст
     TAIL_MODE_ONE_CONTENT = 2  # есть только одно окно с контентом, остальные только с заголовками
@@ -357,7 +370,7 @@ class ProgressBars:
         self.tiles_params = tiles_params
         self.mode = self.TAIL_MODE_UNIFORM
         self.screen: "curses.window" = None
-        self.tiles: dict[str, dict[str, Any]] = {}
+        self.tiles: dict[str, Tile] = {}
         self.offset = [0, 0]
         self.terminal_refresher_coro = None
         self.color_to_curses: dict[Optional[str], int] = {}
@@ -421,8 +434,10 @@ class ProgressBars:
         begin_x = 0
         tile_no = 0
         status_bar_win = curses.newwin(1, width, scree_size[0], 0)
-        self.tiles["status:"] = {"win": status_bar_win, "content": "init", "title": [""], "height": 1,
-                                 "width": width, "need_draw": True}
+        self.tiles["status:"] = Tile(
+            win=status_bar_win, content="init", title= [""],
+            height= 1, width=width, need_draw=True,
+        )
         max_tile_name_len = max(len(tile_name) for tile_name in self.tiles_params)
 
         for tile_name in self.tiles_params:
@@ -449,23 +464,19 @@ class ProgressBars:
                     win = curses.newwin(height, width, begin_y, begin_x)
                 if tile_no == max_height:
                     left = len(self.tiles_params) - max_height + 1
-                    self.tiles["dumb"] = {"win": curses.newwin(height, width, begin_y, begin_x),
-                                          "content": "init",
-                                          "title": ["... and %s more" % left],
-                                          "height": height,
-                                          "width": width,
-                                          "need_draw": True}
+                    self.tiles["dumb"] = Tile(
+                        win=curses.newwin(height, width, begin_y, begin_x),
+                        content="init",
+                        title=["... and %s more" % left],
+                        height=height, width=width, need_draw=True,
+                    )
 
-            title = [("{:<%s}" % (max_tile_name_len)).format(tile_name)]
-
-            self.tiles[tile_name] = {
-                "win": win,
-                "content": "init",
-                "title": title,
-                "height": height,
-                "width": width,
-                "need_draw": True
-            }
+            self.tiles[tile_name] = Tile(
+                win=win,
+                content="init",
+                title=[("{:<%s}" % (max_tile_name_len)).format(tile_name)],
+                height=height, width=width, need_draw=True,
+            )
             i += 1
             begin_y += height
 
@@ -478,8 +489,8 @@ class ProgressBars:
                 continue
             if "total" not in tile:
                 continue
-            total += tile["total"]
-            iteration += tile["iteration"]
+            total += tile.total
+            iteration += tile.iteration
         if total > 0 and iteration > 0:
             done_percent = float(iteration) / total * 100
 
@@ -563,18 +574,18 @@ class ProgressBars:
 
     def draw_content(self, tile_name):
         tile = self.tiles[tile_name]
-        win = tile["win"]
+        win = tile.win
         size = win.getmaxyx()
         margin = 1
         if (size[0] - 2 * margin) <= 0:
             return
-        res = text_term_format.curses_format(tile["content"], "switch_out")
+        res = text_term_format.curses_format(tile.content, "switch_out")
         draw_lines_in_win(res, win, color_to_curses=self.color_to_curses, margin=margin)
 
     def draw_title(self, tile_name):
         tile = self.tiles[tile_name]
-        title = tile["title"]
-        win = tile["win"]
+        title = tile.title
+        win = tile.win
         if not isinstance(title, (tuple, list)):
             title = [title]
         draw_lines_in_win({0: title}, win, color_to_curses=self.color_to_curses, x_margin=1)
@@ -582,11 +593,11 @@ class ProgressBars:
     def refresh(self, tile_name: str, noutrefresh: bool = False):
         # see noutrefresh in curses doc
         tile = self.tiles[tile_name]
-        win = tile["win"]
-        if not tile["need_draw"] or win is None:
+        win = tile.win
+        if not tile.need_draw or win is None:
             return
         win.clear()
-        if tile["height"] > 1:
+        if tile.height > 1:
             win.border()
         self.draw_title(tile_name)
         self.draw_content(tile_name)
@@ -594,7 +605,7 @@ class ProgressBars:
             win.noutrefresh()
         else:
             win.refresh()
-        tile["need_draw"] = False
+        tile.need_draw = False
 
     def refresh_all(self):
         if self.state != "OK":
@@ -611,21 +622,21 @@ class ProgressBars:
     def set_title(self, tile_name, title):
         tile = self.tiles[tile_name]
         # в 0 элементе хранится выровненный хостнейм
-        title0 = tile["title"][0]
-        new_title = (title0, title)
-        if new_title == tile["title"]:
+        title0 = tile.title[0]
+        new_title = [title0, title]
+        if new_title == tile.title:
             return
-        tile["title"] = new_title
-        tile["need_draw"] = True
+        tile.title = new_title
+        tile.need_draw = True
         if not self.terminal_refresher_coro:
             self.refresh(tile_name)
 
     def set_content(self, tile_name: str, content: str):
         tile = self.tiles[tile_name]
-        if content == tile["content"]:
+        if content == tile.content:
             return
-        tile["need_draw"] = True
-        tile["content"] = content
+        tile.need_draw = True
+        tile.content = content
         if not self.terminal_refresher_coro:
             self.refresh(tile_name)
 
@@ -655,8 +666,8 @@ class ProgressBars:
         bar = fill * filled_length + "-" * (self.progress_length - filled_length)
         res = "%s |%s| %s%% %s" % (prefix, bar, percent, suffix)
         tile = self.tiles[tile_name]
-        tile["total"] = total
-        tile["iteration"] = iteration
+        tile.total = total
+        tile.iteration = iteration
         if error:
             res = TextArgs(res, "red")
         else:
