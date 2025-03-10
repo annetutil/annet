@@ -42,4 +42,4 @@ Please ensure your contributions align with this versioning strategy.
 
 ## Other questions
 
-If you have any questions, please mail us at opensource@yandex-team.ru.
+If you have any questions, please mail us at opensource-support@yandex-team.ru.
