@@ -497,6 +497,9 @@ class ProgressBars(ProgressBar):
     def _next_active_tile(self):
         self._set_active_tile((self.active_tile + 1) % len(self.tiles_params))
 
+    def _prev_active_tile(self):
+        self._set_active_tile((self.active_tile - 1) % len(self.tiles_params))
+
     def _set_active_tile(self, active_tile: int) -> None:
         self.active_tile = active_tile
         if self.mode is TailMode.ONE_CONTENT:
@@ -649,8 +652,10 @@ class ProgressBars(ProgressBar):
             return
         if self.state is UiState.OK:
             ch_list = self.get_pressed_keys()
-            if "\t" in ch_list:
+            if "\t" in ch_list:  # Tab
                 self._next_active_tile()
+            if "\x1b[Z" in ch_list:  # shift-Tab
+                self._prev_active_tile()
         self.screen.refresh()
         self.set_status()
         tile_name = None
@@ -736,11 +741,11 @@ class ProgressBars(ProgressBar):
             self.add_content(tile_name, content)
 
     def get_pressed_keys(self):
-        ch_list = []
+        ch_list = ""
         while True:
             try:
                 ch = self.screen.getkey()
-                ch_list.append(ch)
+                ch_list += ch
             except Exception:
                 time.sleep(0.01)
                 break
@@ -751,9 +756,11 @@ class ProgressBars(ProgressBar):
         while True:
             ch_list = self.get_pressed_keys()
             if ch_list:
-                get_logger().debug("read ch %s", ch_list)
-                if "\t" in ch_list:
+                get_logger().debug("read ch %s", repr(ch_list))
+                if "\t" in ch_list:  # Tab
                     self._next_active_tile()
+                if "\x1b[Z" in ch_list:  # shift-Tab
+                    self._prev_active_tile()
                 if "q" in ch_list:
                     return
             else:
