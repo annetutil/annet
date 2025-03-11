@@ -24,6 +24,10 @@ class ProgressBar(abc.ABC):
         ...
 
     @abc.abstractmethod
+    def reset_content(self, tile_name: str):
+        ...
+
+    @abc.abstractmethod
     def set_progress(self,
                      tile_name: str,
                      iteration: int,

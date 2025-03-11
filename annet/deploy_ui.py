@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Any
 from contextlog import get_logger
 
 from annet import text_term_format
+from annet.deploy import ProgressBar
 from annet.output import TextArgs
 try:
     import curses
@@ -375,7 +376,7 @@ class TailMode(Enum):
     NO_CONTENT = "NO_CONTENT"  # only headers
 
 
-class ProgressBars:
+class ProgressBars(ProgressBar):
     def __init__(self, tiles_params: dict[str, dict[Any, Any]]):
         self.tiles_params = tiles_params
         self.mode: TailMode = TailMode.UNIFORM
@@ -643,6 +644,13 @@ class ProgressBars:
         tile = self.tiles[tile_name]
         tile.need_draw = True
         tile.content.extend(text_term_format.curses_format(content, "switch_out").values())
+        if not self.terminal_refresher_coro:
+            self.refresh(tile_name)
+
+    def reset_content(self, tile_name: str):
+        tile = self.tiles[tile_name]
+        tile.need_draw = True
+        tile.content = []
         if not self.terminal_refresher_coro:
             self.refresh(tile_name)
 
