@@ -589,7 +589,6 @@ class ProgressBars(ProgressBar):
         margin = 1
         if (size[0] - 2 * margin) <= 0:
             return
-        # res = text_term_format.curses_format(tile.content, "switch_out")
         draw_lines_in_win(tile.content, win, color_to_curses=self.color_to_curses, margin=margin)
 
     def draw_title(self, tile_name):
