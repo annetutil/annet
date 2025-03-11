@@ -24,6 +24,10 @@ class ProgressBar(abc.ABC):
         ...
 
     @abc.abstractmethod
+    def add_content(self, tile_name: str, content: str):
+        ...
+
+    @abc.abstractmethod
     def reset_content(self, tile_name: str):
         ...
 
@@ -40,7 +44,7 @@ class ProgressBar(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def set_exception(self, tile_name: str, cmd_exc: str, last_cmd: str, progress_max: int):
+    def set_exception(self, tile_name: str, cmd_exc: str, last_cmd: str, progress_max: int, content: str = "") -> None:
         ...
 
 

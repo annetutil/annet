@@ -644,6 +644,16 @@ class ProgressBars(ProgressBar):
 
     def set_content(self, tile_name: str, content: str):
         tile = self.tiles[tile_name]
+        new_content = list(text_term_format.curses_format(content, "switch_out").values())
+        if new_content == tile.content:
+            return
+        tile.need_draw = True
+        tile.content = new_content
+        if not self.terminal_refresher_coro:
+            self.refresh(tile_name)
+
+    def add_content(self, tile_name: str, content: str):
+        tile = self.tiles[tile_name]
         tile.need_draw = True
         tile.content.extend(text_term_format.curses_format(content, "switch_out").values())
         if not self.terminal_refresher_coro:
@@ -690,9 +700,11 @@ class ProgressBars(ProgressBar):
             res = TextArgs(res, "cyan")
         self.set_title(tile_name, res)
 
-    def set_exception(self, fqdn, cmd_exc, last_cmd, progress_max):
+    def set_exception(self, tile_name: str, cmd_exc: str, last_cmd: str, progress_max: int, content: str = ""):
         suffix = "cmd error: %s %s" % (str(cmd_exc).strip().replace("\n", "--"), last_cmd)
-        self.set_progress(fqdn, progress_max, progress_max, suffix=suffix, error=True)
+        self.set_progress(tile_name, progress_max, progress_max, suffix=suffix, error=True)
+        if content:
+            self.add_content(tile_name, content)
 
     def get_pressed_keys(self):
         ch_list = []
