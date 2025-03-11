@@ -355,7 +355,7 @@ def init_colors():
 
 @dataclass
 class Tile:
-    win: curses.window
+    win: "curses.window | None"
     content: list[list[TextArgs]]
     title: list[str]
     height: int
@@ -382,7 +382,7 @@ class ProgressBars(ProgressBar):
     def __init__(self, tiles_params: dict[str, dict[Any, Any]]):
         self.tiles_params = tiles_params
         self.mode: TailMode = TailMode.UNIFORM
-        self.screen: "curses.window" = None
+        self.screen: "curses.window | None" = None
         self.tiles: dict[str, Tile] = {}
         self.offset = [0, 0]
         self.terminal_refresher_coro = None
@@ -729,7 +729,16 @@ class ProgressBars(ProgressBar):
                 await asyncio.sleep(0.001)
 
 
-def draw_lines_in_win(lines, win, color_to_curses: dict[Optional[str], int], margin=0, x_margin=0, y_margin=0):
+def draw_lines_in_win(
+        lines: list[list[TextArgs]],
+        win: "curses.window | None",
+        color_to_curses: dict[Optional[str], int],
+        margin: int = 0,
+        x_margin: int = 0,
+        y_margin: int = 0,
+) -> None:
+    if win is None:
+        return
     max_y, max_x = win.getmaxyx()
     max_y -= 2 * (margin or y_margin)
     max_x -= 2 * (margin or x_margin)
