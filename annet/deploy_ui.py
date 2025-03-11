@@ -388,6 +388,7 @@ class ProgressBars(ProgressBar):
         self.terminal_refresher_coro = None
         self.color_to_curses: dict[Optional[str], int] = {}
         self.state: UiState = UiState.INIT
+        self.active_tile: int = len(tiles_params) - 1  # tiles with content have numbers from 1
 
         # context
         self.enter_ok = False
@@ -462,7 +463,7 @@ class ProgressBars(ProgressBar):
                 height = int(scree_size[0] // len(self.tiles_params))  # TODO:остаток от деления прибавить к последнему
                 win = curses.newwin(height, width, begin_y, begin_x)
             elif mode is TailMode.ONE_CONTENT:
-                if i == tiles_count - 1:
+                if i == self.active_tile:
                     height = scree_size[0] - tiles_count + 1
                 else:
                     height = 1
@@ -492,6 +493,32 @@ class ProgressBars(ProgressBar):
             )
             i += 1
             begin_y += height
+
+    def _next_active_tile(self):
+        self._set_active_tile((self.active_tile + 1) % len(self.tiles_params))
+
+    def _set_active_tile(self, active_tile: int) -> None:
+        self.active_tile = active_tile
+        if self.mode is TailMode.ONE_CONTENT:
+            return
+
+        scree_size = self.screen.getmaxyx()
+        scree_offset = self.screen.getbegyx()
+        tiles_count = len(self.tiles_params)
+        width = scree_size[1]
+        begin_y = scree_offset[0]
+        for n, dev in enumerate(self.tiles_params):
+            tile = self.tiles[dev]
+            if n == self.active_tile:
+                height = scree_size[0] - tiles_count
+            else:
+                height = 1
+            tile.height = height
+            tile.win.resize(height, width)
+            tile.win.mvwin(begin_y, scree_offset[1])
+            begin_y += tile.height
+            tile.need_draw = True
+        self.refresh_all()
 
     def set_status(self):
         total = 0
@@ -621,7 +648,9 @@ class ProgressBars(ProgressBar):
         if self.state is UiState.CLOSED:
             return
         if self.state is UiState.OK:
-            self.get_pressed_keys()
+            ch_list = self.get_pressed_keys()
+            if "\t" in ch_list:
+                self._next_active_tile()
         self.screen.refresh()
         self.set_status()
         tile_name = None
@@ -723,6 +752,8 @@ class ProgressBars(ProgressBar):
             ch_list = self.get_pressed_keys()
             if ch_list:
                 get_logger().debug("read ch %s", ch_list)
+                if "\t" in ch_list:
+                    self._next_active_tile()
                 if "q" in ch_list:
                     return
             else:
