@@ -448,8 +448,8 @@ class ProgressBars(ProgressBar):
         tile_no = 0
         status_bar_win = curses.newwin(1, width, scree_size[0], 0)
         self.tiles["status:"] = Tile(
-            win=status_bar_win, content=[], title= [""],
-            height= 1, width=width, need_draw=True,
+            win=status_bar_win, content=[], title=[""],
+            height=1, width=width, need_draw=True,
         )
         max_tile_name_len = max(len(tile_name) for tile_name in self.tiles_params)
 
