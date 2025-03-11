@@ -367,6 +367,7 @@ class Tile:
 class UiState(Enum):
     INIT = "INIT"
     OK = "OK"
+    WAIT_INPUT = "WAIT_INPUT"
     CLOSED = "CLOSED"
 
 
@@ -617,9 +618,10 @@ class ProgressBars(ProgressBar):
         tile.need_draw = False
 
     def refresh_all(self):
-        if self.state is not UiState.OK:
+        if self.state is UiState.CLOSED:
             return
-        self.get_pressed_keys()
+        if self.state is UiState.OK:
+            self.get_pressed_keys()
         self.screen.refresh()
         self.set_status()
         tile_name = None
@@ -704,6 +706,7 @@ class ProgressBars(ProgressBar):
         return ch_list
 
     async def wait_for_exit(self):
+        self.state = UiState.WAIT_INPUT
         while True:
             ch_list = self.get_pressed_keys()
             if ch_list:
