@@ -25,6 +25,7 @@ except ImportError:
 
 uname = os.uname()[0]
 NCURSES_SIZE_T = 2 ** 15 - 1
+MIN_CONTENT_HEIGHT = 20
 
 
 class AskConfirm:
@@ -422,9 +423,9 @@ class ProgressBars(ProgressBar):
 
     def evaluate_mode(self, scree_size):
         height = scree_size[0] // len(self.tiles_params)
-        if height > 20:
+        if height > MIN_CONTENT_HEIGHT:
             return TailMode.UNIFORM
-        if scree_size[0] - len(self.tiles_params) > 20:
+        if scree_size[0] - len(self.tiles_params) > MIN_CONTENT_HEIGHT:
             return TailMode.ONE_CONTENT
         if scree_size[0] // len(self.tiles_params) > 1:
             return TailMode.NO_CONTENT
