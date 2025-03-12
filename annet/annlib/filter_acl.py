@@ -32,7 +32,6 @@ def filter_config(acl: Acl, fmtr: tabparser.CommonFormatter, input_config: Input
         config = patching.apply_acl(config, acl, fatal_acl=False)
         config = fmtr.join(config)
     else:
-        config = typing.cast(input_config, FileConfigTree)
         config = apply_acl_fileconfig(input_config, acl)
     return config
 
@@ -47,7 +46,6 @@ def filter_diff(acl: Acl, fmtr: tabparser.CommonFormatter, input_config: InputCo
         config = unshift_op(config)
         config = config.rstrip()
     else:
-        config = typing.cast(input_config, FileConfigTree)
         config = apply_acl_fileconfig(input_config, acl)
     return config
 
@@ -108,17 +106,23 @@ def get_op(line: str) -> typing.Tuple[str, str, str]:
     indent = ""
     opidx = -1
     rowstart = 0
+
     for rowstart in range(len(line)):
+        if line[rowstart] != " " and line[0:rowstart].strip():
+            break
         if line[rowstart] not in diff_ops:
             break
+
     for opidx in range(rowstart):
         if line[opidx] != " ":
             break
+
     if opidx >= 0:
         op = line[opidx]
         indent = line[:opidx] + line[opidx + 1:rowstart]
     if op != " ":
         indent = indent + " "
+
     return op, indent, line[rowstart:]
 
 
