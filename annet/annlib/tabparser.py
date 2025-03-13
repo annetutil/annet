@@ -404,6 +404,9 @@ class JuniperPatch:
     def __iter__(self):
         return iter(item[0] for item in self._items)
 
+    def __bool__(self) -> bool:
+        return bool(self._items)
+
 
 class JuniperFormatter(CommonFormatter):
     patch_set_prefix = "set"
