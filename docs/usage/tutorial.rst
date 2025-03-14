@@ -371,7 +371,7 @@ Annet uses data from Netbox to generate configurations. Ensure the data is in pl
    - device: ``r2.lab``, interface: ``Ethernet2``, connected to device: ``r3.lab``, interface: ``Ethernet2``.
 
 Annet Installation
-----------------------
+------------------
 
 Create a virtual environment and install Annet along with the required packages. We recommend using Python 3.12 or later.
 
@@ -1299,7 +1299,7 @@ You'll notice that the redistribution has a link to the policy ``IMPORT_CONNECTE
 
 First, create a new module by creating an empty file ``generators/rpl_views/__init__.py``. This module will contain policies and their elements.
 
-Create a Python file with the policies—``generators/rpl_views/route_map.py``:
+Create a Python file with the policies — ``generators/rpl_views/route_map.py``:
 
 .. code:: python
 
@@ -1898,7 +1898,7 @@ Disabling direct peering is easy — just add an additional condition that retur
       router2.send_community = True
       router2.update_source = device.ifname
 
-We also updated the policy view—``generators/rpl_views/route_map.py``:
+We also updated the policy view — ``generators/rpl_views/route_map.py``:
 
 .. code:: python
 
