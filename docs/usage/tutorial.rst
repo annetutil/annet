@@ -79,7 +79,7 @@ The easiest way to install Netbox is to use the dockerized version.
   # in the tutorial version 3.0.2 of netbox docker is using,
   # may be you face with newer version and it requires to change something else too,
   # to checkout the correct version use:
-  git fetch --tags && git checkout tags/3.0.2"
+  git fetch --tags && git checkout tags/3.0.2
   #
   # change version to 3.7, you can do it in you favorite editor instead,
   # just replace "VERSION-v4.1-3.0.2" to "VERSION-v3.7" in ./netbox-docker/docker-compose.yml, or use sed:
