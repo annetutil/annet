@@ -782,11 +782,10 @@ def draw_lines_in_win(
     max_x -= 2 * (margin or x_margin)
     lines_count = len(lines)
     if lines_count > max_y:
-        start_line = lines_count - max_y + 1
+        start_line = lines_count - max_y
     else:
         start_line = 0
     for line_no, line_data in enumerate(lines[start_line:]):
-        line_no = line_no - start_line
         line_pos_calc = 0
         for line_part in line_data:
             if not isinstance(line_part, TextArgs):
