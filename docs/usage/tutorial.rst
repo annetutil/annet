@@ -76,11 +76,13 @@ The easiest way to install Netbox is to use the dockerized version.
   # got into directory
   cd netbox-docker
   #
+  # in the tutorial version 3.0.2 of netbox docker is using,
+  # may be you face with newer version and it requires to change something else too,
+  # to checkout the correct version use:
+  git fetch --tags && git checkout tags/3.0.2
+  #
   # change version to 3.7, you can do it in you favorite editor instead,
   # just replace "VERSION-v4.1-3.0.2" to "VERSION-v3.7" in ./netbox-docker/docker-compose.yml, or use sed:
-  # NOTE: be careful, in the tutorial version 3.0.2 of netbox docker is using,
-  #  may be you face with newer version and it requires to change something else too,
-  #  to checkout the correct version use "git fetch --tags && git checkout tags/3.0.2"
   sed -i.bak 's/VERSION-v4.1-3.0.2/VERSION-v3.7/g' docker-compose.yml
   #
   # if you run netbox on weak hardware you can change timeouts in docker-compose.yml,
@@ -340,7 +342,7 @@ Annet uses data from Netbox to generate configurations. Ensure the data is in pl
 
 1. In **Organisation/Site**, add a Site - name: ``lab``, slug: ``lab``.
 2. In **Devices/Manufacturers**, add a Manufacturer - name: ``Arista``, slug: ``arista``.
-3. In **Devices/Device Types**, add a Device Type - Manufacturer: ``Arista``, name: ``cEOS``, slug: ``ceos``.
+3. In **Devices/Device Types**, add a Device Type - Manufacturer: ``Arista``, model: ``cEOS``, slug: ``ceos``.
 4. In **Devices/Device Roles**, add a Device Role - name: ``switch``, slug: ``switch``, color: choose any.
 5. In **Devices/Devices**, add three Devices:
 
@@ -369,7 +371,7 @@ Annet uses data from Netbox to generate configurations. Ensure the data is in pl
    - device: ``r2.lab``, interface: ``Ethernet2``, connected to device: ``r3.lab``, interface: ``Ethernet2``.
 
 Annet Installation
-----------------------
+------------------
 
 Create a virtual environment and install Annet along with the required packages. We recommend using Python 3.12 or later.
 
@@ -861,31 +863,36 @@ Look at the diff:
 
 .. code:: diff
 
-  > annet diff r1.lab r2.lab r3.lab
+  > annet diff r1.lab r1.lab r2.lab r3.lab
+  # -------------------- r1.lab.cfg --------------------
+  - username annet privilege 15 role network-admin secret sha512 $6$6NGBAcZ7vJqeAvgb$X5i/S/PsC3f9Rl8VePUY4cPB7BA0btRIUQ5fTvh9f0nmc2H4skUOuq7u62ekrwAKcrFR/7XArVh19F3N8n1GR0
+  + username annet privilege 15 role network-admin secret sha512 $6$i5LaTWzHeAJx/vLu$rYUKKATawfpjItHKJJie3Fgsa2EqkMyH0XYY2.1Dl/2G.uNVzuntS5poblWuf6urafiurknH2/NotkUHiamoP.
   # -------------------- r3.lab.cfg --------------------
-  - username annet privilege 15 role network-admin secret sha512 $6$s7NCIG5Rocu3FSK0$018nDOmgJctLO7qGVotvo9OOD1qyKVMTwaURO8sh7YaoCitMIE2HRWePYq2T5aGqEsa2Y0ukqe5/PKlNV43zc0
+  - username annet privilege 15 role network-admin secret sha512 $6$MemUeEzIROMxkxaJ$n.TrV5PWlkEH0S7YP0W9c44cVGhaF.j29kRah1JOo/r0ZorN13ADWHK9VP29ODZd234eq76Xa.nZCfSQJpz0O.
   + username annet privilege 15 role network-admin secret sha512 $6$i5LaTWzHeAJx/vLu$rYUKKATawfpjItHKJJie3Fgsa2EqkMyH0XYY2.1Dl/2G.uNVzuntS5poblWuf6urafiurknH2/NotkUHiamoP.
   # -------------------- r2.lab.cfg --------------------
-  - username annet privilege 15 role network-admin secret sha512 $6$ycnCXwDzpQPU6WqS$6u0MD.hyOKaRh6r8Tnb97S8zFQVYeXaQuo8nkFHCez7VlBxeJmGsbbgeTePg.k23hEdK.LN1TB5sCjfkS7Mdu.
+  - username annet privilege 15 role network-admin secret sha512 $6$l03Ecws7s3guk5ef$c3.NffpXlhDdWxwgnjrlnLOXl0c8dYC8F4R7D3O9eLLLi5aPgHuifSlCdnEgsSrDqRUDbExKnLwQZCwuO4DDO.
   + username annet privilege 15 role network-admin secret sha512 $6$i5LaTWzHeAJx/vLu$rYUKKATawfpjItHKJJie3Fgsa2EqkMyH0XYY2.1Dl/2G.uNVzuntS5poblWuf6urafiurknH2/NotkUHiamoP.
 
-We notice that the user ``annet`` has a different hash on ``r2`` and ``r3``. This is fine because we created the user ``annet`` with a plain text password in the default configuration.
+We notice that the user ``annet`` has a different hash on the routers. This is fine because we created the user ``annet`` with a plain text password in the default configuration.
 
 Look at the patch:
 
 .. code:: none
 
-  > annet patch r2.lab r3.lab
+  > annet patch r1.lab r2.lab r3.lab
+  # -------------------- r1.lab.patch --------------------
+  username annet secret sha512 $6$i5LaTWzHeAJx/vLu$rYUKKATawfpjItHKJJie3Fgsa2EqkMyH0XYY2.1Dl/2G.uNVzuntS5poblWuf6urafiurknH2/NotkUHiamoP.
   # -------------------- r2.lab.patch --------------------
-  username annet privilege 15 role network-admin secret sha512 $6$i5LaTWzHeAJx/vLu$rYUKKATawfpjItHKJJie3Fgsa2EqkMyH0XYY2.1Dl/2G.uNVzuntS5poblWuf6urafiurknH2/NotkUHiamoP.
+  username annet secret sha512 $6$i5LaTWzHeAJx/vLu$rYUKKATawfpjItHKJJie3Fgsa2EqkMyH0XYY2.1Dl/2G.uNVzuntS5poblWuf6urafiurknH2/NotkUHiamoP.
   # -------------------- r3.lab.patch --------------------
-  username annet privilege 15 role network-admin secret sha512 $6$i5LaTWzHeAJx/vLu$rYUKKATawfpjItHKJJie3Fgsa2EqkMyH0XYY2.1Dl/2G.uNVzuntS5poblWuf6urafiurknH2/NotkUHiamoP.
+  username annet secret sha512 $6$i5LaTWzHeAJx/vLu$rYUKKATawfpjItHKJJie3Fgsa2EqkMyH0XYY2.1Dl/2G.uNVzuntS5poblWuf6urafiurknH2/NotkUHiamoP.
 
 And deploy it:
 
 .. code:: none
 
-  > annet deploy r2.lab r3.lab
+  > annet deploy r1.lab r2.lab r3.lab
 
 Again look at the diff:
 
@@ -1101,6 +1108,29 @@ Add a new generator for BGP configuration — ``generators/bgp.py``:
                   yield "neighbor", peer.addr, "peer group", peer.group_name
                   yield "neighbor", peer.addr, "remote-as", peer.remote_as
 
+Again, update ``generators/__init__.py``:
+
+.. code:: python
+
+  from annet.generators import BaseGenerator
+  from annet.storage import Storage
+
+  from . import aaa, bgp, description, hostname, ip_address, routing, stp
+
+
+  def get_generators(store: Storage) -> list[BaseGenerator]:
+      """All the generators should be returned by the function"""
+
+      return [
+          aaa.Aaa(store),
+          bgp.Bgp(store),
+          description.Description(store),
+          hostname.Hostname(store),
+          ip_address.IpAddress(store),
+          routing.Routing(store),
+          stp.Stp(store),
+      ]
+
 Check the list of generators:
 
 .. code:: none
@@ -1192,7 +1222,7 @@ Redistribute Connected
 
 Let's go deeper. The task now is to configure the redistribution of connected networks into BGP.
 
-Create a ``loopback10`` interface on each router with an address in Netbox, following the table:
+Create a ``Loopback10`` interface on each router with an address in Netbox, following the table:
 
 +--------+--------------------+
 | Router | Loopback10 address |
@@ -1204,7 +1234,7 @@ Create a ``loopback10`` interface on each router with an address in Netbox, foll
 |   r3   | ``192.168.3.1/24`` |
 +--------+--------------------+
 
-Go to the router page, click **Add Components**, and choose **Interfaces**. Use the name ``loopback10`` and type ``Virtual``. Next, add an IP address to the interface following the table.
+Go to the router page, click **Add Components**, and choose **Interfaces**. Use the name ``Loopback10`` and type ``Virtual``. Next, add an IP address to the interface following the table.
 
 Now, we need to add the redistribution of connected networks to BGP in the mesh. Additionally, we want to filter prefixes between routers!
 
@@ -1269,7 +1299,7 @@ You'll notice that the redistribution has a link to the policy ``IMPORT_CONNECTE
 
 First, create a new module by creating an empty file ``generators/rpl_views/__init__.py``. This module will contain policies and their elements.
 
-Create a Python file with the policies—``generators/rpl_views/routemap.py``:
+Create a Python file with the policies — ``generators/rpl_views/route_map.py``:
 
 .. code:: python
 
@@ -1287,7 +1317,7 @@ Create a Python file with the policies—``generators/rpl_views/routemap.py``:
   def IMPORT_CONNECTED(_: NetboxDevice, route: Route):
       with route(
               R.protocol == "connected",
-              R.match_v4("LOCAL_NETS"),
+              R.match_v4("LOCAL_NETS", or_longer=(16, 24)),
               number=10
       ) as rule:
           rule.community.set("ADVERTISE")
@@ -1628,14 +1658,12 @@ Let's check the diff:
   # -------------------- r1.lab.cfg --------------------
   + interface Loopback10
   +   ip address 192.168.1.1/24
-  + ip community-list ADVERTISE permit 65000:1
-  + ip prefix-list LOCAL_NETS
-  +   seq 10 permit 192.168.0.0/16 ge 16 le 32
   + ip prefix-list LOCAL_NETS_16_24
   +   seq 10 permit 192.168.0.0/16 ge 16 le 24
+  + ip community-list ADVERTISE permit 65000:1
   + route-map IMPORT_CONNECTED permit 10
   +   match source-protocol connected
-  +   match ip address prefix-list LOCAL_NETS
+  +   match ip address prefix-list LOCAL_NETS_16_24
   +   set community community-list ADVERTISE
   + route-map IMPORT_CONNECTED deny 20
   + route-map ROUTERS_IMPORT permit 10
@@ -1662,15 +1690,12 @@ And the patch:
     ip address 192.168.1.1/24
     exit
   ip community-list ADVERTISE permit 65000:1
-  ip prefix-list LOCAL_NETS
-    seq 10 permit 192.168.0.0/16 ge 16 le 32
-    exit
   ip prefix-list LOCAL_NETS_16_24
     seq 10 permit 192.168.0.0/16 ge 16 le 24
     exit
   route-map IMPORT_CONNECTED permit 10
     match source-protocol connected
-    match ip address prefix-list LOCAL_NETS
+    match ip address prefix-list LOCAL_NETS_16_24
     set community community-list ADVERTISE
     exit
   route-map IMPORT_CONNECTED deny 20
@@ -1757,12 +1782,21 @@ The details are presented in the diagram:
         +------------iBGP-------------+
 
 First, we need to change the mesh. Here are the steps:
+
 1. Add a ``Loopback0`` interface with IP addresses to ``r2`` and ``r3``, following the diagram.
 2. Disable direct peering between ``r2`` and ``r3``.
 3. Create a simple policy ``PERMIT_ANY`` for indirect peering.
 4. Create indirect peering between ``r2`` and ``r3`` using the ``Loopback0`` interfaces.
 
-To add a new loopback interface, repeat the steps from the **Redistribute Connected** section.
+To add a new loopback interface, repeat the steps from the **Redistribute Connected** section. Use addresses form the table:
+
++--------+--------------------+
+| Router | Loopback0 address  |
++========+====================+
+|   r2   | ``1.1.1.2/24``     |
++--------+--------------------+
+|   r3   | ``1.1.1.3/24``     |
++--------+--------------------+
 
 Disabling direct peering is easy — just add an additional condition that returns nothing. Configuring indirect peering requires using the ``@registry.indirect`` decorator. Here's the updated mesh—``generators/mesh_views/routers.py``:
 
@@ -1864,7 +1898,7 @@ Disabling direct peering is easy — just add an additional condition that retur
       router2.send_community = True
       router2.update_source = device.ifname
 
-We also updated the policy view—``generators/rpl_views/route_map.py``:
+We also updated the policy view — ``generators/rpl_views/route_map.py``:
 
 .. code:: python
 
@@ -1882,7 +1916,7 @@ We also updated the policy view—``generators/rpl_views/route_map.py``:
   def IMPORT_CONNECTED(_: NetboxDevice, route: Route):
       with route(
               R.protocol == "connected",
-              R.match_v4("LOCAL_NETS", or_longer=(24, 32)),
+              R.match_v4("LOCAL_NETS", or_longer=(16, 24)),
               number=10
       ) as rule:
           rule.community.set("ADVERTISE")
@@ -1894,6 +1928,7 @@ We also updated the policy view—``generators/rpl_views/route_map.py``:
   @routemap
   def ROUTERS_IMPORT(_: NetboxDevice, route: Route):
       with route(
+              R.match_v4("LOCAL_NETS", or_longer=(16, 24)),  # custom ge/le
               R.community.has("ADVERTISE"),
               number=10
       ) as rule:
@@ -1918,17 +1953,121 @@ We also updated the policy view—``generators/rpl_views/route_map.py``:
       with route(number=10) as rule:
           rule.allow()
 
+
+Also we should add to the BGP BGP generator update source interface support — ``generators/bgp.py``:
+
+.. code:: python
+
+  from typing import Optional
+
+  from annet.bgp_models import ASN, BgpConfig
+  from annet.generators import PartialGenerator
+  from annet.mesh.executor import MeshExecutor
+  from annet.storage import Device
+
+  from .mesh_views import registry
+
+
+  def bgp_asnum(mesh_data: BgpConfig) -> Optional[ASN]:
+      """Return AS number parse mesh bgp peers"""
+      if not mesh_data:
+          return None
+
+      # AS can be defined in global options
+      if mesh_data.global_options.local_as:
+          return mesh_data.global_options.local_as
+
+      # If AS is not defined in global options, look for it in peers
+      asnum: set[ASN] = set()
+      for peer in mesh_data.peers:
+          asnum.add(peer.options.local_as)
+
+      if len(asnum) == 1:
+          return asnum.pop()
+      elif len(asnum) > 1:
+          raise RuntimeError(f"AutonomusSystemIsNotDefined: {str(asnum)}")
+
+      return None
+
+
+  class Bgp(PartialGenerator):
+      """Partial generator class of BGP process and neighbors"""
+
+      TAGS = ["bgp", "routing"]
+
+      def acl_arista(self, _: Device) -> str:
+          """ACL for Arista devices"""
+
+          return """
+          router bgp
+              router-id
+              neighbor
+              maximum-paths
+              address-family
+                  redistribute
+                  neighbor
+          """
+
+      def run_arista(self, device: Device):
+          """Generator for Arista devices"""
+
+          executor: MeshExecutor = MeshExecutor(registry, device.storage)
+          mesh_data: BgpConfig = executor.execute_for(device)
+
+          rid: Optional[str] = mesh_data.global_options.router_id if mesh_data.global_options.router_id else None
+          asnum: Optional[ASN] = bgp_asnum(mesh_data)
+
+          if not asnum or not rid:
+              return
+          with self.block("router bgp", asnum):
+              yield "router-id", rid
+
+              # redistribute
+              with self.block("address-family ipv4"):
+                  if mesh_data.global_options and mesh_data.global_options.ipv4_unicast and \
+                          mesh_data.global_options.ipv4_unicast.redistributes:
+                      for redistribute in mesh_data.global_options.ipv4_unicast.redistributes:
+                          yield "redistribute", redistribute.protocol, "" \
+                              if not redistribute.policy else f"route-map {redistribute.policy}"
+
+              # group configuration
+              for peer in mesh_data.peers:
+                  yield "neighbor", peer.group_name, "peer group"
+
+                  # import/export policies
+                  if peer.import_policy:
+                      yield "neighbor", peer.group_name, "route-map", peer.import_policy, "in"
+                  if peer.export_policy:
+                      yield "neighbor", peer.group_name, "route-map", peer.export_policy, "out"
+
+                  if peer.options.send_community:
+                      yield "neighbor", peer.group_name, "send-community"
+
+                  # update source
+                  if peer.update_source:
+                      yield "neighbor", peer.group_name, "update-source", peer.update_source
+
+                  # use conditional context for group configuration
+                  with self.block_if("address-family ipv4", condition=("ipv4_unicast" in peer.families)):
+                      yield "neighbor", peer.group_name, "activate"
+
+              # peer configuration
+              for peer in mesh_data.peers:
+                  yield "neighbor", peer.addr, "peer group", peer.group_name
+                  yield "neighbor", peer.addr, "remote-as", peer.remote_as
+
+
 What else? We need to configure an IGP to provide connectivity between loopbacks! Unfortunately, the mesh doesn't support any protocols except BGP for now (2025q1). We need to assign IP addresses to interfaces and create a new generator for the ISIS protocol.
 
 Let's assign IP addresses following the table:
 
-+--------+------------------+
-| Router |   Eth2 address   |
-+========+==================+
-|   r2   | ``10.2.3.12/24`` |
-+--------+------------------+
-|   r3   | ``10.2.3.13/24`` |
-+--------+------------------+
++--------+-------------------+
+| Router | Ethernet2 address |
++========+===================+
+|   r2   | ``10.2.3.12/24``  |
++--------+-------------------+
+|   r3   | ``10.2.3.13/24``  |
++--------+-------------------+
 
 Here's the ISIS generator and updated init file:
 ``generators/isis.py``:
