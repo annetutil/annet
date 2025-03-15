@@ -1,5 +1,5 @@
 from annet.adapters.netbox.common.query import NetboxQuery
-from annet.adapters.netbox.v37.storage import parse_glob
+from annet.adapters.netbox.common.storage_base import parse_glob
 import pytest
 
 
