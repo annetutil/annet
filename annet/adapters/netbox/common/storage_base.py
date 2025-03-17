@@ -1,42 +1,31 @@
 import ssl
 from ipaddress import ip_interface
 from logging import getLogger
-from typing import Any, Optional, List, Union, Dict, cast
+from typing import Any, Optional, List, Union, Dict, cast, Generic
 
-from adaptix import P
-from adaptix.conversion import impl_converter, link, link_constant
 from annetbox.v37 import models as api_models
 
-from annet.adapters.netbox.common import models
-from annet.adapters.netbox.common.manufacturer import (
-    get_hw, get_breed,
-)
 from annet.adapters.netbox.common.query import NetboxQuery, FIELD_VALUE_SEPARATOR
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
-from annet.annlib.netdev.views.hardware import HardwareView
-from annet.storage import Storage, Device, Interface
-
+from annet.storage import Storage
+from .adapter import NetboxAdapter
+from .models import IpAddressT, InterfaceT, NetboxDeviceT, PrefixT
 
 logger = getLogger(__name__)
 
 
-class BaseNetboxStorage(Storage):
+class BaseNetboxStorage(
+    Storage,
+    Generic[
+        NetboxDeviceT,
+        InterfaceT,
+        IpAddressT,
+        PrefixT,
+    ],
+):
     """
-    Base class for Netbox storage adapters.
-    Attributes:
-        netbox_class: The Netbox class to use for API interactions from Annetbox.
-        api_models: The API models used by the storage from Annetbox.
-        device_model: The model for Netbox devices.
-        prefix_model: The model for Netbox prefixes.
-        interface_model: The model for Netbox interfaces.
-        ipaddress_model: The model for Netbox IP addresses.
+    Base class for Netbox storage
     """
-    netbox_class = None
-    api_models = api_models
-    device_model = models.NetboxDevice
-    prefix_model = models.Prefix
-    interface_model = models.Interface
-    ipaddress_model = models.IpAddress
 
     def __init__(self, opts: Optional[NetboxStorageOpts] = None):
         ctx: Optional[ssl.SSLContext] = None
@@ -53,78 +42,20 @@ class BaseNetboxStorage(Storage):
             token = opts.token
             threads = opts.threads
             self.exact_host_filter = opts.exact_host_filter
-
-        if self.netbox_class is None:
-            raise ValueError("netbox_class is not set in the derived class")
-        self.netbox = self.netbox_class(url=url, token=token, ssl_context=ctx, threads=threads)
-        self._initialize_impl_converter_methods()
+        self.netbox = self._init_adapter(url=url, token=token, ssl_context=ctx, threads=threads)
         self._all_fqdns: Optional[list[str]] = None
-        self._id_devices: dict[int, self.device_model] = {}
-        self._name_devices: dict[str, self.device_model] = {}
-        self._short_name_devices: dict[str, self.device_model] = {}
+        self._id_devices: dict[int, NetboxDeviceT] = {}
+        self._name_devices: dict[str, NetboxDeviceT] = {}
+        self._short_name_devices: dict[str, NetboxDeviceT] = {}
 
-    def _initialize_impl_converter_methods(self):
-        @impl_converter(recipe=[
-            link(P[self.api_models.Device].name, P[self.device_model].hostname),
-            link(P[self.api_models.Device].name, P[self.device_model].fqdn),
-        ])
-        def extend_device_base(
-                device: self.api_models.Device,
-                interfaces: List[self.interface_model],
-                hw: Optional[HardwareView],
-                breed: str,
-                storage: Storage,
-        ) -> self.device_model:
-            ...
-
-        def extend_device(
-                device: self.api_models.Device,
-                interfaces: List[self.interface_model],
-                storage: Storage,
-        ) -> self.device_model:
-            platform_name: str = ""
-            breed: str = ""
-            hw = HardwareView("", "")
-            if device.platform:
-                platform_name = device.platform.name
-            if device.device_type and device.device_type.manufacturer:
-                breed = get_breed(
-                    device.device_type.manufacturer.name,
-                    device.device_type.model,
-                )
-                hw = get_hw(
-                    device.device_type.manufacturer.name,
-                    device.device_type.model,
-                    platform_name,
-                )
-            res = extend_device_base(
-                device=device,
-                interfaces=interfaces,
-                breed=breed,
-                hw=hw,
-                storage=storage,
-            )
-            return res
-
-        @impl_converter(
-            recipe=[link_constant(P[self.interface_model].lag_min_links, value=None)],
-        )
-        def extend_interface(
-                interface: self.api_models.Interface,
-                ip_addresses: List[self.ipaddress_model],
-        ) -> self.interface_model:
-            ...
-
-        @impl_converter
-        def extend_ip_address(
-                ip_address: self.ipaddress_model, prefix: Optional[self.prefix_model],
-        ) -> self.ipaddress_model:
-            ...
-
-        self.extend_device_base = extend_device_base
-        self.extend_device = extend_device
-        self.extend_interface = extend_interface
-        self.extend_ip_address = extend_ip_address
+    def _init_adapter(
+            self,
+            url: str,
+            token: str,
+            ssl_context: Optional[ssl.SSLContext],
+            threads: int,
+    ) -> NetboxAdapter[NetboxDeviceT, InterfaceT, IpAddressT, PrefixT]:
+        raise NotImplementedError()
 
     def __enter__(self):
         return self
@@ -144,10 +75,7 @@ class BaseNetboxStorage(Storage):
 
     def resolve_all_fdnds(self) -> list[str]:
         if self._all_fqdns is None:
-            self._all_fqdns = [
-                d.name
-                for d in self.netbox.dcim_all_devices_brief().results
-            ]
+            self._all_fqdns = self.netbox.list_all_fqdns()
         return self._all_fqdns
 
     def make_devices(
@@ -157,7 +85,7 @@ class BaseNetboxStorage(Storage):
             use_mesh=None,
             preload_extra_fields=False,
             **kwargs,
-    ) -> List[device_model]:
+    ) -> List[NetboxDeviceT]:
         if isinstance(query, list):
             query = NetboxQuery.new(query)
 
@@ -175,106 +103,72 @@ class BaseNetboxStorage(Storage):
                 return devices
             query = NetboxQuery.new(globs)
 
-        return devices + self._make_devices(
-            query=query,
-            preload_neighbors=preload_neighbors,
-            use_mesh=use_mesh,
-            preload_extra_fields=preload_extra_fields,
-            **kwargs
-        )
-
-    def _make_devices(
-            self,
-            query: NetboxQuery,
-            preload_neighbors=False,
-            use_mesh=None,
-            preload_extra_fields=False,
-            **kwargs,
-    ) -> List[device_model]:
-        device_ids = {
-            device.id: self.extend_device(
-                device=device,
-                interfaces=[],
-                storage=self,
-            )
-            for device in self._load_devices(query)
-        }
-        if not device_ids:
-            return []
-
-        for device in device_ids.values():
+        new_devices = self._load_devices(query)
+        self._fill_device_interfaces(new_devices)
+        for device in new_devices:
             self._record_device(device)
+        return devices + new_devices
 
-        interfaces = self._load_interfaces(list(device_ids))
+    def _load_devices(self, query: NetboxQuery) -> List[NetboxDeviceT]:
+        if not query.globs:
+            return []
+        query_groups = parse_glob(self.exact_host_filter, query)
+        devices = [
+            device
+            for device in self.netbox.list_devices(query_groups)
+            if _match_query(self.exact_host_filter, query, device)
+        ]
+        return devices
+
+    def _fill_device_interfaces(self, devices: list[NetboxDeviceT]) -> None:
+        device_mapping = {d.id: d for d in devices}
+        interfaces = self.netbox.list_interfaces_by_devices(list(device_mapping))
         for interface in interfaces:
-            device_ids[interface.device.id].interfaces.append(interface)
+            device_mapping[interface.device.id].interfaces.append(interface)
+        self._fill_interface_ipaddress(interfaces)
 
-        return list(device_ids.values())
+    def _fill_interface_ipaddress(self, interfaces: list[InterfaceT]) -> None:
+        interface_mapping = {i.id: i for i in interfaces}
+        ips = self.netbox.list_ipaddr_by_ifaces(list(interface_mapping))
+        for ip in ips:
+            interface_mapping[ip.assigned_object_id].ip_addresses.append(ip)
+        self._fill_ipaddr_prefixes(ips)
 
-    def _record_device(self, device: device_model):
+    def _fill_ipaddr_prefixes(self, ips: list[IpAddressT]) -> None:
+        ip_to_cidrs: Dict[str, str] = {ip.address: str(ip_interface(ip.address).network) for ip in ips}
+        prefixes = self.netbox.list_ipprefixes(list(ip_to_cidrs.values()))
+        cidr_to_prefix: Dict[str, PrefixT] = {x.prefix: x for x in prefixes}
+        for ip in ips:
+            cidr = ip_to_cidrs[ip.address]
+            ip.prefix = cidr_to_prefix.get(cidr)
+
+
+    def _record_device(self, device: NetboxDeviceT):
         self._id_devices[device.id] = device
         self._short_name_devices[device.name] = device
         if not self.exact_host_filter:
             short_name = device.name.split(".")[0]
             self._short_name_devices[short_name] = device
 
-    def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
-        if not query.globs:
-            return []
-        query_groups = parse_glob(self.exact_host_filter, query)
-        return [
-            device
-            for device in self.netbox.dcim_all_devices(**query_groups).results
-            if _match_query(self.exact_host_filter, query, device)
-        ]
-
-    def _extend_interfaces(self, interfaces: List[interface_model]) -> List[interface_model]:
-        extended_ifaces = {
-            interface.id: self.extend_interface(interface, [])
-            for interface in interfaces
-        }
-
-        ips = self.netbox.ipam_all_ip_addresses(interface_id=list(extended_ifaces))
-        ip_to_cidrs: Dict[str, str] = {ip.address: str(ip_interface(ip.address).network) for ip in ips.results}
-        prefixes = self.netbox.ipam_all_prefixes(prefix=list(ip_to_cidrs.values()))
-        cidr_to_prefix: Dict[str, models.Prefix] = {x.prefix: x for x in prefixes.results}
-
-        for ip in ips.results:
-            cidr = ip_to_cidrs[ip.address]
-            ip = self.extend_ip_address(ip, prefix=cidr_to_prefix.get(cidr))
-            extended_ifaces[ip.assigned_object_id].ip_addresses.append(ip)
-        return list(extended_ifaces.values())
-
-    def _load_interfaces(self, device_ids: List[int]) -> List[interface_model]:
-        interfaces = self.netbox.dcim_all_interfaces(device_id=device_ids)
-        return self._extend_interfaces(interfaces.results)
-
-    def _load_interfaces_by_id(self, ids: List[int]) -> List[interface_model]:
-        interfaces = self.netbox.dcim_all_interfaces_by_id(id=ids)
-        return self._extend_interfaces(interfaces.results)
-
     def get_device(
             self, obj_id, preload_neighbors=False, use_mesh=None,
             **kwargs,
-    ) -> device_model:
+    ) -> NetboxDeviceT:
         if obj_id in self._id_devices:
             return self._id_devices[obj_id]
 
-        device = self.netbox.dcim_device(obj_id)
-        interfaces = self._load_interfaces([device.id])
-
-        res = self.extend_device(
-            device=device,
-            storage=self,
-            interfaces=interfaces,
-        )
-        self._record_device(res)
-        return res
+        device = self.netbox.get_device(obj_id)
+        self._record_device(device)
+        return device
 
     def flush_perf(self):
         pass
 
-    def search_connections(self, device: Device, neighbor: Device) -> list[tuple[Interface, Interface]]:
+    def search_connections(
+            self,
+            device: NetboxDeviceT,
+            neighbor: NetboxDeviceT,
+    ) -> list[tuple[InterfaceT, InterfaceT]]:
         if device.storage is not self:
             raise ValueError("device does not belong to this storage")
         if neighbor.storage is not self:
