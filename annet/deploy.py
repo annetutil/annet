@@ -49,8 +49,8 @@ class ProgressBar(abc.ABC):
 
 
 class DeployResult(_DeployResultBase):  # noqa: E302
-    def add_results(self, results: dict[str, tuple[list[str], list[Exception]]]) -> None:
-        for hostname, (excs, result) in results.items():
+    def add_results(self, results: dict[str, Exception]) -> None:
+        for hostname, excs in results.items():
             self.hostnames.append(hostname)
             self.results[hostname] = excs
             self.durations[hostname] = 0.0

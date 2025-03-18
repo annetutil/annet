@@ -204,7 +204,7 @@ def gen(args: cli_args.ShowGenOptions):
 def diff(args: cli_args.ShowDiffOptions):
     """ Generate configuration for devices and show a diff with current configuration using the rulebook """
     with get_loader(args, args) as loader:
-        success, fail = api.diff(args, loader)
+        success, fail = api.diff(args, loader, loader.device_ids)
 
         out = list(gen_sort_diff({loader.get_device(k): v for k, v in success.items()}, args))
         output_driver = output_driver_connector.get()
