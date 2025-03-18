@@ -113,6 +113,7 @@ def show_device_dump(args: cli_args.QueryOptions, arg_out: cli_args.FileOutOptio
                 )
             else:
                 get_logger().warning("method `dump` not implemented for %s", type(device))
+
     arg_gens = cli_args.GenOptions(arg_out, args)
     with get_loader(arg_gens, args) as loader:
         if not loader.devices:
@@ -190,7 +191,7 @@ def gen(args: cli_args.ShowGenOptions):
         output_driver = output_driver_connector.get()
         if args.dest is None:
             text_mapping = {item[0]: item[1] for item in out}
-            out = [(",".join(key), value, False) for key, value in collapse_texts(text_mapping).items()]
+            out = [(", ".join(key), value, False) for key, value in collapse_texts(text_mapping).items()]
 
         out.extend(output_driver.format_fails(fail, loader.device_fqdns))
         total = len(success) + len(fail)
@@ -203,13 +204,19 @@ def gen(args: cli_args.ShowGenOptions):
 def diff(args: cli_args.ShowDiffOptions):
     """ Generate configuration for devices and show a diff with current configuration using the rulebook """
     with get_loader(args, args) as loader:
-        filterer = filtering.filterer_connector.get()
-        device_ids = loader.device_ids
-        output_driver_connector.get().write_output(
-            args,
-            gen_sort_diff(api.diff(args, loader, device_ids, filterer), args),
-            len(loader.device_ids)
-        )
+        success, fail = api.diff(args, loader)
+
+        out = list(gen_sort_diff({loader.get_device(k): v for k, v in success.items()}, args))
+        output_driver = output_driver_connector.get()
+        if args.dest is None:
+            text_mapping = {item[0]: item[1] for item in out}
+            out = [(", ".join(key), value, False) for key, value in collapse_texts(text_mapping).items()]
+        out.extend(output_driver.format_fails(fail, loader.device_fqdns))
+
+        if total := len(success) + len(fail):
+            output_driver.write_output(args, out, total)
+        else:
+            get_logger().error("No devices found for %s", args.query)
 
 
 @subcommand(cli_args.ShowPatchOptions)
