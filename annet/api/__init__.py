@@ -1,4 +1,5 @@
 import abc
+import inspect
 import os
 import re
 import sys
@@ -8,13 +9,11 @@ from collections import OrderedDict as odict
 from itertools import groupby, chain
 from operator import itemgetter
 from typing import (
-    Any,
     Dict,
     Generator,
     Iterable,
     List,
     Mapping,
-    Optional,
     Set,
     Tuple,
     Union, cast,
@@ -41,7 +40,6 @@ from annet.rulebook import deploying
 from annet.filtering import Filterer
 from annet.hardware import hardware_connector
 from annet.output import (
-    LABEL_NEW_PREFIX,
     format_file_diff,
     output_driver_connector,
     print_err_label,
@@ -50,7 +48,6 @@ from annet.parallel import Parallel, TaskResult
 from annet.reference import RefTracker
 from annet.storage import Device, get_storage
 from annet.types import Diff, ExitCode, OldNewResult, Op, PCDiff, PCDiffFile
-
 
 DEFAULT_INDENT = "  "
 
@@ -240,15 +237,6 @@ def gen(args: cli_args.ShowGenOptions, loader: ann_gen.Loader):
 
 
 # =====
-def _diff_files(hw, old_files, new_files):
-    ret = {}
-    differ = file_differ_connector.get()
-    for (path, (new_text, reload_data)) in new_files.items():
-        old_text = old_files.get(path)
-        is_new = old_text is None
-        diff_lines = differ.diff_file(hw, path, old_text, new_text)
-        ret[path] = (diff_lines, reload_data, is_new)
-    return ret
 
 
 def patch(args: cli_args.ShowPatchOptions, loader: ann_gen.Loader):
@@ -322,62 +310,39 @@ def res_diff_patch(
 
 
 def diff(
-        args: cli_args.DiffOptions,
-        loader: ann_gen.Loader,
-        device_ids: List[int],
-        filterer: filtering.Filterer,
+    args: cli_args.DiffOptions,
+    loader: ann_gen.Loader,
 ) -> Mapping[Device, Union[Diff, PCDiff]]:
-    ret = {}
-    for res in ann_gen.old_new(
-        args,
-        config=args.config,
-        loader=loader,
-        no_new=args.clear,
-        do_files_download=True,
-        device_ids=device_ids,
-        filterer=filterer,
-    ):
-        old = res.get_old(args.acl_safe)
-        new = res.get_new(args.acl_safe)
-        device = res.device
-        acl_rules = res.get_acl_rules(args.acl_safe)
-        new_files = res.get_new_files(args.acl_safe)
-        new_json_fragment_files = res.get_new_file_fragments(args.acl_safe)
+    """ Сгенерировать конфиг для устройств """
+    stdin = args.stdin(filter_acl=args.filter_acl, config=None)
 
-        pc_diff_files = []
-        if res.old_files or new_files:
-            pc_diff_files.extend(_pc_diff(res.device.hw, device.hostname, res.old_files, new_files))
-        if res.old_json_fragment_files or new_json_fragment_files:
-            pc_diff_files.extend(_json_fragment_diff(res.device.hw, device.hostname, res.old_json_fragment_files, new_json_fragment_files))
+    filterer = filtering.filterer_connector.get()
+    pool = Parallel(ann_diff.worker, args, stdin, loader, filterer).tune_args(args)
+    if args.show_hosts_progress:
+        pool.add_callback(PoolProgressLogger(loader.device_fqdns))
 
-        if pc_diff_files:
-            pc_diff_files.sort(key=lambda f: f.label)
-            ret[device] = PCDiff(hostname=device.hostname, diff_files=pc_diff_files)
-        elif old is not None:
-            orderer = patching.Orderer.from_hw(device.hw)
-            rb = rulebook.get_rulebook(device.hw)
-            diff_tree = patching.make_diff(
-                old,
-                orderer.order_config(new),
-                rb,
-                [acl_rules, res.filter_acl_rules],
-            )
-            diff_tree = patching.strip_unchanged(diff_tree)
-            ret[device] = diff_tree
-
-    return ret
+    return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
 
 
-def collapse_texts(texts: Mapping[str, str]) -> Mapping[Tuple[str, ...], str]:
+def collapse_texts(texts: Mapping[str, str | Generator[str, None, None]]) -> Mapping[Tuple[str, ...], str]:
     """
     Группировка текстов.
     :param texts:
     :return: словарь с несколькими хостнеймами в ключе.
     """
-    diffs_with_orig = {key: [value, value.splitlines()] for key, value in texts.items()}
+    diffs_with_orig = {}
+    for key, value in texts.items():
+        if inspect.isgenerator(value):
+            lines = list(value)
+            diffs_with_orig[key] = ["".join(lines), lines]
+        else:
+            diffs_with_orig[key] = [value, value.splitlines()]
+
     res = {}
-    for _, collapsed_diff_iter in groupby(sorted(diffs_with_orig.items(), key=lambda x: (x[0], x[1][1])),
-                                          key=lambda x: x[1][1]):
+    for _, collapsed_diff_iter in groupby(
+        sorted(diffs_with_orig.items(), key=lambda x: (x[0], x[1][1])),
+        key=lambda x: x[1][1]
+    ):
         collapsed_diff = list(collapsed_diff_iter)
         res[tuple(x[0] for x in collapsed_diff)] = collapsed_diff[0][1][0]
 
@@ -744,8 +709,10 @@ def file_diff(args: cli_args.FileDiffOptions):
     return pool.run(old_new, tolerate_fails=True)
 
 
-def file_diff_worker(old_new: Tuple[str, str], args: cli_args.FileDiffOptions) -> Generator[
-    Tuple[str, str, bool], None, None]:
+def file_diff_worker(
+    old_new: Tuple[str, str],
+    args: cli_args.FileDiffOptions
+) -> Generator[Tuple[str, str, bool], None, None]:
     old_path, new_path = old_new
     hw = args.hw
     if isinstance(args.hw, str):
@@ -753,10 +720,12 @@ def file_diff_worker(old_new: Tuple[str, str], args: cli_args.FileDiffOptions) -
 
     if os.path.isdir(old_path) and os.path.isdir(new_path):
         hostname = os.path.basename(new_path)
-        new_files = {relative_cfg_path: (cfg_text, "") for relative_cfg_path, cfg_text in
-                     ann_gen.load_pc_config(new_path).items()}
+        new_files = {
+            relative_cfg_path: (cfg_text, "")
+            for relative_cfg_path, cfg_text in ann_gen.load_pc_config(new_path).items()
+        }
         old_files = ann_gen.load_pc_config(old_path)
-        for diff_file in _pc_diff(hw, hostname, old_files, new_files):
+        for diff_file in ann_diff.pc_diff(hw, hostname, old_files, new_files):
             diff_text = (
                 "\n".join(diff_file.diff_lines)
                 if args.no_color
@@ -794,39 +763,6 @@ def file_patch_worker(old_new: Tuple[str, str], args: cli_args.FileDiffOptions) 
         patch_text = _format_patch_blocks(patch_tree, hw, args.indent)
         if patch_text:
             yield dest_name, patch_text, False
-
-
-def _pc_diff(hw, hostname: str, old_files: Dict[str, str], new_files: Dict[str, str]) -> Generator[PCDiffFile, None, None]:
-    sorted_lines = sorted(_diff_files(hw, old_files, new_files).items())
-    for (path, (diff_lines, _reload_data, is_new)) in sorted_lines:
-        if not diff_lines:
-            continue
-        label = hostname + os.sep + path
-        if is_new:
-            label = LABEL_NEW_PREFIX + label
-        yield PCDiffFile(label=label, diff_lines=diff_lines)
-
-
-def _json_fragment_diff(
-        hw,
-        hostname: str,
-        old_files: Dict[str, Any],
-        new_files: Dict[str, Tuple[Any, Optional[str]]],
-) -> Generator[PCDiffFile, None, None]:
-    def jsonify_multi(files):
-        return {
-            path: jsontools.format_json(cfg)
-            for path, cfg in files.items()
-        }
-
-    def jsonify_multi_with_cmd(files):
-        ret = {}
-        for path, cfg_reload_cmd in files.items():
-            cfg, reload_cmd = cfg_reload_cmd
-            ret[path] = (jsontools.format_json(cfg), reload_cmd)
-        return ret
-    jold, jnew = jsonify_multi(old_files), jsonify_multi_with_cmd(new_files)
-    return _pc_diff(hw, hostname, jold, jnew)
 
 
 def guess_hw(config_text: str):

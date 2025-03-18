@@ -1,10 +1,13 @@
 import abc
 import difflib
+import os
 import re
 from itertools import groupby
 from pathlib import Path
-from typing import Generator, List, Mapping, Tuple, Union, Protocol
+from typing import Any, Dict, Generator, List, Mapping, Optional, Protocol, Tuple, Union
 
+from annet import cli_args, filtering, patching, rulebook, tabparser
+from annet.annlib import jsontools
 from annet.annlib.diff import (  # pylint: disable=unused-import
     colorize_line,
     diff_cmp,
@@ -13,23 +16,113 @@ from annet.annlib.diff import (  # pylint: disable=unused-import
     resort_diff,
 )
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.annlib.output import format_file_diff
-
-from annet import patching, rulebook, tabparser, hardware
+from annet.annlib.output import LABEL_NEW_PREFIX, format_file_diff
 from annet.cli_args import ShowDiffOptions
 from annet.connectors import CachedConnector
 from annet.output import output_driver_connector
 from annet.storage import Device
 from annet.tabparser import make_formatter
-from annet.types import Diff, PCDiff
+from annet.types import Diff, PCDiff, PCDiffFile
+
+from .gen import Loader, old_new
 
 
-# NOCDEV-1720
+def _diff_files(hw, old_files, new_files):
+    ret = {}
+    differ = file_differ_connector.get()
+    for (path, (new_text, reload_data)) in new_files.items():
+        old_text = old_files.get(path)
+        is_new = old_text is None
+        diff_lines = differ.diff_file(hw, path, old_text, new_text)
+        ret[path] = (diff_lines, reload_data, is_new)
+    return ret
+
+
+def pc_diff(hw, hostname: str, old_files: Dict[str, str], new_files: Dict[str, str]) -> Generator[
+    PCDiffFile, None, None]:
+    sorted_lines = sorted(_diff_files(hw, old_files, new_files).items())
+    for (path, (diff_lines, _reload_data, is_new)) in sorted_lines:
+        if not diff_lines:
+            continue
+        label = hostname + os.sep + path
+        if is_new:
+            label = LABEL_NEW_PREFIX + label
+        yield PCDiffFile(label=label, diff_lines=diff_lines)
+
+
+def json_fragment_diff(
+    hw,
+    hostname: str,
+    old_files: Dict[str, Any],
+    new_files: Dict[str, Tuple[Any, Optional[str]]],
+) -> Generator[PCDiffFile, None, None]:
+    def jsonify_multi(files):
+        return {
+            path: jsontools.format_json(cfg)
+            for path, cfg in files.items()
+        }
+
+    def jsonify_multi_with_cmd(files):
+        ret = {}
+        for path, cfg_reload_cmd in files.items():
+            cfg, reload_cmd = cfg_reload_cmd
+            ret[path] = (jsontools.format_json(cfg), reload_cmd)
+        return ret
+
+    jold, jnew = jsonify_multi(old_files), jsonify_multi_with_cmd(new_files)
+    return pc_diff(hw, hostname, jold, jnew)
+
+
+def worker(
+    device_id,
+    args: cli_args.DiffOptions,
+    stdin,
+    loader: Loader,
+    filterer: filtering.Filterer,
+) -> Union[Diff, PCDiff, None]:
+    for res in old_new(
+        args,
+        config=args.config,
+        loader=loader,
+        no_new=args.clear,
+        do_files_download=True,
+        device_ids=[device_id],
+        filterer=filterer,
+        stdin=stdin,
+    ):
+        old = res.get_old(args.acl_safe)
+        new = res.get_new(args.acl_safe)
+        device = res.device
+        acl_rules = res.get_acl_rules(args.acl_safe)
+        new_files = res.get_new_files(args.acl_safe)
+        new_json_fragment_files = res.get_new_file_fragments(args.acl_safe)
+
+        pc_diff_files = []
+        if res.old_files or new_files:
+            pc_diff_files.extend(pc_diff(res.device.hw, device.hostname, res.old_files, new_files))
+        if res.old_json_fragment_files or new_json_fragment_files:
+            pc_diff_files.extend(json_fragment_diff(res.device.hw, device.hostname, res.old_json_fragment_files,
+                                                    new_json_fragment_files))
+
+        if pc_diff_files:
+            pc_diff_files.sort(key=lambda f: f.label)
+            return PCDiff(hostname=device.hostname, diff_files=pc_diff_files)
+        elif old is not None:
+            orderer = patching.Orderer.from_hw(device.hw)
+            rb = rulebook.get_rulebook(device.hw)
+            diff_tree = patching.make_diff(
+                old,
+                orderer.order_config(new),
+                rb,
+                [acl_rules, res.filter_acl_rules],
+            )
+            diff_tree = patching.strip_unchanged(diff_tree)
+            return diff_tree
 
 
 def gen_sort_diff(
     diffs: Mapping[Device, Union[Diff, PCDiff]], args: ShowDiffOptions
-) -> Generator[Tuple[str, Generator[str, None, None], bool], None, None]:
+) -> Generator[Tuple[str, Generator[str, None, None] | str, bool], None, None]:
     """
     Возвращает осортированный дифф, совместимый с write_output
     :param diffs: Маппинг устройства в дифф
@@ -71,7 +164,7 @@ def _make_text_diff(device: Device, diff: Diff) -> List[str]:
     return res
 
 
-def collapse_diffs(diffs: Mapping[Device, Diff]) -> Mapping[Tuple[Device, ...], Diff]:
+def collapse_diffs(diffs: Mapping[Device, Diff]) -> Dict[Tuple[Device, ...], Diff]:
     """
     Группировка диффов.
     :param diffs:
@@ -128,7 +221,7 @@ class FrrFileDiffer(UnifiedFileDiffer):
             return self._diff_frr_conf(hw, old, new)
         return super().diff_file(hw, path, old, new)
 
-    def _diff_frr_conf(self,  hw: HardwareView, old_text: str | None, new_text: str | None) -> list[str]:
+    def _diff_frr_conf(self, hw: HardwareView, old_text: str | None, new_text: str | None) -> list[str]:
         """Calculate the differences for frr.conf files."""
         indent = "  "
         rb = rulebook.rulebook_provider_connector.get()
