@@ -16,7 +16,7 @@ from typing import (
     Mapping,
     Set,
     Tuple,
-    Union, cast,
+    Union, cast, Any,
 )
 
 import colorama
@@ -312,16 +312,18 @@ def res_diff_patch(
 def diff(
     args: cli_args.DiffOptions,
     loader: ann_gen.Loader,
-) -> Mapping[Device, Union[Diff, PCDiff]]:
+    device_ids: List[Any]
+) -> tuple[Mapping[Device, Union[Diff, PCDiff]], Mapping[Device, Exception]]:
     """ Сгенерировать конфиг для устройств """
     stdin = args.stdin(filter_acl=args.filter_acl, config=None)
 
     filterer = filtering.filterer_connector.get()
     pool = Parallel(ann_diff.worker, args, stdin, loader, filterer).tune_args(args)
     if args.show_hosts_progress:
-        pool.add_callback(PoolProgressLogger(loader.device_fqdns))
+        fqdns = {k: v for k, v in loader.device_fqdns.items() if k in device_ids}
+        pool.add_callback(PoolProgressLogger(fqdns))
 
-    return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
+    return pool.run(device_ids, args.tolerate_fails, args.strict_exit_code)
 
 
 def collapse_texts(texts: Mapping[str, str | Generator[str, None, None]]) -> Mapping[Tuple[str, ...], str]:
@@ -500,7 +502,6 @@ class Deployer:
 
         self._collapseable_diffs = {}
         self._diff_lines: List[str] = []
-        self._filterer = filtering.filterer_connector.get()
 
     def parse_result(self, job: DeployerJob, result: ann_gen.OldNewResult):
         logger = get_logger(job.device.hostname)
@@ -594,14 +595,28 @@ class Deployer:
             self.args,
             config="running",
         )
+
         if diff_args.query:
             ann_gen.live_configs = None
-            diffs = diff(diff_args, loader, success_device_ids, self._filterer)
-            non_pc_diffs = {dev: diff for dev, diff in diffs.items() if not isinstance(diff, PCDiff)}
+
+            diffs, failed = diff(diff_args, loader, success_device_ids)
+            for device_id, exc in failed.items():
+                self.failed_configs[loader.get_device(device_id).fqdn] = exc
+
+            non_pc_diffs = {
+                loader.get_device(device_id): diff
+                for device_id, diff in diffs.items()
+                if not isinstance(diff, PCDiff)
+            }
             devices_to_diff = ann_diff.collapse_diffs(non_pc_diffs)
-            devices_to_diff.update({(dev,): diff for dev, diff in diffs.items() if isinstance(diff, PCDiff)})
+            devices_to_diff.update({
+                (loader.get_device(device_id),): diff
+                for device_id, diff in diffs.items()
+                if isinstance(diff, PCDiff)}
+            )
         else:
             devices_to_diff = {}
+
         for devices, diff_obj in devices_to_diff.items():
             if diff_obj:
                 for dev in devices:
