@@ -29,6 +29,7 @@ class NetboxAdapter(Protocol[NetboxDeviceT, InterfaceT, IpAddressT, PrefixT]):
     @abstractmethod
     def list_all_fqdns(self) -> list[str]:
         raise NotImplementedError()
+
     @abstractmethod
     def list_devices(self, query: dict[str, list[str]]) -> list[NetboxDeviceT]:
         raise NotImplementedError()

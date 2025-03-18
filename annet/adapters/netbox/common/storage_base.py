@@ -142,7 +142,6 @@ class BaseNetboxStorage(
             cidr = ip_to_cidrs[ip.address]
             ip.prefix = cidr_to_prefix.get(cidr)
 
-
     def _record_device(self, device: NetboxDeviceT):
         self._id_devices[device.id] = device
         self._short_name_devices[device.name] = device

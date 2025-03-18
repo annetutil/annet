@@ -67,11 +67,11 @@ class Prefix(DumpableView):
     description: Optional[str] = ""
     scope: Optional[Entity] = None
     scope_type: str = ""
-    
+
     @property
     def _dump__list_key(self):
         return self.prefix
-    
+
     @property
     def site(self):
         if self.scope_type == "dcim.site":
@@ -295,4 +295,4 @@ class NetboxDevice(Entity, Generic[InterfaceT]):
         return None
 
 
-NetboxDeviceT = TypeVar('NetboxDeviceT', bound=NetboxDevice)
+NetboxDeviceT = TypeVar("NetboxDeviceT", bound=NetboxDevice)
