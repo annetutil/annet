@@ -5,20 +5,18 @@ from annetbox.v41 import client_sync
 from annetbox.v41 import models as api_models
 
 from annet.adapters.netbox.common.adapter import NetboxAdapter, get_device_breed, get_device_hw
-from annet.adapters.netbox.common.models import InterfaceT, IpAddressT, NetboxDeviceT, PrefixT
-from annet.adapters.netbox.v37.storage import NetboxV37Adapter
-from annet.adapters.netbox.v41.models import InterfaceV41, IpAddressV41, NetboxDeviceV41, PrefixV41
 from annet.adapters.netbox.common.storage_base import BaseNetboxStorage
+from annet.adapters.netbox.v41.models import InterfaceV41, IpAddressV41, NetboxDeviceV41, PrefixV41
 from annet.storage import Storage
 
 
-class NetboxV41Adapter(NetboxV37Adapter):
+class NetboxV41Adapter(NetboxAdapter[NetboxDeviceV41, InterfaceV41, IpAddressV41, PrefixV41]):
     def __init__(
             self,
             storage: Storage,
             url: str,
             token: str,
-            ssl_context: ssl.SSLContext,
+            ssl_context: ssl.SSLContext | None,
             threads: int,
     ):
         self.netbox = client_sync.NetboxV41(url=url, token=token, ssl_context=ssl_context, threads=threads)
@@ -50,13 +48,49 @@ class NetboxV41Adapter(NetboxV37Adapter):
             ]
         )
 
+    def list_all_fqdns(self) -> list[str]:
+        return [
+            d.name
+            for d in self.netbox.dcim_all_devices_brief().results
+        ]
+
+    def list_devices(self, query: dict[str, list[str]]) -> list[NetboxDeviceV41]:
+        return [
+            self.convert_device(dev)
+            for dev in self.netbox.dcim_all_devices(**query).results
+        ]
+
+    def get_device(self, device_id: int) -> NetboxDeviceV41:
+        return self.convert_device(self.netbox.dcim_device(device_id))
+
+    def list_interfaces_by_devices(self, device_ids: list[int]) -> list[InterfaceV41]:
+        return [
+            self.convert_interface(interface)
+            for interface in self.netbox.dcim_all_interfaces(device_id=device_ids).results
+        ]
+
+    def list_interfaces(self, ids: list[int]) -> list[InterfaceV41]:
+        return [
+            self.convert_interface(interface)
+            for interface in self.netbox.dcim_all_interfaces(id=ids).results
+        ]
+
+    def list_ipaddr_by_ifaces(self, iface_ids: list[int]) -> list[IpAddressV41]:
+        return [
+            self.convert_ip_address(ipaddress)
+            for ipaddress in self.netbox.ipam_all_ip_addresses(interface_id=iface_ids).results
+        ]
+
+    def list_ipprefixes(self, prefixes: list[str]) -> list[PrefixV41]:
+        return self.netbox.ipam_all_prefixes(prefix=prefixes).results
+
 
 class NetboxStorageV41(BaseNetboxStorage[NetboxDeviceV41, InterfaceV41, IpAddressV41, PrefixV41]):
     def _init_adapter(
             self,
             url: str,
             token: str,
-            ssl_context: ssl.SSLContext,
+            ssl_context: ssl.SSLContext | None,
             threads: int,
-    ) -> NetboxAdapter[NetboxDeviceT, InterfaceT, IpAddressT, PrefixT]:
+    ) -> NetboxAdapter[NetboxDeviceV41, InterfaceV41, IpAddressV41, PrefixV41]:
         return NetboxV41Adapter(self, url, token, ssl_context, threads)

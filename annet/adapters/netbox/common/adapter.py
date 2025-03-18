@@ -1,10 +1,14 @@
-from abc import abstractmethod
-from typing import Protocol
+from abc import abstractmethod, ABC
+from typing import Protocol, Generic, TypeVar
 
 from annet.annlib.netdev.views.hardware import HardwareView
 from .manufacturer import get_breed, get_hw
-from .models import NetboxDeviceT, InterfaceT, IpAddressT, PrefixT
+from .models import NetboxDevice, Interface, IpAddress, Prefix
 
+NetboxDeviceT = TypeVar("NetboxDeviceT", bound=NetboxDevice)
+InterfaceT = TypeVar("InterfaceT", bound=Interface)
+IpAddressT = TypeVar("IpAddressT", bound=IpAddress)
+PrefixT = TypeVar("PrefixT", bound=Prefix)
 
 def get_device_breed(device: NetboxDeviceT) -> str:
     if device.device_type and device.device_type.manufacturer:
@@ -25,7 +29,7 @@ def get_device_hw(device: NetboxDeviceT) -> HardwareView:
     return HardwareView("", "")
 
 
-class NetboxAdapter(Protocol[NetboxDeviceT, InterfaceT, IpAddressT, PrefixT]):
+class NetboxAdapter(ABC, Generic[NetboxDeviceT, InterfaceT, IpAddressT, PrefixT]):
     @abstractmethod
     def list_all_fqdns(self) -> list[str]:
         raise NotImplementedError()

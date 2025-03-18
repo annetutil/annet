@@ -188,7 +188,7 @@ class NetboxDevice(Entity):
 
     fqdn: str
     hostname: str
-    hw: Optional[HardwareView]
+    hw: HardwareView
     breed: str
 
     interfaces: List[Interface]

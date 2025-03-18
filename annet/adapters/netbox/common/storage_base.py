@@ -1,7 +1,7 @@
 import ssl
 from ipaddress import ip_interface
 from logging import getLogger
-from typing import Any, Optional, List, Union, Dict, cast, Generic
+from typing import Any, Optional, List, Union, Dict, cast, Generic, TypeVar
 
 from annetbox.v37 import models as api_models
 
@@ -9,9 +9,13 @@ from annet.adapters.netbox.common.query import NetboxQuery, FIELD_VALUE_SEPARATO
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
 from annet.storage import Storage
 from .adapter import NetboxAdapter
-from .models import IpAddressT, InterfaceT, NetboxDeviceT, PrefixT
+from .models import IpAddress, Interface, NetboxDevice, Prefix
 
 logger = getLogger(__name__)
+NetboxDeviceT = TypeVar("NetboxDeviceT", bound=NetboxDevice)
+InterfaceT = TypeVar("InterfaceT", bound=Interface)
+IpAddressT = TypeVar("IpAddressT", bound=IpAddress)
+PrefixT = TypeVar("PrefixT", bound=Prefix)
 
 
 class BaseNetboxStorage(
