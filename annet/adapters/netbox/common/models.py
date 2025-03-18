@@ -101,8 +101,6 @@ class IpAddress(DumpableView, Generic[_PrefixT]):
         return self.address
 
 
-
-
 @dataclass
 class InterfaceConnectedEndpoint(Entity):
     device: Entity
@@ -295,4 +293,3 @@ class NetboxDevice(Entity, Generic[_InterfaceT]):
             if iface.name == name:
                 return iface
         return None
-

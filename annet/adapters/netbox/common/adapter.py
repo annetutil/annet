@@ -10,6 +10,7 @@ InterfaceT = TypeVar("InterfaceT", bound=Interface)
 IpAddressT = TypeVar("IpAddressT", bound=IpAddress)
 PrefixT = TypeVar("PrefixT", bound=Prefix)
 
+
 def get_device_breed(device: NetboxDeviceT) -> str:
     if device.device_type and device.device_type.manufacturer:
         return get_breed(
