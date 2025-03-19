@@ -12,8 +12,9 @@ from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, T
 from annet.rpl_generators.entities import (
     arista_well_known_community,
     CommunityList, RDFilter, PrefixListNameGenerator, CommunityLogic, mangle_united_community_list_name,
+    IpPrefixList, group_community_members, CommunityType,
 )
-from annet.rpl_generators.prefix_lists import new_prefix_list_name_generator
+
 
 HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.as_path_filter: "as-path-filter {option_value}",
@@ -63,6 +64,10 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     TAGS = ["policy", "rpl", "routing"]
 
     @abstractmethod
+    def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
+        raise NotImplementedError()
+
+    @abstractmethod
     def get_policies(self, device: Any) -> list[RoutingPolicy]:
         raise NotImplementedError()
 
@@ -87,7 +92,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             condition: SingleCondition[Any],
             communities: dict[str, CommunityList],
             rd_filters: dict[str, RDFilter],
-            prefix_name_generator: PrefixListNameGenerator,
+            name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         if condition.field == MatchField.community:
             if condition.operator is ConditionOperator.HAS:
@@ -136,21 +141,13 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             return
         if condition.field == MatchField.ip_prefix:
             for name in condition.value.names:
-                mangled_name = prefix_name_generator.get_prefix_name(
-                    name=name,
-                    greater_equal=condition.value.greater_equal,
-                    less_equal=condition.value.less_equal,
-                )
-                yield "if-match", "ip-prefix", mangled_name
+                plist = name_generator.get_prefix(name, condition.value)
+                yield "if-match", "ip-prefix", plist.name
             return
         if condition.field == MatchField.ipv6_prefix:
             for name in condition.value.names:
-                mangled_name = prefix_name_generator.get_prefix_name(
-                    name=name,
-                    greater_equal=condition.value.greater_equal,
-                    less_equal=condition.value.less_equal,
-                )
-                yield "if-match", "ipv6 address prefix-list", mangled_name
+                plist = name_generator.get_prefix(name, condition.value)
+                yield "if-match", "ipv6 address prefix-list", plist.name
             return
         if condition.field == MatchField.as_path_length:
             if condition.operator is ConditionOperator.EQ:
@@ -248,6 +245,52 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         if action.value.removed:
             raise NotImplementedError("Extcommunity_soo remove is not supported for huawei")
 
+    def _huawei_render_ext_community_members(
+            self, comm_type: CommunityType, members: list[str]
+    ) -> Sequence[Sequence[str]]:
+        if comm_type is CommunityType.SOO:
+            return "soo", *members
+        if comm_type is CommunityType.RT:
+            return [f"rt {member}" for member in members]
+        elif comm_type is CommunityType.LARGE:
+            raise ValueError("Large community is not subtype of extcommunity")
+        elif comm_type is CommunityType.BASIC:
+            raise ValueError("Basic community is not subtype of extcommunity")
+        else:
+            raise NotImplementedError(f"Community type {comm_type} is not supported on huawei")
+
+    def _huawei_then_extcommunity(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ):
+        if action.value.replaced is not None:
+            if action.value.added or action.value.removed:
+                raise NotImplementedError(
+                    "Cannot set extcommunity together with add/delete on huawei",
+                )
+            if not action.value.replaced:
+                raise NotImplementedError(
+                    "Cannot reset extcommunity on huawei",
+                )
+
+            members = group_community_members(communities, action.value.replaced)
+            for community_type, replaced_members in members.items():
+                if community_type is CommunityType.SOO:
+                    raise NotImplementedError(
+                        "Cannot set extcommunity soo on huawei",
+                    )
+                rendered_memebers = self._huawei_render_ext_community_members(community_type, replaced_members)
+                yield "apply", "extcommunity", *rendered_memebers
+        if action.value.added:
+            members = group_community_members(communities, action.value.added)
+            for community_type, added_members in members.items():
+                rendered_memebers = self._huawei_render_ext_community_members(community_type, added_members)
+                yield "apply", "extcommunity", *rendered_memebers, "additive"
+        if action.value.removed:
+            raise NotImplementedError("Cannot remove extcommunity on huawei")
+
     def _huawei_then_as_path(
             self,
             device: Any,
@@ -285,6 +328,10 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         if action.field == ThenField.large_community:
             yield from self._huawei_then_large_community(communities, device,
                                                          cast(SingleAction[CommunityActionValue], action))
+            return
+        if action.field == ThenField.extcommunity:
+            yield from self._huawei_then_extcommunity(communities, device,
+                                                      cast(SingleAction[CommunityActionValue], action))
             return
         if action.field == ThenField.extcommunity_rt:
             yield from self._huawei_then_extcommunity_rt(communities, device,
@@ -353,10 +400,11 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 yield "goto next-node"
 
     def run_huawei(self, device):
+        prefix_lists = self.get_prefix_lists(device)
         policies = self.get_policies(device)
         communities = {c.name: c for c in self.get_community_lists(device)}
         rd_filters = {f.name: f for f in self.get_rd_filters(device)}
-        prefix_name_generator = new_prefix_list_name_generator(policies)
+        prefix_name_generator = PrefixListNameGenerator(prefix_lists, policies)
 
         for policy in self.get_policies(device):
             for statement in policy.statements:
@@ -383,7 +431,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             condition: SingleCondition[Any],
             communities: dict[str, CommunityList],
             rd_filters: dict[str, RDFilter],
-            prefix_name_generator: PrefixListNameGenerator,
+            name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         if condition.field == MatchField.community:
             if condition.operator is ConditionOperator.HAS_ANY:
@@ -436,21 +484,13 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             return
         if condition.field == MatchField.ip_prefix:
             for name in condition.value.names:
-                mangled_name = prefix_name_generator.get_prefix_name(
-                    name=name,
-                    greater_equal=condition.value.greater_equal,
-                    less_equal=condition.value.less_equal,
-                )
-                yield "match", "ip address prefix-list", mangled_name
+                plist = name_generator.get_prefix(name, condition.value)
+                yield "match", "ip address prefix-list", plist.name
             return
         if condition.field == MatchField.ipv6_prefix:
             for name in condition.value.names:
-                mangled_name = prefix_name_generator.get_prefix_name(
-                    name=name,
-                    greater_equal=condition.value.greater_equal,
-                    less_equal=condition.value.less_equal,
-                )
-                yield "match", "ipv6 address prefix-list", mangled_name
+                plist = name_generator.get_prefix(name, condition.value)
+                yield "match", "ipv6 address prefix-list", plist.name
             return
         if condition.field == MatchField.as_path_length:
             if condition.operator is ConditionOperator.EQ:
@@ -492,12 +532,15 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 yield "set", "community community-list", *action.value.replaced
             else:
                 yield "set", "community", "none"
-        for community_name in action.value.added:
-            yield "set", "community community-list", community_name, "additive"
-        for community_name in action.value.removed:
-            community = communities[community_name]
-            for comm_value in community.members:
-                yield "set community", arista_well_known_community(comm_value), "delete"
+        if action.value.added:
+            yield "set", "community community-list", *action.value.added, "additive"
+        if action.value.removed:
+            members = [
+                arista_well_known_community(member)
+                for community_name in action.value.removed
+                for member in communities[community_name].members
+            ]
+            yield "set community", *members, "delete"
 
     def _arista_then_large_community(
             self,
@@ -520,10 +563,10 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                     first = False
                 else:
                     yield "set", "large-community large-community-list", community_name, "additive"
-        for community_name in action.value.added:
-            yield "set", "large-community large-community-list", community_name, "additive"
-        for community_name in action.value.removed:
-            yield "set large-community large-community-list", community_name, "delete"
+        if action.value.added:
+            yield "set", "large-community large-community-list",  *action.value.added, "additive"
+        if action.value.removed:
+            yield "set large-community large-community-list", *action.value.removed, "delete"
 
     def _arista_then_extcommunity_rt(
             self,
@@ -533,14 +576,20 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
             raise NotImplementedError("Extcommunity_rt replace is not supported for arista")
-        for community_name in action.value.added:
-            community = communities[community_name]
-            for comm_value in community.members:
-                yield "set", "extcommunity rt", comm_value, "additive"
-        for community_name in action.value.removed:
-            community = communities[community_name]
-            for comm_value in community.members:
-                yield "set extcommunity rt", comm_value, "delete"
+        if action.value.added:
+            members = [
+                f"rt {member}"
+                for community_name in action.value.removed
+                for member in communities[community_name].members
+            ]
+            yield "set", "extcommunity", *members, "additive"
+        if action.value.removed:
+            members = [
+                f"rt {member}"
+                for community_name in action.value.removed
+                for member in communities[community_name].members
+            ]
+            yield "set extcommunity", *members, "delete"
 
     def _arista_then_extcommunity_soo(
             self,
@@ -550,14 +599,65 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
             raise NotImplementedError("Extcommunity_soo replace is not supported for arista")
-        for community_name in action.value.added:
-            community = communities[community_name]
-            for comm_value in community.members:
-                yield "set", "extcommunity soo", comm_value, "additive"
-        for community_name in action.value.removed:
-            community = communities[community_name]
-            for comm_value in community.members:
-                yield "set", "extcommunity soo", comm_value, "delete"
+        if action.value.added:
+            members = [
+                f"soo {member}"
+                for community_name in action.value.removed
+                for member in communities[community_name].members
+            ]
+            yield "set", "extcommunity", *members, "additive"
+        if action.value.removed:
+            members = [
+                f"soo {member}"
+                for community_name in action.value.removed
+                for member in communities[community_name].members
+            ]
+            yield "set", "extcommunity", *members, "delete"
+
+    def _arista_extcommunity_type_str(self, comm_type: CommunityType) -> str:
+        if comm_type is CommunityType.SOO:
+            return "soo"
+        elif comm_type is CommunityType.RT:
+            return "rt"
+        elif comm_type is CommunityType.LARGE:
+            raise ValueError("Large community is not subtype of extcommunity")
+        elif comm_type is CommunityType.BASIC:
+            raise ValueError("Basic community is not subtype of extcommunity")
+        else:
+            raise NotImplementedError(f"Community type {comm_type} is not supported on arista")
+
+    def _arista_render_ext_community_members(
+            self, all_communities: dict[str, CommunityList], communities: list[str],
+    ) -> Iterator[str]:
+        for community_name in communities:
+            community = all_communities[community_name]
+            comm_type = self._arista_extcommunity_type_str(community.type)
+            for member in community.members:
+                yield f"{comm_type} {member}"
+
+    def _arista_then_extcommunity(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ):
+        if action.value.replaced is not None:
+            if action.value.added or action.value.removed:
+                raise NotImplementedError(
+                    "Cannot set extcommunity together with add/delete on arista",
+                )
+            if not action.value.replaced:
+                yield "set", "extcommunity", "none"
+                return
+            members = list(self._arista_render_ext_community_members(communities, action.value.replaced))
+            yield "set extcommunity", *members
+            return
+        if action.value.added:
+            members = list(self._arista_render_ext_community_members(communities, action.value.added))
+            yield "set extcommunity", *members, "additive"
+        if action.value.removed:
+            members = list(self._arista_render_ext_community_members(communities, action.value.removed))
+            yield "set extcommunity", *members, "delete"
 
     def _arista_then_as_path(
             self,
@@ -604,6 +704,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             yield from self._arista_then_large_community(
                 communities, device, cast(SingleAction[CommunityActionValue], action),
             )
+            return
+        if action.field == ThenField.extcommunity:
+            yield from self._arista_then_extcommunity(communities, device, action)
             return
         if action.field == ThenField.extcommunity_rt:
             yield from self._arista_then_extcommunity_rt(
@@ -675,8 +778,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 yield "continue"
 
     def run_arista(self, device):
+        prefix_lists = self.get_prefix_lists(device)
         policies = self.get_policies(device)
-        prefix_name_generator = new_prefix_list_name_generator(policies)
+        prefix_name_generator = PrefixListNameGenerator(prefix_lists, policies)
         communities = {c.name: c for c in self.get_community_lists(device)}
         rd_filters = {f.name: f for f in self.get_rd_filters(device)}
 

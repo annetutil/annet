@@ -40,7 +40,7 @@ class SwitchOutputLexer(RegexLexer):
         "root": [
             (r"[wW]arning.*\n", Warning),
             (r"Info.*\n", Warning),
-            (r"Error.*\n", Error),
+            (r"[eE]rror.*\n", Error),
             (r".*\n", Token.Text),
         ]
     }

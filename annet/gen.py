@@ -526,52 +526,6 @@ def worker(device_id, args: ShowGenOptions, stdin, loader: "Loader", filterer: F
                    False)
 
 
-def old_new_worker(device_id, args: DeployOptions, config, stdin, loader: "Loader", filterer: Filterer):
-    for res in old_new(
-        args,
-        config=config,
-        loader=loader,
-        filterer=filterer,
-        stdin=stdin,
-        device_ids=[device_id],
-        no_new=args.clear,
-        do_files_download=True,
-    ):
-        if res.err is not None and not args.tolerate_fails:
-            raise res.err
-        yield res
-
-
-class OldNewParallel(Parallel):
-    def __init__(self, args: DeployOptions, loader: "Loader", filterer: Filterer):
-        stdin = args.stdin(filter_acl=args.filter_acl, config=args.config)
-        super().__init__(
-            old_new_worker,
-            args,
-            config=args.config,
-            stdin=stdin,
-            loader=loader,
-            filterer=filterer,
-        )
-        self.tune_args(args)
-        self.tolerate_fails = args.tolerate_fails
-
-    def generated_configs(self, devices: List[Device]) -> Generator[OldNewResult, None, None]:
-        devices_by_id = {device.id: device for device in devices}
-        device_ids = list(devices_by_id)
-
-        for task_result in self.irun(device_ids, self.tolerate_fails):
-            if task_result.exc is not None:
-                device = devices_by_id.pop(task_result.device_id)
-                yield OldNewResult(device=device, err=task_result.exc)
-            elif task_result.result is not None:
-                yield from task_result.result
-                devices_by_id.pop(task_result.device_id)
-
-        for device in devices_by_id.values():
-            yield OldNewResult(device=device, err=Exception(f"No config returned for {device.hostname}"))
-
-
 @dataclasses.dataclass
 class DeviceFilesToDownload:
     entire: List[str] = dataclasses.field(default_factory=list)

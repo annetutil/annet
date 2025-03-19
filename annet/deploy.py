@@ -24,6 +24,14 @@ class ProgressBar(abc.ABC):
         ...
 
     @abc.abstractmethod
+    def add_content(self, tile_name: str, content: str):
+        ...
+
+    @abc.abstractmethod
+    def reset_content(self, tile_name: str):
+        ...
+
+    @abc.abstractmethod
     def set_progress(self,
                      tile_name: str,
                      iteration: int,
@@ -36,13 +44,13 @@ class ProgressBar(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def set_exception(self, tile_name: str, cmd_exc: str, last_cmd: str, progress_max: int):
+    def set_exception(self, tile_name: str, cmd_exc: str, last_cmd: str, progress_max: int, content: str = "") -> None:
         ...
 
 
 class DeployResult(_DeployResultBase):  # noqa: E302
-    def add_results(self, results: dict[str, tuple[list[str], list[Exception]]]) -> None:
-        for hostname, (excs, result) in results.items():
+    def add_results(self, results: dict[str, Exception]) -> None:
+        for hostname, excs in results.items():
             self.hostnames.append(hostname)
             self.results[hostname] = excs
             self.durations[hostname] = 0.0

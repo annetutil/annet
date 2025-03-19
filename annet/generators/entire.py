@@ -14,7 +14,6 @@ from typing import (
 
 from annet.lib import (
     flatten,
-    jinja_render,
     mako_render,
 )
 from .base import BaseGenerator, _filter_str
@@ -69,9 +68,6 @@ class Entire(BaseGenerator):
 
     def mako(self, text, **kwargs) -> str:
         return mako_render(text, dedent=True, device=self.__device, **kwargs)
-
-    def jinja(self, text, **kwargs) -> str:
-        return jinja_render(text, dedent=True, device=self.__device, **kwargs)
 
     # =====
 

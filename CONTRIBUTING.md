@@ -30,6 +30,16 @@ Replace the bracketed text as follows:
 
 It is enough to provide us such notification once. 
 
+## Versioning Policy
+
+We follow **Semantic Versioning (SemVer)** for all releases.
+
+- Any **breaking change** will result in a **major version bump** (e.g., `1.x.x → 2.0.0`).
+- Minor and patch versions are used for backward-compatible improvements and bug fixes.
+- For details on specific changes, refer to the **release notes**.
+
+Please ensure your contributions align with this versioning strategy.
+
 ## Other questions
 
-If you have any questions, please mail us at opensource@yandex-team.ru.
+If you have any questions, please mail us at opensource-support@yandex-team.ru.

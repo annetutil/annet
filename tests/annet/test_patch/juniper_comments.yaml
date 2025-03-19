@@ -1,0 +1,80 @@
+- vendor: juniper
+  before: |
+    system {
+        hostname "foo"
+    }
+  after: |-
+    system {
+        /* bar */
+        hostname "foo"
+    }
+  patch: |
+    configure exclusive
+    edit system
+    annotate hostname "bar"
+    exit
+    commit
+    exit
+- vendor: juniper
+  before: |
+    system {
+        /* bar */
+        hostname "foo"
+    }
+  after: |-
+    system {
+        hostname "foo"
+    }
+  patch: |
+    configure exclusive
+    edit system
+    annotate hostname ""
+    exit
+    commit
+    exit
+- vendor: juniper
+  before: ""
+  after: |-
+    system {
+        /* bar */
+        hostname "foo"
+    }
+  patch: |
+    configure exclusive
+    set system hostname "foo"
+    edit system
+    annotate hostname "bar"
+    exit
+    commit
+    exit
+- vendor: juniper
+  before: |-
+    system {
+        /* bar */
+        hostname "foo"
+    }
+  after: ""
+  patch: |
+    configure exclusive
+    delete system
+    commit
+    exit
+- vendor: juniper
+  before: |-
+    system {
+        /* bar */
+        hostname "foo"
+        test 1
+    }
+  after: |-
+    system {
+        test 1
+    }
+  patch: |
+    configure exclusive
+    edit system
+    annotate hostname ""
+    exit
+    delete system hostname "foo"
+    commit
+    exit

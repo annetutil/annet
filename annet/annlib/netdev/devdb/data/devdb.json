@@ -132,6 +132,9 @@
     "PC.Whitebox.Ufispace.S": " S",
     "PC.Whitebox.Ufispace.S.S9100": " S91\\d\\d",
     "PC.Whitebox.Ufispace.S.S9100.S9110_32X": " S9110-32X",
+    "PC.Whitebox.Ufispace.S.S9300": " S93\\d\\d",
+    "PC.Whitebox.Ufispace.S.S9300.S9301_32DB": " S9301-32DB",
+    "PC.Whitebox.Ufispace.S.S9300.S9321_64EO": " S9321-64EO",
     "PC.Nebius": "^Nebius",
     "PC.Nebius.NB-E-BR-DCU-AST2600": "^Nebius NB-E-BR-DCU-AST2600",
 

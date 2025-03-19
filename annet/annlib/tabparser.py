@@ -1,6 +1,8 @@
 import dataclasses
 import itertools
+import json
 import re
+import textwrap
 from collections import OrderedDict as odict
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Union, List
 
@@ -70,10 +72,10 @@ class CommonFormatter:
         self._block_end = ""
         self._statement_end = ""
 
-    def split(self, text):
+    def split(self, text: str):
         return list(filter(None, text.split("\n")))
 
-    def join(self, config):
+    def join(self, config: "PatchTree"):
         return "\n".join(
             _filtered_block_marks(
                 self._indent_blocks(self._blocks(config, is_patch=False))
@@ -86,14 +88,14 @@ class CommonFormatter:
     def diff(self, diff):
         return list(self.diff_generator(diff))
 
-    def patch(self, patch):
+    def patch(self, patch: "PatchTree") -> str:
         return "\n".join(
             _filtered_block_marks(
                 self._indent_blocks(self._blocks(patch, is_patch=True))
             )
         )
 
-    def cmd_paths(self, patch):
+    def cmd_paths(self, patch: "PatchTree") -> odict:
         ret = odict()
         path = []
         for row, context in self.blocks_and_context(patch, is_patch=True):
@@ -175,7 +177,7 @@ class CommonFormatter:
                 )
                 yield BlockEnd, None
 
-    def _blocks(self, tree, is_patch):
+    def _blocks(self, tree: "PatchTree", is_patch: bool):
         for row, _context in self.blocks_and_context(tree, is_patch):
             yield row
 
@@ -385,8 +387,54 @@ class AsrFormatter(BlockExitFormatter):
             yield from super().block_exit(context)
 
 
+class JuniperPatch:
+    def __init__(self):
+        """In the case of comments, odict is not suitable: there may be several identical edit and exit"""
+        self._items = []
+
+    def __setitem__(self, key, value):
+        self._items.append((key, value))
+
+    def keys(self):
+        return list(self)
+
+    def items(self):
+        return self._items
+
+    def __iter__(self):
+        return iter(item[0] for item in self._items)
+
+    def __bool__(self) -> bool:
+        return bool(self._items)
+
+
 class JuniperFormatter(CommonFormatter):
-    patch_set_prefix = "set "
+    patch_set_prefix = "set"
+
+    @dataclasses.dataclass
+    class Comment:
+        begin = "/*"
+        end = "*/"
+
+        row: str
+        comment: str
+
+        def __post_init__(self):
+            self.row = " ".join(map(lambda x: x.strip("\"'"), self.row.strip().split(" ")))
+            self.comment = self.comment.strip()
+
+        @classmethod
+        def loads(cls, value: str):
+            return cls(
+                **json.loads(
+                    value.removeprefix(cls.begin)
+                    .removesuffix(cls.end)
+                    .strip()
+                )
+            )
+
+        def dumps(self):
+            return json.dumps({"row": self.row, "comment": self.comment})
 
     def __init__(self, indent="    "):
         super().__init__(indent)
@@ -395,20 +443,32 @@ class JuniperFormatter(CommonFormatter):
         self._statement_end = ";"
         self._endofline_comment = "; ##"
 
-    def split(self, text):
-        sub_regexs = (
+        self._sub_regexs = (
             (re.compile(self._block_begin + r"\s*" + self._block_end + r"$"), ""),  # collapse empty blocks
             (re.compile(self._block_begin + "(\t# .+)?$"), ""),
             (re.compile(self._statement_end + r"$"), ""),
             (re.compile(r"\s*" + self._block_end + "(\t# .+)?$"), ""),
             (re.compile(self._endofline_comment + r".*$"), ""),
         )
-        split = []
-        for line in text.split("\n"):
-            for (regex, repl_line) in sub_regexs:
-                line = regex.sub(repl_line, line)
-            split.append(line)
-        return list(filter(None, split))
+
+    def sub_regexs(self, value: str) -> str:
+        for (regex, repl_line) in self._sub_regexs:
+            value = regex.sub(repl_line, value)
+        return value
+
+    def split(self, text: str) -> list[str]:
+        comment_begin, comment_end = map(re.escape, (self.Comment.begin, self.Comment.end))
+        comment_regexp = re.compile(fr"(\s+{comment_begin})((?:(?!{comment_end}).)*)({comment_end})")
+
+        result = []
+        lines = text.split("\n")
+        for i, line in enumerate(lines):
+            line = self.sub_regexs(line)
+            if i + 1 < len(lines) and (m := comment_regexp.match(line)):
+                line = f"{m.group(1)} {self.Comment(self.sub_regexs(lines[i + 1]), m.group(2)).dumps()} {m.group(3)}"
+            result.append(line)
+
+        return list(filter(None, result))
 
     def join(self, config):
         return "\n".join(_filtered_block_marks(self._formatted_blocks(self._indented_blocks(config))))
@@ -418,6 +478,13 @@ class JuniperFormatter(CommonFormatter):
 
     def patch_plain(self, patch):
         return list(self.cmd_paths(patch).keys())
+
+    def _blocks(self, tree: "PatchTree", is_patch: bool):
+        for row in super()._blocks(tree, is_patch):
+            if isinstance(row, str) and row.startswith(self.Comment.begin):
+                yield f"{self.Comment.begin} {self.Comment.loads(row).comment} {self.Comment.end}"
+            else:
+                yield row
 
     def _formatted_blocks(self, blocks):
         level = 0
@@ -430,39 +497,61 @@ class JuniperFormatter(CommonFormatter):
             elif new_line is BlockEnd:
                 level -= 1
                 if isinstance(line, str):
-                    yield line + self._statement_end
+                    yield line + ("" if line.endswith(self.Comment.end) else self._statement_end)
                 yield self._indent * level + self._block_end
             elif isinstance(line, str):
-                yield line + self._statement_end
+                yield line + ("" if line.endswith(self.Comment.end) else self._statement_end)
             line = new_line
         if isinstance(line, str):
             yield line + self._statement_end
 
-    def cmd_paths(self, patch, _prev=""):
-        commands = odict()
+    def cmd_paths(self, patch, _prev=tuple()):
+        commands = JuniperPatch()
+
         for item in patch.itms:
             key, childs, context = item.row, item.child, item.context
+
             if childs:
-                for k, v in self.cmd_paths(childs, _prev + " " + key).items():
+                for k, v in self.cmd_paths(childs, (*_prev, key.strip())).items():
                     commands[k] = v
             else:
-                if key.startswith("delete"):
-                    cmd = "delete" + _prev + " " + key.replace("delete", "", 1).strip()
+                if "comment" in context:
+                    value = (
+                        ""
+                        if key.startswith("delete")
+                        else key.removeprefix(self.Comment.begin).removesuffix(self.Comment.end).strip()
+                    )
+                    cmds = (
+                        f"edit {' '.join(_prev)}",
+                        " ".join(("annotate", context["row"].split(" ")[0], f'"{value}"')),
+                        "exit"
+                    )
+                elif key.startswith("delete"):
+                    cmds = (
+                        " ".join(("delete", *_prev, key.replace("delete", "", 1).strip())),
+                    )
                 elif key.startswith("activate"):
-                    cmd = "activate" + _prev + " " + key.replace("activate", "", 1).strip()
+                    cmds = (
+                        " ".join(("activate", *_prev, key.replace("activate", "", 1).strip())),
+                    )
                 elif key.startswith("deactivate"):
-                    cmd = "deactivate" + _prev + " " + key.replace("deactivate", "", 1).strip()
+                    cmds = (
+                        " ".join(("deactivate", *_prev, key.replace("deactivate", "", 1).strip())),
+                    )
                 else:
-                    cmd = (self.patch_set_prefix + _prev.strip()).strip() + " " + key
+                    cmds = (
+                        " ".join((self.patch_set_prefix, *_prev, key.strip())),
+                    )
+
                 # Expanding [ a b c ] junipers list of arguments
-                matches = re.search(r"^(.*)\s+\[(.+)\]$", cmd)
-                if matches:
-                    for c in matches.group(2).split(" "):
-                        if c.strip():
-                            cmd = " ".join([matches.group(1), c])
-                            commands[(cmd,)] = context
-                else:
-                    commands[(cmd,)] = context
+                for cmd in cmds:
+                    if matches := re.search(r"^(.*)\s+\[(.+)\]$", cmd):
+                        for c in matches.group(2).split(" "):
+                            if c.strip():
+                                items = " ".join([matches.group(1), c])
+                                commands[(items,)] = context
+                    else:
+                        commands[(cmd,)] = context
 
         return commands
 
@@ -490,7 +579,7 @@ class JuniperList:
 
 
 class NokiaFormatter(JuniperFormatter):
-    patch_set_prefix = "/configure "
+    patch_set_prefix = "/configure"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -517,18 +606,18 @@ class NokiaFormatter(JuniperFormatter):
         finish = finish if finish is not None else len(ret)
         return ret[start:finish]
 
-    def cmd_paths(self, patch, _prev=""):
+    def cmd_paths(self, patch, _prev=tuple()):
         commands = odict()
         for item in patch.itms:
             key, childs, context = item.row, item.child, item.context
             if childs:
-                for k, v in self.cmd_paths(childs, _prev + " " + key).items():
+                for k, v in self.cmd_paths(childs, (*_prev, key.strip())).items():
                     commands[k] = v
             else:
                 if key.startswith("delete"):
-                    cmd = "/configure delete" + _prev + " " + key.replace("delete", "", 1).strip()
+                    cmd = " ".join((self.patch_set_prefix, "delete", *_prev, key.replace("delete", "", 1).strip()))
                 else:
-                    cmd = self.patch_set_prefix + _prev.strip() + " " + key
+                    cmd = " ".join((self.patch_set_prefix, *_prev, key.strip()))
                 # Expanding [ a b c ] junipers list of arguments
                 matches = re.search(r"^(.*)\s+\[(.+)\]$", cmd)
                 if matches:
