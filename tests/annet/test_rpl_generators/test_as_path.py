@@ -39,14 +39,32 @@ def test_cumulus_as_path_set():
     @routemaps
     def policy(device: Mock, route: Route):
         with route(name="n10", number=10) as rule:
-            rule.as_path.set("65432")
+            rule.as_path.set("65431")
+        with route(name="n20", number=20) as rule:
+            rule.as_path.prepend("65432")
+        with route(name="n30", number=30) as rule:
+            rule.as_path.delete("65433")
+        with route(name="n40", number=40) as rule:
+            rule.as_path.expand_last_as("65434")
 
     result = gen(routemaps, cumulus())
     expected = scrub("""
 !
 route-map policy permit 10
   set as-path exclude all
+  set as-path prepend 65431
+  on-match next
+!
+route-map policy permit 20
   set as-path prepend 65432
+  on-match next
+!
+route-map policy permit 30
+  set as-path exclude 65433
+  on-match next
+!
+route-map policy permit 40
+  set as-path prepend last-as 65434
   on-match next
 !
 """)
