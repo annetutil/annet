@@ -353,18 +353,18 @@ class CumulusPolicyGenerator(ABC):
     ) -> Iterator[Sequence[str]]:
         if action.value.prepend:
             for path_item in action.value.prepend:
-                yield "set as-path prepend", path_item
+                yield "set", "as-path prepend", path_item
         if action.value.expand:
             raise NotImplementedError("asp_path.expand is not supported for Cumulus")
         if action.value.delete:
             for path_item in action.value.delete:
-                yield "set as-path exclude", path_item
+                yield "set", "as-path exclude", path_item
         if action.value.set is not None:
-            yield "set as-path exclude all"
+            yield "set", "as-path exclude", "all"
             for path_item in action.value.set:
-                yield "set as-path prepend", path_item
+                yield "set", "as-path prepend", path_item
         if action.value.expand_last_as:
-            yield "set as-path prepend last-as", action.value.expand_last_as
+            yield "set", "as-path prepend last-as", action.value.expand_last_as
 
     def _cumulus_policy_then(
             self,
