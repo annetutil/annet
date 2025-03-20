@@ -128,6 +128,8 @@
     "PC.Whitebox.Asterfusion.CX": " CX",
     "PC.Whitebox.Asterfusion.CX.CX500": " CX5\\d\\d",
     "PC.Whitebox.Asterfusion.CX.CX500.CX532P-N": " CX532P-N",
+    "PC.Whitebox.Asterfusion.CX.CX800": " CX8\\d\\d",
+    "PC.Whitebox.Asterfusion.CX.CX800.CX864E-N": " CX864E-N",
     "PC.Whitebox.Ufispace": "[Uu]fi[Ss]pace",
     "PC.Whitebox.Ufispace.S": " S",
     "PC.Whitebox.Ufispace.S.S9100": " S91\\d\\d",
