@@ -37,6 +37,7 @@ def storage_factory(opts: NetboxStorageOpts) -> Storage:
             raise ValueError(f"Unsupported version: {status.netbox_version}")
     except ClientLibraryError:
         raise ValueError(f"Connection error: Unable to reach Netbox at URL: {opts.url}")
+    raise Exception(f"not supported netbox version {status}")
 
 
 class NetboxProvider(StorageProvider, AdapterWithName, AdapterWithConfig):
