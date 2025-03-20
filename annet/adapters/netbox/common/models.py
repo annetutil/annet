@@ -70,6 +70,7 @@ class Prefix(DumpableView):
     def _dump__list_key(self):
         return self.prefix
 
+
 _PrefixT = TypeVar("_PrefixT", bound=Prefix)
 
 

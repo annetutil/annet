@@ -67,7 +67,6 @@ class NetboxV41Adapter(NetboxAdapter[NetboxDeviceV41, InterfaceV41, IpAddressV41
     def get_device(self, device_id: int) -> NetboxDeviceV41:
         return self.convert_device(self.netbox.dcim_device(device_id))
 
-
     def list_interfaces_by_devices(self, device_ids: list[int]) -> list[InterfaceV41]:
         return self.convert_interfaces(self.netbox.dcim_all_interfaces(device_id=device_ids).results)
 
