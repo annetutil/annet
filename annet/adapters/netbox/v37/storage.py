@@ -1,3 +1,4 @@
+import os
 import ssl
 
 from adaptix import P
@@ -8,6 +9,8 @@ from annet.adapters.netbox.common.adapter import NetboxAdapter, get_device_breed
 from annet.adapters.netbox.common.storage_base import BaseNetboxStorage
 from annet.storage import Storage
 from .models import IpAddressV37, NetboxDeviceV37, InterfaceV37, PrefixV37
+
+interfaces_page_size = int(os.getenv("NETBOX_INTERFACES_PAGE_SIZE", 100))
 
 
 class NetboxV37Adapter(NetboxAdapter[NetboxDeviceV37, InterfaceV37, IpAddressV37, PrefixV37]):
@@ -68,7 +71,7 @@ class NetboxV37Adapter(NetboxAdapter[NetboxDeviceV37, InterfaceV37, IpAddressV37
         return self.convert_device(self.netbox.dcim_device(device_id))
 
     def list_interfaces_by_devices(self, device_ids: list[int]) -> list[InterfaceV37]:
-        return self.convert_interfaces(self.netbox.dcim_all_interfaces(device_id=device_ids).results)
+        return self.convert_interfaces(self.netbox.dcim_all_interfaces(device_id=device_ids, page_size=interfaces_page_size).results)
 
     def list_interfaces(self, ids: list[int]) -> list[InterfaceV37]:
         return self.convert_interfaces(self.netbox.dcim_all_interfaces(id=ids).results)
