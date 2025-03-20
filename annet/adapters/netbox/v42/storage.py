@@ -32,20 +32,24 @@ class NetboxV42Adapter(NetboxAdapter[NetboxDeviceV42, InterfaceV42, IpAddressV42
                 link(P[api_models.Device].name, P[NetboxDeviceV42].fqdn),
             ]
         )
-        self.convert_interface = get_converter(
-            api_models.Interface,
-            InterfaceV42,
+        self.convert_interfaces = get_converter(
+            list[api_models.Interface],
+            list[InterfaceV42],
             recipe=[
                 link_constant(P[InterfaceV42].ip_addresses, factory=list),
                 link_constant(P[InterfaceV42].lag_min_links, value=None),
             ]
         )
-        self.convert_ip_address = get_converter(
-            api_models.IpAddress,
-            IpAddressV42,
+        self.convert_ip_addresses = get_converter(
+            list[api_models.IpAddress],
+            list[IpAddressV42],
             recipe=[
                 link_constant(P[IpAddressV42].prefix, value=None),
             ]
+        )
+        self.convert_ip_prefixes = get_converter(
+            list[api_models.Prefix],
+            list[PrefixV42],
         )
 
     def list_all_fqdns(self) -> list[str]:
@@ -64,25 +68,16 @@ class NetboxV42Adapter(NetboxAdapter[NetboxDeviceV42, InterfaceV42, IpAddressV42
         return self.convert_device(self.netbox.dcim_device(device_id))
 
     def list_interfaces_by_devices(self, device_ids: list[int]) -> list[InterfaceV42]:
-        return [
-            self.convert_interface(interface)
-            for interface in self.netbox.dcim_all_interfaces(device_id=device_ids).results
-        ]
+        return self.convert_interfaces(self.netbox.dcim_all_interfaces(device_id=device_ids).results)
 
     def list_interfaces(self, ids: list[int]) -> list[InterfaceV42]:
-        return [
-            self.convert_interface(interface)
-            for interface in self.netbox.dcim_all_interfaces(id=ids).results
-        ]
+        return self.convert_interfaces(self.netbox.dcim_all_interfaces(id=ids).results)
 
     def list_ipaddr_by_ifaces(self, iface_ids: list[int]) -> list[IpAddressV42]:
-        return [
-            self.convert_ip_address(ipaddress)
-            for ipaddress in self.netbox.ipam_all_ip_addresses(interface_id=iface_ids).results
-        ]
+        return self.convert_ip_addresses(self.netbox.ipam_all_ip_addresses(interface_id=iface_ids).results)
 
     def list_ipprefixes(self, prefixes: list[str]) -> list[PrefixV42]:
-        return self.netbox.ipam_all_prefixes(prefix=prefixes).results
+        return self.convert_ip_prefixes(self.netbox.ipam_all_prefixes(prefix=prefixes).results)
 
 
 class NetboxStorageV42(BaseNetboxStorage[NetboxDeviceV42, InterfaceV42, IpAddressV42, PrefixV42]):

@@ -8,10 +8,10 @@ from annet.adapters.netbox.v41.models import InterfaceV41, IpAddressV41, NetboxD
 @dataclass
 class PrefixV42(Prefix):
     scope: Optional[Entity] = None
-    scope_type: str = ""
+    scope_type: str | None = None
 
     @property
-    def site(self):
+    def site(self) -> Optional[Entity]:
         if self.scope_type == "dcim.site":
             return self.scope
         return None

@@ -65,19 +65,10 @@ class Prefix(DumpableView):
     created: datetime
     last_updated: datetime
     description: Optional[str] = ""
-    scope: Optional[Entity] = None
-    scope_type: str = ""
 
     @property
     def _dump__list_key(self):
         return self.prefix
-
-    @property
-    def site(self):
-        if self.scope_type == "dcim.site":
-            return self.scope
-        return None
-
 
 _PrefixT = TypeVar("_PrefixT", bound=Prefix)
 
