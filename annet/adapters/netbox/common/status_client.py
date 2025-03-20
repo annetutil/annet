@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Dict
+import re
 
 from adaptix import Retort, name_mapping, NameStyle
 from dataclass_rest import get
@@ -12,6 +13,12 @@ from .client import BaseNetboxClient
 class Status:
     netbox_version: str
     plugins: Dict[str, str]
+
+    @property
+    def minor_version(self) -> str:
+        if match := re.match(r"\d+\.\d+", self.netbox_version):
+            return match.group(0)
+        return ""
 
 
 class NetboxStatusClient(BaseNetboxClient):
