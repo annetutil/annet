@@ -16,6 +16,7 @@ from .v42.storage import NetboxStorageV42
 def storage_factory(opts: NetboxStorageOpts) -> Storage:
     client = NetboxStatusClient(opts.url, opts.token, opts.insecure)
     version_class_map = {
+        "3.4": NetboxStorageV37,
         "3.7": NetboxStorageV37,
         "4.0": NetboxStorageV41,
         "4.1": NetboxStorageV41,
