@@ -12,7 +12,6 @@ from typing import (
 
 from annet.storage import Device, Storage
 from .base import TreeGenerator, _filter_str
-from .exceptions import NotSupportedDevice
 
 
 class JSONFragment(TreeGenerator):
@@ -115,13 +114,17 @@ class JSONFragment(TreeGenerator):
         return self.process_scalar_value(value)
 
     def _set_dict(self, cfg, pointer, value):
+        processed_value = self.process_value(value)
         # pointer has at least one key
         if len(pointer) == 1:
             if pointer[0] in cfg:
-                cfg[pointer[0]] = [cfg[pointer[0]], self.process_value(value)]
-            else:
-                cfg[pointer[0]] = self.process_value(value)
+                # conflict, generator tries to insert key that already exists
+                raise ValueError(
+                    f"Key {pointer[0]} already exists in config. "
+                    f"Existing value: {cfg[pointer[0]]}, new value: {processed_value}"
+                )
+            cfg[pointer[0]] = processed_value
         else:
             if pointer[0] not in cfg:
                 cfg[pointer[0]] = {}
-            self._set_dict(cfg[pointer[0]], pointer[1:], self.process_value(value))
+            self._set_dict(cfg[pointer[0]], pointer[1:], processed_value)
