@@ -582,43 +582,44 @@ class Deployer:
         return ans
 
     def check_diff(self, result: annet.deploy.DeployResult, loader: ann_gen.Loader):
-        success_device_ids = []
-        for host, hres in result.results.items():
-            device = self.fqdn_to_device[host]
-            if (
-                not isinstance(hres, Exception) and
-                host not in self.empty_diff_hostnames and
-                device.is_pc()
-            ):
-                success_device_ids.append(device.id)
         diff_args = self.args.copy_from(
             self.args,
             config="running",
         )
+        if not diff_args.query:
+            return
 
-        if diff_args.query:
-            ann_gen.live_configs = None
+        # clear cache
+        ann_gen.live_configs = None
 
-            diffs, failed = diff(diff_args, loader, success_device_ids)
-            for device_id, exc in failed.items():
-                self.failed_configs[loader.get_device(device_id).fqdn] = exc
+        # collect new diffs for devices on which we had successfully uploaded something
+        success_device_ids = []
+        for host, hres in result.results.items():
+            if (
+                not isinstance(hres, Exception) and
+                host not in self.empty_diff_hostnames
+            ):
+                device = self.fqdn_to_device[host]
+                success_device_ids.append(device.id)
+        diffs, failed = diff(diff_args, loader, success_device_ids)
+        for device_id, exc in failed.items():
+            self.failed_configs[loader.get_device(device_id).fqdn] = exc
 
-            non_pc_diffs = {
-                loader.get_device(device_id): diff
-                for device_id, diff in diffs.items()
-                if not isinstance(diff, PCDiff)
-            }
-            devices_to_diff = ann_diff.collapse_diffs(non_pc_diffs)
-            devices_to_diff.update({
-                (loader.get_device(device_id),): diff
-                for device_id, diff in diffs.items()
-                if isinstance(diff, PCDiff)}
-            )
-        else:
-            devices_to_diff = {}
-
-        for devices, diff_obj in devices_to_diff.items():
-            if diff_obj:
+        # "collapse" non-PC diffs
+        diffs_by_device_id = ann_diff.collapse_diffs({
+            loader.get_device(device_id): diff
+            for device_id, diff in diffs.items()
+            if diff and not isinstance(diff, PCDiff)
+        })
+        # add PC diffs as is
+        diffs_by_device_id.update({
+            (loader.get_device(device_id),): diff
+            for device_id, diff in diffs.items()
+            if diff and isinstance(diff, PCDiff)
+        })
+        if diffs_by_device_id:
+            print("The diff is still present:")
+            for devices, diff_obj in diffs_by_device_id.items():
                 for dev in devices:
                     self.failed_configs[dev.fqdn] = Warning("Deploy OK, but diff still exists")
                 if isinstance(diff_obj, PCDiff):
