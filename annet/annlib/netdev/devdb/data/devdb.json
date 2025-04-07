@@ -6,6 +6,7 @@
     "Cisco.ASR": " ASR",
     "Cisco.ASR.ASR9000": " 9\\d{3}",
     "Cisco.XRV": "XRv",
+    "Cisco.XR": "8[\\d\\d\\d]",
     "Cisco.Catalyst": " (Catalyst |WS-C)",
     "Cisco.Catalyst.C2900": "29\\d\\d",
     "Cisco.Catalyst.C2900.C2950": "2950",

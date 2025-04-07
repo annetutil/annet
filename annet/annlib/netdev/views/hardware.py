@@ -75,6 +75,8 @@ class HardwareView(HardwareLeaf):
 def hw_to_vendor(hw: HardwareView) -> Optional[str]:
     if hw.Nexus:
         return "nexus"
+    elif hw.XR:
+        return "xr"
     elif hw.Cisco:
         return "cisco"
     elif hw.OptiXtrans:
@@ -108,6 +110,7 @@ def vendor_to_hw(vendor):
             "cisco": "Cisco",
             "catalyst": "Cisco Catalyst",
             "nexus": "Cisco Nexus",
+            "xr": "Cisco XR",
             "huawei": "Huawei",
             "optixtrans": "Huawei OptiXtrans",
             "juniper": "Juniper",

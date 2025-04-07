@@ -8,6 +8,7 @@ _VENDORS = {
     "cisco": "Cisco",
     "catalyst": "Cisco Catalyst",
     "nexus": "Cisco Nexus",
+    "xr": "Cisco XR",
     "huawei": "Huawei",
     "optixtrans": "Huawei OptiXtrans",
     "juniper": "Juniper",
