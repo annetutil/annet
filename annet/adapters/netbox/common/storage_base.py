@@ -161,6 +161,7 @@ class BaseNetboxStorage(
             return self._id_devices[obj_id]
 
         device = self.netbox.get_device(obj_id)
+        self._fill_device_interfaces([device])
         self._record_device(device)
         return device
 
