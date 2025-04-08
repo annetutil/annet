@@ -6,3 +6,14 @@
 # Фичи должны быть включены прежде всего
 feature
 # Далее нужно будет указать команды и их порядок
+interface *
+    description
+    ip vrf forwarding
+    ipv6 address
+    mtu
+    lldp-agent
+        set lldp
+        lldp tlv
+        dcbx
+        exit
+    sflow
