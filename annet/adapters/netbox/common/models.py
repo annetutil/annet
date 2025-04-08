@@ -124,6 +124,11 @@ def vrf_object(vrf: str | None) -> Entity | None:
 
 _IpAddressT = TypeVar("_IpAddressT", bound=IpAddress)
 
+@dataclass
+class Tag:
+    id: int
+    name: str
+    slug: str
 
 @dataclass
 class Interface(Entity, Generic[_IpAddressT]):
@@ -135,6 +140,7 @@ class Interface(Entity, Generic[_IpAddressT]):
     mode: Optional[InterfaceMode]
     untagged_vlan: Optional[InterfaceVlan]
     tagged_vlans: Optional[List[InterfaceVlan]]
+    tags: Optional[List[Tag]]
     display: str = ""
     ip_addresses: List[_IpAddressT] = field(default_factory=list)
     vrf: Optional[Entity] = None
