@@ -190,6 +190,7 @@ class NetboxDevice(Entity, Generic[_InterfaceT]):
     custom_fields: Dict[str, Any]
     created: datetime
     last_updated: datetime
+    cluster: Optional[Entity]
 
     fqdn: str
     hostname: str
