@@ -44,6 +44,7 @@ def make_hw_stub(vendor):
         "cisco": "Cisco Catalyst",
         "nexus": "Cisco Nexus",
         "asr": "Cisco ASR",
+        "iosxr": "Cisco XR",
         "huawei": "Huawei",
         "huawei ce": "Huawei CE0000",
         "juniper": "Juniper",
