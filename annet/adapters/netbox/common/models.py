@@ -147,6 +147,7 @@ class Interface(Entity, Generic[_IpAddressT]):
     mtu: int | None = None
     lag: Entity | None = None
     lag_min_links: int | None = None
+    speed: int | None = None
 
     def add_addr(self, address_mask: str, vrf: str | None) -> None:
         for existing_addr in self.ip_addresses:
@@ -196,6 +197,7 @@ class NetboxDevice(Entity, Generic[_InterfaceT]):
     custom_fields: Dict[str, Any]
     created: datetime
     last_updated: datetime
+    cluster: Optional[Entity]
 
     fqdn: str
     hostname: str

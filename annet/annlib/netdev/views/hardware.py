@@ -152,5 +152,7 @@ def svi_name(hw: HardwareView, num: int) -> str:
         return f"irb.{num}"
     elif hw.Huawei:
         return f"Vlanif{num}"
+    elif hw.Arista or hw.Cisco:
+        return f"Vlan{num}"
     else:
         return f"vlan{num}"
