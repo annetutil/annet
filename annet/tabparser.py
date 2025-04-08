@@ -23,7 +23,7 @@ def make_formatter(hw, **kwargs):
         cls = OptixtransFormatter
     elif hw.Huawei:
         cls = HuaweiFormatter
-    elif hw.Cisco.ASR or hw.Cisco.XRV:
+    elif hw.Cisco.ASR or hw.Cisco.XRV or hw.Cisco.XR:
         cls = AsrFormatter
     elif hw.Nexus:
         cls = NexusFormatter
