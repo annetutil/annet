@@ -18,9 +18,11 @@ class Entity(DumpableView):
     def _dump__list_key(self):
         return self.name
 
+
 @dataclass
 class EntityWithSlug(Entity):
     slug: str
+
 
 @dataclass
 class Label:
@@ -85,7 +87,7 @@ class IpAddress(DumpableView, Generic[_PrefixT]):
     family: IpFamily
     address: str
     status: Label
-    tags: Optional[List[EntityWithSlug]]
+    tags: List[EntityWithSlug]
     created: datetime
     last_updated: datetime
     prefix: Optional[_PrefixT] = None
@@ -127,6 +129,7 @@ def vrf_object(vrf: str | None) -> Entity | None:
 
 _IpAddressT = TypeVar("_IpAddressT", bound=IpAddress)
 
+
 @dataclass
 class Interface(Entity, Generic[_IpAddressT]):
     device: Entity
@@ -137,7 +140,7 @@ class Interface(Entity, Generic[_IpAddressT]):
     mode: Optional[InterfaceMode]
     untagged_vlan: Optional[InterfaceVlan]
     tagged_vlans: Optional[List[InterfaceVlan]]
-    tags: Optional[List[EntityWithSlug]]
+    tags: List[EntityWithSlug]
     display: str = ""
     ip_addresses: List[_IpAddressT] = field(default_factory=list)
     vrf: Optional[Entity] = None
@@ -189,7 +192,7 @@ class NetboxDevice(Entity, Generic[_InterfaceT]):
     primary_ip: Optional[DeviceIp]
     primary_ip4: Optional[DeviceIp]
     primary_ip6: Optional[DeviceIp]
-    tags: Optional[List[EntityWithSlug]]
+    tags: List[EntityWithSlug]
     custom_fields: Dict[str, Any]
     created: datetime
     last_updated: datetime
