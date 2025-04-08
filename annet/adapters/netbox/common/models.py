@@ -125,9 +125,7 @@ def vrf_object(vrf: str | None) -> Entity | None:
 _IpAddressT = TypeVar("_IpAddressT", bound=IpAddress)
 
 @dataclass
-class Tag:
-    id: int
-    name: str
+class Tag(Entity):
     slug: str
 
 @dataclass
