@@ -59,9 +59,40 @@ class PickleSafeException(Exception):
         pretty_lines.append(self.formatted_output)
         return "\n".join(pretty_lines)
 
-    @staticmethod
-    def from_exc(orig_exc: Exception, device_id: str, formatted_output: str) -> "PickleSafeException":
-        return PickleSafeException(orig_exc.__class__, str(orig_exc), device_id, formatted_output)
+    @classmethod
+    def filter_traceback(cls, te: traceback.TracebackException) -> traceback.TracebackException:
+        root = os.path.dirname(__file__)
+
+        if te.__cause__:
+            te.__cause__ = cls.filter_traceback(te.__cause__)
+
+        stack = []
+        for item in te.stack:
+            if item.filename in {
+                os.path.join(root, "tracing.py"),
+                os.path.join(root, "parallel.py"),
+            }:
+                continue
+            if item.filename == os.path.join(root, "generators", "partial.py") and item.name == "__call__":
+                continue
+            if (
+                item.filename == os.path.join(root, "generators", "__init__.py")
+                and "raise GeneratorError" not in item.line
+            ):
+                continue
+
+            stack.append(item)
+        te.stack = traceback.StackSummary.from_list(stack)
+
+        return te
+
+    @classmethod
+    def from_exc(cls, orig_exc: Exception, device_id: str) -> "PickleSafeException":
+        te = traceback.TracebackException(type(orig_exc), orig_exc, orig_exc.__traceback__)
+        if os.getenv("ANN_TRUNCATE_TRACEBACK") == "1":
+            te = cls.filter_traceback(te)
+
+        return PickleSafeException(orig_exc.__class__, str(orig_exc), device_id, "".join(te.format()))
 
 
 @catch_ctrl_c
@@ -164,7 +195,7 @@ def _pool_worker(pool, index, task_queue, done_queue):
         except KeyboardInterrupt:  # pylint: disable=try-except-raise
             raise
         except Exception as exc:
-            safe_exc = PickleSafeException.from_exc(exc, task.payload, traceback.format_exc())
+            safe_exc = PickleSafeException.from_exc(exc, task.payload)
             ret_exc = safe_exc
             task_result.exc = safe_exc
             task_result.result = None
@@ -301,11 +332,10 @@ class Parallel:
                             **self.kwargs
                         )
                 except Exception as exc:
+                    safe_exc = PickleSafeException.from_exc(exc, device_id)
                     if not tolerate_fails:
-                        raise
-                    exc.device_id = device_id
-                    exc.formatted_output = traceback.format_exc()
-                    task_result.exc = exc
+                        raise safe_exc from None
+                    task_result.exc = safe_exc
                 if self.capture_output:
                     task_result.extra["cap_stdout"] = cap_stdout.read()
                     task_result.extra["cap_stderr"] = cap_stderr.read()
