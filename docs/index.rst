@@ -3,7 +3,7 @@ Annet - configuration generation and deploying utility for network equipment
 
 Annet is a configuration generator that can translate differences between old and new
 configurations into sequnce of commands. This feature is vital for CLI-based devices,
-such as Huawei, Cisco IOS, Cisco NX-OS, Juniper. Devices configured via separate config
+such as Huawei, Cisco IOS, Cisco IOS XR, Cisco NX-OS, Juniper. Devices configured via separate config
 files, Linux, FreeBSD and Cumulus are also supported.
 
 List of supported Network Operation Systems:
@@ -11,7 +11,7 @@ List of supported Network Operation Systems:
 +----------+---------------------------+------------------------------------------------------------------------------+
 | Vendor   | Network Operation Systems | `Supported in RPL <https://annetutil.github.io/annet/main/rpl/index.html>`__ |
 +==========+===========================+==============================================================================+
-| Cisco    | IOS/IOS-XE, NXOS          | No                                                                           |
+| Cisco    | IOS/IOS-XE, NXOS, IOS XR  | No                                                                           |
 +----------+---------------------------+------------------------------------------------------------------------------+
 | Juniper  | JunOS                     | No                                                                           |
 +----------+---------------------------+------------------------------------------------------------------------------+
