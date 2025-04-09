@@ -29,13 +29,13 @@ interface *               %logic=arista.iface.permanent
 
 
 ip access-list standard *
-    * %logic=huawei.misc.undo_redo
+    *                       %logic=common.undo_redo
 
 ipv6 access-list standard *
-    * %logic=huawei.misc.undo_redo
+    *                       %logic=common.undo_redo
 
 ipv6 access-list *
-        * %logic=huawei.misc.undo_redo
+    *                       %logic=common.undo_redo
 
 
 # ios-like way of configuring prefix lists
