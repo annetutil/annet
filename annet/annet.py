@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import logging
 import sys
 
 import annet
@@ -18,8 +19,14 @@ def main():
     parser.add_commands(parser.find_subcommands(cli.list_subcommands()))
     try:
         return parser.dispatch(pre_call=annet.init, add_help_command=True)
-    except (generators.GeneratorError, annet.ExecError):
+    except (generators.GeneratorError, annet.ExecError) as e:
+        logging.error(e)
         return 1
+    except BaseException as e:
+        if formatted_output := getattr(e, "formatted_output", None):
+            logging.error(formatted_output)
+            return 1
+        raise e
 
 
 if __name__ == "__main__":
