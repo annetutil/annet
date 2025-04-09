@@ -75,7 +75,7 @@ class HardwareView(HardwareLeaf):
 def hw_to_vendor(hw: HardwareView) -> Optional[str]:
     if hw.Nexus:
         return "nexus"
-    elif hw.XR:
+    elif hw.Cisco.XR or hw.Cisco.ASR or hw.Cisco.XRV:
         return "iosxr"
     elif hw.Cisco:
         return "cisco"
