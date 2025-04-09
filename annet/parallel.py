@@ -15,13 +15,14 @@ import tempfile
 import time
 import traceback
 import warnings
-from typing import Any, List, Optional, Type
+from typing import Any, List, Optional, Type, Callable
 from uuid import uuid4
 
 from contextlog import get_logger
 
 import annet
 from annet import tracing
+from annet.connectors import Connector
 from annet.lib import catch_ctrl_c, find_exc_in_stack
 from annet.output import capture_output
 from annet.tracing import tracing_connector
@@ -36,6 +37,20 @@ class PoolWorkerTaskType(enum.Enum):
 class PoolWorkerTask:
     type: PoolWorkerTaskType
     payload: Optional[Any] = None
+
+
+class _PickleSafeTracebackFormatterConnector(Connector[Callable[[BaseException], str]]):
+    name = "PickleSafeTraceBackFormatter"
+    ep_name = "pickle_safe_traceback_formatter"
+
+    def _get_default(self) -> Callable[[], Callable[[BaseException], str]]:
+        def wrapper():
+            return lambda x: "".join(traceback.format_exception(x))
+
+        return wrapper
+
+
+pickle_safe_traceback_formatter_connector = _PickleSafeTracebackFormatterConnector()
 
 
 class PickleSafeException(Exception):
@@ -60,39 +75,13 @@ class PickleSafeException(Exception):
         return "\n".join(pretty_lines)
 
     @classmethod
-    def filter_traceback(cls, te: traceback.TracebackException) -> traceback.TracebackException:
-        root = os.path.dirname(__file__)
-
-        if te.__cause__:
-            te.__cause__ = cls.filter_traceback(te.__cause__)
-
-        stack = []
-        for item in te.stack:
-            if item.filename in {
-                os.path.join(root, "tracing.py"),
-                os.path.join(root, "parallel.py"),
-            }:
-                continue
-            if item.filename == os.path.join(root, "generators", "partial.py") and item.name == "__call__":
-                continue
-            if (
-                item.filename == os.path.join(root, "generators", "__init__.py")
-                and "raise GeneratorError" not in item.line
-            ):
-                continue
-
-            stack.append(item)
-        te.stack = traceback.StackSummary.from_list(stack)
-
-        return te
-
-    @classmethod
     def from_exc(cls, orig_exc: Exception, device_id: str) -> "PickleSafeException":
-        te = traceback.TracebackException(type(orig_exc), orig_exc, orig_exc.__traceback__)
-        if os.getenv("ANN_TRUNCATE_TRACEBACK") == "1":
-            te = cls.filter_traceback(te)
-
-        return PickleSafeException(orig_exc.__class__, str(orig_exc), device_id, "".join(te.format()))
+        return PickleSafeException(
+            orig_exc.__class__,
+            str(orig_exc),
+            device_id,
+            pickle_safe_traceback_formatter_connector.get()(orig_exc)
+        )
 
 
 @catch_ctrl_c
@@ -334,7 +323,7 @@ class Parallel:
                 except Exception as exc:
                     safe_exc = PickleSafeException.from_exc(exc, device_id)
                     if not tolerate_fails:
-                        raise safe_exc from None
+                        raise safe_exc
                     task_result.exc = safe_exc
                 if self.capture_output:
                     task_result.extra["cap_stdout"] = cap_stdout.read()
