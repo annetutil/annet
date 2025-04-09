@@ -1,0 +1,222 @@
+# arista have two ways of configuring prefix lists it seems
+#  * old style cisco ios like one-line format ip prefix-list * seq ...
+#  * arista eos native one with separate block for each prefix list
+
+# arista will reformat all your existing old-style prefix lists
+# into a new-style ones as soon as you use new format once per family
+# so you should use exclusively either old format or new format
+# to keep things consistent and prevent arista from mangling config
+
+
+# just adding a new-style prefix list
+#
+# arista-switch#conf s
+# arista-switch(config-s-s4d)#ip prefix-list NEW_STYLE
+# arista-switch(config-s-s4d-ip-pfx)#seq 5 permit 172.16.16.0/24 ge 32 le 32
+# arista-switch(config-s-s4d-ip-pfx)#exit
+# arista-switch(config-s-s4d)#show session-config diffs
+
+
+# resuls in reformatting all existing ones
+#
+# --- system:/running-config
+# +++ session:/s4d-session-config
+# -ip prefix-list OLD_STYLE seq 10 permit 172.16.42.0/24 ge 32 le 32
+# +!
+# +ip prefix-list NEW_STYLE
+# +   seq 5 permit 172.16.16.0/24 ge 32 le 32
+# +!
+# +ip prefix-list OLD_STYLE
+# +   seq 10 permit 172.16.42.0/24 ge 32 le 32
+# +!
+
+
+- vendor: Arista
+  diff: |
+    + ip prefix-list PREFIX_V4
+      + seq 10 permit 172.16.16.0/24 ge 24 le 32
+      + seq 20 permit 172.16.42.0/24 ge 24 le 32
+      + seq 30 permit 172.16.34.0/24 ge 24 le 32
+
+    + ipv6 prefix-list PREFIX_V6
+      + seq 10 permit 2001:db8:1::/48 ge 48 le 64
+      + seq 20 permit 2001:db8:2::/48 ge 48 le 64
+      + seq 30 permit 2001:db8:3::/48 ge 48 le 64
+
+  patch: |
+    conf s
+    ip prefix-list PREFIX_V4
+      seq 10 permit 172.16.16.0/24 ge 24 le 32
+      seq 20 permit 172.16.42.0/24 ge 24 le 32
+      seq 30 permit 172.16.34.0/24 ge 24 le 32
+      exit
+    ipv6 prefix-list PREFIX_V6
+      seq 10 permit 2001:db8:1::/48 ge 48 le 64
+      seq 20 permit 2001:db8:2::/48 ge 48 le 64
+      seq 30 permit 2001:db8:3::/48 ge 48 le 64
+      exit
+    commit
+    write memory
+
+- vendor: Arista
+  diff: |
+    - ip prefix-list PREFIX_V4
+      - seq 10 permit 172.16.16.0/24 ge 24 le 32
+      - seq 20 permit 172.16.42.0/24 ge 24 le 32
+      - seq 30 permit 172.16.34.0/24 ge 24 le 32
+
+    - ipv6 prefix-list PREFIX_V6
+      - seq 10 permit 2001:db8:1::/48 ge 48 le 64
+      - seq 20 permit 2001:db8:2::/48 ge 48 le 64
+      - seq 30 permit 2001:db8:3::/48 ge 48 le 64
+
+  patch: |
+    conf s
+    no ipv6 prefix-list PREFIX_V6
+    no ip prefix-list PREFIX_V4
+    commit
+    write memory
+
+
+- vendor: Arista
+  diff: |
+    ip prefix-list PREFIX_V4
+      seq 10 permit 172.16.16.0/24 ge 24 le 32
+      - seq 20 permit 172.16.42.0/24 ge 24 le 32
+      + seq 25 permit 172.16.42.0/24 ge 24 le 32
+      seq 30 permit 172.16.34.0/24 ge 24 le 32
+
+    ipv6 prefix-list PREFIX_V6
+      seq 10 permit 2001:db8:1::/48 ge 48 le 64
+      - seq 20 permit 2001:db8:2::/48 ge 48 le 64
+      + seq 25 permit 2001:db8:2::/48 ge 48 le 64
+      seq 30 permit 2001:db8:3::/48 ge 48 le 64
+
+  patch: |
+    conf s
+    ip prefix-list PREFIX_V4
+      no seq 20
+      seq 25 permit 172.16.42.0/24 ge 24 le 32
+      exit
+    ipv6 prefix-list PREFIX_V6
+      no seq 20
+      seq 25 permit 2001:db8:2::/48 ge 48 le 64
+      exit
+    commit
+    write memory
+
+
+- vendor: Arista
+  diff: |
+    ip prefix-list PREFIX_V4
+      seq 10 permit 172.16.16.0/24 ge 24 le 32
+      - seq 25 permit 172.16.42.0/24 ge 24 le 32
+      + seq 25 permit 172.16.42.0/24 ge 32 le 32
+      seq 30 permit 172.16.34.0/24 ge 24 le 32
+
+    ipv6 prefix-list PREFIX_V6
+      seq 10 permit 2001:db8:1::/48 ge 48 le 64
+      - seq 25 permit 2001:db8:2::/48 ge 48 le 64
+      + seq 25 permit 2001:db8:2::/48 ge 64 le 64
+      seq 30 permit 2001:db8:3::/48 ge 48 le 64
+
+  patch: |
+    conf s
+    ip prefix-list PREFIX_V4
+      no seq 25
+      seq 25 permit 172.16.42.0/24 ge 32 le 32
+      exit
+    ipv6 prefix-list PREFIX_V6
+      no seq 25
+      seq 25 permit 2001:db8:2::/48 ge 64 le 64
+      exit
+    commit
+    write memory
+
+
+- vendor: Arista
+  diff: |
+    + ip prefix-list PREFIX_V4 seq 10 permit 172.16.16.0/24 ge 24 le 32
+    + ip prefix-list PREFIX_V4 seq 20 permit 172.16.42.0/24 ge 24 le 32
+    + ip prefix-list PREFIX_V4 seq 30 permit 172.16.34.0/24 ge 24 le 32
+
+    + ipv6 prefix-list PREFIX_V6 seq 10 permit 2001:db8:1::/48 ge 48 le 64
+    + ipv6 prefix-list PREFIX_V6 seq 20 permit 2001:db8:2::/48 ge 48 le 64
+    + ipv6 prefix-list PREFIX_V6 seq 30 permit 2001:db8:3::/48 ge 48 le 64
+
+  patch: |
+    conf s
+    ip prefix-list PREFIX_V4 seq 10 permit 172.16.16.0/24 ge 24 le 32
+    ip prefix-list PREFIX_V4 seq 20 permit 172.16.42.0/24 ge 24 le 32
+    ip prefix-list PREFIX_V4 seq 30 permit 172.16.34.0/24 ge 24 le 32
+    ipv6 prefix-list PREFIX_V6 seq 10 permit 2001:db8:1::/48 ge 48 le 64
+    ipv6 prefix-list PREFIX_V6 seq 20 permit 2001:db8:2::/48 ge 48 le 64
+    ipv6 prefix-list PREFIX_V6 seq 30 permit 2001:db8:3::/48 ge 48 le 64
+    commit
+    write memory
+
+
+- vendor: Arista
+  diff: |
+    - ip prefix-list PREFIX_V4 seq 10 permit 172.16.16.0/24 ge 24 le 32
+    - ip prefix-list PREFIX_V4 seq 20 permit 172.16.42.0/24 ge 24 le 32
+    - ip prefix-list PREFIX_V4 seq 30 permit 172.16.34.0/24 ge 24 le 32
+
+    - ipv6 prefix-list PREFIX_V6 seq 10 permit 2001:db8:1::/48 ge 48 le 64
+    - ipv6 prefix-list PREFIX_V6 seq 20 permit 2001:db8:2::/48 ge 48 le 64
+    - ipv6 prefix-list PREFIX_V6 seq 30 permit 2001:db8:3::/48 ge 48 le 64
+
+  patch: |
+    conf s
+    no ipv6 prefix-list PREFIX_V6 seq 10
+    no ipv6 prefix-list PREFIX_V6 seq 20
+    no ipv6 prefix-list PREFIX_V6 seq 30
+    no ip prefix-list PREFIX_V4 seq 10
+    no ip prefix-list PREFIX_V4 seq 20
+    no ip prefix-list PREFIX_V4 seq 30
+    commit
+    write memory
+
+
+- vendor: Arista
+  diff: |
+    ip prefix-list PREFIX_V4 seq 10 permit 172.16.16.0/24 ge 24 le 32
+    - ip prefix-list PREFIX_V4 seq 20 permit 172.16.16.0/24 ge 24 le 32
+    + ip prefix-list PREFIX_V4 seq 25 permit 172.16.42.0/24 ge 24 le 32
+    ip prefix-list PREFIX_V4  seq 30 permit 172.16.34.0/24 ge 24 le 32
+
+    ipv6 prefix-list PREFIX_V6 seq 10 permit 2001:db8:1::/48 ge 48 le 64
+    - ipv6 prefix-list PREFIX_V6 seq 20 permit 2001:db8:2::/48 ge 48 le 64
+    + ipv6 prefix-list PREFIX_V6 seq 25 permit 2001:db8:2::/48 ge 48 le 64
+    ipv6 prefix-list PREFIX_V6 seq 30 permit 2001:db8:3::/48 ge 48 le 64
+
+  patch: |
+    conf s
+    no ipv6 prefix-list PREFIX_V6 seq 20
+    no ip prefix-list PREFIX_V4 seq 20
+    ip prefix-list PREFIX_V4 seq 25 permit 172.16.42.0/24 ge 24 le 32
+    ipv6 prefix-list PREFIX_V6 seq 25 permit 2001:db8:2::/48 ge 48 le 64
+    commit
+    write memory
+
+
+- vendor: Arista
+  diff: |
+    ip prefix-list PREFIX_V4 seq 10 permit 172.16.16.0/24 ge 24 le 32
+    - ip prefix-list PREFIX_V4 seq 25 permit 172.16.42.0/24 ge 24 le 32
+    + ip prefix-list PREFIX_V4 seq 25 permit 172.16.42.0/24 ge 32 le 32
+    ip prefix-list PREFIX_V4 seq 30 permit 172.16.34.0/24 ge 24 le 32
+
+    ipv6 prefix-list PREFIX_V6 seq 10 permit 2001:db8:1::/48 ge 48 le 64
+    - ipv6 prefix-list PREFIX_V6 seq 25 permit 2001:db8:2::/48 ge 48 le 64
+    + ipv6 prefix-list PREFIX_V6 seq 25 permit 2001:db8:2::/48 ge 64 le 64
+    ipv6 prefix-list PREFIX_V6 seq 30 permit 2001:db8:3::/48 ge 48 le 64
+
+  patch: |
+    conf s
+    no ipv6 prefix-list PREFIX_V6 seq 25
+    no ip prefix-list PREFIX_V4 seq 25
+    ip prefix-list PREFIX_V4 seq 25 permit 172.16.42.0/24 ge 32 le 32
+    ipv6 prefix-list PREFIX_V6 seq 25 permit 2001:db8:2::/48 ge 64 le 64
+    commit
+    write memory
