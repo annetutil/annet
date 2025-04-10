@@ -1,7 +1,8 @@
 import pytest
 from typing import Dict, Any
 
-from annet.api import _json_fragment_diff
+import annet.diff
+from annet.annlib.netdev.views.hardware import HardwareView
 import annet.annlib.jsontools as jsontools
 
 
@@ -324,12 +325,24 @@ def test_acl_filter_wildcards(edgecore_json_config, acl_filter4, filter4_result)
     assert result == filter4_result
 
 
-def test_diff(diff_old, edgecore_json_config, diff_result):
+@pytest.fixture()
+def _set_differ():
+    orig_device_file_differ_connector_classes = annet.diff.file_differ_connector._classes
+    orig_device_file_differ_connector_cache = annet.diff.file_differ_connector._cache
+
+    annet.diff.file_differ_connector._classes = [annet.diff.UnifiedFileDiffer]
+    annet.diff.file_differ_connector._cache = None
+    yield
+
+    annet.diff.file_differ_connector._classes = orig_device_file_differ_connector_classes
+    annet.diff.file_differ_connector._cache = orig_device_file_differ_connector_cache
+
+def test_diff(diff_old, edgecore_json_config, diff_result, _set_differ):
     old_files = {"filename": (diff_old, "test")}
     new_files = {"filename": (edgecore_json_config, "test")}
     hostname = "localhost"
 
-    diff_lines = next(_json_fragment_diff(hostname, old_files, new_files)).diff_lines
+    diff_lines = next(annet.diff.json_fragment_diff(HardwareView("pc", ""), hostname, old_files, new_files)).diff_lines
     res_lines = diff_result.split("\n")
 
     assert len(diff_lines) == len(res_lines)

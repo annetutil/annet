@@ -6,6 +6,7 @@
     "Cisco.ASR": " ASR",
     "Cisco.ASR.ASR9000": " 9\\d{3}",
     "Cisco.XRV": "XRv",
+    "Cisco.XR": " 8[\\d\\d\\d]",
     "Cisco.Catalyst": " (Catalyst |WS-C)",
     "Cisco.Catalyst.C2900": "29\\d\\d",
     "Cisco.Catalyst.C2900.C2950": "2950",
@@ -104,7 +105,7 @@
     "Nokia.NS7750": " 7750",
     "Nokia.SR_1s": "SR-1s",
 
-    "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa|NVIDIA|[Aa]sterfusion CX|[Uu]fi[Ss]pace)",
+    "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa|NVIDIA|Nebius|[Aa]sterfusion CX|[Uu]fi[Ss]pace)",
 
     "PC.Whitebox": "([Mm]ellanox SN|[Ee]dge-?[Cc]ore|NVIDIA|[Aa]sterfusion CX|[Uu]fi[Ss]pace)",
     "PC.Whitebox.Mellanox": "[Mm]ellanox",
@@ -128,10 +129,17 @@
     "PC.Whitebox.Asterfusion.CX": " CX",
     "PC.Whitebox.Asterfusion.CX.CX500": " CX5\\d\\d",
     "PC.Whitebox.Asterfusion.CX.CX500.CX532P-N": " CX532P-N",
+    "PC.Whitebox.Asterfusion.CX.CX800": " CX8\\d\\d",
+    "PC.Whitebox.Asterfusion.CX.CX800.CX864E-N": " CX864E-N",
     "PC.Whitebox.Ufispace": "[Uu]fi[Ss]pace",
     "PC.Whitebox.Ufispace.S": " S",
     "PC.Whitebox.Ufispace.S.S9100": " S91\\d\\d",
     "PC.Whitebox.Ufispace.S.S9100.S9110_32X": " S9110-32X",
+    "PC.Whitebox.Ufispace.S.S9300": " S93\\d\\d",
+    "PC.Whitebox.Ufispace.S.S9300.S9301_32DB": " S9301-32DB",
+    "PC.Whitebox.Ufispace.S.S9300.S9321_64EO": " S9321-64EO",
+    "PC.Nebius": "^Nebius",
+    "PC.Nebius.NB-E-BR-DCU-AST2600": "^Nebius NB-E-BR-DCU-AST2600",
 
     "RouterOS": "^([Rr]outer[Oo][Ss]|[Mm]ikro[Tt]ik)",
 

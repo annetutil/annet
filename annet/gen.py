@@ -40,7 +40,7 @@ from annet.generators import (
     PartialGenerator,
     RefGenerator,
 )
-from annet.lib import merge_dicts, percentile
+from annet.lib import merge_dicts, percentile, do_async
 from annet.output import output_driver_connector
 from annet.parallel import Parallel
 from annet.storage import Device, Storage, storage_connector
@@ -407,7 +407,7 @@ def old_new(
         files_to_download = _get_files_to_download(devices, gens)
         devices_with_files = [device for device in devices if device in files_to_download]
         fetcher = get_fetcher()
-        fetched_packages, failed_packages = fetcher.fetch_packages(devices_with_files)
+        fetched_packages, failed_packages = do_async(fetcher.fetch_packages(devices_with_files), new_thread=True)
 
     ctx = OldNewDeviceContext(
         config=config,
@@ -524,52 +524,6 @@ def worker(device_id, args: ShowGenOptions, stdin, loader: "Loader", filterer: F
                        args.indent
                    ),
                    False)
-
-
-def old_new_worker(device_id, args: DeployOptions, config, stdin, loader: "Loader", filterer: Filterer):
-    for res in old_new(
-        args,
-        config=config,
-        loader=loader,
-        filterer=filterer,
-        stdin=stdin,
-        device_ids=[device_id],
-        no_new=args.clear,
-        do_files_download=True,
-    ):
-        if res.err is not None and not args.tolerate_fails:
-            raise res.err
-        yield res
-
-
-class OldNewParallel(Parallel):
-    def __init__(self, args: DeployOptions, loader: "Loader", filterer: Filterer):
-        stdin = args.stdin(filter_acl=args.filter_acl, config=args.config)
-        super().__init__(
-            old_new_worker,
-            args,
-            config=args.config,
-            stdin=stdin,
-            loader=loader,
-            filterer=filterer,
-        )
-        self.tune_args(args)
-        self.tolerate_fails = args.tolerate_fails
-
-    def generated_configs(self, devices: List[Device]) -> Generator[OldNewResult, None, None]:
-        devices_by_id = {device.id: device for device in devices}
-        device_ids = list(devices_by_id)
-
-        for task_result in self.irun(device_ids, self.tolerate_fails):
-            if task_result.exc is not None:
-                device = devices_by_id.pop(task_result.device_id)
-                yield OldNewResult(device=device, err=task_result.exc)
-            elif task_result.result is not None:
-                yield from task_result.result
-                devices_by_id.pop(task_result.device_id)
-
-        for device in devices_by_id.values():
-            yield OldNewResult(device=device, err=Exception(f"No config returned for {device.hostname}"))
 
 
 @dataclasses.dataclass
@@ -807,7 +761,7 @@ def _old_resolve_running(config: str, devices: List[Device]) -> Tuple[Dict[Devic
         if live_configs is None:
             # предварительно прочесть все конфиги прямо по ssh
             fetcher = get_fetcher()
-            running, failed_running = fetcher.fetch(devices)
+            running, failed_running = do_async(fetcher.fetch(devices), new_thread=True)
         else:
             running, failed_running = live_configs  # pylint: disable=unpacking-non-sequence
     return running, failed_running
@@ -825,8 +779,8 @@ def _old_resolve_files(config: str,
         devices_with_files = [device for device in devices if device in files_to_download]
         if devices_with_files:
             fetcher = get_fetcher()
-            downloaded_files, failed_files = fetcher.fetch(devices_with_files,
-                                                           files_to_download=files_to_download)
+            fetch_coro = fetcher.fetch(devices_with_files, files_to_download=files_to_download)
+            downloaded_files, failed_files = do_async(fetch_coro, new_thread=True)
     return downloaded_files, failed_files
 
 

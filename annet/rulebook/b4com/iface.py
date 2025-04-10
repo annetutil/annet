@@ -13,6 +13,16 @@ def mtu(rule, key, diff, **kwargs):
         yield from common.default(rule, key, diff, **kwargs)
 
 
+def description(rule, key, diff, **kwargs):
+    """
+    Удаляем description без указания значения
+    """
+    if diff[Op.REMOVED]:
+        yield (False, "no description", None)
+    elif diff[Op.ADDED]:
+        yield from common.default(rule, key, diff, **kwargs)
+
+
 def sflow(rule, key, diff, **kwargs):
     """
     Команда sflow sampling-rate * direction ingress max-header-size *

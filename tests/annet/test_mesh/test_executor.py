@@ -1,6 +1,6 @@
 import pytest
 
-from annet.bgp_models import BFDTimers, Redistribute
+from annet.bgp_models import BFDTimers, Redistribute, VidCollection, VidRange
 from annet.mesh import (
     MeshExecutor,
     MeshRulesRegistry,
@@ -18,19 +18,25 @@ VRF = "testvrf"
 GROUP = "test_group"
 EXPORT_POLICY1 = "EXPORT_POLICY1"
 EXPORT_POLICY2 = "EXPORT_POLICY2"
+PEER_FILTER = "peer_filter1"
+L2VPN = "evpn1"
 
 def on_device_x(device: GlobalOptions):
+    device.vrf[VRF].export_policy = EXPORT_POLICY1
     device.vrf[VRF].groups[GROUP].mtu = 1499
     device.vrf[VRF].groups[GROUP].local_as = 11111
     device.vrf[VRF].groups[GROUP].remote_as = 22222
     device.vrf[VRF].groups[GROUP].families = {"ipv4_unicast"}
     device.vrf[VRF].groups[GROUP].export_policy = EXPORT_POLICY1
+    device.vrf[VRF].groups[GROUP].peer_filter = PEER_FILTER
     device.vrf[VRF].ipv4_unicast.aggregate.policy = EXPORT_POLICY1
     device.vrf[VRF].as_path_relax = True
     device.ipv6_unicast.aggregate.policy = EXPORT_POLICY2
     device.ipv4_unicast.redistributes = (Redistribute(
         protocol="ipv4", policy="sss",
     ),)
+    device.l2vpn[L2VPN].vid = "5, 1000-1004"
+    device.l2vpn[L2VPN].l2vni = 100
 
 
 def on_direct(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):
@@ -149,6 +155,8 @@ def test_storage(registry, storage, device1):
     vrf = res.global_options.vrf[VRF]
     assert vrf.vrf_name == VRF
     assert vrf.static_label is None
+    assert vrf.export_policy == EXPORT_POLICY1
+    assert vrf.import_policy == ""
     assert len(vrf.groups) == 1
     assert vrf.groups[0].mtu == 1499
     assert vrf.groups[0].local_as == 11111
@@ -156,10 +164,22 @@ def test_storage(registry, storage, device1):
     assert vrf.groups[0].families == {"ipv4_unicast"}
     assert vrf.groups[0].name == GROUP
     assert vrf.groups[0].export_policy == EXPORT_POLICY1
+    assert vrf.groups[0].import_policy == ""
+    assert vrf.groups[0].peer_filter == PEER_FILTER
     assert vrf.ipv4_unicast.vrf_name == VRF
     assert vrf.ipv4_unicast.family == "ipv4_unicast"
     assert vrf.ipv4_unicast.aggregate.policy == EXPORT_POLICY1
     assert vrf.as_path_relax
+
+    assert len(res.global_options.l2vpn) == 1
+    l2vpn = res.global_options.l2vpn[L2VPN]
+    assert l2vpn.name == L2VPN
+    assert l2vpn.vid == VidCollection([VidRange(5,5), VidRange(1000, 1004)])
+    assert l2vpn.l2vni == 100
+    assert not l2vpn.rt_export
+    assert not l2vpn.rt_import
+    assert l2vpn.advertise_host_routes
+    assert not l2vpn.route_distinguisher
 
     res.peers.sort(key=lambda p: p.addr)
     peer_direct, peer_direct_alt, peer_indirect, peer_indirect_alt, *virtual = res.peers

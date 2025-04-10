@@ -4,7 +4,8 @@ from typing import Optional, List, Union
 from annetbox.v24 import models as api_models
 from annetbox.v24.client_sync import NetboxV24
 
-from annet.adapters.netbox.common import models
+from annet.adapters.netbox.common.models import InterfaceType
+from annet.adapters.netbox.v24 import models
 from annet.adapters.netbox.common.manufacturer import (
    get_hw, get_breed,
 )
@@ -78,7 +79,6 @@ def extend_device(
         hw=get_hw(manufacturer, model, platform_name),
         breed=get_breed(manufacturer, model),
         interfaces=[],
-        neighbours_ids=[],
         storage=storage,
     )
 
@@ -87,9 +87,15 @@ def extend_interface(interface: api_models.Interface) -> models.Interface:
     return models.Interface(
         id=interface.id,
         name=interface.name,
+        description="",
         device=interface.device,
         enabled=interface.enabled,
         display=interface.name,
+        type=InterfaceType("Unknown", "unknown"),
+        connected_endpoints=None,
+        mode=None,
+        untagged_vlan=None,
+        tagged_vlans=None,
         ip_addresses=[],
     )
 

@@ -197,7 +197,7 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
                 raise
             except Exception as err:
                 filename, lineno = gen.get_running_line()
-                logger.exception("Generator error in file '%s:%i'", filename, lineno)
+                logger.error("Generator error in file '%s:%i'", filename, lineno)
                 raise GeneratorError(f"{gen} on {device}") from err
 
             fmtr = tabparser.make_formatter(device.hw)

@@ -44,7 +44,7 @@ if __name__ == "__main__":
           ],
         },
         extras_require={
-            "netbox": ["annetbox[sync]>=0.1.12"],
+            "netbox": ["annetbox[sync]>=0.3.0"],
         },
         python_requires=">=3.10",
         install_requires=requirements(),

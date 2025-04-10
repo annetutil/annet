@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABC
+from collections import defaultdict
 from collections.abc import Sequence
 from ipaddress import ip_interface
 from typing import Any, Literal, Iterable, Iterator, Optional, cast
@@ -12,9 +13,9 @@ from .aspath import get_used_as_path_filters
 from .community import get_used_united_community_lists
 from .entities import (
     AsPathFilter, IpPrefixList, CommunityList, CommunityLogic, CommunityType,
-    mangle_united_community_list_name, PrefixListNameGenerator,
+    mangle_united_community_list_name, PrefixListNameGenerator, group_community_members,
 )
-from .prefix_lists import get_used_prefix_lists, new_prefix_list_name_generator
+
 
 FRR_RESULT_MAP = {
     ResultType.ALLOW: "permit",
@@ -51,12 +52,6 @@ class CumulusPolicyGenerator(ABC):
     def get_prefix_lists(self, device: Any) -> Sequence[IpPrefixList]:
         raise NotImplementedError()
 
-    def get_used_prefix_lists(self, device: Any, name_generator: PrefixListNameGenerator) -> Sequence[IpPrefixList]:
-        return get_used_prefix_lists(
-            prefix_lists=self.get_prefix_lists(device),
-            name_generator=name_generator,
-        )
-
     @abstractmethod
     def get_community_lists(self, device: Any) -> list[CommunityList]:
         raise NotImplementedError()
@@ -66,8 +61,9 @@ class CumulusPolicyGenerator(ABC):
         raise NotImplementedError
 
     def generate_cumulus_rpl(self, device: Any) -> Iterator[Sequence[str]]:
+        prefix_lists = self.get_prefix_lists(device)
         policies = self.get_policies(device)
-        prefix_list_name_generator = new_prefix_list_name_generator(policies)
+        prefix_list_name_generator = PrefixListNameGenerator(prefix_lists, policies)
 
         communities = {c.name: c for c in self.get_community_lists(device)}
         yield from self._cumulus_as_path_filters(device, policies)
@@ -89,60 +85,46 @@ class CumulusPolicyGenerator(ABC):
 
     def _cumulus_prefix_list(
             self,
-            name: str,
             ip_type: Literal["ipv6", "ip"],
-            match: PrefixMatchValue,
             plist: IpPrefixList,
     ) -> Iterable[Sequence[str]]:
-        for i, prefix in enumerate(plist.members):
-            addr_mask = ip_interface(prefix)
+        for i, m in enumerate(plist.members):
+            ge, le = m.or_longer
             yield (
                 ip_type,
                 "prefix-list",
-                name,
+                plist.name,
                 f"seq {i * 5 + 5}",
-                "permit", f"{addr_mask.ip}/{addr_mask.network.prefixlen}",
+                "permit", str(m.prefix),
             ) + (
-                ("ge", str(match.greater_equal)) if match.greater_equal is not None else ()
+                ("ge", str(ge)) if ge is not None else ()
             ) + (
-                ("le", str(match.less_equal)) if match.less_equal is not None else ()
+                ("le", str(le)) if le is not None else ()
             )
 
     def _cumulus_prefix_lists(
             self, device: Any,
             policies: list[RoutingPolicy],
-            prefix_list_name_generator: PrefixListNameGenerator,
+            name_generator: PrefixListNameGenerator,
     ) -> Iterable[Sequence[str]]:
-        plists = {p.name: p for p in self.get_used_prefix_lists(device, prefix_list_name_generator)}
-        if not plists.values():
-            return
-
-        precessed_names = set()
+        processed_names = set()
         for policy in policies:
             for statement in policy.statements:
                 cond: SingleCondition[PrefixMatchValue]
                 for cond in statement.match.find_all(MatchField.ip_prefix):
                     for name in cond.value.names:
-                        mangled_name = prefix_list_name_generator.get_prefix_name(
-                            name=name,
-                            greater_equal=cond.value.greater_equal,
-                            less_equal=cond.value.less_equal,
-                        )
-                        if mangled_name in precessed_names:
+                        plist = name_generator.get_prefix(name, cond.value)
+                        if plist.name in processed_names:
                             continue
-                        yield from self._cumulus_prefix_list(mangled_name, "ip", cond.value, plists[name])
-                        precessed_names.add(mangled_name)
+                        yield from self._cumulus_prefix_list("ip", plist)
+                        processed_names.add(plist.name)
                 for cond in statement.match.find_all(MatchField.ipv6_prefix):
                     for name in cond.value.names:
-                        mangled_name = prefix_list_name_generator.get_prefix_name(
-                            name=name,
-                            greater_equal=cond.value.greater_equal,
-                            less_equal=cond.value.less_equal,
-                        )
-                        if mangled_name in precessed_names:
+                        plist = name_generator.get_prefix(name, cond.value)
+                        if plist.name in processed_names:
                             continue
-                        yield from self._cumulus_prefix_list(mangled_name, "ipv6", cond.value, plists[name])
-                        precessed_names.add(mangled_name)
+                        yield from self._cumulus_prefix_list("ipv6", plist)
+                        processed_names.add(plist.name)
         yield "!"
 
     def get_used_united_community_lists(
@@ -231,7 +213,7 @@ class CumulusPolicyGenerator(ABC):
             self,
             device: Any,
             condition: SingleCondition[Any],
-            prefix_list_name_generator: PrefixListNameGenerator,
+            name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         if condition.field == MatchField.community:
             for comm_name in self._get_match_community_names(condition):
@@ -251,21 +233,13 @@ class CumulusPolicyGenerator(ABC):
             return
         if condition.field == MatchField.ip_prefix:
             for name in condition.value.names:
-                mangled_name = prefix_list_name_generator.get_prefix_name(
-                    name=name,
-                    greater_equal=condition.value.greater_equal,
-                    less_equal=condition.value.less_equal,
-                )
-                yield "match", "ip address prefix-list", mangled_name
+                plist = name_generator.get_prefix(name, condition.value)
+                yield "match", "ip address prefix-list", plist.name
             return
         if condition.field == MatchField.ipv6_prefix:
             for name in condition.value.names:
-                mangled_name = prefix_list_name_generator.get_prefix_name(
-                    name=name,
-                    greater_equal=condition.value.greater_equal,
-                    less_equal=condition.value.less_equal,
-                )
-                yield "match", "ipv6 address prefix-list", mangled_name
+                plist = name_generator.get_prefix(name, condition.value)
+                yield "match", "ipv6 address prefix-list", plist.name
             return
         if condition.operator is not ConditionOperator.EQ:
             raise NotImplementedError(
@@ -334,8 +308,43 @@ class CumulusPolicyGenerator(ABC):
             raise NotImplementedError("Replacing SOO extcommunity is not supported for Cumulus")
         for community_name in action.value.added:
             yield "set", "extcommunity soo", community_name, "additive"
-        for community_name in action.value.removed:
+        if action.value.removed:
             raise NotImplementedError("SOO extcommunity remove is not supported for Cumulus")
+
+    def _cumulus_extcommunity_type_str(self, comm_type: CommunityType) -> str:
+        if comm_type is CommunityType.SOO:
+            return "soo"
+        elif comm_type is CommunityType.RT:
+            return "rt"
+        elif comm_type is CommunityType.LARGE:
+            raise ValueError("Large community is not subtype of extcommunity")
+        elif comm_type is CommunityType.BASIC:
+            raise ValueError("Basic community is not subtype of extcommunity")
+        else:
+            raise NotImplementedError(f"Community type {comm_type} is not supported on cumulus")
+
+    def _cumulus_then_extcommunity(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ):
+        if action.value.replaced is not None:
+            if action.value.added or action.value.removed:
+                raise NotImplementedError(
+                    "Cannot set extcommunity together with add/delete on cumulus",
+                )
+            if not action.value.replaced:
+                yield "set", "extcommunity", "none"
+                return
+            members = group_community_members(communities, action.value.replaced)
+            for community_type, replaced_members in members.items():
+                type_str = self._cumulus_extcommunity_type_str(community_type)
+                yield "set", "extcommunity", type_str, *replaced_members
+        if action.value.added:
+            raise NotImplementedError("extcommunity add is not supported for Cumulus")
+        if action.value.removed:
+            raise NotImplementedError("extcommunity remove is not supported for Cumulus")
 
     def _cumulus_then_as_path(
             self,
@@ -344,18 +353,18 @@ class CumulusPolicyGenerator(ABC):
     ) -> Iterator[Sequence[str]]:
         if action.value.prepend:
             for path_item in action.value.prepend:
-                yield "set as-path prepend", path_item
+                yield "set", "as-path prepend", path_item
         if action.value.expand:
             raise NotImplementedError("asp_path.expand is not supported for Cumulus")
         if action.value.delete:
             for path_item in action.value.delete:
-                yield "set as-path exclude", path_item
+                yield "set", "as-path exclude", path_item
         if action.value.set is not None:
-            yield "set as-path exclude all"
+            yield "set", "as-path exclude", "all"
             for path_item in action.value.set:
-                yield "set as-path prepend", path_item
+                yield "set", "as-path prepend", path_item
         if action.value.expand_last_as:
-            yield "set as-path prepend last-as", action.value.expand_last_as
+            yield "set", "as-path prepend last-as", action.value.expand_last_as
 
     def _cumulus_policy_then(
             self,
@@ -376,6 +385,9 @@ class CumulusPolicyGenerator(ABC):
                 device,
                 cast(SingleAction[CommunityActionValue], action),
             )
+            return
+        if action.field == ThenField.extcommunity:
+            yield from self._cumulus_then_extcommunity(communities, device, action)
             return
         if action.field == ThenField.extcommunity_rt:
             yield from self._cumulus_then_rt_community(

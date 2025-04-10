@@ -3,6 +3,7 @@ VENDOR_REVERSES = {
     "h3c": "undo",
     "optixtrans": "undo",
     "cisco": "no",
+    "iosxr": "no",
     "nexus": "no",
     "juniper": "delete",
     "arista": "no",
@@ -18,6 +19,7 @@ VENDOR_DIFF = {
     "huawei": "common.default_diff",
     "optixtrans": "common.default_diff",
     "cisco": "common.default_diff",
+    "iosxr": "common.default_diff",
     "nexus": "common.default_diff",
     "juniper": "juniper.default_diff",
     "arista": "common.default_diff",
@@ -25,7 +27,7 @@ VENDOR_DIFF = {
     "routeros": "common.default_diff",
     "aruba": "aruba.default_diff",
     "pc": "common.default_diff",
-    "ribbon": "ribbon.default_diff",
+    "ribbon": "juniper.default_diff",
     "b4com": "common.default_diff",
 }
 
@@ -33,6 +35,7 @@ VENDOR_DIFF_ORDERED = {
     "huawei": "common.ordered_diff",
     "optixtrans": "common.ordered_diff",
     "cisco": "common.ordered_diff",
+    "iosxr": "common.ordered_diff",
     "nexus": "common.ordered_diff",
     "juniper": "juniper.ordered_diff",
     "arista": "common.ordered_diff",
@@ -40,7 +43,7 @@ VENDOR_DIFF_ORDERED = {
     "routeros": "common.ordered_diff",
     "aruba": "common.ordered_diff",
     "pc": "common.ordered_diff",
-    "ribbon": "ribbon.default_diff",
+    "ribbon": "juniper.ordered_diff",
     "b4com": "common.ordered_diff",
 }
 
@@ -49,6 +52,7 @@ VENDOR_EXIT = {
     "h3c": "quit",
     "optixtrans": "quit",
     "cisco": "exit",
+    "iosxr": "exit",
     "nexus": "exit",
     "arista": "exit",
     "juniper": "",

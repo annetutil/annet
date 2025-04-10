@@ -32,7 +32,7 @@ undo route-distinguisher *
     dialog: Warning: All VPN targets of this EVPN instance and all EVPN address family-related configurations under BGP will be deleted. Continue? [Y/N]: ::: Y
 
 save
-    dialog: Warning: The current configuration will be written to the device. Continue? [Y/N] ::: Y
+    dialog: /Warning: The current configuration will be written to the device. Continue\? \[Y/N\]:?/ ::: Y
     dialog: Warning: The current configuration will be written to the device. Are you sure to continue? [Y/N]: ::: Y
     dialog: Are you sure to continue?[Y/N] ::: Y
     dialog: Are you sure to continue? [Y/N] ::: Y

@@ -442,6 +442,7 @@ class FileOutOptions(ArgGroup):
 class DiffOptions(GenOptions, ComocutorOptions):
     clear = opt_clear
     config = opt_config
+    show_hosts_progress = opt_show_hosts_progress
 
 
 class FileInputOptions(ArgGroup):

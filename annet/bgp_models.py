@@ -3,6 +3,77 @@ from dataclasses import dataclass, field
 from typing import Literal, Union, Optional
 
 
+class VidRange:
+    def __init__(self, start: int, stop: int) -> None:
+        self.start = start
+        self.stop = stop
+
+    def is_single(self):
+        return self.start == self.stop
+
+    def __iter__(self):
+        return iter(range(self.start, self.stop + 1))
+
+    def __str__(self):
+        if self.is_single():
+            return str(self.start)
+        return f"{self.start}-{self.stop}"
+
+    def __repr__(self):
+        return f"VlanRange({self.start}, {self.stop})"
+
+    def __eq__(self, other: object) -> bool:
+        if type(other) is VidRange:
+            return self.start == other.start and self.stop == other.stop
+        return NotImplemented
+
+
+def _parse_vlan_ranges(ranges: str) -> Iterable[VidRange]:
+    for range in ranges.split(","):
+        start, sep, stop = range.strip().partition("-")
+        try:
+            if not sep:
+                int_start = int(start)
+                yield VidRange(int_start, int_start)
+            elif not stop or not start:
+                raise ValueError(f"Cannot parse range {range!r}. Expected `start-stop`")
+            else:
+                yield VidRange(int(start), int(stop))
+        except ValueError:
+            raise ValueError(f"Cannot parse range {range!r}. Expected `vid1-vid2` or `vid`")
+
+
+class VidCollection:
+    @staticmethod
+    def parse(ranges: int | str) -> "VidCollection":
+        if isinstance(ranges, int):
+            return VidCollection([VidRange(ranges, ranges)])
+        elif isinstance(ranges, str):
+            return VidCollection(list(_parse_vlan_ranges(ranges)))
+        elif isinstance(ranges, VidCollection):
+            return VidCollection(ranges.ranges)
+        else:
+            raise TypeError(f"Expected str or int, got {type(ranges)}")
+
+    def __init__(self, ranges: list[VidRange]) -> None:
+        self.ranges = ranges
+
+    def __str__(self):
+        return ",".join(map(str, self.ranges))
+
+    def __repr__(self):
+        return f"VlanCollection({str(self)!r})"
+
+    def __iter__(self):
+        for range in self.ranges:
+            yield from range
+
+    def __eq__(self, other: object) -> bool:
+        if type(other) is VidCollection:
+            return self.ranges == other.ranges
+        return False
+
+
 class ASN(int):
     """
     Stores ASN number and formats it as в AS1.AS2
@@ -182,6 +253,7 @@ class PeerGroup:
     internal_name: str = ""
     description: str = ""
     update_source: str = ""
+    peer_filter: str = ""
     import_policy: str = ""
     export_policy: str = ""
 
@@ -235,6 +307,17 @@ class PeerGroup:
 
 
 @dataclass
+class L2VpnOptions:
+    name: str
+    vid: VidCollection
+    l2vni: int  # VNI, possible values are 1 to 2**24-1
+    route_distinguisher: str = ""  # like in VrfOptions
+    rt_import: list[str] = field(default_factory=list)  # like in VrfOptions
+    rt_export: list[str] = field(default_factory=list)  # like in VrfOptions
+    advertise_host_routes: bool = True  # advertise IP+MAC routes into L3VNI
+
+
+@dataclass
 class VrfOptions:
     vrf_name: str
 
@@ -245,8 +328,10 @@ class VrfOptions:
     l2vpn_evpn: FamilyOptions
 
     vrf_name_global: Optional[str] = None
-    l3vni: Optional[int] = None
+    import_policy: str = ""
+    export_policy: str = ""
     as_path_relax: bool = False
+    l3vni: Optional[int] = None
     rt_import: list[str] = field(default_factory=list)
     rt_export: list[str] = field(default_factory=list)
     rt_import_v4: list[str] = field(default_factory=list)
@@ -271,8 +356,8 @@ class GlobalOptions:
     multipath: int = 0
     router_id: str = ""
     vrf: dict[str, VrfOptions] = field(default_factory=dict)
-
     groups: list[PeerGroup] = field(default_factory=list)
+    l2vpn: dict[str, L2VpnOptions] = field(default_factory=dict)
 
 
 @dataclass
@@ -281,7 +366,7 @@ class BgpConfig:
     peers: list[Peer]
 
 
-def _used_policies(peer: Union[Peer, PeerGroup]) -> Iterable[str]:
+def _used_policies(peer: Union[Peer, PeerGroup, VrfOptions]) -> Iterable[str]:
     if peer.import_policy:
         yield peer.import_policy
     if peer.export_policy:
@@ -309,6 +394,7 @@ def extract_policies(config: BgpConfig) -> Sequence[str]:
         for group in vrf.groups:
             result.extend(_used_policies(group))
         result.extend(_used_redistribute_policies(vrf))
+        result.extend(_used_policies(vrf))
     for group in config.global_options.groups:
         result.extend(_used_policies(group))
     for peer in config.peers:

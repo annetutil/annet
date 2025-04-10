@@ -8,6 +8,7 @@ _VENDORS = {
     "cisco": "Cisco",
     "catalyst": "Cisco Catalyst",
     "nexus": "Cisco Nexus",
+    "iosxr": "Cisco XR",
     "huawei": "Huawei",
     "optixtrans": "Huawei OptiXtrans",
     "juniper": "Juniper",
@@ -54,7 +55,7 @@ def get_breed(manufacturer: str, model: str):
         return "bcom-os"
     elif manufacturer == "MikroTik":
         return "routeros"
-    elif manufacturer == "Moxa":
+    elif manufacturer in ("Moxa", "Nebius"):
         return "moxa"
     elif manufacturer == "PC":
         return "pc"

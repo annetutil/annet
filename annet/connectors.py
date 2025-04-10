@@ -111,33 +111,30 @@ class AdapterWithName(ABC):
 
 
 def get_connector_from_config(config_key: str, connectors: List[Type[Connector]]) -> Tuple[Connector, Dict[str, Any]]:
-    seen: list[str] = []
     if not connectors:
         raise Exception("empty connectors")
-    connector = connectors[0]  # default
-    connector_params: Dict[str, Any] = {}
+
+    # handle configuration
+    connector_params = dict[str, Any]()  # default
     if context_storage := get_context().get(config_key):
-        adapter_name = context_storage.get("adapter", None)
         connector_params = context_storage.get("params", {})
-        if adapter_name:
+        if adapter_name := context_storage.get("adapter", None):
+            seen = list[str]()
             for con in connectors:
-                con_name = connector.__name__
                 if issubclass(con, AdapterWithName):
                     con_name = con.name()
+                else:
+                    con_name = con.__name__
                 seen.append(con_name)
                 if adapter_name == con_name:
-                    connector = con
+                    connectors = [con]
                     break
             else:
                 raise Exception("unknown %s %s: seen %s" % (config_key, adapter_name, seen))
-        else:
-            connector = connectors[0]
-            if len(connectors) > 1:
-                warnings.warn(f"Please specify adapter for '{config_key}'. Found more than one classes {connectors}", UserWarning)
-    else:
-        connector = connectors[0]
-        if len(connectors) > 1:
-            warnings.warn(f"Please specify '{config_key}'. Found more than one classes {connectors}", UserWarning)
+
+    if len(connectors) > 1:
+        warnings.warn(f"Please specify adapter for '{config_key}'. Found more than one classes {connectors}", UserWarning)
+    connector = connectors[0]
     if issubclass(connector, AdapterWithConfig):
         connector_ins = connector.with_config(**connector_params)
     else:

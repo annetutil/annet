@@ -1,5 +1,5 @@
 import abc
-import difflib
+import inspect
 import os
 import re
 import sys
@@ -9,19 +9,19 @@ from collections import OrderedDict as odict
 from itertools import groupby, chain
 from operator import itemgetter
 from typing import (
-    Any,
     Dict,
     Generator,
     Iterable,
     List,
     Mapping,
-    Optional,
     Set,
     Tuple,
-    Union, cast,
+    Union, cast, Any,
 )
 
 import colorama
+import annet.deploy
+import annet.deploy_ui
 import annet.lib
 from annet.annlib import jsontools
 from annet.annlib.netdev.views.hardware import HardwareView
@@ -35,11 +35,11 @@ from annet import diff as ann_diff
 from annet import filtering
 from annet import gen as ann_gen
 from annet import patching, rulebook, tabparser, tracing
+from annet.diff import file_differ_connector
 from annet.rulebook import deploying
 from annet.filtering import Filterer
 from annet.hardware import hardware_connector
 from annet.output import (
-    LABEL_NEW_PREFIX,
     format_file_diff,
     output_driver_connector,
     print_err_label,
@@ -48,9 +48,6 @@ from annet.parallel import Parallel, TaskResult
 from annet.reference import RefTracker
 from annet.storage import Device, get_storage
 from annet.types import Diff, ExitCode, OldNewResult, Op, PCDiff, PCDiffFile
-
-
-live_configs = ann_gen.live_configs
 
 DEFAULT_INDENT = "  "
 
@@ -240,29 +237,13 @@ def gen(args: cli_args.ShowGenOptions, loader: ann_gen.Loader):
 
 
 # =====
-def _diff_file(old_text: Optional[str], new_text: Optional[str], context=3):
-    old_lines = old_text.splitlines() if old_text else []
-    new_lines = new_text.splitlines() if new_text else []
-    context = max(len(old_lines), len(new_lines)) if context is None else context
-    return list(difflib.unified_diff(old_lines, new_lines, n=context, lineterm=""))
-
-
-def _diff_files(old_files, new_files, context=3):
-    ret = {}
-    for (path, (new_text, reload_data)) in new_files.items():
-        old_text = old_files.get(path)
-        is_new = old_text is None
-        diff_lines = _diff_file(old_text, new_text, context=context)
-        ret[path] = (diff_lines, reload_data, is_new)
-    return ret
 
 
 def patch(args: cli_args.ShowPatchOptions, loader: ann_gen.Loader):
     """ Сгенерировать патч для устройств """
-    global live_configs  # pylint: disable=global-statement
     if args.config == "running":
         fetcher = annet.deploy.get_fetcher()
-        live_configs = fetcher.fetch(loader.devices, processes=args.parallel)
+        ann_gen.live_configs = annet.lib.do_async(fetcher.fetch(loader.devices, processes=args.parallel))
     stdin = args.stdin(filter_acl=args.filter_acl, config=args.config)
 
     filterer = filtering.filterer_connector.get()
@@ -329,62 +310,41 @@ def res_diff_patch(
 
 
 def diff(
-        args: cli_args.DiffOptions,
-        loader: ann_gen.Loader,
-        device_ids: List[int],
-        filterer: filtering.Filterer,
-) -> Mapping[Device, Union[Diff, PCDiff]]:
-    ret = {}
-    for res in ann_gen.old_new(
-        args,
-        config=args.config,
-        loader=loader,
-        no_new=args.clear,
-        do_files_download=True,
-        device_ids=device_ids,
-        filterer=filterer,
-    ):
-        old = res.get_old(args.acl_safe)
-        new = res.get_new(args.acl_safe)
-        device = res.device
-        acl_rules = res.get_acl_rules(args.acl_safe)
-        new_files = res.get_new_files(args.acl_safe)
-        new_json_fragment_files = res.get_new_file_fragments(args.acl_safe)
+    args: cli_args.DiffOptions,
+    loader: ann_gen.Loader,
+    device_ids: List[Any]
+) -> tuple[Mapping[Device, Union[Diff, PCDiff]], Mapping[Device, Exception]]:
+    """ Сгенерировать конфиг для устройств """
+    stdin = args.stdin(filter_acl=args.filter_acl, config=None)
 
-        pc_diff_files = []
-        if res.old_files or new_files:
-            pc_diff_files.extend(_pc_diff(device.hostname, res.old_files, new_files))
-        if res.old_json_fragment_files or new_json_fragment_files:
-            pc_diff_files.extend(_json_fragment_diff(device.hostname, res.old_json_fragment_files, new_json_fragment_files))
+    filterer = filtering.filterer_connector.get()
+    pool = Parallel(ann_diff.worker, args, stdin, loader, filterer).tune_args(args)
+    if args.show_hosts_progress:
+        fqdns = {k: v for k, v in loader.device_fqdns.items() if k in device_ids}
+        pool.add_callback(PoolProgressLogger(fqdns))
 
-        if pc_diff_files:
-            pc_diff_files.sort(key=lambda f: f.label)
-            ret[device] = PCDiff(hostname=device.hostname, diff_files=pc_diff_files)
-        elif old is not None:
-            orderer = patching.Orderer.from_hw(device.hw)
-            rb = rulebook.get_rulebook(device.hw)
-            diff_tree = patching.make_diff(
-                old,
-                orderer.order_config(new),
-                rb,
-                [acl_rules, res.filter_acl_rules],
-            )
-            diff_tree = patching.strip_unchanged(diff_tree)
-            ret[device] = diff_tree
-
-    return ret
+    return pool.run(device_ids, args.tolerate_fails, args.strict_exit_code)
 
 
-def collapse_texts(texts: Mapping[str, str]) -> Mapping[Tuple[str, ...], str]:
+def collapse_texts(texts: Mapping[str, str | Generator[str, None, None]]) -> Mapping[Tuple[str, ...], str]:
     """
     Группировка текстов.
     :param texts:
     :return: словарь с несколькими хостнеймами в ключе.
     """
-    diffs_with_orig = {key: [value, value.splitlines()] for key, value in texts.items()}
+    diffs_with_orig = {}
+    for key, value in texts.items():
+        if inspect.isgenerator(value):
+            lines = list(value)
+            diffs_with_orig[key] = ["".join(lines), lines]
+        else:
+            diffs_with_orig[key] = [value, value.splitlines()]
+
     res = {}
-    for _, collapsed_diff_iter in groupby(sorted(diffs_with_orig.items(), key=lambda x: (x[0], x[1][1])),
-                                          key=lambda x: x[1][1]):
+    for _, collapsed_diff_iter in groupby(
+        sorted(diffs_with_orig.items(), key=lambda x: (x[0], x[1][1])),
+        key=lambda x: x[1][1]
+    ):
         collapsed_diff = list(collapsed_diff_iter)
         res[tuple(x[0] for x in collapsed_diff)] = collapsed_diff[0][1][0]
 
@@ -476,18 +436,19 @@ class PCDeployerJob(DeployerJob):
         upload_files: Dict[str, bytes] = {}
         reload_cmds: Dict[str, bytes] = {}
         generator_types: Dict[str, GeneratorType] = {}
+        differ = file_differ_connector.get()
         for generator_type, pc_files in [(GeneratorType.ENTIRE, new_files), (GeneratorType.JSON_FRAGMENT, new_json_fragment_files)]:
             for file, (file_content_or_json_cfg, cmds) in pc_files.items():
                 if generator_type == GeneratorType.ENTIRE:
                     file_content: str = file_content_or_json_cfg
-                    diff_content = "\n".join(_diff_file(old_files.get(file), file_content))
+                    diff_content = "\n".join(differ.diff_file(res.device.hw, file, old_files.get(file), file_content))
                 else:  # generator_type == GeneratorType.JSON_FRAGMENT
                     old_json_cfg = old_json_fragment_files[file]
                     json_patch = jsontools.make_patch(old_json_cfg, file_content_or_json_cfg)
                     file_content = jsontools.format_json(json_patch)
                     old_text = jsontools.format_json(old_json_cfg)
                     new_text = jsontools.format_json(file_content_or_json_cfg)
-                    diff_content = "\n".join(_diff_file(old_text, new_text))
+                    diff_content = "\n".join(differ.diff_file(res.device.hw, file, old_text, new_text))
 
                 if diff_content or force_reload:
                     self._has_diff |= True
@@ -541,7 +502,6 @@ class Deployer:
 
         self._collapseable_diffs = {}
         self._diff_lines: List[str] = []
-        self._filterer = filtering.filterer_connector.get()
 
     def parse_result(self, job: DeployerJob, result: ann_gen.OldNewResult):
         logger = get_logger(job.device.hostname)
@@ -567,7 +527,7 @@ class Deployer:
             if not diff_obj:
                 self.empty_diff_hostnames.update(dev.hostname for dev in devices)
             if not self.args.no_ask_deploy:
-                # разобъем список устройств на несколько линий
+                # разобьём список устройств на несколько линий
                 dest_name = ""
                 try:
                     _, term_columns_str = os.popen("stty size", "r").read().split()
@@ -596,18 +556,18 @@ class Deployer:
         return diff_lines
 
     def ask_deploy(self) -> str:
-        return self._ask("y", annet.deploy.AskConfirm(
+        return self._ask("y", annet.deploy_ui.AskConfirm(
             text="\n".join(self.diff_lines()),
             alternative_text="\n".join(self.cmd_lines),
         ))
 
     def ask_rollback(self) -> str:
-        return self._ask("n", annet.deploy.AskConfirm(
+        return self._ask("n", annet.deploy_ui.AskConfirm(
             text="Execute rollback?\n",
             alternative_text="",
         ))
 
-    def _ask(self, default_ans: str, ask: annet.deploy.AskConfirm) -> str:
+    def _ask(self, default_ans: str, ask: annet.deploy_ui.AskConfirm) -> str:
         # если filter_acl из stdin то с ним уже не получится работать как с терминалом
         ans = default_ans
         if not self.args.no_ask_deploy:
@@ -622,30 +582,44 @@ class Deployer:
         return ans
 
     def check_diff(self, result: annet.deploy.DeployResult, loader: ann_gen.Loader):
-        global live_configs  # pylint: disable=global-statement
-        success_device_ids = []
-        for host, hres in result.results.items():
-            device = self.fqdn_to_device[host]
-            if (
-                not isinstance(hres, Exception) and
-                host not in self.empty_diff_hostnames and
-                device.is_pc()
-            ):
-                success_device_ids.append(device.id)
         diff_args = self.args.copy_from(
             self.args,
             config="running",
         )
-        if diff_args.query:
-            live_configs = None
-            diffs = diff(diff_args, loader, success_device_ids, self._filterer)
-            non_pc_diffs = {dev: diff for dev, diff in diffs.items() if not isinstance(diff, PCDiff)}
-            devices_to_diff = ann_diff.collapse_diffs(non_pc_diffs)
-            devices_to_diff.update({(dev,): diff for dev, diff in diffs.items() if isinstance(diff, PCDiff)})
-        else:
-            devices_to_diff = {}
-        for devices, diff_obj in devices_to_diff.items():
-            if diff_obj:
+        if not diff_args.query:
+            return
+
+        # clear cache
+        ann_gen.live_configs = None
+
+        # collect new diffs for devices on which we had successfully uploaded something
+        success_device_ids = []
+        for host, hres in result.results.items():
+            if (
+                not isinstance(hres, Exception) and
+                host not in self.empty_diff_hostnames
+            ):
+                device = self.fqdn_to_device[host]
+                success_device_ids.append(device.id)
+        diffs, failed = diff(diff_args, loader, success_device_ids)
+        for device_id, exc in failed.items():
+            self.failed_configs[loader.get_device(device_id).fqdn] = exc
+
+        # "collapse" non-PC diffs
+        diffs_by_device_id = ann_diff.collapse_diffs({
+            loader.get_device(device_id): diff
+            for device_id, diff in diffs.items()
+            if diff and not isinstance(diff, PCDiff)
+        })
+        # add PC diffs as is
+        diffs_by_device_id.update({
+            (loader.get_device(device_id),): diff
+            for device_id, diff in diffs.items()
+            if diff and isinstance(diff, PCDiff)
+        })
+        if diffs_by_device_id:
+            print("The diff is still present:")
+            for devices, diff_obj in diffs_by_device_id.items():
                 for dev in devices:
                     self.failed_configs[dev.fqdn] = Warning("Deploy OK, but diff still exists")
                 if isinstance(diff_obj, PCDiff):
@@ -667,15 +641,36 @@ def deploy(
     fetcher: Fetcher,
     deploy_driver: DeployDriver,
 ) -> ExitCode:
+    return annet.lib.do_async(adeploy(args, loader, deployer, filterer, fetcher, deploy_driver))
+
+
+async def adeploy(
+    args: cli_args.DeployOptions,
+    loader: ann_gen.Loader,
+    deployer: Deployer,
+    filterer: Filterer,
+    fetcher: Fetcher,
+    deploy_driver: DeployDriver,
+) -> ExitCode:
     """ Сгенерировать конфиг для устройств и задеплоить его """
     ret: ExitCode = 0
-    global live_configs  # pylint: disable=global-statement
-    live_configs = fetcher.fetch(devices=loader.devices, processes=args.parallel)
-    pool = ann_gen.OldNewParallel(args, loader, filterer)
+    ann_gen.live_configs = await fetcher.fetch(devices=loader.devices, processes=args.parallel)
 
-    for res in pool.generated_configs(loader.devices):
+    device_ids = [d.id for d in loader.devices]
+    for res in ann_gen.old_new(
+        args,
+        config=args.config,
+        loader=loader,
+        no_new=args.clear,
+        stdin=args.stdin(filter_acl=args.filter_acl, config=args.config),
+        do_files_download=True,
+        device_ids=device_ids,
+        filterer=filterer,
+    ):
         # Меняем exit code если хоть один device ловил exception
         if res.err is not None:
+            if not args.tolerate_fails:
+                raise res.err
             get_logger(res.device.hostname).error("error generating configs", exc_info=res.err)
             ret |= 2 ** 3
         job = DeployerJob.from_device(res.device, args)
@@ -687,7 +682,18 @@ def deploy(
         ans = deployer.ask_deploy()
         if ans != "y":
             return 2 ** 2
-        result = annet.lib.do_async(deploy_driver.bulk_deploy(deploy_cmds, args))
+
+        if sys.stdout.isatty() and not args.no_progress:
+            progress_bar = annet.deploy_ui.ProgressBars(odict([(device.fqdn, {}) for device in deploy_cmds]))
+            progress_bar.init()
+            with progress_bar:
+                progress_bar.start_terminal_refresher()
+                result = await deploy_driver.bulk_deploy(deploy_cmds, args, progress_bar=progress_bar)
+                await progress_bar.wait_for_exit()
+            progress_bar.screen.clear()
+            progress_bar.stop_terminal_refresher()
+        else:
+            result = await deploy_driver.bulk_deploy(deploy_cmds, args)
 
     rolled_back = False
     rollback_cmds = {deployer.fqdn_to_device[x]: cc for x, cc in result.original_states.items() if cc}
@@ -695,7 +701,7 @@ def deploy(
         ans = deployer.ask_rollback()
         if rollback_cmds and ans == "y":
             rolled_back = True
-            annet.lib.do_async(deploy_driver.bulk_deploy(rollback_cmds, args))
+            await deploy_driver.bulk_deploy(rollback_cmds, args)
 
     if not args.no_check_diff and not rolled_back:
         deployer.check_diff(result, loader)
@@ -719,15 +725,23 @@ def file_diff(args: cli_args.FileDiffOptions):
     return pool.run(old_new, tolerate_fails=True)
 
 
-def file_diff_worker(old_new: Tuple[str, str], args: cli_args.FileDiffOptions) -> Generator[
-    Tuple[str, str, bool], None, None]:
+def file_diff_worker(
+    old_new: Tuple[str, str],
+    args: cli_args.FileDiffOptions
+) -> Generator[Tuple[str, str, bool], None, None]:
     old_path, new_path = old_new
+    hw = args.hw
+    if isinstance(args.hw, str):
+        hw = HardwareView(args.hw, "")
+
     if os.path.isdir(old_path) and os.path.isdir(new_path):
         hostname = os.path.basename(new_path)
-        new_files = {relative_cfg_path: (cfg_text, "") for relative_cfg_path, cfg_text in
-                     ann_gen.load_pc_config(new_path).items()}
+        new_files = {
+            relative_cfg_path: (cfg_text, "")
+            for relative_cfg_path, cfg_text in ann_gen.load_pc_config(new_path).items()
+        }
         old_files = ann_gen.load_pc_config(old_path)
-        for diff_file in _pc_diff(hostname, old_files, new_files):
+        for diff_file in ann_diff.pc_diff(hw, hostname, old_files, new_files):
             diff_text = (
                 "\n".join(diff_file.diff_lines)
                 if args.no_color
@@ -765,38 +779,6 @@ def file_patch_worker(old_new: Tuple[str, str], args: cli_args.FileDiffOptions) 
         patch_text = _format_patch_blocks(patch_tree, hw, args.indent)
         if patch_text:
             yield dest_name, patch_text, False
-
-
-def _pc_diff(hostname: str, old_files: Dict[str, str], new_files: Dict[str, str]) -> Generator[PCDiffFile, None, None]:
-    sorted_lines = sorted(_diff_files(old_files, new_files).items())
-    for (path, (diff_lines, _reload_data, is_new)) in sorted_lines:
-        if not diff_lines:
-            continue
-        label = hostname + os.sep + path
-        if is_new:
-            label = LABEL_NEW_PREFIX + label
-        yield PCDiffFile(label=label, diff_lines=diff_lines)
-
-
-def _json_fragment_diff(
-        hostname: str,
-        old_files: Dict[str, Any],
-        new_files: Dict[str, Tuple[Any, Optional[str]]],
-) -> Generator[PCDiffFile, None, None]:
-    def jsonify_multi(files):
-        return {
-            path: jsontools.format_json(cfg)
-            for path, cfg in files.items()
-        }
-
-    def jsonify_multi_with_cmd(files):
-        ret = {}
-        for path, cfg_reload_cmd in files.items():
-            cfg, reload_cmd = cfg_reload_cmd
-            ret[path] = (jsontools.format_json(cfg), reload_cmd)
-        return ret
-    jold, jnew = jsonify_multi(old_files), jsonify_multi_with_cmd(new_files)
-    return _pc_diff(hostname, jold, jnew)
 
 
 def guess_hw(config_text: str):

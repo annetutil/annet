@@ -1,7 +1,8 @@
+from abc import abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from ipaddress import ip_interface, IPv6Interface
-from typing import List, Optional, Any, Dict, Sequence, Callable
+from typing import List, Optional, Any, Dict, Sequence, TypeVar, Generic
 
 from annet.annlib.netdev.views.dump import DumpableView
 from annet.annlib.netdev.views.hardware import HardwareView, lag_name, svi_name
@@ -16,6 +17,11 @@ class Entity(DumpableView):
     @property
     def _dump__list_key(self):
         return self.name
+
+
+@dataclass
+class EntityWithSlug(Entity):
+    slug: str
 
 
 @dataclass
@@ -53,7 +59,7 @@ class DeviceIp(DumpableView):
 class Prefix(DumpableView):
     id: int
     prefix: str
-    site: Optional[Entity]
+    # `site` deprecated since v4.2, replace in derived classes.
     vrf: Optional[Entity]
     tenant: Optional[Entity]
     vlan: Optional[Entity]
@@ -70,18 +76,21 @@ class Prefix(DumpableView):
         return self.prefix
 
 
+_PrefixT = TypeVar("_PrefixT", bound=Prefix)
+
+
 @dataclass
-class IpAddress(DumpableView):
+class IpAddress(DumpableView, Generic[_PrefixT]):
     id: int
-    assigned_object_id: int
+    assigned_object_id: int | None
     display: str
     family: IpFamily
     address: str
     status: Label
-    tags: List[Entity]
+    tags: List[EntityWithSlug]
     created: datetime
     last_updated: datetime
-    prefix: Optional[Prefix] = None
+    prefix: Optional[_PrefixT] = None
     vrf: Optional[Entity] = None
 
     @property
@@ -111,8 +120,18 @@ class InterfaceVlan(Entity):
     vid: int
 
 
+def vrf_object(vrf: str | None) -> Entity | None:
+    if vrf is None:
+        return None
+    else:
+        return Entity(id=0, name=vrf)
+
+
+_IpAddressT = TypeVar("_IpAddressT", bound=IpAddress)
+
+
 @dataclass
-class Interface(Entity):
+class Interface(Entity, Generic[_IpAddressT]):
     device: Entity
     enabled: bool
     description: str
@@ -121,54 +140,47 @@ class Interface(Entity):
     mode: Optional[InterfaceMode]
     untagged_vlan: Optional[InterfaceVlan]
     tagged_vlans: Optional[List[InterfaceVlan]]
+    tags: List[EntityWithSlug] = field(default_factory=list)
     display: str = ""
-    ip_addresses: List[IpAddress] = field(default_factory=list)
+    ip_addresses: List[_IpAddressT] = field(default_factory=list)
     vrf: Optional[Entity] = None
     mtu: int | None = None
     lag: Entity | None = None
     lag_min_links: int | None = None
+    speed: int | None = None
 
     def add_addr(self, address_mask: str, vrf: str | None) -> None:
-        addr = ip_interface(address_mask)
-        if vrf is None:
-            vrf_obj = None
-        else:
-            vrf_obj = Entity(id=0, name=vrf)
+        for existing_addr in self.ip_addresses:
+            if existing_addr.address == address_mask and (
+                    (existing_addr.vrf is None and vrf is None) or
+                    (existing_addr.vrf is not None and existing_addr.vrf.name == vrf)
+            ):
+                return
 
+        addr = ip_interface(address_mask)
+        vrf_obj = vrf_object(vrf)
         if isinstance(addr, IPv6Interface):
             family = IpFamily(value=6, label="IPv6")
         else:
             family = IpFamily(value=4, label="IPv4")
+        self._add_new_addr(address_mask, vrf_obj, family)
 
-        for existing_addr in self.ip_addresses:
-            if existing_addr.address == address_mask and (
-                (existing_addr.vrf is None and vrf is None) or
-                (existing_addr.vrf is not None and existing_addr.vrf.name == vrf)
-            ):
-                return
-        self.ip_addresses.append(IpAddress(
-            id=0,
-            display=address_mask,
-            address=address_mask,
-            vrf=vrf_obj,
-            prefix=None,
-            family=family,
-            created=datetime.now(timezone.utc),
-            last_updated=datetime.now(timezone.utc),
-            tags=[],
-            status=Label(value="active", label="Active"),
-            assigned_object_id=self.id,
-        ))
+    @abstractmethod
+    def _add_new_addr(self, address_mask: str, vrf: Entity | None, family: IpFamily):
+        raise NotImplementedError
+
+
+_InterfaceT = TypeVar("_InterfaceT", bound=Interface)
 
 
 @dataclass
-class NetboxDevice(Entity):
+class NetboxDevice(Entity, Generic[_InterfaceT]):
     url: str
     storage: Storage
 
     display: str
     device_type: DeviceType
-    device_role: Entity
+    # `device_role` deprecated since v4.0, replace in derived classes.
     tenant: Optional[Entity]
     platform: Optional[Entity]
     serial: str
@@ -181,31 +193,37 @@ class NetboxDevice(Entity):
     primary_ip: Optional[DeviceIp]
     primary_ip4: Optional[DeviceIp]
     primary_ip6: Optional[DeviceIp]
-    tags: List[Entity]
+    tags: List[EntityWithSlug]
     custom_fields: Dict[str, Any]
     created: datetime
     last_updated: datetime
+    cluster: Optional[Entity]
 
     fqdn: str
     hostname: str
     hw: Optional[HardwareView]
     breed: str
 
-    interfaces: List[Interface]
-    neighbours: Optional[List["NetboxDevice"]]
+    interfaces: List[_InterfaceT]
+
+    @property
+    def neighbors(self) -> List["Entity"]:
+        return [
+            endpoint.device
+            for iface in self.interfaces
+            if iface.connected_endpoints
+            for endpoint in iface.connected_endpoints
+            if endpoint.device
+        ]
 
     # compat
     @property
     def neighbours_fqdns(self) -> list[str]:
-        if not self.neighbours:
-            return []
-        return [dev.fqdn for dev in self.neighbours]
+        return [dev.name for dev in self.neighbors]
 
     @property
     def neighbours_ids(self):
-        if not self.neighbours:
-            return []
-        return [dev.id for dev in self.neighbours]
+        return [dev.id for dev in self.neighbors]
 
     def __hash__(self):
         return hash((self.id, type(self)))
@@ -214,29 +232,17 @@ class NetboxDevice(Entity):
         return type(self) is type(other) and self.url == other.url
 
     def is_pc(self) -> bool:
-        return self.device_type.manufacturer.name in ("Mellanox", "NVIDIA", "Moxa") or self.breed == "pc"
+        custom_breed_pc = ("Mellanox", "NVIDIA", "Moxa", "Nebius")
+        return self.device_type.manufacturer.name in custom_breed_pc or self.breed == "pc"
 
-    def _make_interface(self, name: str, type: InterfaceType) -> Interface:
-        return Interface(
-            name=name,
-            device=self,
-            enabled=True,
-            description="",
-            type=type,
-            id=0,
-            vrf=None,
-            display=name,
-            untagged_vlan=None,
-            tagged_vlans=[],
-            ip_addresses=[],
-            connected_endpoints=[],
-            mode=None,
-        )
+    @abstractmethod
+    def _make_interface(self, name: str, type: InterfaceType) -> _InterfaceT:
+        raise NotImplementedError
 
     def _lag_name(self, lag: int) -> str:
         return lag_name(self.hw, lag)
 
-    def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: int | None) -> Interface:
+    def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: int | None) -> _InterfaceT:
         new_name = self._lag_name(lag)
         for target_interface in self.interfaces:
             if target_interface.name == new_name:
@@ -255,7 +261,7 @@ class NetboxDevice(Entity):
     def _svi_name(self, svi: int) -> str:
         return svi_name(self.hw, svi)
 
-    def add_svi(self, svi: int) -> Interface:
+    def add_svi(self, svi: int) -> _InterfaceT:
         name = self._svi_name(svi)
         for interface in self.interfaces:
             if interface.name == name:
@@ -270,7 +276,7 @@ class NetboxDevice(Entity):
     def _subif_name(self, interface: str, subif: int) -> str:
         return f"{interface}.{subif}"
 
-    def add_subif(self, interface: str, subif: int) -> Interface:
+    def add_subif(self, interface: str, subif: int) -> _InterfaceT:
         name = self._subif_name(interface, subif)
         for target_port in self.interfaces:
             if target_port.name == name:
@@ -282,7 +288,7 @@ class NetboxDevice(Entity):
         self.interfaces.append(target_port)
         return target_port
 
-    def find_interface(self, name: str) -> Optional[Interface]:
+    def find_interface(self, name: str) -> Optional[_InterfaceT]:
         for iface in self.interfaces:
             if iface.name == name:
                 return iface

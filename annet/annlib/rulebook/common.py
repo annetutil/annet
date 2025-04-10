@@ -297,7 +297,7 @@ def apply(hw, do_commit, do_finalize, **_):
             after.add_cmd(Command("abort"))  # просто exit оставит висеть configure session
         if do_finalize:
             after.add_cmd(Command("write memory"))
-    elif hw.ASR or hw.XRV:
+    elif hw.ASR or hw.XRV or hw.XR:
         # коммит сам сохраняет изменения в стартап do_finalize не применим
         before.add_cmd(Command("configure exclusive"))
         if do_commit:
