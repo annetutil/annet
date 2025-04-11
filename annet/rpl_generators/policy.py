@@ -833,6 +833,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             yield "local-preference", "le", str(condition.value)
         elif condition.operator is ConditionOperator.GE:
             yield "local-preference", "ge", str(condition.value)
+        elif condition.operator is ConditionOperator.BETWEEN_INCLUDED:
+            yield "local-preference", "ge", str(condition.value[0])
+            yield "local-preference", "le", str(condition.value[1])
         else:
             raise NotImplementedError(
                 f"Operator {condition.operator} is not supported for {condition.field} on Cisco IOS XR",
@@ -845,6 +848,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             yield "as-path length", "le", str(condition.value)
         elif condition.operator is ConditionOperator.GE:
             yield "as-path length", "ge", str(condition.value)
+        elif condition.operator is ConditionOperator.BETWEEN_INCLUDED:
+            yield "as-path length", "ge", str(condition.value[0])
+            yield "as-path length", "le", str(condition.value[1])
         else:
             raise NotImplementedError(
                 f"Operator {condition.operator} is not supported for {condition.field} on Cisco IOS XR",
