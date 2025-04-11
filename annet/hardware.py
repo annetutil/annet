@@ -1,15 +1,9 @@
 import abc
 from typing import Any
 
-from annet.annlib.netdev.views.hardware import HardwareView, hw_to_vendor
-
+from annet.annlib.netdev.views.hardware import HardwareView
+from annet.vendors import registry_connector
 from annet.connectors import Connector
-
-
-try:
-    from annet.annlib.netdev.views.hardware import vendor_to_hw
-except ImportError:
-    from netdev.views.hardware import vendor_to_hw
 
 
 class _HardwareConnector(Connector["HarwareProvider"]):
@@ -31,7 +25,7 @@ class HarwareProvider(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def hw_to_vendor(self, hw: Any) -> str:
+    def hw_to_vendor(self, hw: Any) -> str | None:
         pass
 
 
@@ -40,7 +34,9 @@ class AnnetHardwareProvider(HarwareProvider):
         return HardwareView(hw_model, sw_version)
 
     def vendor_to_hw(self, vendor: str) -> HardwareView:
-        return vendor_to_hw(vendor)
+        return registry_connector.get().get(vendor.lower()).hardware
 
-    def hw_to_vendor(self, hw: HardwareView) -> str:
-        return hw_to_vendor(hw)
+    def hw_to_vendor(self, hw: HardwareView) -> str | None:
+        if vendor := registry_connector.get().match(hw, None):
+            return vendor.NAME
+        return None
