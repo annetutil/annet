@@ -5,8 +5,9 @@ from ipaddress import ip_interface, IPv6Interface
 from typing import List, Optional, Any, Dict, Sequence, TypeVar, Generic
 
 from annet.annlib.netdev.views.dump import DumpableView
-from annet.annlib.netdev.views.hardware import HardwareView, lag_name, svi_name
+from annet.annlib.netdev.views.hardware import HardwareView, lag_name
 from annet.storage import Storage
+from annet.vendors import registry_connector
 
 
 @dataclass
@@ -259,7 +260,7 @@ class NetboxDevice(Entity, Generic[_InterfaceT]):
         return lag_interface
 
     def _svi_name(self, svi: int) -> str:
-        return svi_name(self.hw, svi)
+        return registry_connector.get().match(self.hw).svi_name(svi)
 
     def add_svi(self, svi: int) -> _InterfaceT:
         name = self._svi_name(svi)

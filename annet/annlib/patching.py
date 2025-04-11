@@ -19,6 +19,7 @@ from .rulebook.common import call_diff_logic
 from .rulebook.common import default as common_default
 from .tabparser import CommonFormatter
 from .types import Diff, Op
+from ..vendors import registry_connector
 
 
 # =====
@@ -224,14 +225,15 @@ class Orderer:
         return (f_order or 0), cmd_direct, odict(children), f_rule
 
     def order_config(self, config):
-        if self.vendor not in platform.VENDOR_REVERSES:
+        if self.vendor not in registry_connector.get():
             return config
-
-        ordered = []
-        reverse_prefix = platform.VENDOR_REVERSES[self.vendor]
         if not config:
             return odict()
-        for (row, children) in config.items():
+
+        ordered = []
+        reverse_prefix = registry_connector.get()[self.vendor].reverse
+
+        for row, children in config.items():
             cmd_direct = not row.startswith(reverse_prefix)
             (order, direct, rb, _) = self.get_order(row, cmd_direct)
             child_orderer = Orderer(rb, self.vendor)
