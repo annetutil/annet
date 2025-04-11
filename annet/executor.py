@@ -162,7 +162,7 @@ class DeferredFileWrite:
             raise Exception()
 
     def write(self, data):
-        with open(self._file, self._mode) as fh:
+        with open(self._file, self._mode, encoding="utf-8") as fh:
             fh.write(data)
 
     def close(self):
