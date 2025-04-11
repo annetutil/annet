@@ -48,6 +48,7 @@ from annet.parallel import Parallel, TaskResult
 from annet.reference import RefTracker
 from annet.storage import Device, get_storage
 from annet.types import Diff, ExitCode, OldNewResult, Op, PCDiff, PCDiffFile
+from annet.vendors import registry_connector
 
 DEFAULT_INDENT = "  "
 
@@ -786,7 +787,7 @@ def guess_hw(config_text: str):
     текста конфига и annet/rulebook/texts/*.rul"""
     scores = {}
     hw_provider = hardware_connector.get()
-    for vendor in VENDOR_REVERSES:
+    for vendor in registry_connector.get():
         hw = hw_provider.vendor_to_hw(vendor)
         fmtr = tabparser.make_formatter(hw)
         rb = rulebook.get_rulebook(hw)

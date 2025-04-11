@@ -5,7 +5,8 @@ from typing import Any, Callable, List, Optional
 from valkit import add_validator_magic
 from valkit.common import valid_bool, valid_number, valid_string_list
 
-from . import platform, syntax
+from annet.vendors import registry_connector
+from . import syntax
 
 
 # =====
@@ -13,7 +14,7 @@ from . import platform, syntax
 def compile_acl_text(text, vendor, allow_ignore=False):
     return _compile_acl(
         trees=[syntax.parse_text(text, _PARAMS_SCHEME)],
-        reverse_prefix=platform.VENDOR_REVERSES[vendor],
+        reverse_prefix=registry_connector.get()[vendor].reverse,
         allow_ignore=allow_ignore,
         vendor=vendor,
     )
