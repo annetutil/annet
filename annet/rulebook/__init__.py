@@ -36,8 +36,11 @@ class DefaultRulebookProvider(RulebookProvider):
     root_dir = (path.dirname(__file__),)
     root_modules = ("annet.rulebook",)
 
-    def __init__(self, root_dir: Union[str, Iterable[str], None] = None,
-                 root_modules: Union[str, Iterable[str], None] = None):
+    def __init__(
+        self,
+        root_dir: Union[str, Iterable[str], None] = None,
+        root_modules: Union[str, Iterable[str], None] = None,
+    ):
         self._rulebook_cache = {}
         self._render_rul_cache = {}
         self._escaped_rul_cache = {}
@@ -65,7 +68,9 @@ class DefaultRulebookProvider(RulebookProvider):
 
         assert hw.vendor in VENDOR_REVERSES, "Unknown vendor: %s" % (hw.vendor)
         rul_vendor_name = VENDOR_ALIASES.get(hw.vendor, hw.vendor)
-        patching = compile_patching_text(self._render_rul(rul_vendor_name + ".rul", hw), rul_vendor_name)
+        patching = compile_patching_text(
+            self._render_rul(rul_vendor_name + ".rul", hw), rul_vendor_name
+        )
 
         try:
             ordering_text = self._render_rul(hw.vendor + ".order", hw)
@@ -90,7 +95,9 @@ class DefaultRulebookProvider(RulebookProvider):
     def _render_rul(self, name, hw):
         key = (name, hw)
         if key not in self._render_rul_cache:
-            self._render_rul_cache[key] = mako_render(self._read_escaped_rul(name), hw=hw)
+            self._render_rul_cache[key] = mako_render(
+                self._read_escaped_rul(name), hw=hw
+            )
         return self._render_rul_cache[key]
 
     def _read_escaped_rul(self, name):
@@ -98,7 +105,9 @@ class DefaultRulebookProvider(RulebookProvider):
             return self._escaped_rul_cache[name]
         for root_dir in self.root_dir:
             try:
-                with open(path.join(root_dir, "texts", name), "r") as f:
+                with open(
+                    path.join(root_dir, "texts", name), "r", encoding="utf-8"
+                ) as f:
                     self._escaped_rul_cache[name] = self._escape_mako(f.read())
                     return self._escaped_rul_cache[name]
             except FileNotFoundError:
@@ -110,6 +119,10 @@ class DefaultRulebookProvider(RulebookProvider):
     def _escape_mako(text):
         # Экранирование всего, что начинается на %, например %comment -> %%comment, чтобы он не интерпретировался
         # как mako-оператор
-        text = re.sub(r"(?:^|\n)%((?!if\s*|elif\s*|else\s*|endif\s*|for\s*|endfor\s*))", "\n%%\\1", text)
+        text = re.sub(
+            r"(?:^|\n)%((?!if\s*|elif\s*|else\s*|endif\s*|for\s*|endfor\s*))",
+            "\n%%\\1",
+            text,
+        )
         text = re.sub(r"(?:^|\n)\s*#.*", "", text)
         return text

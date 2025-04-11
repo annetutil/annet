@@ -17,12 +17,18 @@ class CommandResult(ABC):
 
 
 class ExecutorException(Exception):
-    def __init__(self, *args: List[Any], auxiliary: Optional[Any] = None, **kwargs: object):
+    def __init__(
+        self, *args: List[Any], auxiliary: Optional[Any] = None, **kwargs: object
+    ):
         self.auxiliary = auxiliary
         super().__init__(*args, **kwargs)
 
     def __repr__(self) -> str:
-        return "%s(args=%r,auxiliary=%s)" % (self.__class__.__name__, self.args, self.auxiliary)
+        return "%s(args=%r,auxiliary=%s)" % (
+            self.__class__.__name__,
+            self.args,
+            self.auxiliary,
+        )
 
 
 class ExecException(ExecutorException):
@@ -59,11 +65,16 @@ def _show_type_summary(caption, items, total, stat_items=None):
             stat = ""
         else:
             avg = statistics.mean(stat_items)
-            stat = "   %(min).1f/%(max).1f/%(avg).1f/%(stdev)s  (min/max/avg/stdev)" % dict(
-                min=min(stat_items),
-                max=max(stat_items),
-                avg=avg,
-                stdev="-" if len(stat_items) < 2 else "%.1f" % statistics.stdev(stat_items, xbar=avg)
+            stat = (
+                "   %(min).1f/%(max).1f/%(avg).1f/%(stdev)s  (min/max/avg/stdev)"
+                % dict(
+                    min=min(stat_items),
+                    max=max(stat_items),
+                    avg=avg,
+                    stdev="-"
+                    if len(stat_items) < 2
+                    else "%.1f" % statistics.stdev(stat_items, xbar=avg),
+                )
             )
 
         print("%-8s %d of %d%s" % (caption, len(items), total, stat))
@@ -79,20 +90,35 @@ def show_bulk_report(hostnames, res, durations, log_dir):
     print("\n====== bulk deploy report ======")
 
     done = [host for (host, hres) in res.items() if not isinstance(hres, Exception)]
-    cancelled = [host for (host, hres) in res.items() if isinstance(hres, asyncio.CancelledError)]
-    failed = [host for (host, hres) in res.items() if isinstance(hres, Exception) and host not in cancelled]
+    cancelled = [
+        host for (host, hres) in res.items() if isinstance(hres, asyncio.CancelledError)
+    ]
+    failed = [
+        host
+        for (host, hres) in res.items()
+        if isinstance(hres, Exception) and host not in cancelled
+    ]
     lost = [host for host in hostnames if host not in res]
     limit = 30
 
     _show_type_summary("Done :", done, total, [durations[h] for h in done])
-    _print_limit(done, partial(_print_hostname, style=colorama.Fore.GREEN), limit, total)
+    _print_limit(
+        done, partial(_print_hostname, style=colorama.Fore.GREEN), limit, total
+    )
 
     _show_type_summary("Failed :", failed, total, [durations[h] for h in failed])
 
     _print_limit(failed, partial(_print_failed, res=res), limit, total)
 
-    _show_type_summary("Cancelled :", cancelled, total, [durations[h] for h in cancelled if durations[h] is not None])
-    _print_limit(cancelled, partial(_print_hostname, style=colorama.Fore.RED), limit, total)
+    _show_type_summary(
+        "Cancelled :",
+        cancelled,
+        total,
+        [durations[h] for h in cancelled if durations[h] is not None],
+    )
+    _print_limit(
+        cancelled, partial(_print_hostname, style=colorama.Fore.RED), limit, total
+    )
 
     _show_type_summary("Lost :", lost, total)
     _print_limit(lost, _print_hostname, limit, total)
@@ -107,7 +133,9 @@ def show_bulk_report(hostnames, res, durations, log_dir):
             else:
                 errs[fmt_err] = 1
         print("Top errors :")
-        for fmt_err, n in sorted(errs.items(), key=itemgetter(1), reverse=True)[:err_limit]:
+        for fmt_err, n in sorted(errs.items(), key=itemgetter(1), reverse=True)[
+            :err_limit
+        ]:
             print("  %-4d %s" % (n, fmt_err))
         print("\n", end="")
 
@@ -122,7 +150,10 @@ def _format_exc(exc):
             cmd = cmd[:50] + "~.."
         return "'%s', cmd '%s'" % (exc.msg, cmd)
     elif isinstance(exc, ExecutorException):
-        return "%s%r" % (exc.__class__.__name__, exc.args)  # исключить многословный auxiliary
+        return "%s%r" % (
+            exc.__class__.__name__,
+            exc.args,
+        )  # исключить многословный auxiliary
     else:
         return repr(exc)
 
@@ -162,7 +193,7 @@ class DeferredFileWrite:
             raise Exception()
 
     def write(self, data):
-        with open(self._file, self._mode) as fh:
+        with open(self._file, self._mode, encoding="utf-8") as fh:
             fh.write(data)
 
     def close(self):
