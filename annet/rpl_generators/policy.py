@@ -64,9 +64,16 @@ IOSXR_MATCH_COMMAND_MAP: dict[str, str] = {
     # unsupported: interface
     # unsupported: metric
     # unsupported: large-community
-    # unsupported:
 }
-
+IOSXR_THEN_COMMAND_MAP: dict[str, str] = {
+    ThenField.local_pref: "local-preference {option_value}",
+    ThenField.origin: "origin {option_value}",
+    ThenField.tag: "tag {option_value}",
+    ThenField.metric_type: "metric-type {option_value}",
+    # unsupported: mpls_label  # label?
+    # unsupported: resolution
+    # unsupported: rpki_valid_state
+}
 IOSXR_RESULT_MAP = {
     ResultType.ALLOW: "done",
     ResultType.DENY: "drop",
@@ -901,14 +908,78 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             raise NotImplementedError(f"Match using `{condition.field}` is not supported for Cisco IOS XR")
         yield IOSXR_MATCH_COMMAND_MAP[condition.field].format(option_value=condition.value),
 
+    def _iosxr_then_as_path(
+            self,
+            device: Any,
+            action: SingleAction[AsPathActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.set is not None:
+            raise RuntimeError("as_path.set is not supported for Cisco IOS XR")
+        if action.value.prepend:
+            for asn in action.value.prepend:
+                yield "prepend as-path", asn
+        if action.value.expand:
+            raise RuntimeError("as_path.expand is not supported for Cisco IOS XR")
+        if action.value.delete:
+            raise RuntimeError("as_path.delete is not supported for Cisco IOS XR")
+        if action.value.expand_last_as:
+            raise RuntimeError("as_path.expand_last_as is not supported for Cisco IOS XR")
+
+    def _iosxr_then_next_hop(
+            self,
+            device: Any,
+            action: SingleAction[NextHopActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.target == "self":
+            yield "set", "next-hop", "self"
+        elif action.value.target == "discard":
+            pass
+        elif action.value.target == "peer":
+            pass
+        elif action.value.target == "ipv4_addr":
+            yield "set", "next-hop", action.value.addr
+        elif action.value.target == "ipv6_addr":
+            yield "set", "next-hop", action.value.addr
+        elif action.value.target == "mapped_ipv4":
+            yield "set", "next-hop", f"::FFFF:{action.value.addr}"
+        else:
+            raise RuntimeError(f"Next_hop target {action.value.target} is not supported for Cisco IOS XR")
+
+    def _iosxr_then_metric(
+            self,
+            device: Any,
+            action: SingleAction[NextHopActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.type is ActionType.ADD:
+            yield "apply", f"med + {action.value}"
+        if action.type is ActionType.REMOVE:
+            yield "apply", f"med - {action.value}"
+        elif action.type is ActionType.SET:
+            yield "apply", f"med {action.value}"
+        else:
+            raise NotImplementedError(f"Action type {action.type} for metric is not supported for Cisco IOS XR")
+
     def _iosxr_then(
             self,
             communities: dict[str, CommunityList],
             device: Any,
             action: SingleAction[Any],
     ) -> Iterator[Sequence[str]]:
-        if False:
-            yield "",
+        if action.field == ThenField.metric:
+            yield from self._iosxr_then_metric(device, action)
+            return
+        if action.field == ThenField.as_path:
+            yield from self._iosxr_then_as_path(device, cast(SingleAction[AsPathActionValue], action))
+            return
+        if action.field == ThenField.next_hop:
+            yield from self._iosxr_then_next_hop(device, cast(SingleAction[NextHopActionValue], action))
+            return
+        if action.type is not ActionType.SET:
+            raise NotImplementedError(f"Action type {action.type} for `{action.field}` is not supported for Cisco IOS XR")
+        if action.field not in IOSXR_THEN_COMMAND_MAP:
+            raise NotImplementedError(f"Then action using `{action.field}` is not supported for Cisco IOS XR")
+        cmd = IOSXR_THEN_COMMAND_MAP[action.field]
+        yield "set", cmd.format(option_value=action.value)
 
     def _iosxr_statement(
             self,
