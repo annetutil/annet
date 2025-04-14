@@ -96,7 +96,7 @@ community-set *
     ~              %rewrite %global
 
 route-policy *
-    ~              %rewrite %global
+    ~              %ordered
 
 line ~
     exec-timeout
