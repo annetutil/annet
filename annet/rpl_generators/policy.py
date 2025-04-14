@@ -885,12 +885,12 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         elif condition.field == MatchField.ip_prefix:
             for name in condition.value.names:
                 plist = name_generator.get_prefix(name, condition.value)
-                yield "orf prefix in", plist.name
+                yield "destination in", plist.name
             return
         elif condition.field == MatchField.ipv6_prefix:
             for name in condition.value.names:
                 plist = name_generator.get_prefix(name, condition.value)
-                yield "orf prefix in", plist.name
+                yield "destination in", plist.name
             return
 
         if condition.operator is not ConditionOperator.EQ:
@@ -928,11 +928,11 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                     "if", condition_expr, "then",
             ):
                 for action in statement.then:
-                    yield from self._arista_then(communities, device, action)
+                    yield from self._iosxr_then(communities, device, action)
                 yield IOSXR_RESULT_MAP[statement.result],
         else:
             for action in statement.then:
-                yield from self._arista_then(communities, device, action)
+                yield from self._iosxr_then(communities, device, action)
             yield IOSXR_RESULT_MAP[statement.result],
 
     def run_iosxr(self, device):
