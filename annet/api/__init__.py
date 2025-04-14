@@ -189,8 +189,6 @@ def _print_pre_as_diff(pre, show_rules, indent, file=None, _level=0):
             (Op.AFFECTED, colorama.Fore.CYAN + " "),
         ]:
             items = content["items"].items()
-            if not content["attrs"]["multiline"]:
-                items = sorted(items, key=itemgetter(0))
             for (_, diff) in items:  # pylint: disable=redefined-outer-name
                 if show_rules and not rule_printed and not raw_rule == "__MULTILINE_BODY__":
                     print("%s%s# %s%s%s" % (colorama.Style.BRIGHT, colorama.Fore.BLACK, (indent * _level),
