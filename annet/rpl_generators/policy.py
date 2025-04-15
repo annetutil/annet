@@ -73,6 +73,7 @@ IOSXR_THEN_COMMAND_MAP: dict[str, str] = {
     # unsupported: mpls_label  # label?
     # unsupported: resolution
     # unsupported: rpki_valid_state
+    # unsupported: large_community
 }
 IOSXR_RESULT_MAP = {
     ResultType.ALLOW: "done",
@@ -833,6 +834,24 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         else:
             raise NotImplementedError(f"Operator {operator} is not supported for {community_type} on Cisco IOS XR")
 
+    def _iosxr_match_rd(
+            self,
+            condition: SingleCondition[Sequence[str]],
+            rd_filters: dict[str, RDFilter],
+    ) -> Iterator[Sequence[str]]:
+        if condition.operator == ConditionOperator.HAS_ANY:
+            if len(condition.value) == 1:
+                yield "rd", "in", condition.value[0]
+                return
+            conds = " or ".join(f"rd in {name}" for name in condition.value)
+            yield f"({conds})",
+            return
+        elif condition.operator == ConditionOperator.HAS:
+            for name in condition.value:
+                yield "rd", "in", name
+        else:
+            raise NotImplementedError(f"Operator {condition.operator} is not supported for {condition.field} on Cisco IOS XR")
+
     def _iosxr_match_local_pref(self, condition: SingleCondition) -> Iterator[Sequence[str]]:
         if condition.operator is ConditionOperator.EQ:
             yield "local-preference", "eq", str(condition.value)
@@ -889,6 +908,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         elif condition.field == MatchField.as_path_length:
             yield from self._iosxr_match_local_pref(condition)
             return
+        elif condition.field == MatchField.rd:
+            yield from self._iosxr_match_rd(condition, rd_filters)
+            return
         elif condition.field == MatchField.ip_prefix:
             for name in condition.value.names:
                 plist = name_generator.get_prefix(name, condition.value)
@@ -933,7 +955,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         if action.value.target == "self":
             yield "set", "next-hop", "self"
         elif action.value.target == "discard":
-            pass
+            yield "set", "next-hop", "discard"
         elif action.value.target == "peer":
             pass
         elif action.value.target == "ipv4_addr":
@@ -952,12 +974,57 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     ) -> Iterator[Sequence[str]]:
         if action.type is ActionType.ADD:
             yield "apply", f"med + {action.value}"
-        if action.type is ActionType.REMOVE:
+        elif action.type is ActionType.REMOVE:
             yield "apply", f"med - {action.value}"
         elif action.type is ActionType.SET:
             yield "apply", f"med {action.value}"
         else:
             raise NotImplementedError(f"Action type {action.type} for metric is not supported for Cisco IOS XR")
+
+    def _iosxr_then_community(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
+        added = []
+        if action.value.replaced is not None:
+            yield "delete", "community", "all"
+            added.extend(action.value.replaced)
+        added.extend(action.value.added)
+        for name in added:
+            yield "set", "community", name, "additive"
+        for community_name in action.value.removed:
+            yield "delete", "community", community_name
+
+    def _iosxr_community_type_str(self, comm_type: CommunityType) ->str:
+        if comm_type is CommunityType.RT:
+            return "rt"
+        elif comm_type is CommunityType.LARGE:
+            raise ValueError("Large community is not subtype of extcommunity")
+        elif comm_type is CommunityType.BASIC:
+            raise ValueError("Basic community is not subtype of extcommunity")
+        else:
+            raise NotImplementedError(f"Community type {comm_type} is not supported on Cisco IOS XR")
+
+    def _iosxr_then_extcommunity(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
+        added = []
+        if action.value.replaced is not None:
+            yield "delete", "extcommunity", "rt", "all"
+            added.extend(action.value.replaced)
+
+            added.extend(action.value.replaced)
+        for member_name in added:
+            typename = self._iosxr_community_type_str(communities[member_name].type)
+            yield "set", "extcommunity", typename, member_name, "additive"
+        for member_name in  action.value.removed:
+            typename = self._iosxr_community_type_str(communities[member_name].type)
+            yield "delete", "extcommunity", typename, "in", member_name
 
     def _iosxr_then(
             self,
@@ -965,6 +1032,12 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             device: Any,
             action: SingleAction[Any],
     ) -> Iterator[Sequence[str]]:
+        if action.field == ThenField.community:
+            yield from self._iosxr_then_community(communities, device, action)
+            return
+        if action.field == ThenField.extcommunity:
+            yield from self._iosxr_then_extcommunity(communities, device, action)
+            return
         if action.field == ThenField.metric:
             yield from self._iosxr_then_metric(device, action)
             return
