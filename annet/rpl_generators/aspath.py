@@ -55,3 +55,15 @@ class AsPathFilterGenerator(PartialGenerator, ABC):
         for as_path_filter in self.get_used_as_path_filters(device):
             values = "_".join((x for x in as_path_filter.filters if x != ".*"))
             yield "ip as-path access-list", as_path_filter.name, "permit", f"_{values}_"
+
+    def acl_iosxr(self, _):
+        return r"""
+        as-path-set *
+            ~ %global=1
+        """
+
+    def run_iosxr(self, device: Any):
+        for as_path_filter in self.get_used_as_path_filters(device):
+            with self.block("as-path-set", as_path_filter.name):
+                for filter_item in as_path_filter.filters:
+                    yield "ios-regex", f"'{filter_item}'"

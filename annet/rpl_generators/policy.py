@@ -973,11 +973,11 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             action: SingleAction[NextHopActionValue],
     ) -> Iterator[Sequence[str]]:
         if action.type is ActionType.ADD:
-            yield "apply", f"med + {action.value}"
+            yield "set", f"med +{action.value}"
         elif action.type is ActionType.REMOVE:
-            yield "apply", f"med - {action.value}"
+            yield "set", f"med -{action.value}"
         elif action.type is ActionType.SET:
-            yield "apply", f"med {action.value}"
+            yield "set", f"med {action.value}"
         else:
             raise NotImplementedError(f"Action type {action.type} for metric is not supported for Cisco IOS XR")
 
@@ -995,7 +995,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         for name in added:
             yield "set", "community", name, "additive"
         for community_name in action.value.removed:
-            yield "delete", "community", community_name
+            yield "delete", "community", "in", community_name
 
     def _iosxr_community_type_str(self, comm_type: CommunityType) ->str:
         if comm_type is CommunityType.RT:
