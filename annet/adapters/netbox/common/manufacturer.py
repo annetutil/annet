@@ -1,24 +1,16 @@
 from logging import getLogger
 
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.vendors import registry_connector
 
 logger = getLogger(__name__)
 
 
 def get_hw(manufacturer: str, model: str, platform_name: str):
-    vendor_registry = registry_connector.get()
-
     # By some reason Netbox calls Mellanox SN as MSN, so we fix them here
     if manufacturer == "Mellanox" and model.startswith("MSN"):
         model = model.replace("MSN", "SN", 1)
 
-    if (vendor := manufacturer.strip().lower()) and vendor in vendor_registry:
-        hw = vendor_registry[vendor].hardware
-    else:
-        hw = HardwareView(manufacturer + " " + model)
-    hw.soft = platform_name
-    return hw
+    return HardwareView(manufacturer + " " + model, platform_name)
 
 
 def get_breed(manufacturer: str, model: str):
