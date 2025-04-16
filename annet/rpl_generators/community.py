@@ -258,7 +258,6 @@ class CommunityListGenerator(PartialGenerator, ABC):
         else:
             raise NotImplementedError(f"CommunityList type {community_list.type} not implemented for Cisco IOS XR")
 
-        # TODO logic
         with self.block(name, community_list.name):
             for n, community in enumerate(community_list.members):
                 if n+1<len(community_list.members):
