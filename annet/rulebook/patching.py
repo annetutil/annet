@@ -3,11 +3,11 @@ import re
 from collections import OrderedDict as odict
 
 from annet.annlib.rbparser import platform, syntax
+from annet.vendors import registry_connector
 from valkit.common import valid_bool, valid_string_list
 from valkit.python import valid_object_path
 
 from .common import import_rulebook_function
-
 
 DEFAULT_PATCH_LOGIC = "common.default"
 ORDERED_PATCH_LOGIC = "common.ordered"
@@ -62,7 +62,7 @@ def compile_patching_text(text, vendor):
                 "default": False,
             },
         }),
-        reverse_prefix=platform.VENDOR_REVERSES[vendor],
+        reverse_prefix=registry_connector.get()[vendor].reverse,
         vendor=vendor,
     )
 

@@ -4,32 +4,13 @@ from annet.annlib.netdev.views.hardware import HardwareView
 
 logger = getLogger(__name__)
 
-_VENDORS = {
-    "cisco": "Cisco",
-    "catalyst": "Cisco Catalyst",
-    "nexus": "Cisco Nexus",
-    "iosxr": "Cisco XR",
-    "huawei": "Huawei",
-    "optixtrans": "Huawei OptiXtrans",
-    "juniper": "Juniper",
-    "arista": "Arista",
-    "pc": "PC",
-    "nokia": "Nokia",
-    "aruba": "Aruba",
-    "routeros": "RouterOS",
-    "ribbon": "Ribbon",
-    "b4com": "B4com",
-    "h3c": "H3C",
-}
-
 
 def get_hw(manufacturer: str, model: str, platform_name: str):
-    # by some reason Netbox calls Mellanox SN as MSN, so we fix them here
+    # By some reason Netbox calls Mellanox SN as MSN, so we fix them here
     if manufacturer == "Mellanox" and model.startswith("MSN"):
         model = model.replace("MSN", "SN", 1)
-    vendor = manufacturer + " " + model
-    hw = HardwareView(_VENDORS.get(vendor.lower(), vendor), platform_name)
-    return hw
+
+    return HardwareView(manufacturer + " " + model, platform_name)
 
 
 def get_breed(manufacturer: str, model: str):

@@ -4,7 +4,8 @@ from collections import OrderedDict as odict
 
 from valkit.common import valid_bool, valid_string_list
 
-from . import platform, syntax
+from annet.vendors import registry_connector
+from . import syntax
 
 
 # =====
@@ -25,7 +26,7 @@ def compile_ordering_text(text, vendor):
                 "default": None,
             }
         }),
-        reverse_prefix=platform.VENDOR_REVERSES[vendor],
+        reverse_prefix=registry_connector.get()[vendor].reverse,
     )
 
 
