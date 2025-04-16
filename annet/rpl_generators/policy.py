@@ -822,15 +822,31 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
 
     def _iosxr_match_community(
             self,
+            community_type: Literal["community", "extcommunity rt", "extcommunity soo"],
+            community: CommunityList,
+    ) -> Iterator[Sequence[str]]:
+        if community.logic is CommunityLogic.AND:
+            yield community_type, "matches-every", community.name
+        elif community.logic is CommunityLogic.OR:
+            yield community_type, "matches-any", community.name
+        else:
+            raise ValueError(f"Unknown community logic {community.logic}")
+
+    def _iosxr_match_communities(
+            self,
             operator: ConditionOperator,
             community_type: Literal["community", "extcommunity rt", "extcommunity soo"],
             community_names: list[str],
+            communities: dict[str, CommunityList],
     ) -> Iterator[Sequence[str]]:
         if operator == ConditionOperator.HAS_ANY:
-            yield community_type, "matches-any", mangle_united_community_list_name(community_names)
+            yield self._iosxr_or_matches(
+                self._iosxr_match_community(community_type, communities[name])
+                for name in community_names
+            ),
         elif operator == ConditionOperator.HAS:
             for name in community_names:
-                yield community_type, "matches-every", name
+                yield from self._iosxr_match_community(community_type, communities[name])
         else:
             raise NotImplementedError(f"Operator {operator} is not supported for {community_type} on Cisco IOS XR")
 
@@ -885,6 +901,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     def _iosxr_and_matches(self, conditions: Iterable[Iterable[Sequence[str]]]) -> str:
         return " and ".join(" ".join(c) for seq in conditions for c in seq)
 
+    def _iosxr_or_matches(self, conditions: Iterable[Iterable[Sequence[str]]]) -> str:
+        return "(" + " or ".join(" ".join(c) for seq in conditions for c in seq) + ")"
+
     def _iosxr_match(
             self,
             device: Any,
@@ -894,13 +913,13 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         if condition.field == MatchField.community:
-            yield from self._iosxr_match_community(condition.operator, "community", condition.value)
+            yield from self._iosxr_match_communities(condition.operator, "community", condition.value, communities)
             return
         elif condition.field == MatchField.extcommunity_rt:
-            yield from self._iosxr_match_community(condition.operator, "extcommunity rt", condition.value)
+            yield from self._iosxr_match_communities(condition.operator, "extcommunity rt", condition.value, communities)
             return
         elif condition.field == MatchField.extcommunity_soo:
-            yield from self._iosxr_match_community(condition.operator, "extcommunity soo", condition.value)
+            yield from self._iosxr_match_communities(condition.operator, "extcommunity soo", condition.value, communities)
             return
         elif condition.field == MatchField.local_pref:
             yield from self._iosxr_match_local_pref(condition)
