@@ -260,11 +260,15 @@ class CommunityListGenerator(PartialGenerator, ABC):
 
         # TODO logic
         with self.block(name, community_list.name):
-            for community in community_list.members:
+            for n, community in enumerate(community_list.members):
+                if n+1<len(community_list.members):
+                    comma = ","
+                else:
+                    comma = ""
                 if community_list.use_regex:
                     yield 'ios-regex', f"'{community}'"
                 else:
-                    yield community,
+                    yield f"{community}{comma}",
 
     def run_iosxr(self, device):
         for community_list in self.get_used_community_lists(device):
