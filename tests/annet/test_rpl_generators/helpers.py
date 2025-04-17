@@ -28,3 +28,10 @@ def cumulus():
         "Cumulus Linux 5.4.0",
         "pc",
     )
+
+def iosxr():
+    return MockDevice(
+        "Cisco 8712-MOD-M",
+        "Cisco IOS XR Release 7.4.2",
+        "iosxr",
+    )
