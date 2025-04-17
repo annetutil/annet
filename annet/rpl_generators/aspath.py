@@ -65,5 +65,9 @@ class AsPathFilterGenerator(PartialGenerator, ABC):
     def run_iosxr(self, device: Any):
         for as_path_filter in self.get_used_as_path_filters(device):
             with self.block("as-path-set", as_path_filter.name):
-                for filter_item in as_path_filter.filters:
-                    yield "ios-regex", f"'{filter_item}'"
+                for n, filter_item in enumerate(as_path_filter.filters):
+                    if n + 1 < len(as_path_filter.filters):
+                        comma = ","
+                    else:
+                        comma = ""
+                    yield "ios-regex", f"'{filter_item}'{comma}"
