@@ -27,12 +27,24 @@ def gen(routemaps: RouteMap, as_path_filters: list[AsPathFilter], dev: MockDevic
             return as_path_filters
 
     class BlackboxAsPathGenerator(AsPathFilterGenerator):
-
         def get_policies(self, device: Any) -> list[RoutingPolicy]:
             return routemaps.apply(device)
 
         def get_as_path_filters(self, device: Any) -> Sequence[AsPathFilter]:
             return as_path_filters
+
+    class BlackBoxPolicyGenerator(RoutingPolicyGenerator):
+        def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
+            return []
+
+        def get_policies(self, device: Any) -> list[RoutingPolicy]:
+            return routemaps.apply(device)
+
+        def get_community_lists(self, device: Any) -> list[CommunityList]:
+            return []
+
+        def get_rd_filters(self, device: Any) -> list[RDFilter]:
+            return []
 
     if dev.hw.soft.startswith("Cumulus"):
         generator = TestCumulusPolicyGenerator()
@@ -43,6 +55,8 @@ def gen(routemaps: RouteMap, as_path_filters: list[AsPathFilter], dev: MockDevic
         result: list[str] = []
         storage = Mock()
         generator = BlackboxAsPathGenerator(storage)
+        result.append(generator(dev))
+        generator = BlackBoxPolicyGenerator(storage)
         result.append(generator(dev))
         fmtr = make_formatter(dev.hw)
         tree = parse_to_tree("\n".join(result), fmtr.split)
@@ -110,5 +124,26 @@ as-path-set asf1
   ios-regex '456'
 as-path-set asf2
   ios-regex '123'
+route-policy policy
+  if as-path in asf1 then
+    done
+  if as-path in asf2 then
+    done
+""")
+    assert result == expected
+
+def test_iosxr_as_path_change():
+    routemaps = RouteMap[Mock]()
+
+    @routemaps
+    def policy(device: Mock, route: Route):
+        with route(name="n20", number=20) as rule:
+            rule.as_path.prepend("65432")
+
+    result = gen(routemaps, [], iosxr())
+    expected = scrub("""
+route-policy policy
+  prepend as-path 65432
+  pass
 """)
     assert result == expected
