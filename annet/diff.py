@@ -21,8 +21,8 @@ from annet.cli_args import ShowDiffOptions
 from annet.connectors import CachedConnector
 from annet.output import output_driver_connector
 from annet.storage import Device
-from annet.tabparser import make_formatter
 from annet.types import Diff, PCDiff, PCDiffFile
+from annet.vendors import registry_connector
 
 from .gen import Loader, old_new
 
@@ -159,7 +159,7 @@ def _transform_text_diff_for_collapsing(text_diff) -> List[str]:
 
 
 def _make_text_diff(device: Device, diff: Diff) -> List[str]:
-    formatter = make_formatter(device.hw)
+    formatter = registry_connector.get().match(device.hw).make_formatter()
     res = formatter.diff(diff)
     return res
 
@@ -226,7 +226,7 @@ class FrrFileDiffer(UnifiedFileDiffer):
         indent = "  "
         rb = rulebook.rulebook_provider_connector.get()
         rulebook_data = rb.get_rulebook(hw)
-        formatter = tabparser.make_formatter(hw, indent=indent)
+        formatter = registry_connector.get().match(hw).make_formatter(indent=indent)
 
         old_tree = tabparser.parse_to_tree(old_text or "", splitter=formatter.split)
         new_tree = tabparser.parse_to_tree(new_text or "", splitter=formatter.split)

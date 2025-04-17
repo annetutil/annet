@@ -1,4 +1,5 @@
 from annet.annlib.netdev.views.hardware import HardwareView
+from annet.annlib.tabparser import HuaweiFormatter
 from annet.vendors.base import AbstractVendor
 from annet.vendors.registry import registry
 
@@ -20,3 +21,10 @@ class HuaweiVendor(AbstractVendor):
 
     def svi_name(self, num: int) -> str:
         return f"Vlanif{num}"
+
+    def make_formatter(self, **kwargs) -> HuaweiFormatter:
+        return HuaweiFormatter(**kwargs)
+
+    @property
+    def exit(self) -> str:
+        return "quit"

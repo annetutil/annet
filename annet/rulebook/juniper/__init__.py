@@ -1,10 +1,10 @@
+import functools
 import re
 from collections import OrderedDict as odict
-import functools
 
 from annet.annlib.lib import jun_activate, jun_is_inactive, merge_dicts
+from annet.annlib.tabparser import JuniperFormatter
 from annet.annlib.types import Op
-from annet.tabparser import JuniperFormatter
 from annet.rulebook import common
 
 

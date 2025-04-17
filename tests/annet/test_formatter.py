@@ -3,7 +3,8 @@ from collections import OrderedDict
 
 import pytest
 
-from annet.tabparser import make_formatter, parse_to_tree
+from annet.annlib.tabparser import parse_to_tree
+from annet.vendors import registry_connector
 
 from .. import make_hw_stub
 
@@ -369,7 +370,7 @@ router bgp 64496
 """)
 
 def test_ros_formatter_split(routeros_config):
-    formatter = make_formatter(make_hw_stub("routeros"))
+    formatter = registry_connector.get().match(make_hw_stub("routeros")).make_formatter()
     assert formatter.split(routeros_config) == [
         '# apr/23/2021 17:00:25 by RouterOS 6.45.7',
         '# software id = HDTP-PUJA',
@@ -416,7 +417,7 @@ def test_ros_formatter_split(routeros_config):
 
 
 def test_jun_formatter_split(juniper_config):
-    formatter = make_formatter(make_hw_stub("juniper"))
+    formatter = registry_connector.get().match(make_hw_stub("juniper")).make_formatter()
     assert formatter.split(juniper_config) == [
         "version 14.1R4.10",
         "system",
@@ -430,19 +431,19 @@ def test_jun_formatter_split(juniper_config):
 
 
 def test_jun_join(juniper_config):
-    formatter = make_formatter(make_hw_stub("juniper"))
+    formatter = registry_connector.get().match(make_hw_stub("juniper")).make_formatter()
     config = parse_to_tree(juniper_config, formatter.split)
     assert formatter.join(config) == juniper_config
 
 
 def test_cisco_join(cisco_config):
-    formatter = make_formatter(make_hw_stub("cisco"))
+    formatter = registry_connector.get().match(make_hw_stub("cisco")).make_formatter()
     config = parse_to_tree(cisco_config, formatter.split)
     assert formatter.join(config) == cisco_config
 
 
 def test_nexus_join(nexus_config):
-    formatter = make_formatter(make_hw_stub("nexus"))
+    formatter = registry_connector.get().match(make_hw_stub("nexus")).make_formatter()
     config = parse_to_tree(nexus_config, formatter.split)
     assert formatter.join(config) == nexus_config
 
@@ -483,7 +484,7 @@ block
     ),
 ))
 def test_comment_block_end(flavor, text, config):
-    formatter = make_formatter(make_hw_stub(flavor))
+    formatter = registry_connector.get().match(make_hw_stub(flavor)).make_formatter()
     result_dict = parse_to_tree(text, formatter.split)
     result = "\n" + formatter.join(result_dict) + "\n"
     assert result == config
@@ -491,7 +492,7 @@ def test_comment_block_end(flavor, text, config):
 
 def test_nokia_parse_to_tree(nokia_config_info, nokia_config):
     """Конфиг нокии полученный через configure read-only; info | no-more"""
-    formatter = make_formatter(make_hw_stub("nokia"))
+    formatter = registry_connector.get().match(make_hw_stub("nokia")).make_formatter()
     parsed = {
         "card 1": {
             "card-type xcm-1s": {},
@@ -579,7 +580,7 @@ def test_aruba_parse_to_tree(aruba_config):
             "enable": {}
         }
     }
-    formatter = make_formatter(make_hw_stub("aruba"))
+    formatter = registry_connector.get().match(make_hw_stub("aruba")).make_formatter()
     parsed = parse_to_tree(aruba_config, formatter.split)
     assert parsed == expected
 
@@ -823,6 +824,6 @@ def test_asr_parse_to_tree(asr_config):
             ),
         ),
     ])
-    formatter = make_formatter(make_hw_stub("asr"))
+    formatter = registry_connector.get().match(make_hw_stub("asr")).make_formatter()
     parsed = parse_to_tree(asr_config, formatter.split)
     assert parsed == expected
