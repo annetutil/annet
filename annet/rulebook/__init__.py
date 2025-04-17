@@ -5,7 +5,7 @@ from typing import Iterable, Union
 
 from annet.annlib.lib import mako_render
 from annet.annlib.rbparser.ordering import compile_ordering_text
-from annet.annlib.rbparser.platform import VENDOR_REVERSES, VENDOR_ALIASES
+from annet.annlib.rbparser.platform import VENDOR_ALIASES
 
 from annet.connectors import CachedConnector
 from annet.rulebook.deploying import compile_deploying_text

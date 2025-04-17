@@ -3,7 +3,8 @@ from unittest import mock
 import pytest
 from annet import rulebook
 
-from annet import deploy, implicit, lib, patching, tabparser
+from annet import deploy, implicit, lib, patching
+from annet.vendors import registry_connector
 
 from .. import make_hw_stub
 from . import patch_data
@@ -17,8 +18,10 @@ def test_patch(name, sample, ann_connectors):
     vendor = sample.get("vendor", "huawei").lower()
     hw = make_hw_stub(vendor)
     rb = rulebook.get_rulebook(hw)
-    formatter = tabparser.make_formatter(hw, indent="")
-    (old, new, expected_patch) = patch_data.get_configs(hw, sample)
+    formatter = registry_connector.get().match(hw).make_formatter(indent="")
+
+    old, new, expected_patch = patch_data.get_configs(hw, sample)
+
     assert old != new
 
     implicit_rules = implicit.compile_rules(mock.Mock(hw=hw))

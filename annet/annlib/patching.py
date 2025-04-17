@@ -184,7 +184,8 @@ class Orderer:
         f_rule = ""
         children = []
         ordering = self.rb
-        block_exit = platform.VENDOR_EXIT[self.vendor]
+
+        block_exit = registry_connector.get()[self.vendor].exit
 
         for (order, (raw_rule, rule)) in enumerate(ordering.items()):
             if (

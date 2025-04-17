@@ -135,20 +135,21 @@ class DiffItem(typing.NamedTuple):
     diff_pre: typing.Dict[str, typing.Any]
 
 
-def default_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
+Differ = typing.Callable[[odict, odict, odict, tuple[Op, ...]], list[DiffItem]]
+
+
+def default_diff(old: odict, new: odict, diff_pre: odict, _pops: tuple[Op, ...] = (Op.AFFECTED,)) -> list[DiffItem]:
     diff = base_diff(old, new, diff_pre, _pops, moved_to_affected=True)
     return diff
 
 
-def ordered_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
+def ordered_diff(old: odict, new: odict, diff_pre: odict, _pops: tuple[Op, ...] = (Op.AFFECTED,)) -> list[DiffItem]:
     diff = base_diff(old, new, diff_pre, _pops, moved_to_affected=False)
     return diff
 
 
-def rewrite_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
-    def iter_diff(
-        diff: typing.List[DiffItem],
-    ) -> typing.Iterable[typing.Tuple[int, typing.List[DiffItem]]]:
+def rewrite_diff(old: odict, new: odict, diff_pre: odict, _pops: tuple[Op, ...] = (Op.AFFECTED,)) -> list[DiffItem]:
+    def iter_diff(diff: list[DiffItem]) -> typing.Iterable[tuple[int, list[DiffItem]]]:
         queue = [diff]
         while queue:
             items, queue = queue[0], queue[1:]
@@ -173,16 +174,18 @@ def rewrite_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
     return diff
 
 
-def multiline_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
+def multiline_diff(old: odict, new: odict, diff_pre: odict, _pops: tuple[Op, ...] = (Op.AFFECTED,)) -> list[DiffItem]:
     """
     Особая логика diff'a для хуавейных мультилайнов.
     Она трактует все дочерние элементы %multiline-команды как
     одну общую команду, покидывая внутрь тот Op который был
     определен на вернем уровне
     """
+
     def process_multiline(op, tree):
-        for (row, children) in tree.items():
-            yield (op, row, list(process_multiline(op, children)), None)
+        for row, children in tree.items():
+            yield op, row, list(process_multiline(op, children)), None
+
     ret = []
     for item in default_diff(old, new, diff_pre, _pops):
         if old.get(item.row, {}) == new.get(item.row, {}):
@@ -192,23 +195,27 @@ def multiline_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
             op, tree = Op.REMOVED, old
         children = list(process_multiline(op, tree[item.row]))
         ret.append(DiffItem(item.op, item.row, children, item.diff_pre))
+
     return ret
 
 
-def base_diff(old, new, diff_pre, pops, moved_to_affected=False) -> typing.List[DiffItem]:
+def base_diff(
+    old: odict, new: odict, diff_pre: odict, pops: tuple[Op, ...], moved_to_affected: bool = False
+) -> list[DiffItem]:
     diff_indexed: typing.List[typing.Tuple[int, DiffItem]] = []
     old = _ignore_case(diff_pre, old)
     new = _ignore_case(diff_pre, new)
 
-    for (index, row) in enumerate(old):
+    for index, row in enumerate(old):
         if row not in new:
-            children = call_diff_logic(diff_pre[row]["subtree"], old[row], {}, pops + (Op.REMOVED,))
+            children = call_diff_logic(diff_pre[row]["subtree"], old[row], odict(), pops + (Op.REMOVED,))
             diff_indexed.append((index, DiffItem(
                 op=Op.REMOVED,
                 row=row,
                 children=children,
                 diff_pre=diff_pre[row]["match"],
             )))
+
     old_indexes = {row: index for (index, row) in enumerate(old)}
     block_in_disorder = False
     parent_op = pops[-1]
@@ -232,13 +239,13 @@ def base_diff(old, new, diff_pre, pops, moved_to_affected=False) -> typing.List[
     return [x[1] for x in diff_indexed]
 
 
-def call_diff_logic(diff_pre, old, new, pops=(Op.AFFECTED,)):
+def call_diff_logic(diff_pre: odict, old: odict, new: odict, pops: tuple[Op, ...] = (Op.AFFECTED,)):
     """
     Группируем команды в старом и новом конфиге согласно выставленным
     в рулбуке атрибутам %diff_logic и вызывает их поочереди согласно
     порядку команд в old и new, предпочитая old (т.е. сначала удаления)
     """
-    diff_logics = odict()
+    diff_logics: odict = odict()
     for row in old:
         logic = diff_pre[row]["match"]["attrs"]["diff_logic"]
         if logic not in diff_logics:

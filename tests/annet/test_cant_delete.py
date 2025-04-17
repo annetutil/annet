@@ -5,6 +5,7 @@ from annet import rulebook
 from annet.annlib.rbparser.acl import compile_acl_text
 
 from annet import patching, tabparser
+from annet.vendors import registry_connector
 
 from . import MockDevice
 
@@ -36,9 +37,9 @@ def config(device):
 
 
 def test_cant_delete_subblock(config, acl, device):
-    parser = tabparser.make_formatter(device.hw)
-    empty_tree = tabparser.parse_to_tree("", parser.split)
-    current_tree = tabparser.parse_to_tree(config, parser.split)
+    formatter = registry_connector.get().match(device.hw).make_formatter()
+    empty_tree = tabparser.parse_to_tree("", formatter.split)
+    current_tree = tabparser.parse_to_tree(config, formatter.split)
     rb = rulebook.get_rulebook(device.hw)
     diff = patching.make_diff(current_tree, empty_tree, rb, [acl])
     patch = patching.make_patch(patching.make_pre(diff), rb, device.hw, add_comments=False)

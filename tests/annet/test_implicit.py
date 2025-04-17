@@ -2,7 +2,9 @@ from collections import OrderedDict as odict
 
 import pytest
 
-from annet import implicit, tabparser
+from annet import implicit
+from annet.annlib import tabparser
+from annet.vendors import registry_connector
 
 from .. import make_hw_stub
 
@@ -12,13 +14,13 @@ VENDOR = "huawei"
 
 @pytest.fixture
 def empty_config():
-    formater = tabparser.make_formatter(make_hw_stub(VENDOR))
+    formater = registry_connector.get().match(make_hw_stub(VENDOR)).make_formatter()
     return tabparser.parse_to_tree("", splitter=formater.split)
 
 
 @pytest.fixture
 def config():
-    formater = tabparser.make_formatter(make_hw_stub(VENDOR))
+    formater = registry_connector.get().match(make_hw_stub(VENDOR)).make_formatter()
     return tabparser.parse_to_tree("""
         section_1
         section_2

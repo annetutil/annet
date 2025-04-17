@@ -1,10 +1,10 @@
 from typing import Any, Sequence
 from ipaddress import IPv4Network
 from unittest.mock import Mock
-from annet.tabparser import make_formatter, parse_to_tree
+from annet.annlib.tabparser import parse_to_tree
 from annet.rpl_generators import ip_prefix_list, IpPrefixList, IpPrefixListMember, PrefixListFilterGenerator, CumulusPolicyGenerator, RoutingPolicyGenerator
 from annet.rpl import R, RouteMap, Route, RoutingPolicy
-
+from annet.vendors import registry_connector
 from .. import MockDevice
 from .helpers import scrub, huawei, arista, cumulus
 
@@ -331,7 +331,7 @@ def gen(routemaps: RouteMap, plists: list[IpPrefixList], dev: MockDevice, with_p
             genoutput = (x for x in genoutput if x[1] == "prefix-list")
         result = [" ".join(x) for x in genoutput]
         text = "\n".join(result)
-    else: 
+    else:
         storage = Mock()
         generator = TestPrefixListFilterGenerator(storage)
         result.append(generator(dev))
@@ -339,7 +339,7 @@ def gen(routemaps: RouteMap, plists: list[IpPrefixList], dev: MockDevice, with_p
             # run policies generator too
             generator = TestPolicyGenerator(storage)
             result.append(generator(dev))
-        fmtr = make_formatter(dev.hw)
+        fmtr = registry_connector.get().match(dev.hw).make_formatter()
         tree = parse_to_tree("\n".join(result), fmtr.split)
         text = fmtr.join(tree)
     return scrub(text)

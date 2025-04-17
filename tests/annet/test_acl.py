@@ -7,6 +7,7 @@ from annet import rulebook
 from annet.annlib.rbparser.acl import compile_acl_text
 
 from annet import patching, tabparser
+from annet.vendors import registry_connector
 
 from .. import make_hw_stub
 from . import MockDevice, patch_data
@@ -550,13 +551,11 @@ protocols
 def test_acl(ann_connectors, name, sample):
     vendor = sample["vendor"].lower()
     hw = make_hw_stub(vendor)
-    rb = rulebook.get_rulebook(hw)
-    formatter = tabparser.make_formatter(hw, indent="")
     acl_text = textwrap.dedent(sample["acl"])
     input_text = textwrap.dedent(sample["input"])
     output_text = textwrap.dedent(sample["output"])
 
-    fmtr = tabparser.make_formatter(hw)
+    fmtr = registry_connector.get().match(hw).make_formatter()
     rules = compile_acl_text(acl_text, vendor, allow_ignore=True)
     tree = tabparser.parse_to_tree(text=input_text, splitter=fmtr.split)
 

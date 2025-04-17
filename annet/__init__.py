@@ -7,14 +7,15 @@ from argparse import SUPPRESS, Namespace
 
 import colorama
 import yaml
-from annet.annlib.errors import (  # pylint: disable=wrong-import-position
-    DeployCancelled,
-    ExecError,
-)
 from contextlog import patch_logging, patch_threading
 from valkit.python import valid_logging_level
 
 import annet.argparse
+from annet.annlib import tabparser  # pylint: disable=unused-import
+from annet.annlib.errors import (  # pylint: disable=wrong-import-position
+    DeployCancelled,
+    ExecError,
+)
 
 
 __all__ = ("DeployCancelled", "ExecError")

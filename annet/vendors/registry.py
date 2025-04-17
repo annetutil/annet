@@ -2,8 +2,10 @@ import enum
 from operator import itemgetter
 
 from annet.annlib.netdev.views.hardware import HardwareView
+from annet.annlib.tabparser import CommonFormatter
 
 from .base import AbstractVendor
+
 
 _SENTINEL = enum.Enum("_SENTINEL", "sentinel")
 sentinel = _SENTINEL.sentinel
@@ -20,6 +22,13 @@ class GenericVendor(AbstractVendor):
     @property
     def hardware(self) -> HardwareView:
         return HardwareView("")
+
+    def make_formatter(self, **kwargs) -> CommonFormatter:
+        return CommonFormatter(**kwargs)
+
+    @property
+    def exit(self) -> str:
+        return ""
 
 
 GENERIC_VENDOR = GenericVendor()

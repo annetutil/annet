@@ -1,11 +1,11 @@
 from typing import Any
 from unittest.mock import Mock
-from annet.tabparser import make_formatter, parse_to_tree
+from annet.annlib.tabparser import parse_to_tree
 from annet.rpl_generators import (
     IpPrefixList, CumulusPolicyGenerator, RoutingPolicyGenerator, CommunityList, CommunityType
 )
-from annet.rpl import R, RouteMap, Route, RoutingPolicy
-
+from annet.rpl import RouteMap, Route, RoutingPolicy
+from annet.vendors import registry_connector
 from .. import MockDevice
 from .helpers import scrub, huawei, arista, cumulus
 
@@ -50,10 +50,11 @@ def gen(routemaps: RouteMap, clists: list[CommunityList], dev: MockDevice) -> st
         storage = Mock()
         generator = TestPolicyGenerator(storage)
         result.append(generator(dev))
-        fmtr = make_formatter(dev.hw)
+        fmtr = registry_connector.get().match(dev.hw).make_formatter()
         tree = parse_to_tree("\n".join(result), fmtr.split)
         text = fmtr.join(tree)
     return scrub(text)
+
 
 RT_CLIST = "RT1"
 SOO_CLIST = "SOO2"
@@ -84,6 +85,7 @@ route-policy policy permit node 2
   apply extcommunity soo 100:3 100:4 additive
 """)
     assert result == expected
+
 
 def test_arista_set_comm_ext():
     routemaps = RouteMap[Mock]()

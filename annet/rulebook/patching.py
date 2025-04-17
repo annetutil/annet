@@ -1,7 +1,6 @@
 import functools
 import re
 from collections import OrderedDict as odict
-
 from annet.annlib.rbparser import platform, syntax
 from annet.vendors import registry_connector
 from valkit.common import valid_bool, valid_string_list
@@ -19,6 +18,7 @@ MULTILINE_DIFF_LOGIC = "common.multiline_diff"
 # =====
 @functools.lru_cache()
 def compile_patching_text(text, vendor):
+
     return _compile_patching(
         tree=syntax.parse_text(text, params_scheme={
             "global": {
@@ -31,7 +31,7 @@ def compile_patching_text(text, vendor):
             },
             "diff_logic": {
                 "validator": valid_object_path,
-                "default": platform.VENDOR_DIFF[vendor],
+                "default": registry_connector.get()[vendor].diff(False),
             },
             "comment": {
                 "validator": valid_string_list,
@@ -86,7 +86,7 @@ def _compile_patching(tree, reverse_prefix, vendor):
             }
         else:
             if attrs["params"]["ordered"]:
-                attrs["params"]["diff_logic"] = platform.VENDOR_DIFF_ORDERED[vendor]
+                attrs["params"]["diff_logic"] = registry_connector.get()[vendor].diff(True)
                 attrs["params"]["logic"] = ORDERED_PATCH_LOGIC
             elif attrs["params"]["rewrite"]:
                 attrs["params"]["diff_logic"] = REWRITE_DIFF_LOGIC

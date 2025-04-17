@@ -819,24 +819,6 @@ class RosFormatter(CommonFormatter):
         return commands
 
 
-def make_formatter(vendor, **kwargs):
-    formatters = {
-        "juniper": JuniperFormatter,
-        "cisco": CiscoFormatter,
-        "nexus": NexusFormatter,
-        "huawei": HuaweiFormatter,
-        "optixtrans": OptixtransFormatter,
-        "arista": AristaFormatter,
-        "nokia": NokiaFormatter,
-        "routeros": RosFormatter,
-        "aruba": ArubaFormatter,
-        "pc": CommonFormatter,
-        "ribbon": RibbonFormatter,
-        "b4com": B4comFormatter,
-    }
-    return formatters[vendor](**kwargs)
-
-
 # ====
 def parse_to_tree(text, splitter, comments=("!", "#")):
     tree = odict()

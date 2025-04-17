@@ -1,4 +1,5 @@
 from annet.annlib.netdev.views.hardware import HardwareView
+from annet.annlib.tabparser import AristaFormatter
 from annet.vendors.base import AbstractVendor
 from annet.vendors.registry import registry
 
@@ -20,3 +21,10 @@ class AristaVendor(AbstractVendor):
 
     def svi_name(self, num: int) -> str:
         return f"Vlan{num}"
+
+    def make_formatter(self, **kwargs) -> AristaFormatter:
+        return AristaFormatter(**kwargs)
+
+    @property
+    def exit(self) -> str:
+        return "exit"
