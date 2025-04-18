@@ -9,7 +9,7 @@ class IosXrVendor(AbstractVendor):
     NAME = "iosxr"
 
     def match(self) -> list[str]:
-        return ["Cisco.XR", "Cisco.ASR", "Cisco.XRV"]
+        return ["Cisco.ASR", "Cisco.XR", "Cisco.XRV"]
 
     @property
     def reverse(self) -> str:
@@ -17,7 +17,7 @@ class IosXrVendor(AbstractVendor):
 
     @property
     def hardware(self) -> HardwareView:
-        return HardwareView("Cisco XR")
+        return HardwareView("Cisco ASR")
 
     def svi_name(self, num: int) -> str:
         return f"Vlan{num}"
