@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence, Iterable
-from ipaddress import ip_interface
 from typing import Any, Literal
 
 from annet.generators import PartialGenerator
@@ -120,3 +119,35 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                             continue
                         yield from self._arista_prefix_list("ipv6", plist)
                         processed_names.add(plist.name)
+
+    # Cisco IOS XR
+    def acl_iosxr(self, device: Any):
+        return r"""
+        prefix-set
+            ~ %global=1
+        """
+
+    def _iosxr_prefixlist(self, prefixlist: IpPrefixList):
+        with self.block("prefix-set", prefixlist.name):
+            for n, member in enumerate(prefixlist.members):
+                if n + 1 < len(prefixlist.members):
+                    comma = ","
+                else:
+                    comma = ""
+
+                ge, le = member.or_longer
+                if ge is le is None:
+                    yield f"{member.prefix}{comma}",
+                elif ge is None:
+                    yield f"{member.prefix} le {le}{comma}",
+                elif le is None:
+                    yield f"{member.prefix} ge {ge}{comma}",
+                elif ge  == le:
+                    yield f"{member.prefix} eq {ge}{comma}",
+                else:
+                    yield f"{member.prefix}  ge {ge} le {le}{comma}",
+
+    def run_iosxr(self, device: Any):
+        prefix_lists = self.get_prefix_lists(device)
+        for plist in prefix_lists:
+            yield from self._iosxr_prefixlist(plist)
