@@ -78,15 +78,25 @@ route-policy policy
 def test_iosxr_as_path_change():
     routemaps = RouteMap[Mock]()
 
+    aspath_filters = [
+        AsPathFilter("asf1", ["123", "456"]),
+    ]
+
     @routemaps
     def policy(device: Mock, route: Route):
-        with route(name="n20", number=20) as rule:
+        with route(R.as_path_filter("asf1"), name="n20", number=20) as rule:
             rule.as_path.prepend("65432")
+            rule.allow()
 
-    result = generate(routemaps=routemaps, dev=iosxr())
+    result = generate(routemaps=routemaps, as_path_filters=aspath_filters, dev=iosxr())
     expected = scrub("""
+as-path-set asf1
+  ios-regex '123',
+  ios-regex '456'
+
 route-policy policy
-  prepend as-path 65432
-  pass
+  if as-path in asf1 then
+    prepend as-path 65432
+    done
 """)
     assert result == expected
