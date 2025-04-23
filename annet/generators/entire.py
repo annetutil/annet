@@ -24,6 +24,7 @@ class Entire(BaseGenerator):
     TYPE = "ENTIRE"
     TAGS: List[str] = []
     REQUIRED_PACKAGES: FrozenSet[str] = frozenset()
+    ENSURE_END_NEWLINE = False
 
     def __init__(self, storage):
         self.storage = storage
@@ -90,4 +91,7 @@ class Entire(BaseGenerator):
             assert re.search(r"\bNone\b", text) is None, \
                 "Found 'None' in yield result: %s" % text
             parts.append(text)
-        return "\n".join(parts)
+        ret = "\n".join(parts)
+        if self.ENSURE_END_NEWLINE and not ret.endswith("\n"):
+            ret += "\n"
+        return ret
