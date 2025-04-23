@@ -787,6 +787,8 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             statement: RoutingPolicyStatement,
             prefix_name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
+        if statement.number is None:
+            raise RuntimeError(f"Statement number should not be empty on Arista (found for policy: {policy.name})")
         with self.block(
                 "route-map",
                 policy.name,

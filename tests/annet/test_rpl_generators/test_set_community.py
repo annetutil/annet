@@ -1,59 +1,8 @@
-from typing import Any
 from unittest.mock import Mock
-from annet.vendors.tabparser import parse_to_tree
-from annet.rpl_generators import (
-    IpPrefixList, CumulusPolicyGenerator, RoutingPolicyGenerator, CommunityList, CommunityType
-)
-from annet.rpl import RouteMap, Route, RoutingPolicy
-from annet.vendors import registry_connector
-from .. import MockDevice
-from .helpers import scrub, huawei, arista, cumulus
+from annet.rpl_generators import CommunityList, CommunityType
+from annet.rpl import R, RouteMap, Route
 
-
-def gen(routemaps: RouteMap, clists: list[CommunityList], dev: MockDevice) -> str:
-    class TestPolicyGenerator(RoutingPolicyGenerator):
-        def get_policies(self, device: Any) -> list[RoutingPolicy]:
-            return routemaps.apply(device)
-
-        def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
-            return []
-
-        def get_community_lists(self, _: Any) -> list:
-            return clists
-
-        def get_as_path_filters(self, _: Any) -> list:
-            return []
-
-        def get_rd_filters(self, _: Any) -> list:
-            return []
-
-    class TestCumulusPolicyGenerator(CumulusPolicyGenerator):
-        def get_policies(self, device: Any) -> list[RoutingPolicy]:
-            return routemaps.apply(device)
-
-        def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
-            return []
-
-        def get_community_lists(self, _: Any) -> list:
-            return clists
-
-        def get_as_path_filters(self, _: Any) -> list:
-            return []
-
-    result: list[str] = []
-    if dev.hw.soft.startswith("Cumulus"):
-        generator = TestCumulusPolicyGenerator()
-        genoutput = generator.generate_cumulus_rpl(dev)
-        result = [" ".join(x) for x in genoutput]
-        text = "\n".join(result)
-    else:
-        storage = Mock()
-        generator = TestPolicyGenerator(storage)
-        result.append(generator(dev))
-        fmtr = registry_connector.get().match(dev.hw).make_formatter()
-        tree = parse_to_tree("\n".join(result), fmtr.split)
-        text = fmtr.join(tree)
-    return scrub(text)
+from .helpers import scrub, huawei, arista, cumulus, generate
 
 
 RT_CLIST = "RT1"
@@ -76,7 +25,7 @@ def test_huawei_set_comm_ext():
             rule.extcommunity.add(RT_CLIST, SOO_CLIST)
             rule.allow()
 
-    result = gen(routemaps, CLISTS, huawei())
+    result = generate(routemaps=routemaps, community_lists=CLISTS, dev=huawei())
     expected = scrub("""
 route-policy policy permit node 1
   apply extcommunity rt 100:2
@@ -105,7 +54,7 @@ def test_arista_set_comm_ext():
             rule.extcommunity.remove(RT_CLIST, SOO_CLIST)
             rule.allow()
 
-    result = gen(routemaps, CLISTS, arista())
+    result = generate(routemaps=routemaps, community_lists=CLISTS, dev=arista())
     expected = scrub("""
 route-map policy permit 0
   set extcommunity none
@@ -131,7 +80,7 @@ def test_cumulus_set_comm_ext():
             rule.extcommunity.set(RT_CLIST, SOO_CLIST)
             rule.allow()
 
-    result = gen(routemaps, CLISTS, cumulus())
+    result = generate(routemaps=routemaps, community_lists=CLISTS, dev=cumulus())
     expected = scrub("""
 !
 route-map policy permit 0
