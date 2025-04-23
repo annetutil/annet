@@ -2,13 +2,14 @@ from collections.abc import Iterator
 from typing import Any, Sequence
 from unittest.mock import Mock
 
-from annet.annlib.tabparser import parse_to_tree
-from annet.rpl import R, RouteMap, Route, RoutingPolicy
+from annet.vendors.tabparser import parse_to_tree
+from annet.rpl import RouteMap, RoutingPolicy
 from annet.rpl_generators import (
     IpPrefixList, CumulusPolicyGenerator, RoutingPolicyGenerator, RDFilter, CommunityList, AsPathFilterGenerator,
     AsPathFilter,  RDFilterFilterGenerator, PrefixListFilterGenerator, CommunityListGenerator
 )
-from annet.tabparser import make_formatter
+
+from annet.vendors import registry_connector
 from .. import MockDevice
 
 
@@ -148,7 +149,7 @@ def generate(
         )
         genoutput = generator.generate_cumulus_rpl(dev)
         result = [" ".join(x) for x in genoutput]
-        return "\n".join(result)
+        return scrub("\n".join(result))
 
     generators = blackbox_generators(
         routemaps=routemaps,
@@ -161,6 +162,7 @@ def generate(
     for generator in generators:
         if generator.supports_device(dev):
             result.append(generator(dev))
-    fmtr = make_formatter(dev.hw)
+    fmtr = registry_connector.get().match(dev.hw).make_formatter()
     tree = parse_to_tree("\n".join(result), fmtr.split)
-    return fmtr.join(tree)
+    text = fmtr.join(tree)
+    return scrub(text)
