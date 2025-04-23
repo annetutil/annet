@@ -59,7 +59,6 @@ ARISTA_THEN_COMMAND_MAP: dict[str, str] = {
 }
 IOSXR_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.as_path_filter: "as-path in {option_value}",
-    MatchField.metric: "cost {option_value}",
     MatchField.protocol: "protocol is {option_value}",
     # unsupported: interface
     # unsupported: metric

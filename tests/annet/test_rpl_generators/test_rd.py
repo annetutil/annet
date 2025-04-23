@@ -2,10 +2,10 @@ from unittest.mock import Mock
 
 from annet.rpl import R, RouteMap, Route
 from annet.rpl_generators import RDFilter
-from .helpers import scrub, cumulus, iosxr, generate
+from .helpers import scrub, iosxr, generate
 
 
-def test_iosxr_as_path_change():
+def test_iosxr_rd_match():
     routemaps = RouteMap[Mock]()
 
     rd_filters = [
