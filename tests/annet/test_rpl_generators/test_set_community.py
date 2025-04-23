@@ -2,13 +2,14 @@ from unittest.mock import Mock
 from annet.rpl_generators import CommunityList, CommunityType
 from annet.rpl import R, RouteMap, Route
 
-from .helpers import scrub, huawei, arista, cumulus, generate
-
+from .helpers import scrub, huawei, arista, cumulus, generate, iosxr
 
 RT_CLIST = "RT1"
+RT2_CLIST = "RT2"
 SOO_CLIST = "SOO2"
 CLISTS = [
     CommunityList(RT_CLIST, ["100:2"], type=CommunityType.RT),
+    CommunityList(RT2_CLIST, ["200:2"], type=CommunityType.RT),
     CommunityList(SOO_CLIST, ["100:3", "100:4"], type=CommunityType.SOO),
 ]
 
@@ -90,5 +91,32 @@ route-map policy permit 1
   set extcommunity rt 100:2
   set extcommunity soo 100:3 100:4
 !
+""")
+    assert result == expected
+
+
+def test_iosxr_set_comm_ext():
+    routemaps = RouteMap[Mock]()
+
+    @routemaps
+    def policy(device: Mock, route: Route):
+        with route(number=0) as rule:
+            rule.extcommunity.set()
+            rule.allow()
+        with route(number=1) as rule:
+            rule.extcommunity.set(RT_CLIST, RT2_CLIST)
+            rule.allow()
+
+    result = generate(routemaps=routemaps, community_lists=CLISTS, dev=iosxr())
+    expected = scrub("""
+extcommunity-set rt RT1
+  100:2
+extcommunity-set rt RT2
+  200:2
+route-policy policy
+  delete extcommunity rt all
+  done
+  set extcommunity rt RT1 additive
+  set extcommunity rt RT2 additive
 """)
     assert result == expected

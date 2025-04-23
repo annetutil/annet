@@ -25,7 +25,8 @@ def get_used_community_lists(
                     used_communities.update(condition.value)
             for then_field in (
                     ThenField.community, ThenField.large_community,
-                    ThenField.extcommunity_rt, ThenField.extcommunity_soo
+                    ThenField.extcommunity_rt, ThenField.extcommunity_soo,
+                    ThenField.extcommunity,
             ):
                 for action in statement.then.find_all(then_field):
                     if action.value.replaced is not None:
