@@ -3,7 +3,7 @@ from unittest.mock import Mock
 from annet.rpl_generators import ip_prefix_list, IpPrefixList, IpPrefixListMember, CommunityList, CommunityType
 from annet.rpl import R, RouteMap, Route
 
-from .helpers import scrub, huawei, arista, cumulus, generate
+from .helpers import scrub, huawei, arista, cumulus, generate, iosxr
 
 
 def test_ip_prefix_list():
@@ -256,6 +256,76 @@ route-policy policy permit node 1
   if-match ip-prefix IPV4_LIST
 route-policy policy permit node 2
   if-match ipv6 address prefix-list IPV6_LIST
+""")
+    assert result == expected
+
+
+def test_iosxr_prefixlist_with_match_both():
+    plists = [
+        ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"]),
+        ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
+    ]
+    routemaps = RouteMap[Mock]()
+    @routemaps
+    def policy(device: Mock, route: Route):
+        with route(R.match_v4("IPV4_LIST"), number=1) as rule:
+            rule.allow()
+        with route(R.match_v6("IPV6_LIST"), number=2) as rule:
+            rule.allow()
+        with route(R.match_v4("IPV4_LIST", or_longer=(8, 32)), number=3) as rule:
+            rule.allow()
+        with route(R.match_v6("IPV6_LIST", or_longer=(64, 128)), number=4) as rule:
+            rule.allow()
+
+    result = generate(routemaps=routemaps, prefix_lists=plists, dev=iosxr())
+    expected = scrub("""
+prefix-set IPV4_LIST
+  10.0.0.0/8
+prefix-set IPV6_LIST
+  2001:db8:1234::/64
+prefix-set IPV4_LIST_8_32
+  10.0.0.0/8 ge 8 le 32
+prefix-set IPV6_LIST_64_128
+  2001:db8:1234::/64 ge 64 le 128
+route-policy policy
+  if destination in IPV4_LIST then
+    done
+  if destination in IPV6_LIST then
+    done
+  if destination in IPV4_LIST_8_32 then
+    done
+  if destination in IPV6_LIST_64_128 then
+    done
+""")
+    assert result == expected
+
+
+
+def test_iosxr_prefixlist_embedded_orlonger():
+    plists = [
+        ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"], (8, 32)),
+        ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"], (64, 128)),
+    ]
+    routemaps = RouteMap[Mock]()
+    @routemaps
+    def policy(device: Mock, route: Route):
+        with route(R.match_v4("IPV4_LIST"), number=1) as rule:
+            rule.allow()
+        with route(R.match_v6("IPV6_LIST"), number=2) as rule:
+            rule.allow()
+
+
+    result = generate(routemaps=routemaps, prefix_lists=plists, dev=iosxr())
+    expected = scrub("""
+prefix-set IPV4_LIST
+  10.0.0.0/8 ge 8 le 32
+prefix-set IPV6_LIST
+  2001:db8:1234::/64 ge 64 le 128
+route-policy policy
+  if destination in IPV4_LIST then
+    done
+  if destination in IPV6_LIST then
+    done
 """)
     assert result == expected
 

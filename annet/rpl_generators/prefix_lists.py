@@ -149,5 +149,24 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
 
     def run_iosxr(self, device: Any):
         prefix_lists = self.get_prefix_lists(device)
-        for plist in prefix_lists:
-            yield from self._iosxr_prefixlist(plist)
+        policies = self.get_policies(device)
+
+        name_generator = PrefixListNameGenerator(prefix_lists, policies)
+        processed_names = set()
+        for policy in policies:
+            for statement in policy.statements:
+                cond: SingleCondition[PrefixMatchValue]
+                for cond in statement.match.find_all(MatchField.ip_prefix):
+                    for name in cond.value.names:
+                        plist = name_generator.get_prefix(name, cond.value)
+                        if plist.name in processed_names:
+                            continue
+                        yield from self._iosxr_prefixlist(plist)
+                        processed_names.add(plist.name)
+                for cond in statement.match.find_all(MatchField.ipv6_prefix):
+                    for name in cond.value.names:
+                        plist = name_generator.get_prefix(name, cond.value)
+                        if plist.name in processed_names:
+                            continue
+                        yield from self._iosxr_prefixlist(plist)
+                        processed_names.add(plist.name)
