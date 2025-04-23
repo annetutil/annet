@@ -42,10 +42,11 @@ def test_iosxr_conditions():
 route-policy policy1
   if protocol is bgp then
     done
-  if protocol is bgp and local-preference ge 1 then
+  if protocol is bgp and as-path length ge 1 then
     done
 """)
     assert result == expected
+
 
 def test_iosxr_match_as_path_length():
     routemaps = RouteMap[Mock]()
@@ -59,6 +60,35 @@ def test_iosxr_match_as_path_length():
         with route(R.as_path_length == 2) as rule:
             rule.allow()
         with route(R.as_path_length <= 10, R.as_path_length >= 1) as rule:
+            rule.allow()
+
+    result = generate(routemaps=routemaps, dev=iosxr())
+    expected = scrub("""
+route-policy policy1
+  if as-path length ge 1 then
+    done
+  if as-path length le 10 then
+    done
+  if as-path length eq 2 then
+    done
+  if as-path length ge 1 and as-path length le 10 then
+    done
+""")
+    assert result == expected
+
+
+def test_iosxr_match_local_pref_length():
+    routemaps = RouteMap[Mock]()
+
+    @routemaps
+    def policy1(device: Mock, route: Route):
+        with route(R.local_pref >= 1) as rule:
+            rule.allow()
+        with route(R.local_pref <= 10) as rule:
+            rule.allow()
+        with route(R.local_pref == 2) as rule:
+            rule.allow()
+        with route(R.local_pref <= 10, R.local_pref >= 1) as rule:
             rule.allow()
 
     result = generate(routemaps=routemaps, dev=iosxr())

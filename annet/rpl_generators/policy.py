@@ -926,7 +926,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             yield from self._iosxr_match_local_pref(condition)
             return
         elif condition.field == MatchField.as_path_length:
-            yield from self._iosxr_match_local_pref(condition)
+            yield from self._iosxr_match_as_path_length(condition)
             return
         elif condition.field == MatchField.rd:
             yield from self._iosxr_match_rd(condition, rd_filters)
