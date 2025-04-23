@@ -1,3 +1,5 @@
+from ipaddress import IPv6Network
+
 from annet.rpl_generators import AsPathFilter, CommunityList, CommunityType, RDFilter, ip_prefix_list, CommunityLogic, \
     IpPrefixListMember
 
@@ -19,9 +21,9 @@ RD_FILTERS = [
 PREFIX_LISTS = [
     ip_prefix_list("IPV6_LIST_EXAMPLE", [
         "2a13:5941::/32",
-        IpPrefixListMember("2a13:5942::/32", or_longer=(32, 48)),
-        IpPrefixListMember("2a13:5943::/32", or_longer=(32, None)),
-        IpPrefixListMember("2a13:5944::/32", or_longer=(32, 32)),
+        IpPrefixListMember(IPv6Network("2a13:5942::/32"), or_longer=(32, 48)),
+        IpPrefixListMember(IPv6Network("2a13:5943::/32"), or_longer=(32, None)),
+        IpPrefixListMember(IPv6Network("2a13:5944::/32"), or_longer=(32, 32)),
     ]),
     ip_prefix_list("IPV4_LIST_EXAMPLE", ["0.0.0.0/8", "10.0.0.0/8"]),
 ]

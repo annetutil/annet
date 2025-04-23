@@ -106,7 +106,7 @@ def blackbox_generators(
         def get_policies(self, device: Any) -> list[RoutingPolicy]:
             return routemaps.apply(device)
 
-        def get_community_lists(self, device: Any) -> Sequence[CommunityList]:
+        def get_community_lists(self, device: Any) -> list[CommunityList]:
             return community_lists or []
 
     class BlackBoxPolicyGenerator(RoutingPolicyGenerator):
@@ -140,6 +140,7 @@ def generate(
     prefix_lists: list[IpPrefixList] | None = None,
     rd_filters: list[RDFilter] | None = None,
 ):
+    result: list[str] = []
     if dev.hw.soft.startswith("Cumulus"):
         generator = cumulus_generator(
             routemaps=routemaps,
@@ -158,7 +159,6 @@ def generate(
         prefix_lists=prefix_lists,
         rd_filters=rd_filters,
     )
-    result: list[str] = []
     for generator in generators:
         if generator.supports_device(dev):
             result.append(generator(dev))
