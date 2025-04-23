@@ -345,11 +345,11 @@ class MeshExecutor:
         target_interface.add_addr(changes.addr, changes.vrf)
         return target_interface.name
 
-    def _apply_indirect_interface_changes(
-            self, device: Device, neighbor: Device, ifname: Optional[str], changes: InterfaceChanges,
+    def _apply_nondirect_interface_changes(
+            self, device: Device, ifname: Optional[str], changes: InterfaceChanges,
     ) -> Optional[str]:
         if changes.lag is not None:
-            raise ValueError("LAG creation unsupported for indirect peers")
+            raise ValueError("LAG creation unsupported for indirect and virtual peers")
         elif changes.subif is not None:
             target_interface = device.add_subif(ifname, changes.subif)
         elif changes.svi is not None:
@@ -362,9 +362,6 @@ class MeshExecutor:
                 raise ValueError(f"Interface {ifname} not found for device {device.fqdn}")
         target_interface.add_addr(changes.addr, changes.vrf)
         return target_interface.name
-
-    def _apply_virtual_interface_changes(self, device: Device, local: VirtualLocalDTO) -> str:
-        return device.add_svi(local.svi).name  # we check if SVI configured in execute method
 
     def execute_for(self, device: Device) -> BgpConfig:
         all_fqdns = self._storage.resolve_all_fdnds()
@@ -383,16 +380,16 @@ class MeshExecutor:
             peers.append(self._to_bgp_peer(direct_pair, target_interface))
 
         for virtual_pair in self._execute_virtual(device):
-            target_interface = self._apply_virtual_interface_changes(
+            target_interface = self._apply_nondirect_interface_changes(
                 device,
-                virtual_pair.local,
+                getattr(virtual_pair.local, "ifname", None),
+                to_interface_changes(virtual_pair.local),
             )
             peers.append(self._virtual_to_bgp_peer(virtual_pair, target_interface))
 
         for connected_pair in self._execute_indirect(device, all_fqdns):
-            target_interface = self._apply_indirect_interface_changes(
+            target_interface = self._apply_nondirect_interface_changes(
                 device,
-                connected_pair.device,
                 getattr(connected_pair.local, "ifname", None),
                 to_interface_changes(connected_pair.local),
             )
