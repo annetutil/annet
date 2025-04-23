@@ -142,10 +142,10 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                     yield f"{member.prefix} le {le}{comma}",
                 elif le is None:
                     yield f"{member.prefix} ge {ge}{comma}",
-                elif ge  == le:
+                elif ge == le:
                     yield f"{member.prefix} eq {ge}{comma}",
                 else:
-                    yield f"{member.prefix}  ge {ge} le {le}{comma}",
+                    yield f"{member.prefix} ge {ge} le {le}{comma}",
 
     def run_iosxr(self, device: Any):
         prefix_lists = self.get_prefix_lists(device)

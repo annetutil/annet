@@ -249,6 +249,7 @@ class CommunityListGenerator(PartialGenerator, ABC):
         extcommunity-set *
             ~ %global=1
         """
+
     def _iosxr_community_list(self, community_list: CommunityList) -> Iterator[Sequence[str]]:
         if community_list.type is CommunityType.BASIC:
             name = "community-set"
@@ -261,12 +262,12 @@ class CommunityListGenerator(PartialGenerator, ABC):
 
         with self.block(name, community_list.name):
             for n, community in enumerate(community_list.members):
-                if n+1<len(community_list.members):
+                if n + 1 < len(community_list.members):
                     comma = ","
                 else:
                     comma = ""
                 if community_list.use_regex:
-                    yield 'ios-regex', f"'{community}'"
+                    yield "ios-regex", f"'{community}'"
                 else:
                     yield f"{community}{comma}",
 

@@ -49,7 +49,7 @@ class RDFilterFilterGenerator(PartialGenerator, ABC):
         for rd_filter in self.get_used_rd_filters(device):
             with self.block("rd-set", rd_filter.name):
                 for i, route_distinguisher in enumerate(rd_filter.members):
-                    if i+1<len(rd_filter.members):
+                    if i + 1 < len(rd_filter.members):
                         comma = ","
                     else:
                         comma = ""

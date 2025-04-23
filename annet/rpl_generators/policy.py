@@ -1017,7 +1017,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         for community_name in action.value.removed:
             yield "delete", "community", "in", community_name
 
-    def _iosxr_community_type_str(self, comm_type: CommunityType) ->str:
+    def _iosxr_community_type_str(self, comm_type: CommunityType) -> str:
         if comm_type is CommunityType.RT:
             return "rt"
         elif comm_type is CommunityType.LARGE:
@@ -1042,7 +1042,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         for member_name in added:
             typename = self._iosxr_community_type_str(communities[member_name].type)
             yield "set", "extcommunity", typename, member_name, "additive"
-        for member_name in  action.value.removed:
+        for member_name in action.value.removed:
             typename = self._iosxr_community_type_str(communities[member_name].type)
             yield "delete", "extcommunity", typename, "in", member_name
 
