@@ -4,10 +4,14 @@ from annet.rpl import R, RouteMap, Route
 
 from .helpers import scrub, huawei, arista, cumulus, generate, iosxr
 
+BASIC_CLIST = "CL1"
+BASIC2_CLIST = "CL2"
 RT_CLIST = "RT1"
 RT2_CLIST = "RT2"
 SOO_CLIST = "SOO2"
 CLISTS = [
+    CommunityList(BASIC_CLIST, ["65000:2"], type=CommunityType.BASIC),
+    CommunityList(BASIC2_CLIST, ["65001:2"], type=CommunityType.BASIC, logic=CommunityLogic.AND),
     CommunityList(RT_CLIST, ["100:2"], type=CommunityType.RT),
     CommunityList(RT2_CLIST, ["200:2"], type=CommunityType.RT, logic=CommunityLogic.AND),
     CommunityList(SOO_CLIST, ["100:3", "100:4"], type=CommunityType.SOO),
@@ -28,6 +32,10 @@ def test_huawei_set_comm_ext():
 
     result = generate(routemaps=routemaps, community_lists=CLISTS, dev=huawei())
     expected = scrub("""
+ip extcommunity-filter basic RT1 index 10 permit rt 100:2
+ip extcommunity-list soo basic SOO2 index 10 permit 100:3
+ip extcommunity-list soo basic SOO2 index 20 permit 100:4
+
 route-policy policy permit node 1
   apply extcommunity rt 100:2
 route-policy policy permit node 2
@@ -122,6 +130,38 @@ route-policy policy
     done
   if extcommunity rt matches-any RT1 and extcommunity rt matches-every RT2 then
     delete extcommunity rt all
+    done
+""")
+    assert result == expected
+
+def test_iosxr_set_comm():
+    routemaps = RouteMap[Mock]()
+
+    @routemaps
+    def policy(device: Mock, route: Route):
+        with route(R.community.has_any(BASIC_CLIST, BASIC2_CLIST), number=1) as rule:
+            rule.community.set(BASIC_CLIST)
+            rule.community.remove(BASIC2_CLIST)
+            rule.allow()
+        with route(R.community.has(BASIC_CLIST, BASIC2_CLIST), number=2) as rule:
+            rule.community.set()
+            rule.allow()
+
+    result = generate(routemaps=routemaps, community_lists=CLISTS, dev=iosxr())
+    expected = scrub("""
+community-set CL1
+  65000:2
+community-set CL2
+  65001:2
+
+route-policy policy
+  if (community matches-any CL1 or community matches-every CL2) then
+    delete community all
+    set community CL1 additive
+    delete community in CL2
+    done
+  if community matches-any CL1 and community matches-every CL2 then
+    delete community all
     done
 """)
     assert result == expected
