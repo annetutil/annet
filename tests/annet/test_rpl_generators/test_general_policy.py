@@ -160,10 +160,10 @@ route-policy policy1
     set next-hop 192.168.1.1
     pass
   if as-path length eq 8 then
-    set next-hop FE80::1
+    set next-hop fe80::1
     pass
   if as-path length eq 9 then
-    set next-hop ::FFFF:192.168.1.1
+    set next-hop ::ffff:192.168.1.1
     pass
   if as-path length eq 10 then
     set metric-type type-1

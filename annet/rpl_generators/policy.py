@@ -981,9 +981,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         elif action.value.target == "ipv4_addr":
             yield "set", "next-hop", action.value.addr
         elif action.value.target == "ipv6_addr":
-            yield "set", "next-hop", action.value.addr
+            yield "set", "next-hop", action.value.addr.lower()
         elif action.value.target == "mapped_ipv4":
-            yield "set", "next-hop", f"::FFFF:{action.value.addr}"
+            yield "set", "next-hop", f"::ffff:{action.value.addr}"
         else:
             raise RuntimeError(f"Next_hop target {action.value.target} is not supported for Cisco IOS XR")
 
