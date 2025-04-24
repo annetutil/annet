@@ -359,7 +359,7 @@ def apply(hw, do_commit, do_finalize, **_):
     elif hw.H3C:
         before.add_cmd(Command("system-view"))
         if do_finalize:
-            after.add_cmd(Command("save force", timeout=20))
+            after.add_cmd(Command("save force", timeout=90))
     else:
         raise Exception("unknown hw %s" % hw)
 
