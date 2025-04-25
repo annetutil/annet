@@ -1,3 +1,4 @@
+from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.tabparser import CiscoFormatter
 from annet.vendors.base import AbstractVendor
@@ -7,6 +8,16 @@ from annet.vendors.registry import registry
 @registry.register
 class CiscoVendor(AbstractVendor):
     NAME = "cisco"
+
+    def apply(self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str) -> tuple[CommandList, CommandList]:
+        before, after = CommandList(), CommandList()
+
+        before.add_cmd(Command("conf t"))
+        after.add_cmd(Command("exit"))
+        if do_finalize:
+            after.add_cmd(Command("copy running-config startup-config", timeout=40))
+
+        return before, after
 
     def match(self) -> list[str]:
         return ["Cisco"]

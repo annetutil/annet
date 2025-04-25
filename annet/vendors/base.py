@@ -1,6 +1,7 @@
 import abc
 from typing import ClassVar
 
+from annet.annlib.command import CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.tabparser import CommonFormatter
 
@@ -11,6 +12,11 @@ class AbstractVendor(abc.ABC):
     @abc.abstractmethod
     def match(self) -> list[str]:
         raise NotImplementedError
+
+    def apply(
+        self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str
+    ) -> tuple[CommandList, CommandList]:
+        return CommandList(), CommandList()
 
     @property
     @abc.abstractmethod

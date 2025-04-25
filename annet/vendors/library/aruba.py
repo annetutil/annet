@@ -1,3 +1,4 @@
+from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.tabparser import ArubaFormatter
 from annet.vendors.base import AbstractVendor
@@ -7,6 +8,18 @@ from annet.vendors.registry import registry
 @registry.register
 class ArubaVendor(AbstractVendor):
     NAME = "aruba"
+
+    def apply(self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str) -> tuple[CommandList, CommandList]:
+        before, after = CommandList(), CommandList()
+
+        before.add_cmd(Command("conf t"))
+        after.add_cmd(Command("end"))
+        if do_commit:
+            after.add_cmd(Command("commit apply"))
+        if do_finalize:
+            after.add_cmd(Command("write memory"))
+
+        return before, after
 
     def match(self) -> list[str]:
         return ["Aruba"]

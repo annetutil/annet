@@ -1,0 +1,10 @@
+- vendor: PC
+  soft: Cumulus
+  env:
+    ETCKEEPER_CHECK: "true"
+  before: ""
+  after: |
+    hostname "test"
+  patch: |
+    etckeeper check
+    hostname "test"

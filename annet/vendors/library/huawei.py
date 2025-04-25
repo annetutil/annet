@@ -1,3 +1,4 @@
+from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.tabparser import HuaweiFormatter
 from annet.vendors.base import AbstractVendor
@@ -7,6 +8,18 @@ from annet.vendors.registry import registry
 @registry.register
 class HuaweiVendor(AbstractVendor):
     NAME = "huawei"
+
+    def apply(self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str) -> tuple[CommandList, CommandList]:
+        before, after = CommandList(), CommandList()
+
+        before.add_cmd(Command("system-view"))
+        if do_commit and (hw.Huawei.CE or hw.Huawei.NE):
+            after.add_cmd(Command("commit"))
+        after.add_cmd(Command("q"))
+        if do_finalize:
+            after.add_cmd(Command("save", timeout=20))
+
+        return before, after
 
     def match(self) -> list[str]:
         return ["Huawei"]

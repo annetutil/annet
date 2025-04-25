@@ -1,19 +1,16 @@
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.tabparser import OptixtransFormatter
-from annet.vendors.base import AbstractVendor
 from annet.vendors.registry import registry
+
+from .huawei import HuaweiVendor
 
 
 @registry.register
-class OptixTransVendor(AbstractVendor):
+class OptixTransVendor(HuaweiVendor):
     NAME = "optixtrans"
 
     def match(self) -> list[str]:
-        return ["OptiXtrans"]
-
-    @property
-    def reverse(self) -> str:
-        return "undo"
+        return ["Huawei.OptiXtrans"]
 
     @property
     def hardware(self) -> HardwareView:
@@ -22,6 +19,5 @@ class OptixTransVendor(AbstractVendor):
     def make_formatter(self, **kwargs) -> OptixtransFormatter:
         return OptixtransFormatter(**kwargs)
 
-    @property
-    def exit(self) -> str:
-        return "quit"
+    def svi_name(self, num: int) -> str:
+        return f"vlan{num}"
