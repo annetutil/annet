@@ -40,12 +40,16 @@ class _FamiliesMixin:
     def __init__(self, **kwargs):
         kwargs.setdefault("ipv4_unicast", FamilyOptions(family="ipv4_unicast"))
         kwargs.setdefault("ipv6_unicast", FamilyOptions(family="ipv6_unicast"))
+        kwargs.setdefault("ipv4_vpn_unicast", FamilyOptions(family="ipv4_vpn_unicast"))
+        kwargs.setdefault("ipv6_vpn_unicast", FamilyOptions(family="ipv6_vpn_unicast"))
         kwargs.setdefault("ipv4_labeled_unicast", FamilyOptions(family="ipv4_labeled_unicast"))
         kwargs.setdefault("ipv6_labeled_unicast", FamilyOptions(family="ipv6_labeled_unicast"))
         kwargs.setdefault("l2vpn_evpn", FamilyOptions(family="l2vpn_evpn"))
         super().__init__(**kwargs)
     ipv4_unicast: Annotated[FamilyOptions, Merge()]
     ipv6_unicast: Annotated[FamilyOptions, Merge()]
+    ipv4_vpn_unicast: Annotated[FamilyOptions, Merge()]
+    ipv6_vpn_unicast: Annotated[FamilyOptions, Merge()]
     ipv4_labeled_unicast: Annotated[FamilyOptions, Merge()]
     ipv6_labeled_unicast: Annotated[FamilyOptions, Merge()]
     l2vpn_evpn: Annotated[FamilyOptions, Merge()]
@@ -55,6 +59,8 @@ class VrfOptions(_FamiliesMixin, BaseMeshModel):
     def __init__(self, vrf_name: str, **kwargs):
         kwargs.setdefault("ipv4_unicast", FamilyOptions(family="ipv4_unicast", vrf_name=vrf_name))
         kwargs.setdefault("ipv6_unicast", FamilyOptions(family="ipv6_unicast", vrf_name=vrf_name))
+        kwargs.setdefault("ipv4_vpn_unicast", FamilyOptions(family="ipv4_unicast", vrf_name=vrf_name))
+        kwargs.setdefault("ipv6_vpn_unicast", FamilyOptions(family="ipv6_unicast", vrf_name=vrf_name))
         kwargs.setdefault("ipv4_labeled_unicast", FamilyOptions(family="ipv4_labeled_unicast", vrf_name=vrf_name))
         kwargs.setdefault("ipv6_labeled_unicast", FamilyOptions(family="ipv6_labeled_unicast", vrf_name=vrf_name))
         kwargs.setdefault("l2vpn_evpn", FamilyOptions(family="l2vpn_evpn", vrf_name=vrf_name))
