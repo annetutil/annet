@@ -194,7 +194,7 @@ class MeshExecutor:
         for rule in self._registry.lookup_virtual(device.fqdn):
             for order_number in rule.num:
                 handler_name = self._handler_name(rule.handler)
-                logger.debug("Running direct handler: %s", handler_name)
+                logger.debug("Running virtual handler: %s", handler_name)
                 session = MeshSession()
                 peer_device = VirtualLocal(rule.match, device)
                 peer_virtual = VirtualPeer(num=order_number)
@@ -219,11 +219,6 @@ class MeshExecutor:
                         f"peer data for device `{device.fqdn}`:\n" + str(e)
                     ) from e
 
-                if not hasattr(device_dto, "svi"):
-                    raise ValueError(
-                        f"Handler `{handler_name}` did not provide `svi` number. "
-                        "Virtual peer must be connected to SVI interface."
-                    )
                 pair = VirtualPair(local=device_dto, connected=virtual_dto)
                 virtual_peers.append(pair)
         return virtual_peers
