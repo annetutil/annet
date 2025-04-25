@@ -1,4 +1,6 @@
 import ssl
+from typing import Optional
+
 from adaptix import P
 from adaptix.conversion import get_converter, link, link_constant, link_function
 from annetbox.v42 import client_sync
@@ -6,7 +8,8 @@ from annetbox.v42 import models as api_models
 
 from annet.adapters.netbox.common.adapter import NetboxAdapter, get_device_breed, get_device_hw
 from annet.adapters.netbox.common.storage_base import BaseNetboxStorage
-from annet.adapters.netbox.v42.models import InterfaceV42, NetboxDeviceV42, PrefixV42, IpAddressV42
+from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
+from annet.adapters.netbox.v42.models import InterfaceV42, NetboxDeviceV42, PrefixV42, IpAddressV42, Vlan, Vrf
 from annet.storage import Storage
 
 
@@ -79,8 +82,21 @@ class NetboxV42Adapter(NetboxAdapter[NetboxDeviceV42, InterfaceV42, IpAddressV42
     def list_ipprefixes(self, prefixes: list[str]) -> list[PrefixV42]:
         return self.convert_ip_prefixes(self.netbox.ipam_all_prefixes(prefix=prefixes).results)
 
+    def list_all_vrfs(self) -> list[Vrf]:
+        return self.netbox.ipam_all_vrfs().results
+
+    def list_all_vlans(self) -> list[Vlan]:
+        return self.netbox.ipam_all_vlans().results
+
 
 class NetboxStorageV42(BaseNetboxStorage[NetboxDeviceV42, InterfaceV42, IpAddressV42, PrefixV42]):
+    netbox: NetboxV42Adapter
+
+    def __init__(self, opts: Optional[NetboxStorageOpts] = None):
+        super().__init__(opts)
+        self._all_vlans: list[Vlan] | None = None
+        self._all_vrfs: list[Vrf] | None = None
+
     def _init_adapter(
             self,
             url: str,
@@ -89,3 +105,13 @@ class NetboxStorageV42(BaseNetboxStorage[NetboxDeviceV42, InterfaceV42, IpAddres
             threads: int,
     ) -> NetboxAdapter[NetboxDeviceV42, InterfaceV42, IpAddressV42, PrefixV42]:
         return NetboxV42Adapter(self, url, token, ssl_context, threads)
+
+    def resolve_all_vlans(self) -> list[Vlan]:
+        if self._all_vlans is None:
+            self._all_vlans = self.netbox.list_all_vlans()
+        return self._all_vlans
+
+    def resolve_all_vrfs(self) -> list[Vrf]:
+        if self._all_vrfs is None:
+            self._all_vrfs = self.netbox.list_all_vrfs()
+        return self._all_vrfs
