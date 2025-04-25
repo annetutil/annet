@@ -1,3 +1,4 @@
+import os
 from unittest import mock
 
 import pytest
@@ -16,7 +17,11 @@ from . import patch_data
 )
 def test_patch(name, sample, ann_connectors):
     vendor = sample.get("vendor", "huawei").lower()
+
     hw = make_hw_stub(vendor)
+    if soft := sample.get("soft"):
+        hw.soft = soft
+
     rb = rulebook.get_rulebook(hw)
     formatter = registry_connector.get().match(hw).make_formatter(indent="")
 
@@ -30,9 +35,15 @@ def test_patch(name, sample, ann_connectors):
 
     diff = patching.make_diff(old, new, rb, [])
     pre = patching.make_pre(diff)
-    patch_tree = patching.make_patch(pre=pre, rb=rb, hw=hw, add_comments=False)
-    cmd_paths = formatter.cmd_paths(patch_tree)
-    cmds = deploy.apply_deploy_rulebook(hw, cmd_paths)
+
+    fake_environ = os.environ.copy()
+    with mock.patch.object(os, "environ", new=fake_environ):
+        if sample_environ := sample.get("env"):
+            fake_environ.update(sample_environ)
+
+        patch_tree = patching.make_patch(pre=pre, rb=rb, hw=hw, add_comments=False)
+        cmd_paths = formatter.cmd_paths(patch_tree)
+        cmds = deploy.apply_deploy_rulebook(hw, cmd_paths)
 
     generated = []
     for cmd in cmds:

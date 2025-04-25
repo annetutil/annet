@@ -2,9 +2,9 @@ import os
 import typing
 from collections import OrderedDict as odict
 
-from annet.annlib.command import CommandList, Command
-
+from annet.annlib.command import Command, CommandList
 from annet.types import Op
+from annet.vendors import registry_connector
 
 
 # =====
@@ -287,87 +287,5 @@ class ApplyItem(typing.NamedTuple):
     after: CommandList
 
 
-def apply(hw, do_commit, do_finalize, **_):
-    before, after = CommandList(), CommandList()
-    if hw.Huawei:
-        before.add_cmd(Command("system-view"))
-        if do_commit and (hw.Huawei.CE or hw.Huawei.NE):
-            after.add_cmd(Command("commit"))
-        after.add_cmd(Command("q"))
-        if do_finalize:
-            after.add_cmd(Command("save", timeout=20))
-    elif hw.Arista:
-        before.add_cmd(Command("conf s"))
-        if do_commit:
-            after.add_cmd(Command("commit"))
-        else:
-            after.add_cmd(Command("abort"))  # просто exit оставит висеть configure session
-        if do_finalize:
-            after.add_cmd(Command("write memory"))
-    elif hw.ASR or hw.XRV or hw.XR:
-        # коммит сам сохраняет изменения в стартап do_finalize не применим
-        before.add_cmd(Command("configure exclusive"))
-        if do_commit:
-            after.add_cmd(Command("commit"))
-        after.add_cmd(Command("exit"))
-    elif hw.Cisco or hw.Nexus:
-        # классический ios и nxos не умеет коммиты
-        before.add_cmd(Command("conf t"))
-        after.add_cmd(Command("exit"))
-        if do_finalize:
-            after.add_cmd(Command("copy running-config startup-config", timeout=40))
-    elif hw.Juniper:
-        # коммит сам сохраняет изменения в стартап do_finalize не применим
-        before.add_cmd(Command("configure exclusive"))
-        if do_commit:
-            after.add_cmd(Command("commit", timeout=30))
-        after.add_cmd(Command("exit"))
-    elif hw.PC:
-        if hw.soft.startswith(("Cumulus", "SwitchDev")):
-            if os.environ.get("ETCKEEPER_CHECK", False):
-                before.add_cmd(Command("etckeeper check"))
-    elif hw.Nokia:
-        # коммит сам сохраняет изменения в стартап do_finalize не применим
-        before.add_cmd(Command("configure private"))
-        if do_commit:
-            after.add_cmd(Command("commit"))
-    elif hw.RouterOS:
-        # FIXME: пока не удалось победить \x1b[c после включения safe mode
-        # if len(cmds) > 99:
-        #     raise Exception("RouterOS does not support more 100 actions in safe mode")
-        # before.add_cmd(RosDevice.SAFE_MODE)
-        pass
-        # after.add_cmd(RosDevice.SAFE_MODE)
-    elif hw.Aruba:
-        before.add_cmd(Command("conf t"))
-        after.add_cmd(Command("end"))
-        if do_commit:
-            after.add_cmd(Command("commit apply"))
-        if do_finalize:
-            after.add_cmd(Command("write memory"))
-    elif hw.Ribbon:
-        # коммит сам сохраняет изменения в стартап do_finalize не применим
-        before.add_cmd(Command("configure exclusive"))
-        if do_commit:
-            after.add_cmd(Command("commit", timeout=30))
-        after.add_cmd(Command("exit"))
-    elif hw.B4com.CS2148P:
-        before.add_cmd(Command("conf t"))
-        after.add_cmd(Command("end"))
-        if do_finalize:
-            after.add_cmd(Command("write", timeout=40))
-    elif hw.B4com:
-        before.add_cmd(Command("conf t"))
-        if do_commit:
-            after.add_cmd(Command("commit"))
-            after.add_cmd(Command("end"))
-        if do_finalize:
-            after.add_cmd(Command("write", timeout=40))
-    elif hw.H3C:
-        before.add_cmd(Command("system-view"))
-        if do_finalize:
-            after.add_cmd(Command("save force", timeout=90))
-    else:
-        raise Exception("unknown hw %s" % hw)
-
-    return before, after
+def apply(hw, do_commit, do_finalize, path):
+    return registry_connector.get().match(hw).apply(hw, do_commit, do_finalize, path)
