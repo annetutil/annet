@@ -49,11 +49,11 @@ def no_ntp_distribute(rule, key, diff, **_):
 
 
 def banner_login(rule, key, diff, **_):
-    if diff[Op.REMOVED]:
-        yield (False, "no banner login", None)
-    elif diff[Op.ADDED]:
+    if diff[Op.ADDED]:
         # Убираем дополнительный экранирующий сиимвол
-        key = re.sub(r"\^C", "^", key[0])
-        yield (False, f"banner login {key}", None)
+        banner = re.sub(r"\^C", "^", diff[Op.ADDED][0]['row'])
+        yield (False, banner, None)
+    elif diff[Op.REMOVED]:
+        yield (False, "no banner login", None)
     else:
         yield from common.default(rule, key, diff)
