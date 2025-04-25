@@ -100,14 +100,10 @@ class IndirectPeerDTO(MeshSession, _OptionsDTO):
     svi: Optional[int]
 
 
-class VirtualLocalDTO(_OptionsDTO):
-    asnum: Union[int, str]
+class VirtualLocalDTO(MeshSession, _OptionsDTO):
     pod: int
     addr: str
     description: str
-
-    import_policy: str
-    export_policy: str
     update_source: str
 
     svi: int
