@@ -5,7 +5,8 @@ import contextlib
 import textwrap
 from typing import Union, List
 
-from annet import tabparser, tracing
+from annet import tracing
+from annet.vendors import tabparser
 from annet.tracing import tracing_connector
 from .exceptions import InvalidValueFromGenerator
 

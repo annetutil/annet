@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 import pytest
 
-from annet.annlib.tabparser import parse_to_tree
+from annet.vendors.tabparser import parse_to_tree
 from annet.vendors import registry_connector
 
 from .. import make_hw_stub

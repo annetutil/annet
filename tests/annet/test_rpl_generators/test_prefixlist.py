@@ -1,7 +1,7 @@
 from typing import Any, Sequence
 from ipaddress import IPv4Network
 from unittest.mock import Mock
-from annet.annlib.tabparser import parse_to_tree
+from annet.vendors.tabparser import parse_to_tree
 from annet.rpl_generators import ip_prefix_list, IpPrefixList, IpPrefixListMember, PrefixListFilterGenerator, CumulusPolicyGenerator, RoutingPolicyGenerator
 from annet.rpl import R, RouteMap, Route, RoutingPolicy
 from annet.vendors import registry_connector

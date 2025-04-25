@@ -25,7 +25,8 @@ from typing import (
 import tabulate
 from contextlog import get_logger
 
-from annet import generators, implicit, patching, tabparser, tracing
+from annet import generators, implicit, patching, tracing
+from annet.vendors import tabparser
 from annet.annlib import jsontools
 from annet.annlib.rbparser.acl import compile_acl_text
 from annet.cli_args import DeployOptions, GenOptions, ShowGenOptions

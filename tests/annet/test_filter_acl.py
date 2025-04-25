@@ -1,6 +1,8 @@
 import textwrap
+import re
 
-from annet.annlib import tabparser
+from annet.annlib import lib
+from annet.vendors import tabparser
 import annet.annlib.filter_acl
 from annet.vendors import registry_connector
 

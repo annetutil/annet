@@ -2,7 +2,8 @@ import functools
 import re
 from collections import OrderedDict as odict
 
-from annet.annlib import lib, tabparser
+from annet.annlib import lib
+from annet.vendors import tabparser
 
 
 # =====

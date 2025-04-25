@@ -2,7 +2,8 @@ import collections
 import re
 import typing
 
-from . import patching, tabparser
+from . import patching
+from annet.vendors import tabparser
 from .diff import diff_ops, ops_sign
 from .rbparser import acl
 

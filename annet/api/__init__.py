@@ -33,7 +33,8 @@ from annet import cli_args
 from annet import diff as ann_diff
 from annet import filtering
 from annet import gen as ann_gen
-from annet import patching, rulebook, tabparser, tracing
+from annet import patching, rulebook, tracing
+from annet.vendors import tabparser
 from annet.diff import file_differ_connector
 from annet.rulebook import deploying
 from annet.filtering import Filterer

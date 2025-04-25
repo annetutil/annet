@@ -6,7 +6,7 @@ from itertools import groupby
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Mapping, Optional, Protocol, Tuple, Union
 
-from annet import cli_args, filtering, patching, rulebook, tabparser
+from annet import cli_args, filtering, patching, rulebook
 from annet.annlib import jsontools
 from annet.annlib.diff import (  # pylint: disable=unused-import
     colorize_line,
@@ -22,7 +22,7 @@ from annet.connectors import CachedConnector
 from annet.output import output_driver_connector
 from annet.storage import Device
 from annet.types import Diff, PCDiff, PCDiffFile
-from annet.vendors import registry_connector
+from annet.vendors import registry_connector, tabparser
 
 from .gen import Loader, old_new
 

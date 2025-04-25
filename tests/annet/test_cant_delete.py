@@ -4,8 +4,8 @@ import pytest
 from annet import rulebook
 from annet.annlib.rbparser.acl import compile_acl_text
 
-from annet import patching, tabparser
-from annet.vendors import registry_connector
+from annet import patching
+from annet.vendors import registry_connector, tabparser
 
 from . import MockDevice
 

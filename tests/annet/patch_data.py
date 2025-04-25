@@ -3,8 +3,7 @@ from collections import OrderedDict
 
 import yaml
 
-from annet import tabparser
-from annet.vendors import registry_connector
+from annet.vendors import registry_connector, tabparser
 
 from .. import get_test_data, get_test_data_list
 

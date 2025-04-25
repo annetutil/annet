@@ -1,5 +1,5 @@
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.annlib.tabparser import OptixtransFormatter
+from annet.vendors.tabparser import OptixtransFormatter
 from annet.vendors.registry import registry
 
 from .huawei import HuaweiVendor

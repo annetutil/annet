@@ -17,7 +17,7 @@ from .rbparser import platform
 from .rbparser.ordering import compile_ordering_text
 from .rulebook.common import call_diff_logic
 from .rulebook.common import default as common_default
-from .tabparser import CommonFormatter
+from annet.vendors.tabparser import CommonFormatter
 from .types import Diff, Op
 from ..vendors import registry_connector
 
