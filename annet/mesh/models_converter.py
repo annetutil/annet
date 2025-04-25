@@ -17,7 +17,7 @@ LocalDTO = Union[DirectPeerDTO, IndirectPeerDTO, VirtualLocalDTO]
 
 @dataclass
 class InterfaceChanges:
-    addr: str
+    addr: Optional[str] = None
     lag: Optional[int] = None
     lag_links_min: Optional[int] = None
     svi: Optional[int] = None
