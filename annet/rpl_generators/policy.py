@@ -6,7 +6,7 @@ from annet.generators import PartialGenerator
 from annet.rpl import (
     CommunityActionValue,
     ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator, SingleCondition, SingleAction, ActionType,
-    MatchField,
+    MatchField, PrefixMatchValue,
 )
 from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, ThenField
 from annet.rpl_generators.entities import (
@@ -869,6 +869,20 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         else:
             raise NotImplementedError(f"Operator {condition.operator} is not supported for {condition.field} on Cisco IOS XR")
 
+    def _iosxr_match_prefix_lists(
+            self,
+            condition: SingleCondition[PrefixMatchValue],
+            name_generator: PrefixListNameGenerator
+    ) -> Iterator[Sequence[str]]:
+        matches = []
+        for name in condition.value.names:
+            plist = name_generator.get_prefix(name, condition.value)
+            matches.append(("destination in", plist.name))
+        if len(matches) == 1:
+            yield matches[0]
+        else:
+            yield self._iosxr_or_matches([matches]),
+
     def _iosxr_match_local_pref(self, condition: SingleCondition) -> Iterator[Sequence[str]]:
         if condition.operator is ConditionOperator.EQ:
             yield "local-preference", "eq", str(condition.value)
@@ -932,14 +946,10 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             yield from self._iosxr_match_rd(condition, rd_filters)
             return
         elif condition.field == MatchField.ip_prefix:
-            for name in condition.value.names:
-                plist = name_generator.get_prefix(name, condition.value)
-                yield "destination in", plist.name
+            yield from self._iosxr_match_prefix_lists(condition, name_generator)
             return
         elif condition.field == MatchField.ipv6_prefix:
-            for name in condition.value.names:
-                plist = name_generator.get_prefix(name, condition.value)
-                yield "destination in", plist.name
+            yield from self._iosxr_match_prefix_lists(condition, name_generator)
             return
 
         if condition.operator is not ConditionOperator.EQ:
