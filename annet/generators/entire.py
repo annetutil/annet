@@ -3,19 +3,10 @@ from __future__ import annotations
 import pkgutil
 import re
 import types
-from typing import (
-    FrozenSet,
-    Iterable,
-    List,
-    Optional,
-    Set,
-    Union,
-)
+from typing import FrozenSet, Iterable, List, Optional, Set, Union
 
-from annet.lib import (
-    flatten,
-    mako_render,
-)
+from annet.lib import flatten, mako_render
+
 from .base import BaseGenerator, _filter_str
 from .exceptions import NotSupportedDevice
 
@@ -39,8 +30,7 @@ class Entire(BaseGenerator):
     def run(self, device) -> Union[None, str, Iterable[Union[str, tuple]]]:
         raise NotImplementedError
 
-    def reload(self, device) -> Optional[
-        str]:  # pylint: disable=unused-argument
+    def reload(self, device) -> Optional[str]:  # pylint: disable=unused-argument
         return
 
     def get_reload_cmds(self, device) -> str:

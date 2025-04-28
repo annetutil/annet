@@ -1,27 +1,19 @@
-from __future__ import annotations
-
 import time
-from typing import (
-    Optional,
-    Union,
-)
+from typing import Optional, Union
 
 from annet import tracing
 from annet.tracing import tracing_connector
-from annet.types import (
-    GeneratorPartialRunArgs,
-    GeneratorPerf,
-)
-from .entire import Entire
-from .partial import PartialGenerator
+from annet.types import GeneratorPartialRunArgs, GeneratorPerf
+
+from .base import BaseGenerator
 
 
 class GeneratorPerfMesurer:
     def __init__(
-            self,
-            gen: Union[PartialGenerator, Entire],
-            run_args: Optional[GeneratorPartialRunArgs] = None,
-            trace_min_duration: tracing.MinDurationT = None
+        self,
+        gen: BaseGenerator,
+        run_args: Optional[GeneratorPartialRunArgs] = None,
+        trace_min_duration: tracing.MinDurationT = None
     ):
         self._gen = gen
         self._run_args = run_args
@@ -44,8 +36,7 @@ class GeneratorPerfMesurer:
         self._span = self._span_ctx.__enter__()  # pylint: disable=unnecessary-dunder-call
 
         if self._span:
-            self._span.set_attributes(
-                {"generator.class": self._gen.__class__.__name__})
+            self._span.set_attributes({"generator.class": self._gen.__class__.__name__})
             if self._run_args:
                 tracing_connector.get().set_device_attributes(
                     self._span, self._run_args.device,
