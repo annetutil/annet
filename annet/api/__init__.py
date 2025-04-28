@@ -140,7 +140,7 @@ def _read_device_config(path, hw):
     score = 1
     vendor_registry = registry_connector.get()
 
-    with open(path) as cfgdump_file:
+    with open(path.split(",")[0]) as cfgdump_file:
         text = cfgdump_file.read()
     try:
         if not hw:
