@@ -4,12 +4,12 @@ import json
 import re
 import textwrap
 from collections import OrderedDict as odict
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Union, List
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, List
 
-from .types import Op
+from annet.annlib.types import Op
 
 if TYPE_CHECKING:
-    from .patching import PatchTree
+    from annet.annlib.patching import PatchTree
 
 
 # =====
@@ -817,24 +817,6 @@ class RosFormatter(CommonFormatter):
                     for k, v in self.cmd_paths(childs, block_cmd).items():
                         commands[k] = v
         return commands
-
-
-def make_formatter(vendor, **kwargs):
-    formatters = {
-        "juniper": JuniperFormatter,
-        "cisco": CiscoFormatter,
-        "nexus": NexusFormatter,
-        "huawei": HuaweiFormatter,
-        "optixtrans": OptixtransFormatter,
-        "arista": AristaFormatter,
-        "nokia": NokiaFormatter,
-        "routeros": RosFormatter,
-        "aruba": ArubaFormatter,
-        "pc": CommonFormatter,
-        "ribbon": RibbonFormatter,
-        "b4com": B4comFormatter,
-    }
-    return formatters[vendor](**kwargs)
 
 
 # ====

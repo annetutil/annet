@@ -1,11 +1,11 @@
 import pytest as pytest
 from annet import rulebook
-from annet.annlib.rbparser.platform import VENDOR_REVERSES
 
 from tests import make_hw_stub
+from annet.vendors import registry
 
 
-@pytest.fixture(params=VENDOR_REVERSES.keys())
+@pytest.fixture(params=list(registry))
 def vendor(request):
     return request.param
 

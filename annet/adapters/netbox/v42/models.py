@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from annet.adapters.netbox.common.models import InterfaceType, IpFamily, Label, Prefix, Entity
 from annet.adapters.netbox.v41.models import InterfaceV41, IpAddressV41, NetboxDeviceV41
+import annetbox.v42.models
 
 
 @dataclass
@@ -61,3 +62,8 @@ class NetboxDeviceV42(NetboxDeviceV41):
             connected_endpoints=[],
             mode=None,
         )
+
+
+# should be unified in case of netbox update
+Vrf = annetbox.v42.models.Vrf
+Vlan = annetbox.v42.models.Vlan

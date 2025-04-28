@@ -1,0 +1,8 @@
+- vendor: Nokia
+  before: ""
+  after: |
+    hostname "test"
+  patch: |
+    configure private
+    /configure hostname "test"
+    commit

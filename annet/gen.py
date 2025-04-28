@@ -25,11 +25,12 @@ from typing import (
 import tabulate
 from contextlog import get_logger
 
-from annet import generators, implicit, patching, tabparser, tracing
+from annet import generators, implicit, patching, tracing
+from annet.vendors import tabparser
 from annet.annlib import jsontools
 from annet.annlib.rbparser.acl import compile_acl_text
 from annet.cli_args import DeployOptions, GenOptions, ShowGenOptions
-from annet.deploy import scrub_config, get_fetcher
+from annet.deploy import get_fetcher, scrub_config
 from annet.filtering import Filterer
 from annet.generators import (
     BaseGenerator,
@@ -40,12 +41,12 @@ from annet.generators import (
     PartialGenerator,
     RefGenerator,
 )
-from annet.lib import merge_dicts, percentile, do_async
+from annet.lib import do_async, merge_dicts, percentile
 from annet.output import output_driver_connector
-from annet.parallel import Parallel
-from annet.storage import Device, Storage, storage_connector
+from annet.storage import Device, Storage
 from annet.tracing import tracing_connector
 from annet.types import OldNewResult
+from annet.vendors import registry_connector
 
 
 # Вывод всех генераторов вместе.
@@ -162,7 +163,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
         if ctx.config != "empty":
             old = tabparser.parse_to_tree(
                 text=text,
-                splitter=tabparser.make_formatter(device.hw).split,
+                splitter=registry_connector.get().match(device.hw).make_formatter().split,
             )
         if not old:
             res = generators.run_partial_initial(device)
@@ -638,7 +639,7 @@ def _existing_cfg_file_name(config_dir: str, device) -> Optional[str]:
 
 
 def format_config_blocks(config, hw, indent, _level=0):
-    formatter = tabparser.make_formatter(hw, indent=indent)
+    formatter = registry_connector.get().match(hw).make_formatter(indent=indent)
     return formatter.join(config)
 
 

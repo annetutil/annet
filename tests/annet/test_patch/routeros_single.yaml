@@ -1,0 +1,8 @@
+- vendor: RouterOS
+  before: ""
+  after: |
+    system
+      hostname "test"
+  patch: |
+    /system
+    hostname "test"

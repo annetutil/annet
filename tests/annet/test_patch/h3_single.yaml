@@ -1,0 +1,8 @@
+- vendor: h3c
+  before: ""
+  after: |
+    hostname "test"
+  patch: |
+    system-view
+    hostname "test"
+    save force

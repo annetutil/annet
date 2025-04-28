@@ -5,8 +5,9 @@ from ipaddress import ip_interface, IPv6Interface
 from typing import List, Optional, Any, Dict, Sequence, TypeVar, Generic
 
 from annet.annlib.netdev.views.dump import DumpableView
-from annet.annlib.netdev.views.hardware import HardwareView, lag_name, svi_name
+from annet.annlib.netdev.views.hardware import HardwareView, lag_name
 from annet.storage import Storage
+from annet.vendors import registry_connector
 
 
 @dataclass
@@ -17,6 +18,11 @@ class Entity(DumpableView):
     @property
     def _dump__list_key(self):
         return self.name
+
+
+@dataclass
+class EntityWithSlug(Entity):
+    slug: str
 
 
 @dataclass
@@ -82,7 +88,7 @@ class IpAddress(DumpableView, Generic[_PrefixT]):
     family: IpFamily
     address: str
     status: Label
-    tags: List[Entity]
+    tags: List[EntityWithSlug]
     created: datetime
     last_updated: datetime
     prefix: Optional[_PrefixT] = None
@@ -135,12 +141,14 @@ class Interface(Entity, Generic[_IpAddressT]):
     mode: Optional[InterfaceMode]
     untagged_vlan: Optional[InterfaceVlan]
     tagged_vlans: Optional[List[InterfaceVlan]]
+    tags: List[EntityWithSlug] = field(default_factory=list)
     display: str = ""
     ip_addresses: List[_IpAddressT] = field(default_factory=list)
     vrf: Optional[Entity] = None
     mtu: int | None = None
     lag: Entity | None = None
     lag_min_links: int | None = None
+    speed: int | None = None
 
     def add_addr(self, address_mask: str, vrf: str | None) -> None:
         for existing_addr in self.ip_addresses:
@@ -186,10 +194,11 @@ class NetboxDevice(Entity, Generic[_InterfaceT]):
     primary_ip: Optional[DeviceIp]
     primary_ip4: Optional[DeviceIp]
     primary_ip6: Optional[DeviceIp]
-    tags: List[Entity]
+    tags: List[EntityWithSlug]
     custom_fields: Dict[str, Any]
     created: datetime
     last_updated: datetime
+    cluster: Optional[Entity]
 
     fqdn: str
     hostname: str
@@ -251,7 +260,7 @@ class NetboxDevice(Entity, Generic[_InterfaceT]):
         return lag_interface
 
     def _svi_name(self, svi: int) -> str:
-        return svi_name(self.hw, svi)
+        return registry_connector.get().match(self.hw).svi_name(svi)
 
     def add_svi(self, svi: int) -> _InterfaceT:
         name = self._svi_name(svi)

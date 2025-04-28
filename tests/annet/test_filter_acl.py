@@ -1,7 +1,10 @@
 import textwrap
+import re
 
-from annet.annlib import tabparser
+from annet.annlib import lib
+from annet.vendors import tabparser
 import annet.annlib.filter_acl
+from annet.vendors import registry_connector
 
 
 def test_filter_diff():
@@ -20,7 +23,7 @@ def test_filter_diff():
         local-aaa-user password policy administrator
     """).strip()
 
-    fmtr = tabparser.make_formatter(vendor)
+    fmtr = registry_connector.get()[vendor].make_formatter()
     acl = annet.annlib.filter_acl.make_acl("rsa ~\n  foo *", vendor)
 
     assert annet.annlib.filter_acl.filter_diff(acl, fmtr, diff) == textwrap.dedent("""

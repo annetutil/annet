@@ -7,24 +7,15 @@ import os
 import re
 import textwrap
 from collections import OrderedDict as odict
-from typing import (
-    FrozenSet,
-    Iterable,
-    List,
-    Optional,
-    Union,
-)
+from typing import FrozenSet, Iterable, List, Optional, Union
 
-from annet.annlib.rbparser.acl import compile_acl_text
 from contextlog import get_logger
 
-from annet.storage import Device
-
-from annet import patching, tabparser, tracing
+from annet import patching, tracing
+from annet.annlib.rbparser.acl import compile_acl_text
 from annet.cli_args import GenSelectOptions, ShowGeneratorsOptions
-from annet.lib import (
-    get_context,
-)
+from annet.lib import get_context
+from annet.storage import Device
 from annet.tracing import tracing_connector
 from annet.types import (
     GeneratorEntireResult,
@@ -33,18 +24,19 @@ from annet.types import (
     GeneratorPartialRunArgs,
     GeneratorResult,
 )
-from .base import (
-    BaseGenerator,
-    TextGenerator as TextGenerator,
-    ParamsList as ParamsList,
-)
-from .exceptions import NotSupportedDevice, GeneratorError
+from annet.vendors import registry_connector, tabparser
+
+from .base import BaseGenerator
+from .base import ParamsList as ParamsList
+from .base import TextGenerator as TextGenerator
+from .entire import Entire
+from .exceptions import GeneratorError, NotSupportedDevice
 from .jsonfragment import JSONFragment
 from .partial import PartialGenerator
-from .entire import Entire
-from .ref import RefGenerator
 from .perf import GeneratorPerfMesurer
+from .ref import RefGenerator
 from .result import RunGeneratorResult
+
 
 # =====
 DISABLED_TAG = "disable"
@@ -197,10 +189,11 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
                 raise
             except Exception as err:
                 filename, lineno = gen.get_running_line()
-                logger.exception("Generator error in file '%s:%i'", filename, lineno)
+                logger.error("Generator error in file '%s:%i'", filename, lineno)
                 raise GeneratorError(f"{gen} on {device}") from err
 
-            fmtr = tabparser.make_formatter(device.hw)
+            fmtr = registry_connector.get().match(device.hw).make_formatter()
+
             try:
                 config = tabparser.parse_to_tree(text=output, splitter=fmtr.split)
             except tabparser.ParserError as err:

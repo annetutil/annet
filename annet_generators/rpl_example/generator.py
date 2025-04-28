@@ -30,6 +30,9 @@ class CommunityGenerator(CommunityListGenerator):
 
 
 class PolicyGenerator(RoutingPolicyGenerator):
+    def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
+        return PREFIX_LISTS
+
     def get_policies(self, device: Any) -> list[RoutingPolicy]:
         return get_policies(
             routemap=routemap,

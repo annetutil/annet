@@ -25,7 +25,6 @@ import annet.deploy_ui
 import annet.lib
 from annet.annlib import jsontools
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.annlib.rbparser.platform import VENDOR_REVERSES
 from annet.annlib.types import GeneratorType
 from contextlog import get_logger
 
@@ -34,7 +33,8 @@ from annet import cli_args
 from annet import diff as ann_diff
 from annet import filtering
 from annet import gen as ann_gen
-from annet import patching, rulebook, tabparser, tracing
+from annet import patching, rulebook, tracing
+from annet.vendors import tabparser
 from annet.diff import file_differ_connector
 from annet.rulebook import deploying
 from annet.filtering import Filterer
@@ -48,6 +48,7 @@ from annet.parallel import Parallel, TaskResult
 from annet.reference import RefTracker
 from annet.storage import Device, get_storage
 from annet.types import Diff, ExitCode, OldNewResult, Op, PCDiff, PCDiffFile
+from annet.vendors import registry_connector
 
 DEFAULT_INDENT = "  "
 
@@ -138,16 +139,19 @@ def _read_device_config(path, hw):
     _logger = get_logger()
     _logger.debug("Reading %r ...", path)
     score = 1
+    vendor_registry = registry_connector.get()
 
     with open(path) as cfgdump_file:
         text = cfgdump_file.read()
     try:
         if not hw:
             hw, score = guess_hw(text)
+
         config = tabparser.parse_to_tree(
             text=text,
-            splitter=tabparser.make_formatter(hw).split,
+            splitter=vendor_registry.match(hw).make_formatter().split,
         )
+
         return config, hw, score
     except tabparser.ParserError:
         _logger.exception("Parser error: %r", path)
@@ -156,7 +160,7 @@ def _read_device_config(path, hw):
 
 # =====
 def _format_patch_blocks(patch_tree, hw, indent):
-    formatter = tabparser.make_formatter(hw, indent=indent)
+    formatter = registry_connector.get().match(hw).make_formatter(indent=indent)
     return formatter.patch(patch_tree)
 
 
@@ -395,9 +399,12 @@ class CliDeployerJob(DeployerJob):
         (diff_obj, patch_tree) = _diff_and_patch(device, old, new, acl_rules,
                                                  res.filter_acl_rules, self.add_comments,
                                                  do_commit=not self.args.dont_commit)
-        cmds = tabparser.make_formatter(device.hw, indent="").cmd_paths(patch_tree)
+
+        formatter = registry_connector.get().match(device.hw).make_formatter(indent="")
+        cmds = formatter.cmd_paths(patch_tree)
         if not cmds:
             return
+
         self._has_diff = True
         self.diffs[device] = diff_obj
         self.cmd_lines.extend(["= %s " % device.hostname, ""])
@@ -550,7 +557,7 @@ class Deployer:
                 dest_name = "= %s" % ", ".join([dev.hostname for dev in devices])
                 diff_lines.extend([dest_name, ""])
 
-            for line in tabparser.make_formatter(devices[0].hw).diff(diff_obj):
+            for line in registry_connector.get().match(devices[0].hw).make_formatter().diff(diff_obj):
                 diff_lines.append(line)
             diff_lines.append("")
         return diff_lines
@@ -786,14 +793,17 @@ def guess_hw(config_text: str):
     текста конфига и annet/rulebook/texts/*.rul"""
     scores = {}
     hw_provider = hardware_connector.get()
-    for vendor in VENDOR_REVERSES:
+    vendor_registry = registry_connector.get()
+    for vendor in vendor_registry:
         hw = hw_provider.vendor_to_hw(vendor)
-        fmtr = tabparser.make_formatter(hw)
         rb = rulebook.get_rulebook(hw)
+        fmtr = vendor_registry[vendor].make_formatter()
+
         try:
             config = tabparser.parse_to_tree(config_text, fmtr.split)
         except Exception:
             continue
+
         pre = patching.make_pre(patching.make_diff({}, config, rb, []))
         metric = _count_pre_score(pre)
         scores[metric] = hw
