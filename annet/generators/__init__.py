@@ -313,17 +313,20 @@ def _run_entire_generator(gen: "Entire", device: "Device") -> Optional[Generator
 
         logger.info("Generating ENTIRE ...")
 
-        output = gen(device)
+        gen_output = gen(device)
+        gen_reload = gen.get_reload_cmds(device)
+        gen_is_safe = gen.is_safe(device)
+        gen_prio = gen.prio
 
     return GeneratorEntireResult(
         name=gen.__class__.__name__,
         tags=gen.TAGS,
         path=path,
-        output=output,
-        reload=gen.get_reload_cmds(device),
-        prio=gen.prio,
+        output=gen_output,
+        reload=gen_reload,
+        prio=gen_prio,
         perf=pm.last_result,
-        is_safe=gen.is_safe(device),
+        is_safe=gen_is_safe,
     )
 
 
@@ -363,6 +366,7 @@ def _run_json_fragment_generator(
 
         config = gen(device)
         reload_cmds = gen.get_reload_cmds(device)
+
     return GeneratorJSONFragmentResult(
         name=gen.__class__.__name__,
         tags=gen.TAGS,
