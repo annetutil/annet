@@ -31,7 +31,8 @@ from annet import cli_args
 from annet import diff as ann_diff
 from annet import filtering
 from annet import gen as ann_gen
-from annet import patching, rulebook, tabparser, tracing
+from annet import patching, rulebook, tracing
+from annet.vendors import tabparser
 from annet.annlib import jsontools
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.types import GeneratorType

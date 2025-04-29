@@ -3,7 +3,7 @@ from typing import ClassVar
 
 from annet.annlib.command import CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.annlib.tabparser import CommonFormatter
+from annet.vendors.tabparser import CommonFormatter
 
 
 class AbstractVendor(abc.ABC):

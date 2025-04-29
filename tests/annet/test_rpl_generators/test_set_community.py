@@ -1,6 +1,6 @@
 from typing import Any
 from unittest.mock import Mock
-from annet.annlib.tabparser import parse_to_tree
+from annet.vendors.tabparser import parse_to_tree
 from annet.rpl_generators import (
     IpPrefixList, CumulusPolicyGenerator, RoutingPolicyGenerator, CommunityList, CommunityType
 )

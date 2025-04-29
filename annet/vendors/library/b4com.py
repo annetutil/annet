@@ -1,6 +1,6 @@
 from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.annlib.tabparser import B4comFormatter
+from annet.vendors.tabparser import B4comFormatter
 from annet.vendors.base import AbstractVendor
 from annet.vendors.registry import registry
 

@@ -2,7 +2,7 @@ import enum
 from operator import itemgetter
 
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.annlib.tabparser import CommonFormatter
+from annet.vendors.tabparser import CommonFormatter
 
 from .base import AbstractVendor
 

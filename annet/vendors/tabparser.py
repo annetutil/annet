@@ -4,12 +4,12 @@ import json
 import re
 import textwrap
 from collections import OrderedDict as odict
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Union, List
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, List
 
-from .types import Op
+from annet.annlib.types import Op
 
 if TYPE_CHECKING:
-    from .patching import PatchTree
+    from annet.annlib.patching import PatchTree
 
 
 # =====

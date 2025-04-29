@@ -2,9 +2,9 @@ from collections import OrderedDict as odict
 
 import pytest
 
-from annet import implicit
-from annet.annlib import tabparser
-from annet.vendors import registry_connector
+from annet import implicit, patching
+from annet.annlib import lib
+from annet.vendors import tabparser, registry_connector
 
 from .. import make_hw_stub
 

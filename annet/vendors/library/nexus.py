@@ -1,6 +1,6 @@
 from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.annlib.tabparser import NexusFormatter
+from annet.vendors.tabparser import NexusFormatter
 from annet.vendors.base import AbstractVendor
 from annet.vendors.registry import registry
 

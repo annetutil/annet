@@ -11,7 +11,7 @@ from typing import FrozenSet, Iterable, List, Optional, Union
 
 from contextlog import get_logger
 
-from annet import patching, tabparser, tracing
+from annet import patching, tracing
 from annet.annlib.rbparser.acl import compile_acl_text
 from annet.cli_args import GenSelectOptions, ShowGeneratorsOptions
 from annet.lib import get_context
@@ -24,7 +24,7 @@ from annet.types import (
     GeneratorPartialRunArgs,
     GeneratorResult,
 )
-from annet.vendors import registry_connector
+from annet.vendors import registry_connector, tabparser
 
 from .base import BaseGenerator
 from .base import ParamsList as ParamsList
