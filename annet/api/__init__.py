@@ -6,9 +6,10 @@ import sys
 import time
 import warnings
 from collections import OrderedDict as odict
-from itertools import groupby, chain
+from itertools import chain, groupby
 from operator import itemgetter
 from typing import (
+    Any,
     Dict,
     Generator,
     Iterable,
@@ -16,39 +17,37 @@ from typing import (
     Mapping,
     Set,
     Tuple,
-    Union, cast, Any,
+    Union,
+    cast,
 )
 
 import colorama
+from contextlog import get_logger
+
 import annet.deploy
 import annet.deploy_ui
 import annet.lib
-from annet.annlib import jsontools
-from annet.annlib.netdev.views.hardware import HardwareView
-from annet.annlib.types import GeneratorType
-from contextlog import get_logger
-
-from annet.deploy import Fetcher, DeployDriver
 from annet import cli_args
 from annet import diff as ann_diff
 from annet import filtering
 from annet import gen as ann_gen
 from annet import patching, rulebook, tracing
 from annet.vendors import tabparser
+from annet.annlib import jsontools
+from annet.annlib.netdev.views.hardware import HardwareView
+from annet.annlib.types import GeneratorType
+from annet.deploy import DeployDriver, Fetcher
 from annet.diff import file_differ_connector
-from annet.rulebook import deploying
 from annet.filtering import Filterer
 from annet.hardware import hardware_connector
-from annet.output import (
-    format_file_diff,
-    output_driver_connector,
-    print_err_label,
-)
+from annet.output import format_file_diff, output_driver_connector, print_err_label
 from annet.parallel import Parallel, TaskResult
 from annet.reference import RefTracker
+from annet.rulebook import deploying
 from annet.storage import Device, get_storage
-from annet.types import Diff, ExitCode, OldNewResult, Op, PCDiff, PCDiffFile
+from annet.types import Diff, ExitCode, OldNewResult, Op, PCDiff
 from annet.vendors import registry_connector
+
 
 DEFAULT_INDENT = "  "
 
@@ -97,21 +96,45 @@ def _read_old_new_diff_patch(old: Dict[str, Dict], new: Dict[str, Dict], hw: Har
     return rb, diff_obj, pre, patchtree
 
 
-def _read_old_new_hw(old_path: str, new_path: str, args: cli_args.FileInputOptions):
+def _read_old_new_configs(old_path, new_path):
     _logger = get_logger()
+    with open(old_path) as f:
+        _logger.debug("Reading %r ...", old_path)
+        old_config = f.read()
+
+    with open(new_path) as f:
+        _logger.debug("Reading %r ...", new_path)
+        new_config = f.read()
+
+    return old_config, new_config
+
+
+def _read_old_new_hw(old_path: str, old_config: str, new_path: str, new_config: str, args: cli_args.FileInputOptions):
+    _logger = get_logger()
+
     hw = args.hw
     if isinstance(args.hw, str):
         hw = HardwareView(args.hw, "")
 
-    old, old_hw, old_score = _read_device_config(old_path, hw)
-    new, new_hw, new_score = _read_device_config(new_path, hw)
+    try:
+        old, old_hw, old_score = _parse_device_config(old_config, hw)
+    except tabparser.ParserError:
+        _logger.exception("Parser error: %r", old_path)
+        raise
+
+    try:
+        new, new_hw, new_score = _parse_device_config(new_config, hw)
+    except tabparser.ParserError:
+        _logger.exception("Parser error: %r", new_path)
+        raise
+
     hw = new_hw
     if old_score > new_score:
         hw = old_hw
     if old_hw != new_hw:
-        _logger.debug("Old and new detected hw differs, assume %r", hw)
-    dest_name = os.path.basename(new_path)
-    return dest_name, old, new, hw
+        _logger.warning("Old and new detected hw differs, assume %r", hw)
+
+    return old, new, hw
 
 
 @tracing.function
@@ -135,27 +158,19 @@ def _read_old_new_cfgdumps(args: cli_args.FileInputOptions):
         yield (old_path_name, new_path_name)
 
 
-def _read_device_config(path, hw):
-    _logger = get_logger()
-    _logger.debug("Reading %r ...", path)
+def _parse_device_config(text, hw):
     score = 1
     vendor_registry = registry_connector.get()
 
-    with open(path) as cfgdump_file:
-        text = cfgdump_file.read()
-    try:
-        if not hw:
-            hw, score = guess_hw(text)
+    if not hw:
+        hw, score = guess_hw(text)
 
-        config = tabparser.parse_to_tree(
-            text=text,
-            splitter=vendor_registry.match(hw).make_formatter().split,
-        )
+    config = tabparser.parse_to_tree(
+        text=text,
+        splitter=vendor_registry.match(hw).make_formatter().split,
+    )
 
-        return config, hw, score
-    except tabparser.ParserError:
-        _logger.exception("Parser error: %r", path)
-        raise
+    return config, hw, score
 
 
 # =====
@@ -757,12 +772,15 @@ def file_diff_worker(
             if diff_text:
                 yield diff_file.label, diff_text, False
     else:
-        dest_name, old, new, hw = _read_old_new_hw(old_path, new_path, args)
+        old_config, new_config = _read_old_new_configs(old_path, new_path)
+        if old_config == new_config:
+            return
+
+        old, new, hw = _read_old_new_hw(old_path, old_config, new_path, new_config, args)
         _, __, pre, ___ = _read_old_new_diff_patch(old, new, hw, add_comments=False)
-        diff_lines = ann_diff.gen_pre_as_diff(pre, args.show_rules, args.indent, args.no_color)
-        diff_text = "".join(diff_lines)
-        if diff_text:
-            yield dest_name, diff_text, False
+
+        if diff_lines := ann_diff.gen_pre_as_diff(pre, args.show_rules, args.indent, args.no_color):
+            yield os.path.basename(new_path), "".join(diff_lines), False
 
 
 @tracing.function
@@ -774,18 +792,23 @@ def file_patch(args: cli_args.FilePatchOptions):
 
 
 def file_patch_worker(old_new: Tuple[str, str], args: cli_args.FileDiffOptions) -> Generator[
-    Tuple[str, str, bool], None, None]:
+    Tuple[str, str, bool], None, None
+]:
     old_path, new_path = old_new
     if os.path.isdir(old_path) and os.path.isdir(new_path):
         for relative_cfg_path, cfg_text in ann_gen.load_pc_config(new_path).items():
             label = os.path.join(os.path.basename(new_path), relative_cfg_path)
             yield label, cfg_text, False
     else:
-        dest_name, old, new, hw = _read_old_new_hw(old_path, new_path, args)
+        old_config, new_config = _read_old_new_configs(old_path, new_path)
+        if old_config == new_config:
+            return
+
+        old, new, hw = _read_old_new_hw(old_path, old_config, new_path, new_config, args)
         _, __, ___, patch_tree = _read_old_new_diff_patch(old, new, hw, args.add_comments)
         patch_text = _format_patch_blocks(patch_tree, hw, args.indent)
         if patch_text:
-            yield dest_name, patch_text, False
+            yield os.path.basename(new_path), patch_text, False
 
 
 def guess_hw(config_text: str):

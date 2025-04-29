@@ -157,7 +157,7 @@ def run_partial_generators(
 
 
 @tracing.function(name="run_partial_generator")
-def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRunArgs) -> Optional[GeneratorPartialResult]:
+def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRunArgs) -> GeneratorPartialResult | None:
     logger = get_logger(generator=_make_generator_ctx(gen))
     device = run_args.device
     output = ""
@@ -207,7 +207,9 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
 
     if run_args.use_acl:
         try:
-            with tracing_connector.get().start_as_current_span("apply_acl", tracer_name=__name__, min_duration="0.01") as acl_span:
+            with tracing_connector.get().start_as_current_span(
+                "apply_acl", tracer_name=__name__, min_duration="0.01"
+            ) as acl_span:
                 tracing_connector.get().set_device_attributes(acl_span, run_args.device)
                 config = patching.apply_acl(
                     config=config,
@@ -265,8 +267,8 @@ def check_entire_generators_required_packages(gens, device_packages: FrozenSet[s
 
 @tracing.function
 def run_file_generators(
-        gens: Iterable[Union["JSONFragment", "Entire"]],
-        device: "Device",
+    gens: Iterable[Union["JSONFragment", "Entire"]],
+    device: "Device",
 ) -> RunGeneratorResult:
     """Run generators that generate files or file parts."""
     ret = RunGeneratorResult()
@@ -295,32 +297,36 @@ def run_file_generators(
 @tracing.function(min_duration="0.5")
 def _run_entire_generator(gen: "Entire", device: "Device") -> Optional[GeneratorResult]:
     logger = get_logger(generator=_make_generator_ctx(gen))
-    if not gen.supports_device(device):
-        logger.info("generator %s is not supported for device %s", gen, device.hostname)
-        return
-
     span = tracing_connector.get().get_current_span()
     if span:
         tracing_connector.get().set_device_attributes(span, device)
         tracing_connector.get().set_dimensions_attributes(span, gen, device)
 
-    path = gen.path(device)
-    if not path:
-        raise RuntimeError("entire generator should return non-empty path")
-
-    logger.info("Generating ENTIRE ...")
     with GeneratorPerfMesurer(gen, trace_min_duration="0.5") as pm:
-        output = gen(device)
+        if not gen.supports_device(device):
+            logger.debug("generator %s is not supported for device %s", gen, device.hostname)
+            return
+
+        path = gen.path(device)
+        if not path:
+            raise RuntimeError("entire generator should return non-empty path")
+
+        logger.info("Generating ENTIRE ...")
+
+        gen_output = gen(device)
+        gen_reload = gen.get_reload_cmds(device)
+        gen_is_safe = gen.is_safe(device)
+        gen_prio = gen.prio
 
     return GeneratorEntireResult(
         name=gen.__class__.__name__,
         tags=gen.TAGS,
         path=path,
-        output=output,
-        reload=gen.get_reload_cmds(device),
-        prio=gen.prio,
+        output=gen_output,
+        reload=gen_reload,
+        prio=gen_prio,
         perf=pm.last_result,
-        is_safe=gen.is_safe(device),
+        is_safe=gen_is_safe,
     )
 
 
@@ -329,35 +335,38 @@ def _make_generator_ctx(gen):
 
 
 def _run_json_fragment_generator(
-        gen: "JSONFragment",
-        device: "Device",
+    gen: "JSONFragment",
+    device: "Device",
 ) -> Optional[GeneratorResult]:
     logger = get_logger(generator=_make_generator_ctx(gen))
-    if not gen.supports_device(device):
-        logger.info("generator %s is not supported for device %s", gen, device.hostname)
-        return
 
-    path = gen.path(device)
-    if not path:
-        raise RuntimeError("json fragment generator should return non-empty path")
-
-    acl_item_or_list_of_items = gen.acl(device)
-    safe_acl_item_or_list_of_items = gen.acl_safe(device)
-    if not acl_item_or_list_of_items:
-        raise RuntimeError("json fragment generator should return non-empty acl")
-    if isinstance(acl_item_or_list_of_items, list):
-        acl = acl_item_or_list_of_items
-    else:
-        acl = [acl_item_or_list_of_items]
-    if isinstance(safe_acl_item_or_list_of_items, list):
-        acl_safe = safe_acl_item_or_list_of_items
-    else:
-        acl_safe = [safe_acl_item_or_list_of_items]
-
-    logger.info("Generating JSON_FRAGMENT ...")
     with GeneratorPerfMesurer(gen) as pm:
+        if not gen.supports_device(device):
+            logger.info("generator %s is not supported for device %s", gen, device.hostname)
+            return
+
+        path = gen.path(device)
+        if not path:
+            raise RuntimeError("json fragment generator should return non-empty path")
+
+        acl_item_or_list_of_items = gen.acl(device)
+        safe_acl_item_or_list_of_items = gen.acl_safe(device)
+        if not acl_item_or_list_of_items:
+            raise RuntimeError("json fragment generator should return non-empty acl")
+        if isinstance(acl_item_or_list_of_items, list):
+            acl = acl_item_or_list_of_items
+        else:
+            acl = [acl_item_or_list_of_items]
+        if isinstance(safe_acl_item_or_list_of_items, list):
+            acl_safe = safe_acl_item_or_list_of_items
+        else:
+            acl_safe = [safe_acl_item_or_list_of_items]
+
+        logger.info("Generating JSON_FRAGMENT ...")
+
         config = gen(device)
-    reload_cmds = gen.get_reload_cmds(device)
+        reload_cmds = gen.get_reload_cmds(device)
+
     return GeneratorJSONFragmentResult(
         name=gen.__class__.__name__,
         tags=gen.TAGS,
@@ -407,7 +416,8 @@ def _load_gen_module(module_path: str):
     except ModuleNotFoundError as e:
         try:  # maybe it's a path to module
             module_abs_path = os.path.abspath(module_path)
-            module = importlib.machinery.SourceFileLoader(re.sub(r"[./]", "_", module_abs_path).strip("_"), module_abs_path).load_module()
+            module = importlib.machinery.SourceFileLoader(re.sub(r"[./]", "_", module_abs_path).strip("_"),
+                                                          module_abs_path).load_module()
         except ModuleNotFoundError:
             raise e
     return module
