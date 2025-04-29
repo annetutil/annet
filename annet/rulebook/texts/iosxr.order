@@ -72,14 +72,31 @@ interface *
 
 interface */\S+\.\d+/
 
-route-map
+
+# all referenced in policy
+as-path-set *
+    ~
+prefix-set *
+    ~
+community-set *
+    ~
+extcommunity-set *
+    ~
+
+route-policy *
+    ~
 
 # удалять eth-trunk можно только после того, как вычистим member interfaces
 undo interface */port-channel\d+/  %order_reverse
 
-# remote as of neighbors should be assigned before peer-group, the rule is applied to neighbors, not peer-groups
+
 router bgp
-    neighbor */[\da-f\.\:]+/ remote-as
-    neighbor */[\da-f\.\:]+/ peer-group
+    bgp ~
+    neighbor-group *
+        ~
+    vrf *
+        ~
+    neighbor *
+        ~
 
 line
