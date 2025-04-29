@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Sequence, Iterable
 from typing import Any, cast, Literal
 
 from annet.generators import PartialGenerator
 from annet.rpl import (
     CommunityActionValue,
     ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator, SingleCondition, SingleAction, ActionType,
-    MatchField,
+    MatchField, PrefixMatchValue,
 )
 from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, ThenField
 from annet.rpl_generators.entities import (
@@ -14,7 +14,6 @@ from annet.rpl_generators.entities import (
     CommunityList, RDFilter, PrefixListNameGenerator, CommunityLogic, mangle_united_community_list_name,
     IpPrefixList, group_community_members, CommunityType,
 )
-
 
 HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.as_path_filter: "as-path-filter {option_value}",
@@ -57,6 +56,28 @@ ARISTA_THEN_COMMAND_MAP: dict[str, str] = {
     # unsupported: mpls_label
     # unsupported: resolution
     # unsupported: rpki_valid_state
+}
+IOSXR_MATCH_COMMAND_MAP: dict[str, str] = {
+    MatchField.as_path_filter: "as-path in {option_value}",
+    MatchField.protocol: "protocol is {option_value}",
+    # unsupported: interface
+    # unsupported: metric
+    # unsupported: large-community
+}
+IOSXR_THEN_COMMAND_MAP: dict[str, str] = {
+    ThenField.local_pref: "local-preference {option_value}",
+    ThenField.origin: "origin {option_value}",
+    ThenField.tag: "tag {option_value}",
+    ThenField.metric_type: "metric-type {option_value}",
+    # unsupported: mpls_label  # label?
+    # unsupported: resolution
+    # unsupported: rpki_valid_state
+    # unsupported: large_community
+}
+IOSXR_RESULT_MAP = {
+    ResultType.ALLOW: "done",
+    ResultType.DENY: "drop",
+    ResultType.NEXT: "pass"
 }
 
 
@@ -408,7 +429,8 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
 
         for policy in self.get_policies(device):
             for statement in policy.statements:
-                yield from self._huawei_statement(communities, rd_filters, device, policy, statement, prefix_name_generator)
+                yield from self._huawei_statement(communities, rd_filters, device, policy, statement,
+                                                  prefix_name_generator)
 
     # arista
     def acl_arista(self, device):
@@ -564,7 +586,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 else:
                     yield "set", "large-community large-community-list", community_name, "additive"
         if action.value.added:
-            yield "set", "large-community large-community-list",  *action.value.added, "additive"
+            yield "set", "large-community large-community-list", *action.value.added, "additive"
         if action.value.removed:
             yield "set large-community large-community-list", *action.value.removed, "delete"
 
@@ -764,6 +786,8 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             statement: RoutingPolicyStatement,
             prefix_name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
+        if statement.number is None:
+            raise RuntimeError(f"Statement number should not be empty on Arista (found for policy: {policy.name})")
         with self.block(
                 "route-map",
                 policy.name,
@@ -789,3 +813,314 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 yield from self._arista_statement(
                     communities, rd_filters, device, policy, statement, prefix_name_generator,
                 )
+
+    # Cisco IOS XR
+    def acl_iosxr(self, device):
+        return r"""
+        route-policy *
+            ~ %global=1
+        """
+
+    def _iosxr_match_community(
+            self,
+            community_type: Literal["community", "extcommunity rt", "extcommunity soo"],
+            community: CommunityList,
+    ) -> Iterator[Sequence[str]]:
+        if community.logic is CommunityLogic.AND:
+            yield community_type, "matches-every", community.name
+        elif community.logic is CommunityLogic.OR:
+            yield community_type, "matches-any", community.name
+        else:
+            raise ValueError(f"Unknown community logic {community.logic}")
+
+    def _iosxr_match_communities(
+            self,
+            operator: ConditionOperator,
+            community_type: Literal["community", "extcommunity rt", "extcommunity soo"],
+            community_names: list[str],
+            communities: dict[str, CommunityList],
+    ) -> Iterator[Sequence[str]]:
+        if operator == ConditionOperator.HAS_ANY:
+            yield self._iosxr_or_matches(
+                self._iosxr_match_community(community_type, communities[name])
+                for name in community_names
+            ),
+        elif operator == ConditionOperator.HAS:
+            for name in community_names:
+                yield from self._iosxr_match_community(community_type, communities[name])
+        else:
+            raise NotImplementedError(f"Operator {operator} is not supported for {community_type} on Cisco IOS XR")
+
+    def _iosxr_match_rd(
+            self,
+            condition: SingleCondition[Sequence[str]],
+            rd_filters: dict[str, RDFilter],
+    ) -> Iterator[Sequence[str]]:
+        if condition.operator == ConditionOperator.HAS_ANY:
+            if len(condition.value) == 1:
+                yield "rd", "in", condition.value[0]
+                return
+            conds = " or ".join(f"rd in {name}" for name in condition.value)
+            yield f"({conds})",
+            return
+        elif condition.operator == ConditionOperator.HAS:
+            for name in condition.value:
+                yield "rd", "in", name
+        else:
+            raise NotImplementedError(f"Operator {condition.operator} is not supported for {condition.field} on Cisco IOS XR")
+
+    def _iosxr_match_prefix_lists(
+            self,
+            condition: SingleCondition[PrefixMatchValue],
+            name_generator: PrefixListNameGenerator
+    ) -> Iterator[Sequence[str]]:
+        matches = []
+        for name in condition.value.names:
+            plist = name_generator.get_prefix(name, condition.value)
+            matches.append(("destination in", plist.name))
+        if len(matches) == 1:
+            yield matches[0]
+        else:
+            yield self._iosxr_or_matches([matches]),
+
+    def _iosxr_match_local_pref(self, condition: SingleCondition) -> Iterator[Sequence[str]]:
+        if condition.operator is ConditionOperator.EQ:
+            yield "local-preference", "eq", str(condition.value)
+        elif condition.operator is ConditionOperator.LE:
+            yield "local-preference", "le", str(condition.value)
+        elif condition.operator is ConditionOperator.GE:
+            yield "local-preference", "ge", str(condition.value)
+        elif condition.operator is ConditionOperator.BETWEEN_INCLUDED:
+            yield "local-preference", "ge", str(condition.value[0])
+            yield "local-preference", "le", str(condition.value[1])
+        else:
+            raise NotImplementedError(
+                f"Operator {condition.operator} is not supported for {condition.field} on Cisco IOS XR",
+            )
+
+    def _iosxr_match_as_path_length(self, condition: SingleCondition) -> Iterator[Sequence[str]]:
+        if condition.operator is ConditionOperator.EQ:
+            yield "as-path length", "eq", str(condition.value)
+        elif condition.operator is ConditionOperator.LE:
+            yield "as-path length", "le", str(condition.value)
+        elif condition.operator is ConditionOperator.GE:
+            yield "as-path length", "ge", str(condition.value)
+        elif condition.operator is ConditionOperator.BETWEEN_INCLUDED:
+            yield "as-path length", "ge", str(condition.value[0])
+            yield "as-path length", "le", str(condition.value[1])
+        else:
+            raise NotImplementedError(
+                f"Operator {condition.operator} is not supported for {condition.field} on Cisco IOS XR",
+            )
+
+    def _iosxr_and_matches(self, conditions: Iterable[Iterable[Sequence[str]]]) -> str:
+        return " and ".join(" ".join(c) for seq in conditions for c in seq)
+
+    def _iosxr_or_matches(self, conditions: Iterable[Iterable[Sequence[str]]]) -> str:
+        return "(" + " or ".join(" ".join(c) for seq in conditions for c in seq) + ")"
+
+    def _iosxr_match(
+            self,
+            device: Any,
+            condition: SingleCondition[Any],
+            communities: dict[str, CommunityList],
+            rd_filters: dict[str, RDFilter],
+            name_generator: PrefixListNameGenerator,
+    ) -> Iterator[Sequence[str]]:
+        if condition.field == MatchField.community:
+            yield from self._iosxr_match_communities(condition.operator, "community", condition.value, communities)
+            return
+        elif condition.field == MatchField.extcommunity_rt:
+            yield from self._iosxr_match_communities(condition.operator, "extcommunity rt", condition.value, communities)
+            return
+        elif condition.field == MatchField.extcommunity_soo:
+            yield from self._iosxr_match_communities(condition.operator, "extcommunity soo", condition.value, communities)
+            return
+        elif condition.field == MatchField.local_pref:
+            yield from self._iosxr_match_local_pref(condition)
+            return
+        elif condition.field == MatchField.as_path_length:
+            yield from self._iosxr_match_as_path_length(condition)
+            return
+        elif condition.field == MatchField.rd:
+            yield from self._iosxr_match_rd(condition, rd_filters)
+            return
+        elif condition.field == MatchField.ip_prefix:
+            yield from self._iosxr_match_prefix_lists(condition, name_generator)
+            return
+        elif condition.field == MatchField.ipv6_prefix:
+            yield from self._iosxr_match_prefix_lists(condition, name_generator)
+            return
+
+        if condition.operator is not ConditionOperator.EQ:
+            raise NotImplementedError(
+                f"`{condition.field}` with operator {condition.operator} is not supported for Cisco IOS XR",
+            )
+        if condition.field not in IOSXR_MATCH_COMMAND_MAP:
+            raise NotImplementedError(f"Match using `{condition.field}` is not supported for Cisco IOS XR")
+        yield IOSXR_MATCH_COMMAND_MAP[condition.field].format(option_value=condition.value),
+
+    def _iosxr_then_as_path(
+            self,
+            device: Any,
+            action: SingleAction[AsPathActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.set is not None:
+            raise RuntimeError("as_path.set is not supported for Cisco IOS XR")
+        if action.value.prepend:
+            for asn in action.value.prepend:
+                yield "prepend as-path", asn
+        if action.value.expand:
+            raise RuntimeError("as_path.expand is not supported for Cisco IOS XR")
+        if action.value.delete:
+            raise RuntimeError("as_path.delete is not supported for Cisco IOS XR")
+        if action.value.expand_last_as:
+            raise RuntimeError("as_path.expand_last_as is not supported for Cisco IOS XR")
+
+    def _iosxr_then_next_hop(
+            self,
+            device: Any,
+            action: SingleAction[NextHopActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.value.target == "self":
+            yield "set", "next-hop", "self"
+        elif action.value.target == "discard":
+            yield "set", "next-hop", "discard"
+        elif action.value.target == "peer":
+            pass
+        elif action.value.target == "ipv4_addr":
+            yield "set", "next-hop", action.value.addr
+        elif action.value.target == "ipv6_addr":
+            yield "set", "next-hop", action.value.addr.lower()
+        elif action.value.target == "mapped_ipv4":
+            yield "set", "next-hop", f"::ffff:{action.value.addr}"
+        else:
+            raise RuntimeError(f"Next_hop target {action.value.target} is not supported for Cisco IOS XR")
+
+    def _iosxr_then_metric(
+            self,
+            device: Any,
+            action: SingleAction[NextHopActionValue],
+    ) -> Iterator[Sequence[str]]:
+        if action.type is ActionType.ADD:
+            yield "set", f"med +{action.value}"
+        elif action.type is ActionType.REMOVE:
+            yield "set", f"med -{action.value}"
+        elif action.type is ActionType.SET:
+            yield "set", f"med {action.value}"
+        else:
+            raise NotImplementedError(f"Action type {action.type} for metric is not supported for Cisco IOS XR")
+
+    def _iosxr_then_community(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
+        added = []
+        if action.value.replaced is not None:
+            yield "delete", "community", "all"
+            added.extend(action.value.replaced)
+        added.extend(action.value.added)
+        for name in added:
+            yield "set", "community", name, "additive"
+        for community_name in action.value.removed:
+            yield "delete", "community", "in", community_name
+
+    def _iosxr_community_type_str(self, comm_type: CommunityType) -> str:
+        if comm_type is CommunityType.RT:
+            return "rt"
+        elif comm_type is CommunityType.LARGE:
+            raise ValueError("Large community is not subtype of extcommunity")
+        elif comm_type is CommunityType.BASIC:
+            raise ValueError("Basic community is not subtype of extcommunity")
+        else:
+            raise NotImplementedError(f"Community type {comm_type} is not supported on Cisco IOS XR")
+
+    def _iosxr_then_extcommunity(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[CommunityActionValue],
+    ) -> Iterator[Sequence[str]]:
+        added = []
+        if action.value.replaced is not None:
+            yield "delete", "extcommunity", "rt", "all"
+            added.extend(action.value.replaced)
+
+            added.extend(action.value.replaced)
+        for member_name in added:
+            typename = self._iosxr_community_type_str(communities[member_name].type)
+            yield "set", "extcommunity", typename, member_name, "additive"
+        for member_name in action.value.removed:
+            typename = self._iosxr_community_type_str(communities[member_name].type)
+            yield "delete", "extcommunity", typename, "in", member_name
+
+    def _iosxr_then(
+            self,
+            communities: dict[str, CommunityList],
+            device: Any,
+            action: SingleAction[Any],
+    ) -> Iterator[Sequence[str]]:
+        if action.field == ThenField.community:
+            yield from self._iosxr_then_community(communities, device, action)
+            return
+        if action.field == ThenField.extcommunity:
+            yield from self._iosxr_then_extcommunity(communities, device, action)
+            return
+        if action.field == ThenField.metric:
+            yield from self._iosxr_then_metric(device, action)
+            return
+        if action.field == ThenField.as_path:
+            yield from self._iosxr_then_as_path(device, cast(SingleAction[AsPathActionValue], action))
+            return
+        if action.field == ThenField.next_hop:
+            yield from self._iosxr_then_next_hop(device, cast(SingleAction[NextHopActionValue], action))
+            return
+        if action.type is not ActionType.SET:
+            raise NotImplementedError(f"Action type {action.type} for `{action.field}` is not supported for Cisco IOS XR")
+        if action.field not in IOSXR_THEN_COMMAND_MAP:
+            raise NotImplementedError(f"Then action using `{action.field}` is not supported for Cisco IOS XR")
+        cmd = IOSXR_THEN_COMMAND_MAP[action.field]
+        yield "set", cmd.format(option_value=action.value)
+
+    def _iosxr_statement(
+            self,
+            communities: dict[str, CommunityList],
+            rd_filters: dict[str, RDFilter],
+            device: Any,
+            policy: RoutingPolicy,
+            statement: RoutingPolicyStatement,
+            prefix_name_generator: PrefixListNameGenerator,
+    ) -> Iterator[Sequence[str]]:
+        if statement.match:
+            condition_expr = self._iosxr_and_matches(
+                self._iosxr_match(device, condition, communities, rd_filters, prefix_name_generator)
+                for condition in statement.match
+            )
+            with self.block(
+                    "if", condition_expr, "then",
+            ):
+                for action in statement.then:
+                    yield from self._iosxr_then(communities, device, action)
+                yield IOSXR_RESULT_MAP[statement.result],
+        else:
+            for action in statement.then:
+                yield from self._iosxr_then(communities, device, action)
+            yield IOSXR_RESULT_MAP[statement.result],
+
+    def run_iosxr(self, device):
+        prefix_lists = self.get_prefix_lists(device)
+        policies = self.get_policies(device)
+        prefix_name_generator = PrefixListNameGenerator(prefix_lists, policies)
+        communities = {c.name: c for c in self.get_community_lists(device)}
+        rd_filters = {f.name: f for f in self.get_rd_filters(device)}
+
+        for policy in policies:
+            with self.block(
+                    "route-policy", policy.name,
+            ):
+                for statement in policy.statements:
+                    yield from self._iosxr_statement(
+                        communities, rd_filters, device, policy, statement, prefix_name_generator,
+                    )

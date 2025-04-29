@@ -1,12 +1,9 @@
-from typing import Any, Sequence
 from ipaddress import IPv4Network
 from unittest.mock import Mock
-from annet.vendors.tabparser import parse_to_tree
-from annet.rpl_generators import ip_prefix_list, IpPrefixList, IpPrefixListMember, PrefixListFilterGenerator, CumulusPolicyGenerator, RoutingPolicyGenerator
-from annet.rpl import R, RouteMap, Route, RoutingPolicy
-from annet.vendors import registry_connector
-from .. import MockDevice
-from .helpers import scrub, huawei, arista, cumulus
+from annet.rpl_generators import ip_prefix_list, IpPrefixList, IpPrefixListMember, CommunityList, CommunityType
+from annet.rpl import R, RouteMap, Route
+
+from .helpers import scrub, huawei, arista, cumulus, generate, iosxr
 
 
 def test_ip_prefix_list():
@@ -49,15 +46,20 @@ def test_huawei_prefixlist_basic():
     routemaps = RouteMap[Mock]()
     @routemaps
     def policy(device: Mock, route: Route):
-        with route(R.match_v4("IPV4_LIST")) as rule:
+        with route(R.match_v4("IPV4_LIST"), number=1) as rule:
             rule.allow()
-        with route(R.match_v6("IPV6_LIST")) as rule:
+        with route(R.match_v6("IPV6_LIST"), number=2) as rule:
             rule.allow()
 
-    result = gen(routemaps, plists, huawei())
+    result = generate(routemaps=routemaps, prefix_lists=plists, dev=huawei())
     expected = scrub("""
 ip ip-prefix IPV4_LIST index 5 permit 10.0.0.0 8
 ip ipv6-prefix IPV6_LIST index 5 permit 2001:DB8:1234:: 64
+
+route-policy policy permit node 1
+  if-match ip-prefix IPV4_LIST
+route-policy policy permit node 2
+  if-match ipv6 address prefix-list IPV6_LIST
 """)
     assert result == expected
 
@@ -70,17 +72,21 @@ def test_arista_prefixlist_basic():
     routemaps = RouteMap[Mock]()
     @routemaps
     def policy(device: Mock, route: Route):
-        with route(R.match_v4("IPV4_LIST")) as rule:
+        with route(R.match_v4("IPV4_LIST"), number=1) as rule:
             rule.allow()
-        with route(R.match_v6("IPV6_LIST")) as rule:
+        with route(R.match_v6("IPV6_LIST"), number=2) as rule:
             rule.allow()
 
-    result = gen(routemaps, plists, arista())
+    result = generate(routemaps=routemaps, prefix_lists=plists,  dev=arista())
     expected = scrub("""
 ip prefix-list IPV4_LIST
   seq 10 permit 10.0.0.0/8
 ipv6 prefix-list IPV6_LIST
   seq 10 permit 2001:db8:1234::/64
+route-map policy permit 1
+  match ip address prefix-list IPV4_LIST
+route-map policy permit 2
+  match ipv6 address prefix-list IPV6_LIST
 """)
     assert result == expected
 
@@ -98,10 +104,17 @@ def test_cumulus_prefixlist_basic():
         with route(R.match_v6("IPV6_LIST"), name="n20", number=20) as rule:
             rule.allow()
 
-    result = gen(routemaps, plists, cumulus())
+    result = generate(routemaps=routemaps, prefix_lists=plists, dev=cumulus())
     expected = scrub("""
 ip prefix-list IPV4_LIST seq 5 permit 10.0.0.0/8
 ipv6 prefix-list IPV6_LIST seq 5 permit 2001:db8:1234::/64
+!
+route-map policy permit 10
+  match ip address prefix-list IPV4_LIST
+!
+route-map policy permit 20
+  match ipv6 address prefix-list IPV6_LIST
+!
 """)
     assert result == expected
 
@@ -114,15 +127,19 @@ def test_huawei_prefixlist_with_match_orlonger():
     routemaps = RouteMap[Mock]()
     @routemaps
     def policy(device: Mock, route: Route):
-        with route(R.match_v4("IPV4_LIST", or_longer=(8, 32))) as rule:
+        with route(R.match_v4("IPV4_LIST", or_longer=(8, 32)), number=1) as rule:
             rule.allow()
-        with route(R.match_v6("IPV6_LIST", or_longer=(64, 128))) as rule:
+        with route(R.match_v6("IPV6_LIST", or_longer=(64, 128)), number=2) as rule:
             rule.allow()
 
-    result = gen(routemaps, plists, huawei())
+    result = generate(routemaps=routemaps, prefix_lists=plists, dev=huawei())
     expected = scrub("""
 ip ip-prefix IPV4_LIST_8_32 index 5 permit 10.0.0.0 8 greater-equal 8 less-equal 32
 ip ipv6-prefix IPV6_LIST_64_128 index 5 permit 2001:DB8:1234:: 64 greater-equal 64 less-equal 128
+route-policy policy permit node 1
+  if-match ip-prefix IPV4_LIST_8_32
+route-policy policy permit node 2
+  if-match ipv6 address prefix-list IPV6_LIST_64_128
 """)
     assert result == expected
 
@@ -135,17 +152,21 @@ def test_arista_prefixlist_match_orlonger():
     routemaps = RouteMap[Mock]()
     @routemaps
     def policy(device: Mock, route: Route):
-        with route(R.match_v4("IPV4_LIST", or_longer=(8, 32))) as rule:
+        with route(R.match_v4("IPV4_LIST", or_longer=(8, 32)), number=1) as rule:
             rule.allow()
-        with route(R.match_v6("IPV6_LIST", or_longer=(64, 128))) as rule:
+        with route(R.match_v6("IPV6_LIST", or_longer=(64, 128)), number=2) as rule:
             rule.allow()
 
-    result = gen(routemaps, plists, arista())
+    result = generate(routemaps=routemaps, prefix_lists=plists, dev=arista())
     expected = scrub("""
 ip prefix-list IPV4_LIST_8_32
   seq 10 permit 10.0.0.0/8 ge 8 le 32
 ipv6 prefix-list IPV6_LIST_64_128
   seq 10 permit 2001:db8:1234::/64 ge 64 le 128
+route-map policy permit 1
+  match ip address prefix-list IPV4_LIST_8_32
+route-map policy permit 2
+  match ipv6 address prefix-list IPV6_LIST_64_128
 """)
     assert result == expected
 
@@ -163,10 +184,17 @@ def test_cumulus_prefixlist_match_orlonger():
         with route(R.match_v6("IPV6_LIST", or_longer=(64, 128)), name="n20", number=20) as rule:
             rule.allow()
 
-    result = gen(routemaps, plists, cumulus())
+    result = generate(routemaps=routemaps, prefix_lists=plists, dev=cumulus())
     expected = scrub("""
 ip prefix-list IPV4_LIST_8_32 seq 5 permit 10.0.0.0/8 ge 8 le 32
 ipv6 prefix-list IPV6_LIST_64_128 seq 5 permit 2001:db8:1234::/64 ge 64 le 128
+!
+route-map policy permit 10
+  match ip address prefix-list IPV4_LIST_8_32
+!
+route-map policy permit 20
+  match ipv6 address prefix-list IPV6_LIST_64_128
+!
 """)
     assert result == expected
 
@@ -179,21 +207,29 @@ def test_huawei_prefixlist_with_match_both():
     routemaps = RouteMap[Mock]()
     @routemaps
     def policy(device: Mock, route: Route):
-        with route(R.match_v4("IPV4_LIST")) as rule:
+        with route(R.match_v4("IPV4_LIST"), number=1) as rule:
             rule.allow()
-        with route(R.match_v6("IPV6_LIST")) as rule:
+        with route(R.match_v6("IPV6_LIST"), number=2) as rule:
             rule.allow()
-        with route(R.match_v4("IPV4_LIST", or_longer=(8, 32))) as rule:
+        with route(R.match_v4("IPV4_LIST", or_longer=(8, 32)), number=3) as rule:
             rule.allow()
-        with route(R.match_v6("IPV6_LIST", or_longer=(64, 128))) as rule:
+        with route(R.match_v6("IPV6_LIST", or_longer=(64, 128)), number=4) as rule:
             rule.allow()
 
-    result = gen(routemaps, plists, huawei())
+    result = generate(routemaps=routemaps, prefix_lists=plists, dev=huawei())
     expected = scrub("""
 ip ip-prefix IPV4_LIST index 5 permit 10.0.0.0 8
 ip ipv6-prefix IPV6_LIST index 5 permit 2001:DB8:1234:: 64
 ip ip-prefix IPV4_LIST_8_32 index 5 permit 10.0.0.0 8 greater-equal 8 less-equal 32
 ip ipv6-prefix IPV6_LIST_64_128 index 5 permit 2001:DB8:1234:: 64 greater-equal 64 less-equal 128
+route-policy policy permit node 1
+  if-match ip-prefix IPV4_LIST
+route-policy policy permit node 2
+  if-match ipv6 address prefix-list IPV6_LIST
+route-policy policy permit node 3
+  if-match ip-prefix IPV4_LIST_8_32
+route-policy policy permit node 4
+  if-match ipv6 address prefix-list IPV6_LIST_64_128
 """)
     assert result == expected
 
@@ -206,16 +242,90 @@ def test_huawei_prefixlist_embedded_orlonger():
     routemaps = RouteMap[Mock]()
     @routemaps
     def policy(device: Mock, route: Route):
-        with route(R.match_v4("IPV4_LIST")) as rule:
+        with route(R.match_v4("IPV4_LIST"), number=1) as rule:
             rule.allow()
-        with route(R.match_v6("IPV6_LIST")) as rule:
+        with route(R.match_v6("IPV6_LIST"), number=2) as rule:
             rule.allow()
 
 
-    result = gen(routemaps, plists, huawei())
+    result = generate(routemaps=routemaps, prefix_lists=plists, dev=huawei())
     expected = scrub("""
 ip ip-prefix IPV4_LIST index 5 permit 10.0.0.0 8 greater-equal 8 less-equal 32
 ip ipv6-prefix IPV6_LIST index 5 permit 2001:DB8:1234:: 64 greater-equal 64 less-equal 128
+route-policy policy permit node 1
+  if-match ip-prefix IPV4_LIST
+route-policy policy permit node 2
+  if-match ipv6 address prefix-list IPV6_LIST
+""")
+    assert result == expected
+
+
+def test_iosxr_prefixlist_with_match_both():
+    plists = [
+        ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"]),
+        ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
+    ]
+    routemaps = RouteMap[Mock]()
+    @routemaps
+    def policy(device: Mock, route: Route):
+        with route(R.match_v4("IPV4_LIST"), number=1) as rule:
+            rule.allow()
+        with route(R.match_v6("IPV6_LIST"), number=2) as rule:
+            rule.allow()
+        with route(R.match_v4("IPV4_LIST", or_longer=(8, 32)), number=3) as rule:
+            rule.allow()
+        with route(R.match_v6("IPV6_LIST", or_longer=(64, 128)), number=4) as rule:
+            rule.allow()
+
+    result = generate(routemaps=routemaps, prefix_lists=plists, dev=iosxr())
+    expected = scrub("""
+prefix-set IPV4_LIST
+  10.0.0.0/8
+prefix-set IPV6_LIST
+  2001:db8:1234::/64
+prefix-set IPV4_LIST_8_32
+  10.0.0.0/8 ge 8 le 32
+prefix-set IPV6_LIST_64_128
+  2001:db8:1234::/64 ge 64 le 128
+route-policy policy
+  if destination in IPV4_LIST then
+    done
+  if destination in IPV6_LIST then
+    done
+  if destination in IPV4_LIST_8_32 then
+    done
+  if destination in IPV6_LIST_64_128 then
+    done
+""")
+    assert result == expected
+
+
+
+def test_iosxr_prefixlist_embedded_orlonger():
+    plists = [
+        ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"], (8, 32)),
+        ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"], (64, 128)),
+    ]
+    routemaps = RouteMap[Mock]()
+    @routemaps
+    def policy(device: Mock, route: Route):
+        with route(R.match_v4("IPV4_LIST"), number=1) as rule:
+            rule.allow()
+        with route(R.match_v6("IPV6_LIST"), number=2) as rule:
+            rule.allow()
+
+
+    result = generate(routemaps=routemaps, prefix_lists=plists, dev=iosxr())
+    expected = scrub("""
+prefix-set IPV4_LIST
+  10.0.0.0/8 ge 8 le 32
+prefix-set IPV6_LIST
+  2001:db8:1234::/64 ge 64 le 128
+route-policy policy
+  if destination in IPV4_LIST then
+    done
+  if destination in IPV6_LIST then
+    done
 """)
     assert result == expected
 
@@ -223,6 +333,9 @@ ip ipv6-prefix IPV6_LIST index 5 permit 2001:DB8:1234:: 64 greater-equal 64 less
 def test_arista_tutorial():
     plists = [
         ip_prefix_list("LOCAL_NETS", ["192.168.0.0/16"], (16, 32)),
+    ]
+    communities = [
+        CommunityList("ADVERTISE", type=CommunityType.BASIC, members=["65001:0"])
     ]
     routemap = RouteMap[Mock]()
     @routemap
@@ -260,12 +373,13 @@ def test_arista_tutorial():
         with route(number=20) as rule:
             rule.deny()
 
-    result = gen(routemap, plists, arista(), with_policies=True)
+    result = generate(routemaps=routemap, prefix_lists=plists, community_lists=communities, dev=arista())
     expected = scrub("""
 ip prefix-list LOCAL_NETS
   seq 10 permit 192.168.0.0/16 ge 16 le 32
 ip prefix-list LOCAL_NETS_16_24
   seq 10 permit 192.168.0.0/16 ge 16 le 24
+ip community-list ADVERTISE permit 65001:0
 route-map IMPORT_CONNECTED permit 10
   match source-protocol connected
   match ip address prefix-list LOCAL_NETS
@@ -280,66 +394,3 @@ route-map ROUTERS_EXPORT permit 10
 route-map ROUTERS_EXPORT deny 20
 """)
     assert result == expected
-
-
-def gen(routemaps: RouteMap, plists: list[IpPrefixList], dev: MockDevice, with_policies: bool = False) -> str:
-    class TestPrefixListFilterGenerator(PrefixListFilterGenerator):
-        def get_policies(self, device: Any) -> list[RoutingPolicy]:
-            return routemaps.apply(device)
-
-        def get_prefix_lists(self, device: Any) -> Sequence[IpPrefixList]:
-            return plists
-
-    class TestPolicyGenerator(RoutingPolicyGenerator):
-        def get_policies(self, device: Any) -> list[RoutingPolicy]:
-            return routemaps.apply(device)
-
-        def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
-            return plists
-
-        def get_community_lists(self, _: Any) -> list:
-            return []
-
-        def get_as_path_filters(self, _: Any) -> list:
-            return []
-
-        def get_rd_filters(self, _: Any) -> list:
-            return []
-
-    class TestCumulusPolicyGenerator(CumulusPolicyGenerator):
-        def get_policies(self, device: Any) -> list[RoutingPolicy]:
-            return routemaps.apply(device)
-
-        def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
-            return plists
-
-        def get_community_lists(self, _: Any) -> list:
-            return []
-
-        def get_as_path_filters(self, _: Any) -> list:
-            return []
-
-    result: list[str] = []
-    if dev.hw.soft.startswith("Cumulus"):
-        generator = TestCumulusPolicyGenerator()
-        genoutput = generator.generate_cumulus_rpl(dev)
-        if not with_policies:
-            # frr contains both plists and policies
-            # leave only prefix-list related commands
-            # <ip|ipv6> prefix-list ...
-            genoutput = (x for x in genoutput if len(x) > 2)
-            genoutput = (x for x in genoutput if x[1] == "prefix-list")
-        result = [" ".join(x) for x in genoutput]
-        text = "\n".join(result)
-    else:
-        storage = Mock()
-        generator = TestPrefixListFilterGenerator(storage)
-        result.append(generator(dev))
-        if with_policies:
-            # run policies generator too
-            generator = TestPolicyGenerator(storage)
-            result.append(generator(dev))
-        fmtr = registry_connector.get().match(dev.hw).make_formatter()
-        tree = parse_to_tree("\n".join(result), fmtr.split)
-        text = fmtr.join(tree)
-    return scrub(text)

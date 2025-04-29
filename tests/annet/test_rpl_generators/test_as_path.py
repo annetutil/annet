@@ -1,36 +1,10 @@
-from typing import Any
 from unittest.mock import Mock
 
-from annet.rpl import R, RouteMap, Route, RoutingPolicy
+from annet.rpl import R, RouteMap, Route
 from annet.rpl_generators import (
-    IpPrefixList, CumulusPolicyGenerator
+    AsPathFilter
 )
-from .helpers import scrub, cumulus
-from .. import MockDevice
-
-
-def gen(routemaps: RouteMap, dev: MockDevice) -> str:
-    class TestCumulusPolicyGenerator(CumulusPolicyGenerator):
-        def get_policies(self, device: Any) -> list[RoutingPolicy]:
-            return routemaps.apply(device)
-
-        def get_prefix_lists(self, device: Any) -> list[IpPrefixList]:
-            return []
-
-        def get_community_lists(self, _: Any) -> list:
-            return []
-
-        def get_as_path_filters(self, _: Any) -> list:
-            return []
-
-    if dev.hw.soft.startswith("Cumulus"):
-        generator = TestCumulusPolicyGenerator()
-        genoutput = generator.generate_cumulus_rpl(dev)
-        result = [" ".join(x) for x in genoutput]
-        text = "\n".join(result)
-    else:
-        raise ValueError("Unsupported device")
-    return scrub(text)
+from .helpers import scrub, cumulus, iosxr, generate
 
 
 def test_cumulus_as_path_set():
@@ -47,7 +21,7 @@ def test_cumulus_as_path_set():
         with route(name="n40", number=40) as rule:
             rule.as_path.expand_last_as("65434")
 
-    result = gen(routemaps, cumulus())
+    result = generate(routemaps=routemaps, dev=cumulus())
     expected = scrub("""
 !
 route-map policy permit 10
@@ -67,5 +41,62 @@ route-map policy permit 40
   set as-path prepend last-as 65434
   on-match next
 !
+""")
+    assert result == expected
+
+
+def test_iosxr_as_path_fitlers():
+    routemaps = RouteMap[Mock]()
+    aspath_filters = [
+        AsPathFilter("asf1", ["123", "456"]),
+        AsPathFilter("asf2", ["123"]),
+        AsPathFilter("asf3", ["111"]),
+    ]
+
+    @routemaps
+    def policy(device: Mock, route: Route):
+        with route(R.as_path_filter("asf1"), name="n10", number=10) as rule:
+            rule.allow()
+        with route(R.as_path_filter("asf2"), name="n20", number=20) as rule:
+            rule.allow()
+
+    result = generate(routemaps=routemaps, as_path_filters=aspath_filters, dev=iosxr())
+    expected = scrub("""
+as-path-set asf1
+  ios-regex '123',
+  ios-regex '456'
+as-path-set asf2
+  ios-regex '123'
+route-policy policy
+  if as-path in asf1 then
+    done
+  if as-path in asf2 then
+    done
+""")
+    assert result == expected
+
+def test_iosxr_as_path_change():
+    routemaps = RouteMap[Mock]()
+
+    aspath_filters = [
+        AsPathFilter("asf1", ["123", "456"]),
+    ]
+
+    @routemaps
+    def policy(device: Mock, route: Route):
+        with route(R.as_path_filter("asf1"), name="n20", number=20) as rule:
+            rule.as_path.prepend("65432")
+            rule.allow()
+
+    result = generate(routemaps=routemaps, as_path_filters=aspath_filters, dev=iosxr())
+    expected = scrub("""
+as-path-set asf1
+  ios-regex '123',
+  ios-regex '456'
+
+route-policy policy
+  if as-path in asf1 then
+    prepend as-path 65432
+    done
 """)
     assert result == expected

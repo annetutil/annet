@@ -38,3 +38,19 @@ class RDFilterFilterGenerator(PartialGenerator, ABC):
             for i, route_distinguisher in enumerate(rd_filter.members):
                 rd_id = (i + 1) * 10 + 5
                 yield "ip rd-filter", rd_filter.number, f"index {rd_id}", "permit", route_distinguisher
+
+    def acl_iosxr(self, _):
+        return r"""
+        rd-set *
+            ~ %global=1
+        """
+
+    def run_iosxr(self, device: Any):
+        for rd_filter in self.get_used_rd_filters(device):
+            with self.block("rd-set", rd_filter.name):
+                for i, route_distinguisher in enumerate(rd_filter.members):
+                    if i + 1 < len(rd_filter.members):
+                        comma = ","
+                    else:
+                        comma = ""
+                    yield f"{route_distinguisher}{comma}",

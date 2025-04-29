@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
-from collections.abc import Sequence, Collection
+from collections.abc import Sequence, Collection, Iterator
 from typing import Any
 
 from annet.generators import PartialGenerator
-from annet.rpl import RouteMap, SingleCondition, MatchField, ThenField, RoutingPolicy, ConditionOperator
+from annet.rpl import SingleCondition, MatchField, ThenField, RoutingPolicy, ConditionOperator
 from .entities import (
     CommunityList, CommunityLogic, CommunityType, arista_well_known_community, mangle_united_community_list_name,
 )
@@ -25,7 +25,8 @@ def get_used_community_lists(
                     used_communities.update(condition.value)
             for then_field in (
                     ThenField.community, ThenField.large_community,
-                    ThenField.extcommunity_rt, ThenField.extcommunity_soo
+                    ThenField.extcommunity_rt, ThenField.extcommunity_soo,
+                    ThenField.extcommunity,
             ):
                 for action in statement.then.find_all(then_field):
                     if action.value.replaced is not None:
@@ -240,3 +241,36 @@ class CommunityListGenerator(PartialGenerator, ABC):
                         )
                 else:
                     raise NotImplementedError(f"Community logic {community_list.logic} is not implemented for arista")
+
+    def acl_iosxr(self, _) -> str:
+        return r"""
+        community-set *
+            ~ %global=1
+        extcommunity-set *
+            ~ %global=1
+        """
+
+    def _iosxr_community_list(self, community_list: CommunityList) -> Iterator[Sequence[str]]:
+        if community_list.type is CommunityType.BASIC:
+            name = "community-set"
+        elif community_list.type is CommunityType.RT:
+            name = "extcommunity-set rt"
+        elif community_list.type is CommunityType.SOO:
+            name = "extcommunity-set soo"
+        else:
+            raise NotImplementedError(f"CommunityList type {community_list.type} not implemented for Cisco IOS XR")
+
+        with self.block(name, community_list.name):
+            for n, community in enumerate(community_list.members):
+                if n + 1 < len(community_list.members):
+                    comma = ","
+                else:
+                    comma = ""
+                if community_list.use_regex:
+                    yield "ios-regex", f"'{community}'"
+                else:
+                    yield f"{community}{comma}",
+
+    def run_iosxr(self, device):
+        for community_list in self.get_used_community_lists(device):
+            yield from self._iosxr_community_list(community_list)
