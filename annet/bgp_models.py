@@ -139,7 +139,15 @@ class BFDTimers:
     multiplier: int = 4
 
 
-Family = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled_unicast", "ipv6_labeled_unicast", "l2vpn_evpn"]
+Family = Literal[
+    "ipv4_unicast",
+    "ipv6_unicast",
+    "ipv4_vpn_unicast",
+    "ipv6_vpn_unicast",
+    "ipv4_labeled_unicast",
+    "ipv6_labeled_unicast",
+    "l2vpn_evpn",
+]
 
 
 @dataclass(frozen=True)
