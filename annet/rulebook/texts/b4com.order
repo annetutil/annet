@@ -6,6 +6,7 @@
 # Фичи должны быть включены прежде всего
 feature
 # Далее нужно будет указать команды и их порядок
+sflow
 interface *
     description
     ip vrf forwarding
