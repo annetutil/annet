@@ -42,11 +42,15 @@ def sflow(rule, key, diff, **kwargs):
 
 def lldp(rule, key, diff, **kwargs):
     """
-    Не удаляем все что начинается с set, т.к. set перезаписывает предыдущий конфиг
+    Обрабатываем блок lldp-agent
     """
     result = common.default(rule, key, diff, **kwargs)
     for op, cmd, ch in result:
+        # Не удаляем все что начинается с set, т.к. set перезаписывает предыдущий конфиг
         if diff[Op.REMOVED] and "set lldp" in cmd:
             pass
+        # В случае lldp tlv ... select удаляем все что до select
+        elif diff[Op.REMOVED] and cmd.endswith("select"):
+            yield (op, " ".join(cmd.split()[:-1]), ch)
         else:
             yield (op, cmd, ch)

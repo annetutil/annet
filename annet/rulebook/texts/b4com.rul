@@ -18,6 +18,7 @@ interface */(ce|xe|eth)[0-9\/]+$/     %logic=common.permanent %diff_logic=cisco.
     ip vrf forwarding *
     ip address *
     ipv6 address *
+    ipv6 nd *
     mtu *                         %logic=b4com.iface.mtu
     sflow *                       %logic=b4com.iface.sflow
     lldp-agent
