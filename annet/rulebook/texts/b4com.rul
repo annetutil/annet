@@ -13,7 +13,7 @@
 # Physical
 sflow *
 
-interface */(ce|xe|eth)[0-9\/]+$/     %logic=common.permanent %diff_logic=cisco.iface.diff
+interface */(ce|xe|eth|vlan)[0-9\/]+$/     %logic=common.permanent %diff_logic=cisco.iface.diff
     description *                 %logic=b4com.iface.description
     ip vrf forwarding *
     ip address *
