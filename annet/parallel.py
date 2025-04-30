@@ -156,12 +156,6 @@ def _pool_worker(pool, index, task_queue, done_queue):
                 capture_output_ctx = capture_output(cap_stdout, cap_stderr)
 
                 with invoke_span_ctx as invoke_span, capture_output_ctx as _:
-                    invoke_trace_id = invoke_span.get_span_context().trace_id
-                    if invoke_trace_id:
-                        span.set_attribute(
-                            "link",
-                            f"https://t.yandex-team.ru/trace/{invoke_trace_id:x}"
-                        )
                     invoke_span.set_attribute("func", pool.func.__name__)
                     invoke_span.set_attribute("worker.id", worker_id)
                     if device_id:
