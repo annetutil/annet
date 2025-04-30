@@ -151,14 +151,22 @@ class Interface(Entity, Generic[_IpAddressT]):
     speed: int | None = None
 
     def add_addr(self, address_mask: str, vrf: str | None) -> None:
+        addr = ip_interface(address_mask)
+
+        # when comparing ip addressess
+        # we dont care about the vrf of an addr
+        # because the actual vrf will be
+        # determined by an interface's vrf
+        # and there can be only one
+        #
+        # also we dont care about a mask
+        # because no device will allow
+        # the same addr with multiple masks
         for existing_addr in self.ip_addresses:
-            if existing_addr.address == address_mask and (
-                    (existing_addr.vrf is None and vrf is None) or
-                    (existing_addr.vrf is not None and existing_addr.vrf.name == vrf)
-            ):
+            existing = ip_interface(existing_addr.address)
+            if existing.ip == addr.ip:
                 return
 
-        addr = ip_interface(address_mask)
         vrf_obj = vrf_object(vrf)
         if isinstance(addr, IPv6Interface):
             family = IpFamily(value=6, label="IPv6")
