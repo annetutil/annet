@@ -60,7 +60,6 @@ vrf context
 
 interface */Vlan\d+/
 interface *
-    description
     no switchport
     encapsulation
     ip vrf forwarding
