@@ -316,6 +316,9 @@ class CiscoFormatter(BlockExitFormatter):
         block_exit_strings = [self._block_exit]
         tree = self.split_remove_spaces(text)
         for i, item in enumerate(tree):
+            # fix incorrect indent for "exit-address-family"
+            if item == " exit-address-family":
+                item = "  exit-address-family"
             block_exit_strings, new_indent = self._split_indent(
                 item, additional_indent, block_exit_strings
             )
