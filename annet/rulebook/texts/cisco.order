@@ -60,11 +60,11 @@ vrf context
 
 interface */Vlan\d+/
 interface *
+    description
     no switchport
     encapsulation
     ip vrf forwarding
     vrf forwarding
-    vrf member
     ip
     ipv6
     no ipv6 nd %order_reverse
