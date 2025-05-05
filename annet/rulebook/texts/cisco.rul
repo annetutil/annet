@@ -41,12 +41,13 @@ snmp-server host ~
 no snmp-server sysobjectid type stack-oid
 
 # SVI/Subifs/Lagg
-interface */(Loopback|vasileft|vasiright|Tunnel|BDI|multiservice|Virtual-Template|Vlan|\w*Ethernet.*\.|Port-channel.*\.?)\d+/
+interface */(Loopback|vasileft|vasiright|Tunnel|BDI|multiservice|Virtual-Template|Vlan|\w*Ethernet.*\.|[Pp]ort-channel.*\.?)\d+/
     ip vrf forwarding        %diff_logic=cisco.iface.diff
     vrf forwarding        %diff_logic=cisco.iface.diff
     ip address ~        %diff_logic=cisco.iface.diff
     ip unnumbered *        %diff_logic=cisco.iface.diff
     ! no ip address
+    ipv6 link-local
     ipv6 address ~        %diff_logic=cisco.iface.diff
     ipv6 unnumbered *        %diff_logic=cisco.iface.diff
     ipv6 enable        %diff_logic=cisco.iface.diff
@@ -54,7 +55,7 @@ interface */(Loopback|vasileft|vasiright|Tunnel|BDI|multiservice|Virtual-Templat
     mtu
 
 # Physical
-interface */\w*Ethernet[0-9\/]+$/        %logic=common.permanent
+interface */\w*Ethernet[0-9\/]+$/        %logic=common.permanent %diff_logic=cisco.iface.diff
     switchport mode
     switchport trunk native vlan
     switchport access vlan
@@ -64,6 +65,7 @@ interface */\w*Ethernet[0-9\/]+$/        %logic=common.permanent
     ip address ~        %diff_logic=cisco.iface.diff
     ip unnumbered *        %diff_logic=cisco.iface.diff
     ! no ip address
+    ipv6 link-local
     ipv6 address ~        %diff_logic=cisco.iface.diff
     ipv6 unnumbered *        %diff_logic=cisco.iface.diff
     ipv6 enable        %diff_logic=cisco.iface.diff
