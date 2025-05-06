@@ -133,9 +133,9 @@ def _implicit_tree(device):
                         no shutdown
             """
     elif device.hw.Cisco:
-        # C2900/C3500/C3600 does not support the MTU on a per-interface basis
+        # C2900/C3500/C3600/AIR does not support the MTU on a per-interface basis
         if device.hw.Cisco.Catalyst.C2900 or device.hw.Cisco.Catalyst.C3500 \
-           or device.hw.Cisco.Catalyst.C3600:
+           or device.hw.Cisco.Catalyst.C3600 or device.hw.Cisco.AIR:
             text += r"""
                 !interface */\S*Ethernet\S+/
                     no shutdown
