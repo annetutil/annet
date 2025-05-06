@@ -5,6 +5,7 @@ import os
 import sys
 import math
 import asyncio
+import platform
 import textwrap
 import time
 import traceback
@@ -23,7 +24,7 @@ try:
 except ImportError:
     curses = None
 
-uname = os.uname()[0]
+uname = platform.uname()[0]
 NCURSES_SIZE_T = 2 ** 15 - 1
 MIN_CONTENT_HEIGHT = 20
 
