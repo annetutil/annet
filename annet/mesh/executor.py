@@ -370,7 +370,7 @@ class MeshExecutor:
                 device,
                 direct_pair.device,
                 direct_pair.ports,
-                to_interface_changes(direct_pair.local),
+                to_interface_changes(direct_pair.local, direct_pair.connected),
             )
             peers.append(self._to_bgp_peer(direct_pair, target_interface))
 
@@ -378,7 +378,7 @@ class MeshExecutor:
             target_interface = self._apply_nondirect_interface_changes(
                 device,
                 getattr(virtual_pair.local, "ifname", None),
-                to_interface_changes(virtual_pair.local),
+                to_interface_changes(virtual_pair.local, virtual_pair.connected),
             )
             peers.append(self._virtual_to_bgp_peer(virtual_pair, target_interface))
 
@@ -386,7 +386,7 @@ class MeshExecutor:
             target_interface = self._apply_nondirect_interface_changes(
                 device,
                 getattr(connected_pair.local, "ifname", None),
-                to_interface_changes(connected_pair.local),
+                to_interface_changes(connected_pair.local, connected_pair.connected),
             )
             peers.append(self._to_bgp_peer(connected_pair, target_interface))
 
