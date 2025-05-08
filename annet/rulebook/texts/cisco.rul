@@ -40,34 +40,35 @@ snmp-server host ~
 # Disabling this SNMP option throws WARNING which stops mpdaemon set-up process
 no snmp-server sysobjectid type stack-oid
 
-!interface */(mgmt|ipmi|Vlan1$)/
-
-interface Loopback
-    ipv6 address *
-    ip address ~
-    ! no ip address
-
 # SVI/Subifs/Lagg
-interface */(Vlan|Ethernet.*\.|port-channel.*\.?)\d+$/ %diff_logic=cisco.iface.diff
-    vrf member
-    ipv6 link-local
-    ipv6 address *
-    ipv6 nd ~                      %logic=cisco.misc.no_ipv6_nd_suppress_ra
-    ip address ~
+interface */(Loopback|vasileft|vasiright|Tunnel|BDI|multiservice|Virtual-Template|Vlan|\w*Ethernet.*\.|[Pp]ort-channel.*\.?)\d+/
+    ip vrf forwarding        %diff_logic=cisco.iface.diff
+    vrf forwarding        %diff_logic=cisco.iface.diff
+    ip address ~        %diff_logic=cisco.iface.diff
+    ip unnumbered *        %diff_logic=cisco.iface.diff
     ! no ip address
+    ipv6 link-local
+    ipv6 address ~        %diff_logic=cisco.iface.diff
+    ipv6 unnumbered *        %diff_logic=cisco.iface.diff
+    ipv6 enable        %diff_logic=cisco.iface.diff
+    ipv6 nd ~                      %logic=cisco.misc.no_ipv6_nd_suppress_ra
     mtu
 
 # Physical
-interface */\w*Ethernet[0-9\/]+$/     %logic=common.permanent %diff_logic=cisco.iface.diff
+interface */\w*Ethernet[0-9\/]+$/        %logic=common.permanent %diff_logic=cisco.iface.diff
     switchport mode
     switchport trunk native vlan
     switchport access vlan
     switchport trunk allowed vlan %logic=cisco.vlandb.swtrunk
-    vrf member
-    ipv6 link-local
-    ipv6 address *
-    ip address ~
+    ip vrf forwarding        %diff_logic=cisco.iface.diff
+    vrf forwarding        %diff_logic=cisco.iface.diff
+    ip address ~        %diff_logic=cisco.iface.diff
+    ip unnumbered *        %diff_logic=cisco.iface.diff
     ! no ip address
+    ipv6 link-local
+    ipv6 address ~        %diff_logic=cisco.iface.diff
+    ipv6 unnumbered *        %diff_logic=cisco.iface.diff
+    ipv6 enable        %diff_logic=cisco.iface.diff
     channel-group
     mtu
     storm-control * level
