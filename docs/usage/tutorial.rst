@@ -485,6 +485,12 @@ Let's check if everything works!
 
 Try to get the Netbox device model:
 
+.. code:: bash
+
+  annet show device-dump r1.lab
+
+Got a Netbox data serialized to the Device structure like this:
+
 .. code:: none
 
   > annet show device-dump r1.lab
@@ -505,6 +511,12 @@ Try to get the Netbox device model:
   ...
 
 Try to get the current configuration of a device:
+
+.. code:: bash
+
+  annet show current r1.lab
+
+Got current device configuration as plain text:
 
 .. code:: none
 
@@ -622,6 +634,10 @@ And update the file ``generators/__init__.py``:
 
 Check the list of generators:
 
+.. code:: bash
+
+  annet show generators
+
 .. code:: none
 
   > annet show generators
@@ -630,6 +646,10 @@ Check the list of generators:
   | Description     | description, iface | Users_gslv_annet_generators___init___py.description | Generator of description on interfaces |
 
 Get the generated configuration for all three devices:
+
+.. code:: bash
+
+  annet gen -g description r1.lab r2.lab r3.lab
 
 .. code:: none
 
@@ -652,6 +672,10 @@ Get the generated configuration for all three devices:
 
 Look at the diff:
 
+.. code:: bash
+
+  annet diff -g description r1.lab r2.lab r3.lab
+
 .. code:: diff
 
   > annet diff -g description r1.lab r2.lab r3.lab
@@ -673,9 +697,9 @@ Look at the diff:
 
 And deploy it:
 
-.. code:: none
+.. code:: bash
 
-  > annet deploy -g description r1.lab r2.lab r3.lab
+  annet deploy -g description r1.lab r2.lab r3.lab
 
 Verify the result:
 
@@ -875,6 +899,10 @@ Again, update ``generators/__init__.py``:
 
 Look at the list of generators:
 
+.. code:: bash
+
+  annet show generators
+
 .. code:: none
 
   > annet show generators
@@ -888,6 +916,9 @@ Look at the list of generators:
   | Stp             | stp                | Users_gslv_dev_annet_generators___init___py.stp         | Generator of STP                                     |
 
 Look at the diff:
+
+.. code:: bash
+  annet diff r1.lab r1.lab r2.lab r3.lab
 
 .. code:: diff
 
@@ -906,6 +937,10 @@ We notice that the user ``annet`` has a different hash on the routers. This is f
 
 Look at the patch:
 
+.. code:: bash
+
+  annet patch r1.lab r2.lab r3.lab
+
 .. code:: none
 
   > annet patch r1.lab r2.lab r3.lab
@@ -918,19 +953,23 @@ Look at the patch:
 
 And deploy it:
 
-.. code:: none
+.. code:: bash
 
-  > annet deploy r1.lab r2.lab r3.lab
+  annet deploy r1.lab r2.lab r3.lab
 
 Again look at the diff:
 
-.. code:: none
+.. code:: bash
 
-  > annet diff r1.lab r2.lab r3.lab
+  annet diff r1.lab r2.lab r3.lab
 
 No diff found - everything is ok for now.
 
 Look at the diff without ACL to check what's configurations lines is still not covered by annet:
+
+.. code:: bash
+
+  annet diff r1.lab r2.lab r3.lab --no-acl
 
 .. code:: diff
 
@@ -1161,6 +1200,10 @@ Again, update ``generators/__init__.py``:
 
 Check the list of generators:
 
+.. code:: bash
+
+  annet show generators
+
 .. code:: none
 
   > annet show generators
@@ -1177,9 +1220,13 @@ Check the list of generators:
 
 Check the diff:
 
-.. code:: diff
+.. code:: bash
 
   annet diff r1.lab r2.lab r3.lab
+
+.. code:: diff
+
+  > annet diff r1.lab r2.lab r3.lab
   # -------------------- r1.lab.cfg --------------------
     interface Ethernet1
   +   ip address 10.1.2.11/24
@@ -1225,9 +1272,9 @@ Check the diff:
 
 Looks great! Deploy it to the devices:
 
-.. code:: none
+.. code:: bash
 
-  > annet deploy r1.lab r2.lab r3.lab
+  annet deploy r1.lab r2.lab r3.lab
 
 Check the result:
 
@@ -1678,6 +1725,10 @@ Don't forget to update the BGP generator to support import/export policies and s
 
 Let's check the diff:
 
+.. code:: bash
+
+  annet diff r1.lab
+
 .. code:: diff
 
   > annet diff r1.lab
@@ -1707,6 +1758,10 @@ Let's check the diff:
   +   neighbor ROUTERS send-community
 
 And the patch:
+
+.. code:: bash
+
+  annet patch r1.lab
 
 .. code:: none
 
@@ -2205,6 +2260,10 @@ Here's the ISIS generator and updated init file:
 
 Look at the diff and patch:
 
+.. code:: bash
+
+  annet diff r1.lab r2.lab r3.lab
+
 .. code:: diff
 
   > annet diff r1.lab r2.lab r3.lab
@@ -2303,6 +2362,9 @@ Look at the diff and patch:
   +   neighbor 1.1.1.2 remote-as 65004
   + route-map PERMIT_ANY permit 10
 
+.. code:: bash
+
+  annet patch r1.lab r2.lab r3.lab
 
 .. code:: none
 
