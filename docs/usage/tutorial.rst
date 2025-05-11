@@ -75,6 +75,7 @@ Clone repo with dockerized version of netbox. If you run netbox on weak hardware
 
   git clone https://github.com/netbox-community/netbox-docker.git
   cd netbox-docker
+  git fetch --tags && git checkout tags/3.2.0
   sed -i.bak 's/0s/00s/g' docker-compose.yml
 
 Docker Compose Override File
