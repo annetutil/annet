@@ -1,0 +1,49 @@
+- vendor: huawei
+  before: |
+    ntp unicast-server 10.10.10.10 preferred
+  after: ''
+  patch: |
+    system-view
+    undo ntp unicast-server 10.10.10.10
+    q
+    save
+
+- vendor: huawei
+  before: |
+    ntp unicast-server domain test
+  after: ''
+  patch: |
+    system-view
+    undo ntp unicast-server domain test
+    q
+    save
+
+- vendor: huawei
+  before: |
+    ntp unicast-server ipv6 2001:4860:4860::8888 preferred
+  after: ''
+  patch: |
+    system-view
+    undo ntp unicast-server ipv6 2001:4860:4860::8888
+    q
+    save
+
+- vendor: huawei
+  before: |
+    ntp-service unicast-server 10.10.10.10 preference
+  after: ''
+  patch: |
+    system-view
+    undo ntp-service unicast-server 10.10.10.10
+    q
+    save
+
+- vendor: huawei
+  before: |
+    ntp-service unicast-server ipv6 2001:4860:4860::8888 preference
+  after: ''
+  patch: |
+    system-view
+    undo ntp-service unicast-server ipv6 2001:4860:4860::8888
+    q
+    save
