@@ -65,12 +65,12 @@ def get_test_data_path(path):
 
 
 def get_test_data(path, mode="r"):
-    with open(get_test_data_path(path), mode) as data_file:
+    with open(get_test_data_path(path), mode, encoding="utf-8") as data_file:
         return data_file.read()
 
 
 def save_test_data(path, data, mode="w"):
-    with open(get_test_data_path(path), mode) as data_file:
+    with open(get_test_data_path(path), mode, encoding="utf-8") as data_file:
         data_file.write(data)
 
 
