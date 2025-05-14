@@ -23,7 +23,7 @@ def diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
 
 
 def is_vpn_cmd(cmd):
-    return cmd.startswith("vrf member")
+    return cmd.startswith(("ip vrf forwarding", "vrf forwarding"))
 
 
 def is_ip_cmd(cmd):
