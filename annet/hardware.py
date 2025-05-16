@@ -15,7 +15,7 @@ class _HardwareConnector(Connector["HarwareProvider"]):
 hardware_connector = _HardwareConnector()
 
 
-class HarwareProvider(abc.ABC):
+class HardwareProvider(abc.ABC):
     @abc.abstractmethod
     def make_hw(self, hw_model: str, sw_version: str) -> Any:
         pass
@@ -29,7 +29,7 @@ class HarwareProvider(abc.ABC):
         pass
 
 
-class AnnetHardwareProvider(HarwareProvider):
+class AnnetHardwareProvider(HardwareProvider):
     def make_hw(self, hw_model: str, sw_version: str) -> HardwareView:
         return HardwareView(hw_model, sw_version)
 
