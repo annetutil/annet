@@ -187,4 +187,8 @@ undo force transceiver *
 
 undo local-aaa-user change-password verify
     dialog: Warning: This command will disable the function of verifying the old password when administrators changes their own passwords. Continue?[Y/N] ::: Y
+
+undo local-user ~
+    dialog: Warning: This operation may affect online users, are you sure to change the user privilege level ?[Y/N] ::: Y
+
 # vim: set syntax=annrulebook:
