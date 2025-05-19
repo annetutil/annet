@@ -19,7 +19,8 @@ class Command:
     cmd: str
     questions: Optional[List[Question]] = None
     exc_handler: Optional[List[Question]] = None
-    timeout: Optional[int] = None
+    timeout: Optional[int] = None  # total timeout
+    read_timeout: Optional[int] = None  # timeout between consecutive reads
     suppress_nonzero: bool = False
     suppress_eof: bool = False
 
