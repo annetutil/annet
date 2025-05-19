@@ -95,6 +95,7 @@ vlan
 
 hwtacacs-server
 hwtacacs server
+radius-server
 
 aaa
     undo local-user policy security-enhance
@@ -384,5 +385,9 @@ undo sflow %order_reverse
 # перед этим должны быть удалены все его референсы в конфиге
 # индекс референсится в логике патчинга префикс-листа huawei.misc.prefix_list
 undo ip */(ip|ipv6)/-prefix * index 99999999  %order_reverse
+
+#remove template only after all references will be cleared
+undo radius-server template %order_reverse
+undo hwtacacs-server template %order_reverse
 
 ~

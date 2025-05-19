@@ -185,4 +185,6 @@ force transceiver *
 undo force transceiver *
     dialog: /.*Continue\?/ ::: Y
 
+undo local-aaa-user change-password verify
+    dialog: Warning: This command will disable the function of verifying the old password when administrators changes their own passwords. Continue?[Y/N] ::: Y
 # vim: set syntax=annrulebook:

@@ -182,6 +182,7 @@ aaa
         */(accounting|authentication|authorization)/-mode
     domain *
         */(accounting|authentication|authorization)/-scheme * %logic=huawei.aaa.domain
+        radius-server * %logic=generic.misc.remove_last_param
     ~ %global
 
 hwtacacs-server template *
@@ -189,6 +190,8 @@ hwtacacs-server template *
 
 hwtacacs server template *
     hwtacacs server shared-key
+
+radius-server template default %logic=common.permanent
 
 radius-server template *
     radius-server accounting * *
