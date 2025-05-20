@@ -18,7 +18,11 @@ system
     ntp
         server *
         source-address *
-
+    syslog
+        host *
+            match
+        file messages
+            match
 routing-options
     autonomous-system *
     ~
