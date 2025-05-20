@@ -257,6 +257,9 @@ bgp
         peer * as-number *
         peer * enable
         peer * ~
+    l2vpn-ad-family
+        peer * enable
+        peer * ~
     # [NOCDEV-2043] Остальное в глобальном блоке делаем тут
     undo peer * description %order_reverse
     undo peer * * * %order_reverse
