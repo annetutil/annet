@@ -250,6 +250,7 @@ bgp
     group
     peer * as-number *
     peer * local-as *
+    peer ~
     ipv[46]-family|link-state-family unicast|l2vpn-family evpn
         undo undo maximum load-balancing %order_reverse
         maximum load-balancing
