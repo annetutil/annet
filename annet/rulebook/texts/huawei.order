@@ -115,6 +115,7 @@ aaa
     user-group
 
     #pin removal order to ensure that local-user will be deleted last
+    undo local-user * ftp-directory %order_reverse
     undo local-user * privilege %order_reverse
     undo local-user * level %order_reverse
     undo local-user * %order_reverse

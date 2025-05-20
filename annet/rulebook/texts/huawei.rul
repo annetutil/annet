@@ -175,6 +175,7 @@ aaa
     undo user-password complexity-check
     task-group *
         task *
+    local-user * ftp-directory
     local-user * privilege level                   %diff_logic=huawei.aaa.local_user_diff %logic=huawei.aaa.user
     local-user * level                             %diff_logic=huawei.aaa.local_user_diff
     local-user *                                   %diff_logic=huawei.aaa.local_user_diff %logic=huawei.aaa.user
