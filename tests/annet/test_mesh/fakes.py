@@ -18,6 +18,8 @@ class FakeInterface(Interface):
     def add_addr(self, address_mask: str, vrf: Optional[str]) -> None:
         self.addrs.append((address_mask, vrf))
 
+    def __repr__(self):
+        return f"FakeInterface(name={self.name!r}, addrs={self.addrs!r})"
 
 class FakeDevice(Device):
     def __init__(self, name: str, interfaces: list[FakeInterface]) -> None:

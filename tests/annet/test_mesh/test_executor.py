@@ -311,3 +311,39 @@ def test_empty_handler(storage, device1):
     r = MeshExecutor(registry, storage)
     res = r.execute_for(device1)
     assert res.peers == []
+
+
+def on_connected_2vrfs(local: DirectPeer | VirtualLocal, neighbor: DirectPeer | VirtualPeer, session: MeshSession):
+    local.addr = "192.168.1.254"
+    neighbor.addr = "192.168.1.1"
+    neighbor.vrf = VRF
+    session.asnum = 12345
+    session.families = {"ipv4_unicast"}
+    local.svi = 1
+    neighbor.svi = 2
+
+
+@pytest.mark.parametrize("direct", [True, False])
+def test_2vrfs(storage, direct, device1, device_neighbor, device2):
+    registry = MeshRulesRegistry()
+    if direct:
+        connected_device = device_neighbor
+        registry.direct(device1.fqdn, connected_device.fqdn)(on_connected_2vrfs)
+    else:
+        connected_device = device2
+        registry.indirect(device1.fqdn, connected_device.fqdn)(on_connected_2vrfs)
+
+    r = MeshExecutor(registry, storage)
+
+    res_dev1 = r.execute_for(device1)
+
+    assert len(res_dev1.peers) == 1
+    peer = res_dev1.peers[0]
+    assert peer.vrf_name == VRF
+    assert device1.find_interface("Vlan1").addrs == [('192.168.1.254', 'testvrf')]
+
+    res_dev2 = r.execute_for(connected_device)
+    assert len(res_dev2.peers) == 1
+    peer = res_dev2.peers[0]
+    assert peer.vrf_name == ""
+    assert connected_device.find_interface("Vlan2").addrs == [('192.168.1.1', None)]

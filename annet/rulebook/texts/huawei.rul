@@ -55,6 +55,11 @@ dhcp snooping user-bind http
 
 ntp server disable
 ntp ipv6 server disable
+ntp unicast-server domain *
+ntp unicast-server ipv6 *
+ntp unicast-server *
+ntp-service unicast-server ipv6 *
+ntp-service unicast-server *
 ntp ~
 dns snooping ttl delay-time
 dns ~

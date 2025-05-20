@@ -67,7 +67,17 @@ retort = Retort(
 )
 
 to_bgp_global_options = retort.get_loader(GlobalOptions)
-to_interface_changes = retort.get_loader(InterfaceChanges)
+
+
+def to_interface_changes(local: LocalDTO, peer: PeerDTO) -> InterfaceChanges:
+    return InterfaceChanges(
+        addr=getattr(local, "addr", None),
+        lag_links_min=getattr(local, "lag_links_min", None),
+        svi=getattr(local, "svi", None),
+        subif=getattr(local, "subif", None),
+        vrf=getattr(peer, "vrf", None),
+        lag=getattr(local, "lag", None),
+    )
 
 
 def to_bgp_peer(local: LocalDTO, connected: PeerDTO, connected_hostname: str, interface: Optional[str]) -> Peer:
