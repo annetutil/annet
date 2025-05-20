@@ -207,6 +207,8 @@ class NetboxDevice(Entity, Generic[_InterfaceT]):
     created: datetime
     last_updated: datetime
     cluster: Optional[Entity]
+    config_context: Optional[dict[str, Any]]
+    config_template: Optional[dict[str, Any]]
 
     fqdn: str
     hostname: str
