@@ -25,7 +25,7 @@ def user(key, diff, **_):
     yield from added
 
 
-def _added_contains(array: list[dict[str]], lookup_string: str) -> bool:
+def _added_contains(array: list[dict], lookup_string: str) -> bool:
     for item in array:
         if item["row"].startswith(lookup_string):
             return True
