@@ -7,6 +7,9 @@
 feature
 # Далее нужно будет указать команды и их порядок
 sflow
+ip prefix-list
+ipv6 prefix-list
+route-map
 interface *
     description
     ip vrf forwarding
@@ -18,3 +21,4 @@ interface *
         dcbx
         exit
     sflow
+ip community-list
