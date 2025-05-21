@@ -157,14 +157,13 @@ class RulebookQuestionHandler:
 
 
 def rb_question_to_question(q: MakeMessageMatcher, a: Answer) -> Question:  # TODO: drop MakeMessageMatcher
-    if not a.send_nl:
-        raise Exception("not supported false send_nl")
     text: str = q._text  # pylint: disable=protected-access
+    answer: str = a.text
     is_regexp = False
     if text.startswith("/") and text.endswith("/"):
         is_regexp = True
         text = text[1:-1]
-    res = Question(question=text, answer=a.text, is_regexp=is_regexp)
+    res = Question(question=text, answer=answer, is_regexp=is_regexp, not_send_nl=not a.send_nl)
     return res
 
 
