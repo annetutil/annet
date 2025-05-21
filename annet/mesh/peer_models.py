@@ -17,6 +17,7 @@ class _SharedOptionsDTO(BaseMeshModel):
     send_community: bool
     bfd: bool
     bfd_timers: BFDTimers
+    password: str
 
 
 class MeshSession(_SharedOptionsDTO):
