@@ -1,0 +1,67 @@
+- vendor: juniper
+  before: |-
+    system {
+        syslog {
+            host 10.10.10.10 {
+                match "!(.*requires a license.*)|(.*LICENSE_EXPIRED:.*)";                          
+            }
+        }
+    }
+  after: |-
+    system {
+        syslog {
+            host 10.10.10.10;
+        }
+    }
+  patch: |
+    configure exclusive
+    delete system syslog host 10.10.10.10 match
+    commit
+    exit
+
+- vendor: juniper
+  before: |-
+    system {
+        syslog {
+            host 10.10.10.10 {
+                match "!(.*requires a license.*)|(.*LICENSE_EXPIRED:.*)";
+                port 10001;
+            }
+        }
+    }
+  after: |-
+    system {
+        syslog {
+            host 10.10.10.10;
+        }
+    }
+  patch: |
+    configure exclusive
+    delete system syslog host 10.10.10.10 match
+    delete system syslog host 10.10.10.10 port 10001
+    commit
+    exit
+
+- vendor: juniper
+  before: |-
+    system {
+        syslog {
+            file messages {
+                any notice;
+                match "!(.*requires a license.*)|(.*LICENSE_EXPIRED:.*)";
+            }
+        }
+    }
+  after: |-
+    system {
+        syslog {
+            file messages {
+              any notice;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete system syslog file messages match
+    commit
+    exit

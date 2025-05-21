@@ -101,7 +101,7 @@ class IpAddress(DumpableView, Generic[_PrefixT]):
 
 @dataclass
 class InterfaceConnectedEndpoint(Entity):
-    device: Entity
+    device: Entity | None
 
 
 @dataclass
