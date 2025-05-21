@@ -199,6 +199,7 @@ class PeerOptions:
     soft_reconfiguration_inbound: Optional[bool] = None
     not_active: Optional[bool] = None
     mtu: Optional[int] = None
+    password: Optional[str] = None
 
 
 @dataclass
@@ -312,6 +313,7 @@ class PeerGroup:
     soft_reconfiguration_inbound: bool = False
     not_active: bool = False
     mtu: int = 0
+    password: Optional[str] = None
 
 
 @dataclass

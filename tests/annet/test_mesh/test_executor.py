@@ -29,6 +29,7 @@ def on_device_x(device: GlobalOptions):
     device.vrf[VRF].groups[GROUP].families = {"ipv4_unicast"}
     device.vrf[VRF].groups[GROUP].export_policy = EXPORT_POLICY1
     device.vrf[VRF].groups[GROUP].peer_filter = PEER_FILTER
+    device.vrf[VRF].groups[GROUP].password = "<PASSWORD>"
     device.vrf[VRF].ipv4_unicast.aggregate.policy = EXPORT_POLICY1
     device.vrf[VRF].as_path_relax = True
     device.ipv6_unicast.aggregate.policy = EXPORT_POLICY2
@@ -47,6 +48,7 @@ def on_direct(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):
     session.asnum = 12345
     session.bfd_timers = BFDTimers(multiplier=1)
     session.families = {"ipv4_unicast"}
+    session.password = "<PASSWORD2>"
 
 def on_direct_alt(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):
     local.addr = "192.168.1.254"
@@ -166,6 +168,7 @@ def test_storage(registry, storage, device1):
     assert vrf.groups[0].export_policy == EXPORT_POLICY1
     assert vrf.groups[0].import_policy == ""
     assert vrf.groups[0].peer_filter == PEER_FILTER
+    assert vrf.groups[0].password == "<PASSWORD>"
     assert vrf.ipv4_unicast.vrf_name == VRF
     assert vrf.ipv4_unicast.family == "ipv4_unicast"
     assert vrf.ipv4_unicast.aggregate.policy == EXPORT_POLICY1
@@ -189,6 +192,7 @@ def test_storage(registry, storage, device1):
     assert peer_direct.remote_as == 12345
     assert peer_direct.description == ""
     assert peer_direct.interface == "if1"
+    assert peer_direct.options.password == "<PASSWORD2>"
 
     assert peer_direct_alt.addr == "192.168.1.2"
     assert peer_direct_alt.options.mtu == 1501
@@ -196,6 +200,7 @@ def test_storage(registry, storage, device1):
     assert peer_direct_alt.remote_as == 12345
     assert peer_direct_alt.description == ""
     assert peer_direct_alt.interface == "if1"
+    assert peer_direct_alt.options.password is None
 
     assert peer_indirect.addr == "192.168.2.10"
     assert peer_indirect.options.mtu == 1505
