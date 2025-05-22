@@ -248,6 +248,11 @@ opt_max_slots = Arg(
     help="The amount of devices parsed at the same time with asyncio"
 )
 
+opt_max_deploy = Arg(
+    "--max-deploy", default=0, type=int,
+    help="The amount of devices deployed at the same time"
+)
+
 opt_hosts_range = Arg(
     "--hosts-range", type=valid_range,
     help="Only work with the specified hosts range: 10 - the first 10. 10:20 - host from 10th up to 20th"
@@ -498,6 +503,7 @@ class DeployOptions(ShowDiffOptions, PatchOptions, DeviceCliOptions):
     no_check_diff = opt_no_check_diff
     entire_reload = opt_entire_reload
     rollback = opt_rollback
+    max_parallel = opt_max_deploy
 
 
 class SelectContext(ArgGroup):
