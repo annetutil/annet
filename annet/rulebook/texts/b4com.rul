@@ -32,4 +32,4 @@ interface */(ce|xe|po|eth|vlan1\.)[0-9\/]+$/     %logic=common.permanent %diff_l
         ~ %global                 %logic=b4com.iface.lldp
         !dcbx *
         !exit
-ip community-list
+ip community-list ~
