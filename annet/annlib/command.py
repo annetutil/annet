@@ -12,6 +12,7 @@ class Question:
     question: str  # frame it using / if it is a regular expression
     answer: str
     is_regexp: Optional[bool] = False
+    not_send_nl: bool = False
 
 
 @dataclass
