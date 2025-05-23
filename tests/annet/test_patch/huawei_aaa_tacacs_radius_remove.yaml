@@ -1,0 +1,30 @@
+- vendor: huawei
+  before: |
+    radius-server template test123
+    hwtacacs-server template test123
+    aaa
+      domain default
+        authentication-scheme default
+        accounting-scheme default
+        authorization-scheme default
+        radius-server test123
+        hwtacacs-server test123
+  after: |
+    aaa
+      domain default
+        authentication-scheme default
+        accounting-scheme default
+        authorization-scheme default
+        radius-server default
+  patch: |
+    system-view
+    aaa
+      domain default
+        undo hwtacacs-server
+        undo radius-server
+        quit
+      quit
+    undo radius-server template test123
+    undo hwtacacs-server template test123
+    q
+    save

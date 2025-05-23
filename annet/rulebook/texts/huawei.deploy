@@ -105,6 +105,8 @@ system tcam acl
 local-user * privilege level
     dialog: Warning: This operation may affect online users, are you sure to change the user privilege level ?[Y/N] ::: Y
     dialog: Warning: This operation may affect online users and will change the user privilege level, Continue? [Y/N]: ::: Y
+local-user * password
+    dialog: Warning: The user using this account will be logged out, and needs to log in again. Do you want to continue? [Y/N] ::: Y
 
 stp *
     dialog: Warning: The global STP state will be changed. Continue? [Y/N] ::: Y
@@ -184,5 +186,11 @@ force transceiver *
 
 undo force transceiver *
     dialog: /.*Continue\?/ ::: Y
+
+undo local-aaa-user change-password verify
+    dialog: Warning: This command will disable the function of verifying the old password when administrators changes their own passwords. Continue?[Y/N] ::: Y
+
+undo local-user ~
+    dialog: Warning: This operation may affect online users, are you sure to change the user privilege level ?[Y/N] ::: Y
 
 # vim: set syntax=annrulebook:
