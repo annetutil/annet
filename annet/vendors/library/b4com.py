@@ -44,3 +44,6 @@ class B4ComVendor(AbstractVendor):
     @property
     def exit(self) -> str:
         return "exit"
+
+    def svi_name(self, num: int) -> str:
+        return f"vlan1.{num}"
