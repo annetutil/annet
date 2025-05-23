@@ -186,10 +186,12 @@ aaa
         */(accounting|authentication|authorization)/-scheme * %logic=huawei.aaa.domain
         !radius-server default
         radius-server * %logic=generic.misc.remove_last_param
+        hwtacacs-server * %logic=generic.misc.remove_last_param
 
     domain *
         */(accounting|authentication|authorization)/-scheme * %logic=huawei.aaa.domain
         radius-server * %logic=generic.misc.remove_last_param
+        hwtacacs-server * %logic=generic.misc.remove_last_param
     ~ %global
 
 hwtacacs-server template *

@@ -1,0 +1,20 @@
+- vendor: huawei
+  before: |
+    aaa
+      local-user test password irreversible-cipher abc123
+      local-user test privilege level 15
+      local-user test ftp-directory flash:
+      local-user test service-type telnet terminal ssh ftp
+  after: |
+    aaa
+      local-user test password irreversible-cipher abc123
+      local-user test privilege level 3
+      local-user test ftp-directory flash:
+      local-user test service-type telnet terminal ssh ftp
+  patch: |
+    system-view
+    aaa
+      local-user test privilege level 3
+      quit
+    q
+    save
