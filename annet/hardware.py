@@ -6,7 +6,7 @@ from annet.vendors import registry_connector
 from annet.connectors import Connector
 
 
-class _HardwareConnector(Connector["HarwareProvider"]):
+class _HardwareConnector(Connector["HardwareProvider"]):
     name = "Hardware"
     ep_name = "hardware"
     ep_by_group_only = "annet.connectors.hardware"
