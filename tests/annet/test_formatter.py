@@ -37,7 +37,16 @@ interface Vlan1234
   ipv6 dhcp relay address 2001:db8:0:1200::1:101
 interface Ethernet1/1/1
   speed 10000
-  no shutdown\
+  no shutdown
+banner exec ^C
+             .oooooo.   ooooo  .oooooo..o   .oooooo.     .oooooo.
+            d8P'  `Y8b  `888' d8P'    `Y8  d8P'  `Y8b   d8P'  `Y8b
+           888           888  Y88bo.      888          888      888
+           888           888   `"Y8888o.  888          888      888
+           888           888       `"Y88b 888          888      888
+           `88b    ooo   888  oo     .d8P `88b    ooo  `88b    d88'
+            `Y8bood8P'  o888o 8""88888P'   `Y8bood8P'   `Y8bood8P'
+^C\
 """
 
 

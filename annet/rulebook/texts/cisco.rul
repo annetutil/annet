@@ -14,7 +14,7 @@
 ip domain-name *
 hostname *
 
-banner login * %logic=cisco.misc.banner_login
+banner * %logic=cisco.misc.banner_any
 
 ip community-list standard ~
 
