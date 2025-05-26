@@ -14,28 +14,29 @@ def get_hw(manufacturer: str, model: str, platform_name: str):
 
 
 def get_breed(manufacturer: str, model: str):
-    if manufacturer == "Huawei" and model.startswith("CE"):
+    hw = get_hw(manufacturer, model, "")
+    if hw.Huawei.CE:
         return "vrp85"
-    elif manufacturer == "Huawei" and model.startswith("NE"):
+    elif hw.Huawei.NE:
         return "vrp85"
-    elif manufacturer == "Huawei":
+    elif hw.Huawei:
         return "vrp55"
-    elif manufacturer == "H3C":
+    elif hw.H3C:
         return "h3c"
-    elif manufacturer in ("Mellanox", "NVIDIA"):
+    elif hw.PC.NVIDIA or hw.PC.Mellanox:
         return "cuml2"
-    elif manufacturer == "Juniper":
+    elif hw.Juniper:
         return "jun10"
-    elif manufacturer == "Cisco":
+    elif hw.Cisco:
         return "ios12"
-    elif manufacturer == "Arista":
+    elif hw.Arista:
         return "eos4"
-    elif manufacturer == "B4com":
+    elif hw.B4com:
         return "bcom-os"
-    elif manufacturer == "MikroTik":
+    elif hw.RouterOS:
         return "routeros"
-    elif manufacturer in ("Moxa", "Nebius"):
+    elif hw.PC.Moxa or hw.PC.Nebius:
         return "moxa"
-    elif manufacturer == "PC":
+    elif hw.PC:
         return "pc"
     return ""
