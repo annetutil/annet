@@ -27,6 +27,8 @@ def get_breed(manufacturer: str, model: str):
         return "cuml2"
     elif hw.Juniper:
         return "jun10"
+    elif hw.Cisco.Nexus:
+        return "nxos"
     elif hw.Cisco:
         return "ios12"
     elif hw.Arista:
