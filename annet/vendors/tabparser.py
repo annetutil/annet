@@ -317,7 +317,7 @@ class CiscoFormatter(BlockExitFormatter):
 
         # hide banner content
         pattern = re.compile(r"((^banner [a-z-]+) \^C.*?\^C)", flags=re.MULTILINE | re.DOTALL)
-        repl_map = {replace_str:banner_str for banner_str, replace_str in pattern.findall(text)}
+        repl_map = {replace_str: banner_str for banner_str, replace_str in pattern.findall(text)}
         for replace_str, banner in repl_map.items():
             text = text.replace(banner, replace_str)
 
