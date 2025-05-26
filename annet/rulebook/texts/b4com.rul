@@ -11,17 +11,25 @@
 #                   Сделано в основном для того чтобы генерировать специальные команды для наливки
 # -----
 # Physical
-sflow *
-
-interface */(ce|xe|eth|vlan)[0-9\/]+$/     %logic=common.permanent %diff_logic=cisco.iface.diff
-    description *                 %logic=b4com.iface.description
+sflow
+aaa group server tacacs\+ *
+    ~ %global
+ip prefix-list *
+    ~ %global
+ipv6 prefix-list *
+    ~ %global
+route-map ~
+    ~ %global
+interface */(ce|xe|po|eth|vlan1\.)[0-9\/]+$/     %logic=common.permanent %diff_logic=b4com.iface.diff
+    description
     ip vrf forwarding *
     ip address *
     ipv6 address *
     ipv6 nd *
-    mtu *                         %logic=b4com.iface.mtu
+    mtu
     sflow *                       %logic=b4com.iface.sflow
     lldp-agent
         ~ %global                 %logic=b4com.iface.lldp
         !dcbx *
         !exit
+ip community-list ~
