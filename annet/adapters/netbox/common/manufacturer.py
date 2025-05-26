@@ -28,8 +28,6 @@ def get_breed(manufacturer: str, model: str):
         return "jun10"
     elif manufacturer == "Cisco":
         return "ios12"
-    elif manufacturer == "Adva":
-        return "adva8"
     elif manufacturer == "Arista":
         return "eos4"
     elif manufacturer == "B4com":
