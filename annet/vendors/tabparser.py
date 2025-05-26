@@ -314,6 +314,13 @@ class CiscoFormatter(BlockExitFormatter):
     def split(self, text):
         additional_indent = 0
         block_exit_strings = [self._block_exit]
+
+        # hide banner content
+        pattern = re.compile(r"((^banner [a-z-]+) \^C.*?\^C)", flags=re.MULTILINE | re.DOTALL)
+        repl_map = {replace_str:banner_str for banner_str, replace_str in pattern.findall(text)}
+        for replace_str, banner in repl_map.items():
+            text = text.replace(banner, replace_str)
+
         tree = self.split_remove_spaces(text)
         for i, item in enumerate(tree):
             block_exit_strings, new_indent = self._split_indent(
@@ -321,6 +328,12 @@ class CiscoFormatter(BlockExitFormatter):
             )
             tree[i] = f"{' ' * additional_indent}{item}"
             additional_indent = new_indent
+
+        # restore banner content in the `tree`
+        for i, item in enumerate(tree):
+            if item in repl_map:
+                tree[i] = repl_map[item]
+
         return tree
 
     def block_exit(self, context: Optional[FormatterContext]) -> str:
