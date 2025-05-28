@@ -11,6 +11,7 @@ from .v24.storage import NetboxStorageV24
 from .v37.storage import NetboxStorageV37
 from .v41.storage import NetboxStorageV41
 from .v42.storage import NetboxStorageV42
+from .v42.storage import NetboxStorageV43
 
 
 def storage_factory(opts: NetboxStorageOpts) -> Storage:
@@ -21,6 +22,7 @@ def storage_factory(opts: NetboxStorageOpts) -> Storage:
         "4.0": NetboxStorageV41,
         "4.1": NetboxStorageV41,
         "4.2": NetboxStorageV42,
+        "4.2": NetboxStorageV43,
     }
 
     status = None
@@ -37,7 +39,8 @@ def storage_factory(opts: NetboxStorageOpts) -> Storage:
         else:
             raise ValueError(f"Unsupported version: {status.netbox_version}")
     except ClientLibraryError:
-        raise ValueError(f"Connection error: Unable to reach Netbox at URL: {opts.url}")
+        raise ValueError(
+            f"Connection error: Unable to reach Netbox at URL: {opts.url}")
     raise Exception(f"Unsupported version: {status.netbox_version}")
 
 
