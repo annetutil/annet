@@ -5,18 +5,17 @@ from annetbox.v41 import client_sync
 from annetbox.v41 import models as api_models
 
 from annet.adapters.netbox.common.adapter import NetboxAdapter, get_device_breed, get_device_hw
-from annet.adapters.netbox.common.models import FHRPGroup
 from annet.adapters.netbox.common.storage_base import BaseNetboxStorage
 from annet.adapters.netbox.v41.models import (
     InterfaceV41, IpAddressV41, NetboxDeviceV41, PrefixV41,
-    DeviceIpV41, FHRPGroupAssignmentV41,
+    FHRPGroupV41, FHRPGroupAssignmentV41,
 )
 from annet.storage import Storage
 
 
 class NetboxV41Adapter(NetboxAdapter[
     NetboxDeviceV41, InterfaceV41, IpAddressV41, PrefixV41,
-    FHRPGroup[DeviceIpV41], FHRPGroupAssignmentV41
+    FHRPGroupV41, FHRPGroupAssignmentV41
 ]):
     def __init__(
             self,
@@ -69,7 +68,7 @@ class NetboxV41Adapter(NetboxAdapter[
         )
         self.convert_fhrp_groups = get_converter(
             list[api_models.FHRPGroup],
-            list[FHRPGroup[DeviceIpV41]],
+            list[FHRPGroupV41],
         )
 
     def list_all_fqdns(self) -> list[str]:
@@ -107,18 +106,21 @@ class NetboxV41Adapter(NetboxAdapter[
         )
         return self.convert_fhrp_group_assignments(raw_assignments.results)
 
-    def list_fhrp_groups(self, ids: list[int]) -> list[FHRPGroup[DeviceIpV41]]:
+    def list_fhrp_groups(self, ids: list[int]) -> list[FHRPGroupV41]:
         raw_groups = self.netbox.ipam_all_fhrp_groups_by_id(id=list(ids))
         return self.convert_fhrp_groups(raw_groups.results)
 
 
 
-class NetboxStorageV41(BaseNetboxStorage[NetboxDeviceV41, InterfaceV41, IpAddressV41, PrefixV41, FHRPGroup[DeviceIpV41], FHRPGroupAssignmentV41]):
+class NetboxStorageV41(BaseNetboxStorage[
+    NetboxDeviceV41, InterfaceV41, IpAddressV41, PrefixV41,
+    FHRPGroupV41, FHRPGroupAssignmentV41
+]):
     def _init_adapter(
             self,
             url: str,
             token: str,
             ssl_context: ssl.SSLContext | None,
             threads: int,
-    ) -> NetboxAdapter[NetboxDeviceV41, InterfaceV41, IpAddressV41, PrefixV41, FHRPGroup[DeviceIpV41], FHRPGroupAssignmentV41]:
+    ) -> NetboxAdapter[NetboxDeviceV41, InterfaceV41, IpAddressV41, PrefixV41, FHRPGroupV41, FHRPGroupAssignmentV41]:
         return NetboxV41Adapter(self, url, token, ssl_context, threads)

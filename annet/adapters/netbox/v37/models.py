@@ -4,7 +4,7 @@ from typing import Optional
 
 from annet.adapters.netbox.common.models import (
     IpAddress, NetboxDevice, Entity, Prefix, InterfaceType, Interface,
-    IpFamily, Label, FHRPGroupAssignment, DeviceIp,
+    IpFamily, Label, FHRPGroupAssignment, DeviceIp, FHRPGroup,
 )
 
 @dataclass
@@ -24,7 +24,12 @@ class IpAddressV37(IpAddress[PrefixV37]):
 
 
 @dataclass
-class FHRPGroupAssignmentV37(FHRPGroupAssignment[DeviceIpV37]):
+class FHRPGroupV37(FHRPGroup[DeviceIpV37]):
+    pass
+
+
+@dataclass
+class FHRPGroupAssignmentV37(FHRPGroupAssignment[FHRPGroupV37]):
     pass
 
 

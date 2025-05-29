@@ -5,16 +5,17 @@ from adaptix.conversion import get_converter, link_function, link_constant, link
 from annetbox.v37 import models as api_models, client_sync
 
 from annet.adapters.netbox.common.adapter import NetboxAdapter, get_device_breed, get_device_hw
-from annet.adapters.netbox.common.models import FHRPGroup
 from annet.adapters.netbox.common.storage_base import BaseNetboxStorage
 from annet.storage import Storage
 from .models import (
     IpAddressV37, NetboxDeviceV37, InterfaceV37, PrefixV37,
-    DeviceIpV37, FHRPGroupAssignmentV37,
+    FHRPGroupAssignmentV37, FHRPGroupV37,
 )
 
 
-class NetboxV37Adapter(NetboxAdapter[NetboxDeviceV37, InterfaceV37, IpAddressV37, PrefixV37, FHRPGroup[DeviceIpV37], FHRPGroupAssignmentV37]):
+class NetboxV37Adapter(NetboxAdapter[
+    NetboxDeviceV37, InterfaceV37, IpAddressV37, PrefixV37, FHRPGroupV37, FHRPGroupAssignmentV37,
+]):
     def __init__(
             self,
             storage: Storage,
@@ -66,7 +67,7 @@ class NetboxV37Adapter(NetboxAdapter[NetboxDeviceV37, InterfaceV37, IpAddressV37
         )
         self.convert_fhrp_groups = get_converter(
             list[api_models.FHRPGroup],
-            list[FHRPGroup[DeviceIpV37]],
+            list[FHRPGroupV37],
         )
 
     def list_all_fqdns(self) -> list[str]:
@@ -104,18 +105,20 @@ class NetboxV37Adapter(NetboxAdapter[NetboxDeviceV37, InterfaceV37, IpAddressV37
         )
         return self.convert_fhrp_group_assignments(raw_assignments.results)
 
-    def list_fhrp_groups(self, ids: list[int]) -> list[FHRPGroup[DeviceIpV37]]:
+    def list_fhrp_groups(self, ids: list[int]) -> list[FHRPGroupV37]:
         raw_groups = self.netbox.ipam_all_fhrp_groups_by_id(id=list(ids))
         return self.convert_fhrp_groups(raw_groups.results)
 
 
 
-class NetboxStorageV37(BaseNetboxStorage[NetboxDeviceV37, InterfaceV37, IpAddressV37, PrefixV37, FHRPGroup[DeviceIpV37], FHRPGroupAssignmentV37]):
+class NetboxStorageV37(BaseNetboxStorage[
+    NetboxDeviceV37, InterfaceV37, IpAddressV37, PrefixV37, FHRPGroupV37, FHRPGroupAssignmentV37,
+]):
     def _init_adapter(
             self,
             url: str,
             token: str,
             ssl_context: ssl.SSLContext | None,
             threads: int,
-    ) -> NetboxAdapter[NetboxDeviceV37, InterfaceV37, IpAddressV37, PrefixV37, FHRPGroup[DeviceIpV37], FHRPGroupAssignmentV37]:
+    ) -> NetboxAdapter[NetboxDeviceV37, InterfaceV37, IpAddressV37, PrefixV37, FHRPGroupV37, FHRPGroupAssignmentV37]:
         return NetboxV37Adapter(self, url, token, ssl_context, threads)

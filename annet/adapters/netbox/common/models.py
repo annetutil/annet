@@ -150,12 +150,15 @@ class FHRPGroup(Generic[_DeviceIPT]):
     comments: str | None = None
 
 
+_FHRPGroupT = TypeVar("_FHRPGroupT", bound=FHRPGroup)
+
+
 @dataclass
-class FHRPGroupAssignment(Generic[_DeviceIPT]):
+class FHRPGroupAssignment(Generic[_FHRPGroupT]):
     id: int
     display: str
     priority: int
-    group: FHRPGroup[_DeviceIPT]
+    group: _FHRPGroupT
     fhrp_group_id: int
 
     interface_type: str | None

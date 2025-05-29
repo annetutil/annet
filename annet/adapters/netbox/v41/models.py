@@ -4,7 +4,7 @@ import warnings
 from datetime import datetime, timezone
 from annet.adapters.netbox.common.models import Entity, Interface, \
     InterfaceType, IpAddress, Label, NetboxDevice, DeviceIp, IpFamily, Prefix, \
-    FHRPGroupAssignment
+    FHRPGroupAssignment, FHRPGroup
 
 
 @dataclass
@@ -23,7 +23,12 @@ class DeviceIpV41(DeviceIp):
 
 
 @dataclass
-class FHRPGroupAssignmentV41(FHRPGroupAssignment[DeviceIpV41]):
+class FHRPGroupV41(FHRPGroup[DeviceIpV41]):
+    pass
+
+
+@dataclass
+class FHRPGroupAssignmentV41(FHRPGroupAssignment[FHRPGroupV41]):
     pass
 
 
