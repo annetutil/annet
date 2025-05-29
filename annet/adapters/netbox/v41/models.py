@@ -49,6 +49,7 @@ class InterfaceV41(Interface[IpAddressV41, FHRPGroupAssignmentV41]):
             assigned_object_id=self.id,
         ))
 
+
 @dataclass
 class NetboxDeviceV41(NetboxDevice[InterfaceV41, DeviceIpV41]):
     role: Entity

@@ -7,10 +7,10 @@ from annet.adapters.netbox.common.models import (
     IpFamily, Label, FHRPGroupAssignment, DeviceIp, FHRPGroup,
 )
 
+
 @dataclass
 class DeviceIpV37(DeviceIp):
     family: int
-
 
 
 @dataclass

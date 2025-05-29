@@ -111,7 +111,6 @@ class NetboxV41Adapter(NetboxAdapter[
         return self.convert_fhrp_groups(raw_groups.results)
 
 
-
 class NetboxStorageV41(BaseNetboxStorage[
     NetboxDeviceV41, InterfaceV41, IpAddressV41, PrefixV41,
     FHRPGroupV41, FHRPGroupAssignmentV41

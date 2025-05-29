@@ -110,7 +110,6 @@ class NetboxV37Adapter(NetboxAdapter[
         return self.convert_fhrp_groups(raw_groups.results)
 
 
-
 class NetboxStorageV37(BaseNetboxStorage[
     NetboxDeviceV37, InterfaceV37, IpAddressV37, PrefixV37, FHRPGroupV37, FHRPGroupAssignmentV37,
 ]):
