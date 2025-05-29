@@ -9,13 +9,19 @@ from annet.adapters.netbox.common.query import NetboxQuery, FIELD_VALUE_SEPARATO
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
 from annet.storage import Storage
 from .adapter import NetboxAdapter
-from .models import IpAddress, Interface, NetboxDevice, Prefix
+from .models import IpAddress, Interface, NetboxDevice, Prefix, FHRPGroup, \
+    FHRPGroupAssignment
+from ..v41.models import FHRPGroupAssignmentV41
 
 logger = getLogger(__name__)
 NetboxDeviceT = TypeVar("NetboxDeviceT", bound=NetboxDevice)
 InterfaceT = TypeVar("InterfaceT", bound=Interface)
 IpAddressT = TypeVar("IpAddressT", bound=IpAddress)
 PrefixT = TypeVar("PrefixT", bound=Prefix)
+FHRPGroupT = TypeVar("FHRPGroupT", bound=FHRPGroup)
+FHRPGroupAssignmentT = TypeVar(
+    "FHRPGroupAssignmentT", bound=FHRPGroupAssignment,
+)
 
 
 class BaseNetboxStorage(
@@ -25,6 +31,8 @@ class BaseNetboxStorage(
         InterfaceT,
         IpAddressT,
         PrefixT,
+        FHRPGroupT,
+        FHRPGroupAssignmentT,
     ],
 ):
     """
@@ -58,7 +66,7 @@ class BaseNetboxStorage(
             token: str,
             ssl_context: Optional[ssl.SSLContext],
             threads: int,
-    ) -> NetboxAdapter[NetboxDeviceT, InterfaceT, IpAddressT, PrefixT]:
+    ) -> NetboxAdapter[NetboxDeviceT, InterfaceT, IpAddressT, PrefixT, FHRPGroupT, FHRPGroupAssignmentT]:
         raise NotImplementedError()
 
     def __enter__(self):
@@ -130,6 +138,17 @@ class BaseNetboxStorage(
         for interface in interfaces:
             device_mapping[interface.device.id].interfaces.append(interface)
         self._fill_interface_ipaddress(interfaces)
+
+    def _fill_interface_fhrp_groups(self, interfaces: list[InterfaceT]) -> None:
+        interface_mapping = {i.id: i for i in interfaces}
+        assignments = self.netbox.list_fhrp_group_assignments(list(interface_mapping))
+        group_ids = {r.group_id for r in assignments}
+        groups = {
+            g.id: g for g in self.netbox.list_fhrp_groups(list(group_ids))
+        }
+        for assignment in assignments:
+            assignment.group = groups[assignment.group.id]
+            interfaces[assignment.interface_id].groups.append(assignment)
 
     def _fill_interface_ipaddress(self, interfaces: list[InterfaceT]) -> None:
         interface_mapping = {i.id: i for i in interfaces}

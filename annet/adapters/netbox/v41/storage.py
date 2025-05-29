@@ -6,7 +6,8 @@ from annetbox.v41 import models as api_models
 
 from annet.adapters.netbox.common.adapter import NetboxAdapter, get_device_breed, get_device_hw
 from annet.adapters.netbox.common.storage_base import BaseNetboxStorage
-from annet.adapters.netbox.v41.models import InterfaceV41, IpAddressV41, NetboxDeviceV41, PrefixV41
+from annet.adapters.netbox.v41.models import InterfaceV41, IpAddressV41, \
+    NetboxDeviceV41, PrefixV41, DeviceIpV41
 from annet.storage import Storage
 
 
@@ -37,6 +38,7 @@ class NetboxV41Adapter(NetboxAdapter[NetboxDeviceV41, InterfaceV41, IpAddressV41
             list[InterfaceV41],
             recipe=[
                 link_constant(P[InterfaceV41].ip_addresses, factory=list),
+                link_constant(P[InterfaceV41].fhrp_groups, factory=list),
                 link_constant(P[InterfaceV41].lag_min_links, value=None),
             ]
         )
@@ -87,5 +89,5 @@ class NetboxStorageV41(BaseNetboxStorage[NetboxDeviceV41, InterfaceV41, IpAddres
             token: str,
             ssl_context: ssl.SSLContext | None,
             threads: int,
-    ) -> NetboxAdapter[NetboxDeviceV41, InterfaceV41, IpAddressV41, PrefixV41]:
+    ) -> NetboxAdapter[NetboxDeviceV41, InterfaceV41, IpAddressV41, PrefixV41, DeviceIpV41]:
         return NetboxV41Adapter(self, url, token, ssl_context, threads)

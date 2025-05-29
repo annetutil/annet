@@ -2,7 +2,9 @@ from dataclasses import dataclass
 from typing import Optional
 import warnings
 from datetime import datetime, timezone
-from annet.adapters.netbox.common.models import Entity, Interface, InterfaceType, IpAddress, Label, NetboxDevice, DeviceIp, IpFamily, Prefix
+from annet.adapters.netbox.common.models import Entity, Interface, \
+    InterfaceType, IpAddress, Label, NetboxDevice, DeviceIp, IpFamily, Prefix, \
+    FHRPGroupAssignment
 
 
 @dataclass
@@ -16,7 +18,17 @@ class IpAddressV41(IpAddress[PrefixV41]):
 
 
 @dataclass
-class InterfaceV41(Interface[IpAddressV41]):
+class DeviceIpV41(DeviceIp):
+    family: IpFamily
+
+
+@dataclass
+class FHRPGroupAssignmentV41(FHRPGroupAssignment[DeviceIpV41]):
+    pass
+
+
+@dataclass
+class InterfaceV41(Interface[IpAddressV41, FHRPGroupAssignmentV41]):
     def _add_new_addr(self, address_mask: str, vrf: Entity | None, family: IpFamily) -> None:
         self.ip_addresses.append(IpAddressV41(
             id=0,
@@ -32,21 +44,9 @@ class InterfaceV41(Interface[IpAddressV41]):
             assigned_object_id=self.id,
         ))
 
-
 @dataclass
-class DeviceIpV41(DeviceIp):
-    id: int
-    display: str
-    address: str
-    family: IpFamily
-
-
-@dataclass
-class NetboxDeviceV41(NetboxDevice[InterfaceV41]):
+class NetboxDeviceV41(NetboxDevice[InterfaceV41, DeviceIpV41]):
     role: Entity
-    primary_ip: Optional[DeviceIpV41]
-    primary_ip4: Optional[DeviceIpV41]
-    primary_ip6: Optional[DeviceIpV41]
 
     @property
     def device_role(self):

@@ -7,13 +7,17 @@ from annetbox.v42 import client_sync
 from annetbox.v42 import models as api_models
 
 from annet.adapters.netbox.common.adapter import NetboxAdapter, get_device_breed, get_device_hw
+from annet.adapters.netbox.common.models import FHRPGroup
 from annet.adapters.netbox.common.storage_base import BaseNetboxStorage
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
+from annet.adapters.netbox.v41.models import DeviceIpV41, FHRPGroupAssignmentV41
 from annet.adapters.netbox.v42.models import InterfaceV42, NetboxDeviceV42, PrefixV42, IpAddressV42, Vlan, Vrf
 from annet.storage import Storage
 
 
-class NetboxV42Adapter(NetboxAdapter[NetboxDeviceV42, InterfaceV42, IpAddressV42, PrefixV42]):
+class NetboxV42Adapter(NetboxAdapter[
+       NetboxDeviceV42, InterfaceV42, IpAddressV42, PrefixV42, FHRPGroup[DeviceIpV41], FHRPGroupAssignmentV41,
+]):
     def __init__(
             self,
             storage: Storage,
@@ -40,6 +44,7 @@ class NetboxV42Adapter(NetboxAdapter[NetboxDeviceV42, InterfaceV42, IpAddressV42
             list[InterfaceV42],
             recipe=[
                 link_constant(P[InterfaceV42].ip_addresses, factory=list),
+                link_constant(P[InterfaceV42].fhrp_groups, factory=list),
                 link_constant(P[InterfaceV42].lag_min_links, value=None),
             ]
         )
@@ -53,6 +58,18 @@ class NetboxV42Adapter(NetboxAdapter[NetboxDeviceV42, InterfaceV42, IpAddressV42
         self.convert_ip_prefixes = get_converter(
             list[api_models.Prefix],
             list[PrefixV42],
+        )
+        self.convert_fhrp_group_assignments = get_converter(
+            list[api_models.FHRPGroupAssignmentBrief],
+            list[FHRPGroupAssignmentV41],
+            recipe=[
+                link_constant(P[FHRPGroupAssignmentV41].group, value=None),
+                link(P[FHRPGroupAssignmentV41].group_id, P[api_models.FHRPGroupAssignmentBrief].group.id),
+            ]
+        )
+        self.convert_fhrp_groups = get_converter(
+            list[api_models.FHRPGroup],
+            list[FHRPGroup[DeviceIpV41]],
         )
 
     def list_all_fqdns(self) -> list[str]:
@@ -88,8 +105,20 @@ class NetboxV42Adapter(NetboxAdapter[NetboxDeviceV42, InterfaceV42, IpAddressV42
     def list_all_vlans(self) -> list[Vlan]:
         return self.netbox.ipam_all_vlans().results
 
+    def list_fhrp_group_assignments(
+            self, iface_ids: list[int],
+    ) -> list[FHRPGroupAssignmentV41]:
+        raw_assignments = self.netbox.ipam_all_fhrp_group_assignments_by_interface(
+            interface_id=iface_ids,
+        )
+        return self.convert_fhrp_group_assignments(raw_assignments)
 
-class NetboxStorageV42(BaseNetboxStorage[NetboxDeviceV42, InterfaceV42, IpAddressV42, PrefixV42]):
+    def list_fhrp_groups(self, ids: list[int]) -> list[FHRPGroup[DeviceIpV41]]:
+        raw_groups = self.netbox.ipam_all_fhrp_groups_by_id(id=list(ids))
+        return self.convert_fhrp_groups(raw_groups)
+
+
+class NetboxStorageV42(BaseNetboxStorage[NetboxDeviceV42, InterfaceV42, IpAddressV42, PrefixV42, FHRPGroup[DeviceIpV41], FHRPGroupAssignmentV41,]):
     netbox: NetboxV42Adapter
 
     def __init__(self, opts: Optional[NetboxStorageOpts] = None):
@@ -103,7 +132,10 @@ class NetboxStorageV42(BaseNetboxStorage[NetboxDeviceV42, InterfaceV42, IpAddres
             token: str,
             ssl_context: ssl.SSLContext | None,
             threads: int,
-    ) -> NetboxAdapter[NetboxDeviceV42, InterfaceV42, IpAddressV42, PrefixV42]:
+    ) -> NetboxAdapter[
+        NetboxDeviceV42, InterfaceV42, IpAddressV42, PrefixV42, DeviceIpV41,
+        FHRPGroup[DeviceIpV41], FHRPGroupAssignmentV41,
+    ]:
         return NetboxV42Adapter(self, url, token, ssl_context, threads)
 
     def resolve_all_vlans(self) -> list[Vlan]:

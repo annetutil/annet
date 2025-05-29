@@ -3,8 +3,14 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from annet.adapters.netbox.common.models import (
-    IpAddress, NetboxDevice, Entity, Prefix, InterfaceType, Interface, IpFamily, Label,
+    IpAddress, NetboxDevice, Entity, Prefix, InterfaceType, Interface,
+    IpFamily, Label, FHRPGroupAssignment, DeviceIp,
 )
+
+@dataclass
+class DeviceIpV37(DeviceIp):
+    family: int
+
 
 
 @dataclass
@@ -18,7 +24,12 @@ class IpAddressV37(IpAddress[PrefixV37]):
 
 
 @dataclass
-class InterfaceV37(Interface[IpAddressV37]):
+class FHRPGroupAssignmentV37(FHRPGroupAssignment[DeviceIpV37]):
+    pass
+
+
+@dataclass
+class InterfaceV37(Interface[IpAddressV37, FHRPGroupAssignmentV37]):
     def _add_new_addr(self, address_mask: str, vrf: Entity | None, family: IpFamily) -> None:
         self.ip_addresses.append(IpAddressV37(
             id=0,
@@ -36,7 +47,7 @@ class InterfaceV37(Interface[IpAddressV37]):
 
 
 @dataclass
-class NetboxDeviceV37(NetboxDevice[InterfaceV37]):
+class NetboxDeviceV37(NetboxDevice[InterfaceV37, DeviceIpV37]):
     device_role: Entity
 
     def __hash__(self):
