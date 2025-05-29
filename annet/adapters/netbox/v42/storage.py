@@ -16,7 +16,8 @@ from annet.storage import Storage
 
 
 class NetboxV42Adapter(NetboxAdapter[
-       NetboxDeviceV42, InterfaceV42, IpAddressV42, PrefixV42, FHRPGroup[DeviceIpV41], FHRPGroupAssignmentV41,
+    NetboxDeviceV42, InterfaceV42, IpAddressV42, PrefixV42,
+    FHRPGroup[DeviceIpV41], FHRPGroupAssignmentV41,
 ]):
     def __init__(
             self,
@@ -64,7 +65,7 @@ class NetboxV42Adapter(NetboxAdapter[
             list[FHRPGroupAssignmentV41],
             recipe=[
                 link_constant(P[FHRPGroupAssignmentV41].group, value=None),
-                link(P[FHRPGroupAssignmentV41].group_id, P[api_models.FHRPGroupAssignmentBrief].group.id),
+                link_function(lambda model: model.group.id, P[FHRPGroupAssignmentV41].fhrp_group_id),
             ]
         )
         self.convert_fhrp_groups = get_converter(
@@ -111,11 +112,11 @@ class NetboxV42Adapter(NetboxAdapter[
         raw_assignments = self.netbox.ipam_all_fhrp_group_assignments_by_interface(
             interface_id=iface_ids,
         )
-        return self.convert_fhrp_group_assignments(raw_assignments)
+        return self.convert_fhrp_group_assignments(raw_assignments.results)
 
     def list_fhrp_groups(self, ids: list[int]) -> list[FHRPGroup[DeviceIpV41]]:
         raw_groups = self.netbox.ipam_all_fhrp_groups_by_id(id=list(ids))
-        return self.convert_fhrp_groups(raw_groups)
+        return self.convert_fhrp_groups(raw_groups.results)
 
 
 class NetboxStorageV42(BaseNetboxStorage[NetboxDeviceV42, InterfaceV42, IpAddressV42, PrefixV42, FHRPGroup[DeviceIpV41], FHRPGroupAssignmentV41,]):
@@ -133,7 +134,7 @@ class NetboxStorageV42(BaseNetboxStorage[NetboxDeviceV42, InterfaceV42, IpAddres
             ssl_context: ssl.SSLContext | None,
             threads: int,
     ) -> NetboxAdapter[
-        NetboxDeviceV42, InterfaceV42, IpAddressV42, PrefixV42, DeviceIpV41,
+        NetboxDeviceV42, InterfaceV42, IpAddressV42, PrefixV42,
         FHRPGroup[DeviceIpV41], FHRPGroupAssignmentV41,
     ]:
         return NetboxV42Adapter(self, url, token, ssl_context, threads)

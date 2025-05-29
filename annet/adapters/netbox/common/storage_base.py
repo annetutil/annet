@@ -9,9 +9,9 @@ from annet.adapters.netbox.common.query import NetboxQuery, FIELD_VALUE_SEPARATO
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
 from annet.storage import Storage
 from .adapter import NetboxAdapter
-from .models import IpAddress, Interface, NetboxDevice, Prefix, FHRPGroup, \
-    FHRPGroupAssignment
-from ..v41.models import FHRPGroupAssignmentV41
+from .models import (
+    IpAddress, Interface, NetboxDevice, Prefix, FHRPGroup, FHRPGroupAssignment,
+)
 
 logger = getLogger(__name__)
 NetboxDeviceT = TypeVar("NetboxDeviceT", bound=NetboxDevice)
@@ -137,21 +137,22 @@ class BaseNetboxStorage(
         interfaces = self.netbox.list_interfaces_by_devices(list(device_mapping))
         for interface in interfaces:
             device_mapping[interface.device.id].interfaces.append(interface)
+        self._fill_interface_fhrp_groups(interfaces)
         self._fill_interface_ipaddress(interfaces)
 
     def _fill_interface_fhrp_groups(self, interfaces: list[InterfaceT]) -> None:
-        interface_mapping = {i.id: i for i in interfaces}
+        interface_mapping = {i.id: i for i in interfaces if i.count_fhrp_groups}
         assignments = self.netbox.list_fhrp_group_assignments(list(interface_mapping))
-        group_ids = {r.group_id for r in assignments}
+        group_ids = {r.fhrp_group_id for r in assignments}
         groups = {
             g.id: g for g in self.netbox.list_fhrp_groups(list(group_ids))
         }
         for assignment in assignments:
-            assignment.group = groups[assignment.group.id]
-            interfaces[assignment.interface_id].groups.append(assignment)
+            assignment.group = groups[assignment.fhrp_group_id]
+            interface_mapping[assignment.interface_id].fhrp_groups.append(assignment)
 
     def _fill_interface_ipaddress(self, interfaces: list[InterfaceT]) -> None:
-        interface_mapping = {i.id: i for i in interfaces}
+        interface_mapping = {i.id: i for i in interfaces if i.count_ipaddresses}
         ips = self.netbox.list_ipaddr_by_ifaces(list(interface_mapping))
         for ip in ips:
             interface_mapping[ip.assigned_object_id].ip_addresses.append(ip)

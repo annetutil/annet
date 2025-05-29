@@ -156,7 +156,7 @@ class FHRPGroupAssignment(Generic[_DeviceIPT]):
     display: str
     priority: int
     group: FHRPGroup[_DeviceIPT]
-    group_id: int
+    fhrp_group_id: int
 
     interface_type: str | None
     interface_id: int | None
