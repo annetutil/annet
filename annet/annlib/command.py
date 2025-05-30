@@ -17,7 +17,7 @@ class Question:
 
 @dataclass
 class Command:
-    cmd: str
+    cmd: str | bytes
     questions: Optional[List[Question]] = None
     exc_handler: Optional[List[Question]] = None
     timeout: Optional[int] = None  # total timeout
@@ -26,6 +26,8 @@ class Command:
     suppress_eof: bool = False
 
     def __str__(self) -> str:
+        if isinstance(self.cmd, bytes):
+            return self.cmd.decode("utf-8")
         return self.cmd
 
 
