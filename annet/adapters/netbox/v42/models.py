@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
-from annet.adapters.netbox.common.models import InterfaceType, IpFamily, Label, Prefix, Entity
-from annet.adapters.netbox.v41.models import InterfaceV41, IpAddressV41, NetboxDeviceV41
+from annet.adapters.netbox.common.models import InterfaceType, IpFamily, Label, \
+    Prefix, Entity, Interface, IpAddress
+from annet.adapters.netbox.v41.models import InterfaceV41, IpAddressV41, \
+    NetboxDeviceV41, FHRPGroupAssignmentV41
 import annetbox.v42.models
 
 
@@ -19,12 +21,12 @@ class PrefixV42(Prefix):
 
 
 @dataclass
-class IpAddressV42(IpAddressV41):
+class IpAddressV42(IpAddress[PrefixV42]):
     prefix: Optional[PrefixV42] = None
 
 
 @dataclass
-class InterfaceV42(InterfaceV41):
+class InterfaceV42(Interface[IpAddressV42, FHRPGroupAssignmentV41]):
     def _add_new_addr(self, address_mask: str, vrf: Entity | None, family: IpFamily) -> None:
         self.ip_addresses.append(IpAddressV42(
             id=0,

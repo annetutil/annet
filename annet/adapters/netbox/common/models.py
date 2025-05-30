@@ -49,7 +49,6 @@ class DeviceIp(DumpableView):
     id: int
     display: str
     address: str
-    family: int
 
     @property
     def _dump__list_key(self):
@@ -131,8 +130,49 @@ def vrf_object(vrf: str | None) -> Entity | None:
 _IpAddressT = TypeVar("_IpAddressT", bound=IpAddress)
 
 
+_DeviceIPT = TypeVar("_DeviceIPT", bound=DeviceIp)
+
+
 @dataclass
-class Interface(Entity, Generic[_IpAddressT]):
+class FHRPGroup(Generic[_DeviceIPT]):
+    id: int
+    group_id: int
+    display: str
+    protocol: str
+    description: str
+
+    name: str
+    auth_type: str | None
+    auth_key: str
+    tags: list[EntityWithSlug]
+    custom_fields: dict[str, Any]
+    ip_addresses: list[_DeviceIPT]
+    comments: str | None = None
+
+
+_FHRPGroupT = TypeVar("_FHRPGroupT", bound=FHRPGroup)
+
+
+@dataclass
+class FHRPGroupAssignment(Generic[_FHRPGroupT]):
+    id: int
+    display: str
+    priority: int
+    group: _FHRPGroupT
+    fhrp_group_id: int
+
+    interface_type: str | None
+    interface_id: int | None
+
+
+_FHRPGroupAssignmentT = TypeVar(
+    "_FHRPGroupAssignmentT",
+    bound=FHRPGroupAssignment,
+)
+
+
+@dataclass
+class Interface(Entity, Generic[_IpAddressT, _FHRPGroupAssignmentT]):
     device: Entity
     enabled: bool
     description: str
@@ -143,12 +183,16 @@ class Interface(Entity, Generic[_IpAddressT]):
     tagged_vlans: Optional[List[InterfaceVlan]]
     tags: List[EntityWithSlug] = field(default_factory=list)
     display: str = ""
-    ip_addresses: List[_IpAddressT] = field(default_factory=list)
     vrf: Optional[Entity] = None
     mtu: int | None = None
     lag: Entity | None = None
     lag_min_links: int | None = None
     speed: int | None = None
+
+    ip_addresses: List[_IpAddressT] = field(default_factory=list)
+    count_ipaddresses: int = 0
+    fhrp_groups: List[_FHRPGroupAssignmentT] = field(default_factory=list)
+    count_fhrp_groups: int = 0
 
     def add_addr(self, address_mask: str, vrf: str | None) -> None:
         addr = ip_interface(address_mask)
@@ -183,7 +227,7 @@ _InterfaceT = TypeVar("_InterfaceT", bound=Interface)
 
 
 @dataclass
-class NetboxDevice(Entity, Generic[_InterfaceT]):
+class NetboxDevice(Entity, Generic[_InterfaceT, _DeviceIPT]):
     url: str
     storage: Storage
 
@@ -199,9 +243,9 @@ class NetboxDevice(Entity, Generic[_InterfaceT]):
     position: Optional[float]
     face: Optional[Label]
     status: Label
-    primary_ip: Optional[DeviceIp]
-    primary_ip4: Optional[DeviceIp]
-    primary_ip6: Optional[DeviceIp]
+    primary_ip: Optional[_DeviceIPT]
+    primary_ip4: Optional[_DeviceIPT]
+    primary_ip6: Optional[_DeviceIPT]
     tags: List[EntityWithSlug]
     custom_fields: Dict[str, Any]
     created: datetime
