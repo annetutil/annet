@@ -249,7 +249,7 @@ opt_max_slots = Arg(
 )
 
 opt_max_deploy = Arg(
-    "--max-deploy", default=0, type=int,
+    "--max-deploy", default=DefaultFromEnv("ANN_MAX_DEPLOY", "0"), type=int,
     help="The amount of devices deployed at the same time"
 )
 
