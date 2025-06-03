@@ -72,6 +72,8 @@ interfaces
             description ~
             mtu *
             vlan-tags
+            family inet6
+                address * %diff_logic=juniper.iface.ipv6_addr
         description ~
         mtu *
         hold-time
