@@ -1048,7 +1048,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             yield "delete", "extcommunity", "rt", "all"
             added.extend(action.value.replaced)
 
-            added.extend(action.value.replaced)
+        added.extend(action.value.added)
         for member_name in added:
             typename = self._iosxr_community_type_str(communities[member_name].type)
             yield "set", "extcommunity", typename, member_name, "additive"
