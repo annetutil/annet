@@ -35,7 +35,7 @@ snmp-server host ~
 
 ntp distribute %logic=cisco.misc.no_ntp_distribute
 
-!interface */(mgmt|ipmi|Vlan1$)/
+!interface */(ipmi|Vlan1$)/
 
 interface mgmt0$
     !vrf member management
