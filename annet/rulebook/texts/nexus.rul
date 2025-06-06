@@ -13,6 +13,7 @@
 
 ip community-list standard ~
 
+!vrf context management
 vrf context *
 
 vlan group * vlan-list %logic=cisco.vlandb.simple
@@ -35,6 +36,9 @@ snmp-server host ~
 ntp distribute %logic=cisco.misc.no_ntp_distribute
 
 !interface */(mgmt|ipmi|Vlan1$)/
+
+interface mgmt0$
+    !vrf member management
 
 # SVI/Subifs/Lagg
 interface */(Vlan|Ethernet.*\.|port-channel.*\.?)\d+$/ %diff_logic=nexus.iface.diff
