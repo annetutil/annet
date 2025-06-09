@@ -113,13 +113,11 @@ acl ip-pool *
 acl ipv6-pool *
     ~ %global
 
-acl name *
+acl */(name|number)/ *
+    rule * description
     rule * %logic=huawei.misc.undo_redo
-acl number *
-    rule * %logic=huawei.misc.undo_redo
-acl ipv6 name *
-    rule * %logic=huawei.misc.undo_redo
-acl ipv6 number *
+acl ipv6 */(name|number)/ *
+    rule * description
     rule * %logic=huawei.misc.undo_redo
 
 */(ftp|FTP|ssh|telnet)/ server acl

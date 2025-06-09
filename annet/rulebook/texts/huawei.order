@@ -71,7 +71,11 @@ ntp
 acl port-pool
 acl ip-pool
 acl ipv6-pool
-acl
+acl ~
+    undo rule * description %order_reverse
+    undo rule ~ %order_reverse
+    rule * */deny|permit/
+    rule * description
 
 system tcam
 
