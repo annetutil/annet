@@ -16,6 +16,11 @@ def format_json(data: Any, stable: bool = False) -> str:
     return json.dumps(data, indent=4, ensure_ascii=False, sort_keys=not stable) + "\n"
 
 
+def _sanitize_json_pointer(pattern: str) -> str:
+    """Replace special characters on the JsonPointer valid ones"""
+    return pattern.replace("~", "~0").replace("/", "~1")
+
+
 def apply_json_fragment(
         old: Dict[str, Any],
         new_fragment: Dict[str, Any],
@@ -179,5 +184,5 @@ def _resolve_json_pointers(pattern: str, content: Dict[str, Any]) -> List[jsonpo
 
     ret: List[jsonpointer.JsonPointer] = []
     for matched_parts, _ in matched:
-        ret.append(jsonpointer.JsonPointer("/" + "/".join(matched_parts)))
+        ret.append(jsonpointer.JsonPointer("/" + "/".join([_sanitize_json_pointer(v) for v in matched_parts])))
     return ret
