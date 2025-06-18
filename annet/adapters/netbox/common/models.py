@@ -235,7 +235,7 @@ class NetboxDevice(Entity, Generic[_InterfaceT, _DeviceIPT]):
     device_type: DeviceType
     # `device_role` deprecated since v4.0, replace in derived classes.
     tenant: Optional[Entity]
-    platform: Optional[Entity]
+    platform: Optional[EntityWithSlug]
     serial: str
     asset_tag: Optional[str]
     site: Entity
