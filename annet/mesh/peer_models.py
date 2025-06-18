@@ -45,7 +45,8 @@ class _OptionsDTO(_SharedOptionsDTO):
     extended_next_hop: bool
     send_lcommunity: bool
     send_extcommunity: bool
-    import_limit: bool
+    import_limit: Optional[int]
+    import_limit_action: Optional[str]
     teardown_timeout: bool
     redistribute: bool
     passive: bool
