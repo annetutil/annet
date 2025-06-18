@@ -162,7 +162,8 @@ class PeerOptions:
     send_lcommunity: Optional[bool] = None
     send_extcommunity: Optional[bool] = None
     send_labeled: Optional[bool] = None
-    import_limit: Optional[bool] = None
+    import_limit: Optional[int] = None
+    import_limit_action: Optional[str] = None
     teardown_timeout: Optional[bool] = None
     redistribute: Optional[bool] = None
     passive: Optional[bool] = None
@@ -276,7 +277,8 @@ class PeerGroup:
     send_lcommunity: bool = False
     send_extcommunity: bool = False
     send_labeled: bool = False
-    import_limit: bool = False
+    import_limit: int = False
+    import_limit_action: Optional[str] = None
     teardown_timeout: bool = False
     redistribute: bool = False
     passive: bool = False
