@@ -139,7 +139,7 @@ class FHRPGroup(Generic[_DeviceIPT]):
     group_id: int
     display: str
     protocol: str
-    description: str
+    description: str | None
 
     name: str
     auth_type: str | None
