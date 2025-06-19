@@ -14,6 +14,7 @@ class PrefixV41(Prefix):
 
 @dataclass
 class IpAddressV41(IpAddress[PrefixV41]):
+    role: Optional[Label] = None
     prefix: Optional[PrefixV41] = None
 
 
