@@ -141,6 +141,14 @@ def undo_trust(rule, key, diff, hw, **_):
         yield from common.default(rule, key, diff)
 
 
+def undo_conf_autosave(rule, key, diff, hw, **_):
+    """на V600 configuration file auto-save выключается без interval"""
+    if diff[Op.REMOVED]:
+        yield False, "undo configuration file auto-save", None
+    else:
+        yield from common.default(rule, key, diff)
+
+
 def port_queue(rule, key, diff, **_):
     """
     Для отката конфигурации port-queue на интерфейсе требуется только частичное указание параметров.
@@ -188,7 +196,8 @@ def stelnet(rule, key, diff, **_):
     if diff[Op.REMOVED] and diff[Op.ADDED]:
         removed = {x["row"] for x in diff[Op.REMOVED]}
         added = {x["row"] for x in diff[Op.ADDED]}
-        if removed == {"stelnet ipv4 server enable", "stelnet ipv6 server enable"} and added == {"stelnet server enable"}:
+        if removed == {"stelnet ipv4 server enable", "stelnet ipv6 server enable"} and added == {
+            "stelnet server enable"}:
             return
     yield from common.default(rule, key, diff)
 
