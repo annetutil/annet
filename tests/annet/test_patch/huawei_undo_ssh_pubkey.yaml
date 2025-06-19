@@ -1,0 +1,20 @@
+- vendor: huawei
+  before: |
+    ssh server publickey ecc dsa rsa
+  after: |
+    ssh server publickey rsa_sha2_512 rsa_sha2_256
+  patch: |
+    system-view
+    ssh server publickey rsa_sha2_512 rsa_sha2_256
+    q
+    save
+
+- vendor: huawei
+  before: |
+    ssh server publickey ecc dsa rsa
+  after:
+  patch: |
+    system-view
+    undo ssh server publickey
+    q
+    save

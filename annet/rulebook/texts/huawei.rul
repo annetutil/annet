@@ -139,6 +139,7 @@ ssh server key-exchange
 ssh server dh-exchange
 ssh server cipher
 ssh server hmac
+ssh server publickey
 
 ftp client source %logic=huawei.misc.undo_redo
 
