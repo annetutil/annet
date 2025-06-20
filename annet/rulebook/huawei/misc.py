@@ -196,8 +196,7 @@ def stelnet(rule, key, diff, **_):
     if diff[Op.REMOVED] and diff[Op.ADDED]:
         removed = {x["row"] for x in diff[Op.REMOVED]}
         added = {x["row"] for x in diff[Op.ADDED]}
-        if removed == {"stelnet ipv4 server enable", "stelnet ipv6 server enable"} and added == {
-            "stelnet server enable"}:
+        if removed == {"stelnet ipv4 server enable", "stelnet ipv6 server enable"} and added == {"stelnet server enable"}:
             return
     yield from common.default(rule, key, diff)
 
