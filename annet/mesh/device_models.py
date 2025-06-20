@@ -23,7 +23,9 @@ class FamilyOptions(BaseMeshModel):
     vrf_name: str
     multipath: int
     global_multipath: int
-    aggregate: Annotated[Aggregate, Merge()]
+    aggregate: Annotated[Aggregate, Merge()]  # use `aggregates` instead
+    aggregates: Annotated[tuple[Aggregate, ...], Concat()]
+    af_loops: int
     redistributes: Annotated[tuple[Redistribute, ...], Concat()]
     allow_default: bool
     aspath_relax: bool
