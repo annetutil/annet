@@ -1,6 +1,13 @@
 import pytest
 
-from annet.bgp_models import BFDTimers, Redistribute, VidCollection, VidRange
+from annet.bgp_models import (
+    Aggregate,
+    BFDTimers,
+    Redistribute,
+    VidCollection,
+    VidRange,
+)
+
 from annet.mesh import (
     MeshExecutor,
     MeshRulesRegistry,
@@ -33,6 +40,11 @@ def on_device_x(device: GlobalOptions):
     device.vrf[VRF].ipv4_unicast.aggregate.policy = EXPORT_POLICY1
     device.vrf[VRF].as_path_relax = True
     device.ipv6_unicast.aggregate.policy = EXPORT_POLICY2
+    device.ipv6_unicast.af_loops = 17
+    device.ipv6_unicast.aggregates = (Aggregate(
+        routes=("192.168.1.0/24", ),
+        as_set=True,
+    ), Aggregate())
     device.ipv4_unicast.redistributes = (Redistribute(
         protocol="ipv4", policy="sss",
     ),)
@@ -153,6 +165,12 @@ def test_storage(registry, storage, device1):
     assert res.global_options.ipv6_unicast.vrf_name == ""
     assert res.global_options.ipv6_unicast.family == "ipv6_unicast"
     assert res.global_options.ipv6_unicast.aggregate.policy == EXPORT_POLICY2
+    assert res.global_options.ipv6_unicast.af_loops == 17
+    assert res.global_options.ipv6_unicast.aggregates == (Aggregate(
+        routes=("192.168.1.0/24", ),
+        as_set=True,
+    ), Aggregate())
+    assert res.global_options.ipv4_unicast.aggregates == ()
 
     assert res.global_options.groups == []
     assert res.global_options.vrf.keys() == {VRF}

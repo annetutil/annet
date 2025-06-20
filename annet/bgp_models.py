@@ -1,6 +1,6 @@
 from collections.abc import Sequence, Iterable
 from dataclasses import dataclass, field
-from typing import Literal, Union, Optional
+from typing import Literal, Union, Optional, Annotated
 
 
 class VidRange:
@@ -242,7 +242,9 @@ class FamilyOptions:
     vrf_name: str = ""
     multipath: int = 0
     global_multipath: int = 0
-    aggregate: Aggregate = field(default_factory=Aggregate)
+    aggregate: Aggregate = field(default_factory=Aggregate)  # use `aggregates` instead
+    aggregates: tuple[Aggregate, ...] = ()
+    af_loops: Optional[int] = None
     redistributes: tuple[Redistribute, ...] = ()
     allow_default: bool = False
     aspath_relax: bool = False
