@@ -18,6 +18,7 @@ from annet.mesh import (
     VirtualLocal,
     VirtualPeer,
     separate_ports,
+    united_ports,
 )
 from .fakes import FakeStorage, FakeDevice, FakeInterface
 
@@ -376,7 +377,9 @@ def test_2vrfs(storage, direct, device1, device_neighbor, device2):
     assert connected_device.find_interface("Vlan2").addrs == [('192.168.1.1', None)]
 
 
-def test_two_connections_data_merged():
+@pytest.fixture
+def two_connections_storage():
+    """Storage with devices which have 2 connections between"""
     device1 = FakeDevice(DEV1, [
         FakeInterface("if1", DEV2, "if11"),
         FakeInterface("if2", DEV2, "if12"),
@@ -389,30 +392,58 @@ def test_two_connections_data_merged():
     storage = FakeStorage()
     storage.add_device(device1)
     storage.add_device(device2)
+    return storage
 
+
+def two_connections_registry(use_lag: bool):
     registry = MeshRulesRegistry()
+    if use_lag:
+        port_processor = united_ports
+    else:
+        port_processor = separate_ports
 
-    @registry.direct(DEV1, DEV2, port_processor=separate_ports)
-    def base(dev1: DirectPeer, dev2: DirectPeer, session: MeshSession):
-        dev1.addr = f"fd00:199:a:1::1"
-        dev2.addr = f"fd00:199:a:1::2"
-        dev1.asnum = 12345
-        dev2.asnum = 12345
-        dev1.af_loops = 42
+    @registry.direct(DEV1, DEV2, port_processor=port_processor)
+    def on_direct(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):
+        local.addr = "fd00:199:a:1::1"
+        neighbor.addr = "fd00:199:a:1::2"
+        session.asnum = 12345
+        local.af_loops = 42
+        if use_lag:
+            local.lag = 1
+            neighbor.lag = 1
 
-    @registry.direct(DEV1, DEV2, port_processor=separate_ports)
-    def additional(dev1: DirectPeer, dev2: DirectPeer, session: MeshSession):
-        dev1.addr = f"fd00:199:a:1::1"
-        dev2.addr = f"fd00:199:a:1::2"
-        dev1.asnum = 12345
-        dev2.asnum = 12345
-        dev1.export_policy = EXPORT_POLICY1
+    @registry.direct(DEV1, DEV2, port_processor=port_processor)
+    def on_direct_additional(local: DirectPeer, neighbor: DirectPeer, session: MeshSession):
+        local.addr = "fd00:199:a:1::1"
+        neighbor.addr = "fd00:199:a:1::2"
+        session.asnum = 12345
+        local.export_policy = EXPORT_POLICY1
+        if use_lag:
+            local.lag = 1
+            neighbor.lag = 1
+    return registry
 
-    executor = MeshExecutor(registry, storage)
-    res_dev1 = executor.execute_for(device1)
+
+def test_two_connections_data_merged(two_connections_storage):
+    registry = two_connections_registry(use_lag=False)
+    executor = MeshExecutor(registry, two_connections_storage)
+    res_dev1 = executor.execute_for(two_connections_storage.devices[0])
     assert len(res_dev1.peers) == 2
     assert res_dev1.peers[0].interface == "if1"
     assert res_dev1.peers[1].interface == "if2"
+    for peer in res_dev1.peers:
+        assert peer.addr == "fd00:199:a:1::2"
+        assert peer.addr == "fd00:199:a:1::2"
+        assert peer.export_policy == EXPORT_POLICY1
+        assert peer.options.af_loops == 42
+
+
+def test_two_connections_lag(two_connections_storage):
+    registry = two_connections_registry(use_lag=True)
+    executor = MeshExecutor(registry, two_connections_storage)
+    res_dev1 = executor.execute_for(two_connections_storage.devices[0])
+    assert len(res_dev1.peers) == 1
+    assert res_dev1.peers[0].interface == "Trunk1"
     for peer in res_dev1.peers:
         assert peer.addr == "fd00:199:a:1::2"
         assert peer.addr == "fd00:199:a:1::2"

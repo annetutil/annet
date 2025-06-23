@@ -195,7 +195,7 @@ class MeshExecutor:
                     fqdn=pair.device.fqdn,
                     addr=addr,
                     vrf=getattr(pair.connected, "vrf", ""),
-                    interface=target_interface(pair.local, ports),
+                    interface=target_interface(pair.local, [p[0] for p in ports]),
                 )
                 try:
                     if peer_key in neighbor_peers:
