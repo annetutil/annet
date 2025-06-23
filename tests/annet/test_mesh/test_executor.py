@@ -374,3 +374,47 @@ def test_2vrfs(storage, direct, device1, device_neighbor, device2):
     peer = res_dev2.peers[0]
     assert peer.vrf_name == ""
     assert connected_device.find_interface("Vlan2").addrs == [('192.168.1.1', None)]
+
+
+def test_two_connections_data_merged():
+    device1 = FakeDevice(DEV1, [
+        FakeInterface("if1", DEV2, "if11"),
+        FakeInterface("if2", DEV2, "if12"),
+    ])
+    device2 = FakeDevice(DEV2, [
+        FakeInterface("if11", DEV1, "if1"),
+        FakeInterface("if12", DEV1, "if2"),
+    ])
+
+    storage = FakeStorage()
+    storage.add_device(device1)
+    storage.add_device(device2)
+
+    registry = MeshRulesRegistry()
+
+    @registry.direct(DEV1, DEV2, port_processor=separate_ports)
+    def base(dev1: DirectPeer, dev2: DirectPeer, session: MeshSession):
+        dev1.addr = f"fd00:199:a:1::1"
+        dev2.addr = f"fd00:199:a:1::2"
+        dev1.asnum = 12345
+        dev2.asnum = 12345
+        dev1.af_loops = 42
+
+    @registry.direct(DEV1, DEV2, port_processor=separate_ports)
+    def additional(dev1: DirectPeer, dev2: DirectPeer, session: MeshSession):
+        dev1.addr = f"fd00:199:a:1::1"
+        dev2.addr = f"fd00:199:a:1::2"
+        dev1.asnum = 12345
+        dev2.asnum = 12345
+        dev1.export_policy = EXPORT_POLICY1
+
+    executor = MeshExecutor(registry, storage)
+    res_dev1 = executor.execute_for(device1)
+    assert len(res_dev1.peers) == 2
+    assert res_dev1.peers[0].interface == "if1"
+    assert res_dev1.peers[1].interface == "if2"
+    for peer in res_dev1.peers:
+        assert peer.addr == "fd00:199:a:1::2"
+        assert peer.addr == "fd00:199:a:1::2"
+        assert peer.export_policy == EXPORT_POLICY1
+        assert peer.options.af_loops == 42

@@ -23,10 +23,33 @@ logger = getLogger(__name__)
 
 
 @dataclass(frozen=True)
+class TargetInterface:
+    subif: int | None = None
+    svi: int | None = None
+    lag: int | None = None
+    port: str | None = None
+
+
+@dataclass(frozen=True)
 class PeerKey:
     fqdn: str
     addr: str
     vrf: str
+    interface: TargetInterface
+
+
+def target_interface(
+        peer: DirectPeerDTO | IndirectPeerDTO | VirtualLocalDTO,
+        ports: list[str],
+) -> TargetInterface:
+    subif = getattr(peer, "subif", None)
+    svi = getattr(peer, "svi", None)
+    lag = getattr(peer, "lag", None)
+    port = None
+    if not (svi or lag):
+        if len(ports) == 1:
+            port = ports[0]
+    return TargetInterface(subif, svi, lag, port)
 
 
 class Pair(BaseMeshModel):
@@ -171,7 +194,8 @@ class MeshExecutor:
                 peer_key = PeerKey(
                     fqdn=pair.device.fqdn,
                     addr=addr,
-                    vrf=getattr(pair.connected, "vrf", "")
+                    vrf=getattr(pair.connected, "vrf", ""),
+                    interface=target_interface(pair.local, ports),
                 )
                 try:
                     if peer_key in neighbor_peers:
@@ -278,7 +302,8 @@ class MeshExecutor:
             peer_key = PeerKey(
                 fqdn=connected_device.fqdn,
                 addr=addr,
-                vrf=getattr(connected_dto, "vrf", "")
+                vrf=getattr(connected_dto, "vrf", ""),
+                interface=target_interface(pair.local, []),
             )
             try:
                 if peer_key in connected_peers:
