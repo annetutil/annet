@@ -60,6 +60,8 @@ ipv6 dhcp relay
 
 vrf context
 
+vpc domain
+
 interface */Vlan\d+/
 interface *
     no switchport
