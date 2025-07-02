@@ -189,7 +189,7 @@ class Interface(Entity, Generic[_IpAddressT, _FHRPGroupAssignmentT]):
     lag_min_links: int | None = None
     speed: int | None = None
 
-    custom_fields: dict[str, Any] | None = None
+    custom_fields: dict[str, Any] = field(default_factory=dict)
 
     ip_addresses: List[_IpAddressT] = field(default_factory=list)
     count_ipaddresses: int = 0
