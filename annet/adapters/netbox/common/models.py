@@ -189,7 +189,7 @@ class Interface(Entity, Generic[_IpAddressT, _FHRPGroupAssignmentT]):
     lag_min_links: int | None = None
     speed: int | None = None
 
-    custom_fields: dict[str, Any] = field(default_factory=dict)
+    custom_fields: dict[str, Any] | None = None
 
     ip_addresses: List[_IpAddressT] = field(default_factory=list)
     count_ipaddresses: int = 0
@@ -290,9 +290,7 @@ class NetboxDevice(Entity, Generic[_InterfaceT, _DeviceIPT]):
 
     def is_pc(self) -> bool:
         custom_breed_pc = ("Mellanox", "NVIDIA", "Moxa", "Nebius")
-        return (
-            self.device_type.manufacturer.name in custom_breed_pc or self.breed == "pc"
-        )
+        return self.device_type.manufacturer.name in custom_breed_pc or self.breed == "pc"
 
     @abstractmethod
     def _make_interface(self, name: str, type: InterfaceType) -> _InterfaceT:
@@ -301,9 +299,7 @@ class NetboxDevice(Entity, Generic[_InterfaceT, _DeviceIPT]):
     def _lag_name(self, lag: int) -> str:
         return lag_name(self.hw, lag)
 
-    def make_lag(
-        self, lag: int, ports: Sequence[str], lag_min_links: int | None
-    ) -> _InterfaceT:
+    def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: int | None) -> _InterfaceT:
         new_name = self._lag_name(lag)
         for target_interface in self.interfaces:
             if target_interface.name == new_name:
@@ -328,7 +324,8 @@ class NetboxDevice(Entity, Generic[_InterfaceT, _DeviceIPT]):
             if interface.name == name:
                 return interface
         interface = self._make_interface(
-            name=name, type=InterfaceType("virtual", "Virtual")
+            name=name,
+            type=InterfaceType("virtual", "Virtual")
         )
         self.interfaces.append(interface)
         return interface
@@ -342,7 +339,8 @@ class NetboxDevice(Entity, Generic[_InterfaceT, _DeviceIPT]):
             if target_port.name == name:
                 return target_port
         target_port = self._make_interface(
-            name=name, type=InterfaceType("virtual", "Virtual")
+            name=name,
+            type=InterfaceType("virtual", "Virtual")
         )
         self.interfaces.append(target_port)
         return target_port
