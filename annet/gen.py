@@ -259,38 +259,19 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
 
         entire_results = res.entire_results
         json_fragment_results = res.json_fragment_results
-        old_json_fragment_files = old_files.json_fragment_files
 
         new_files = res.new_files()
-        new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files)
 
-        filters: List[str] = []
-        filters_text = build_filter_text(filterer, device, ctx.stdin, ctx.args, ctx.config)
-        if filters_text:
-            filters = filters_text.split("\n")
+        filters = None
+        if filters_text := build_filter_text(filterer, device, ctx.stdin, ctx.args, ctx.config):
+            filters = filters_text.removesuffix("\n").split("\n")
 
-            for file_name in new_json_fragment_files:
-                if new_json_fragment_files.get(file_name) is not None:
-                    new_json_fragment_files = _update_json_config(
-                        new_json_fragment_files,
-                        file_name,
-                        jsontools.apply_acl_filters(new_json_fragment_files[file_name][0], filters)
-                    )
-            for file_name in old_json_fragment_files:
-                if old_json_fragment_files.get(file_name) is not None:
-                    old_json_fragment_files[file_name] = jsontools.apply_acl_filters(old_json_fragment_files[file_name], filters)
+        old_json_fragment_files = old_files.json_fragment_files.copy()
+        new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files, filters=filters)
 
         if ctx.args.acl_safe:
             safe_new_files = res.new_files(safe=True)
-            safe_new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files, safe=True)
-            if filters:
-                for file_name in safe_new_json_fragment_files:
-                    if safe_new_json_fragment_files.get(file_name):
-                        safe_new_json_fragment_files = _update_json_config(
-                            safe_new_json_fragment_files,
-                            file_name,
-                            jsontools.apply_acl_filters(safe_new_json_fragment_files[file_name][0], filters)
-                        )
+            safe_new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files, safe=True, filters=filters)
 
     if ctx.args.profile:
         perf = res.perf_mesures()
@@ -320,13 +301,6 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
         safe_new_json_fragment_files=safe_new_json_fragment_files,
         filter_acl_rules=filter_acl_rules,
     )
-
-
-def _update_json_config(json_files, file_name, new_config):
-    file = list(json_files[file_name])
-    file[0] = new_config
-    json_files[file_name] = tuple(file)
-    return json_files
 
 
 @dataclasses.dataclass

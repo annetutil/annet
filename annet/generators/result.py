@@ -4,9 +4,11 @@ import textwrap
 from collections import OrderedDict as odict
 from typing import (
     Any,
+    Callable,
     Dict,
     Optional,
-    Tuple, Callable,
+    Sequence,
+    Tuple,
 )
 
 from annet.annlib import jsontools
@@ -84,6 +86,7 @@ class RunGeneratorResult:
             self,
             old_files: Dict[str, Optional[str]],
             safe: bool = False,
+            filters: Sequence[str] | None = None,
     ) -> Dict[str, Tuple[Any, Optional[str]]]:
         # TODO: safe
         files: Dict[str, Tuple[Any, Optional[str]]] = {}
@@ -101,9 +104,9 @@ class RunGeneratorResult:
             previous_config: Dict[str, Any] = files[filepath][0]
             new_fragment = generator_result.config
             new_config = jsontools.apply_json_fragment(
-                previous_config,
-                new_fragment,
-                result_acl,
+                previous_config, new_fragment,
+                acl=result_acl,
+                filters=filters,
             )
             if jsontools.format_json(new_config) == jsontools.format_json(previous_config):
                 # config is not changed, deprioritize reload_cmd
