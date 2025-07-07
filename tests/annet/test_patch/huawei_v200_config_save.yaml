@@ -34,3 +34,15 @@
     undo set save-configuration interval
     q
     save
+
+- vendor: huawei
+  before: |
+    set save-configuration interval 43200 delay 1
+    set save-configuration backup-to-server server 1.1.1.1 transport-type sftp user cfg password XXXXXXX path xxxx
+  after: |
+    set save-configuration interval 43200 delay 1
+  patch: |
+    system-view
+    set save-configuration backup-to-server server
+    q
+    save
