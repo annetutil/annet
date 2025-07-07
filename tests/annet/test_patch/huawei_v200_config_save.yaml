@@ -43,6 +43,6 @@
     set save-configuration interval 43200 delay 1
   patch: |
     system-view
-    set save-configuration backup-to-server server
+    undo set save-configuration backup-to-server server
     q
     save
