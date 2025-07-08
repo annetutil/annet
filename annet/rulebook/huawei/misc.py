@@ -140,6 +140,7 @@ def undo_trust(rule, key, diff, hw, **_):
     else:
         yield from common.default(rule, key, diff)
 
+
 def port_queue(rule, key, diff, **_):
     """
     Для отката конфигурации port-queue на интерфейсе требуется только частичное указание параметров.
