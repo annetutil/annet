@@ -428,6 +428,12 @@ isis *
 
 error-down auto-recovery cause link-flap
 
+configuration file auto-save backup-to-server server
+configuration file auto-save
+
+
+set save-configuration backup-to-server *
+set save-configuration *
 
 ip route-static default-bfd
 ipv6 route-static default-bfd
