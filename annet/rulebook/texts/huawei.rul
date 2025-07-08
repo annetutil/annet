@@ -428,8 +428,9 @@ isis *
 
 error-down auto-recovery cause link-flap
 
-configuration file auto-save interval %logic=huawei.misc.undo_conf_autosave
 configuration file auto-save backup-to-server server
+configuration file auto-save
+
 
 set save-configuration backup-to-server *
 set save-configuration *
