@@ -63,6 +63,19 @@ def _implicit_tree(device):
                     undo user-password complexity-check
                  netconf
                  """
+        elif device.hw.Huawei.Quidway.S5700.S5735I:
+            text = """
+                !interface *
+                    port link-type access
+                interface NULL0
+            """
+        elif device.hw.Huawei.Quidway.S2x:
+            text = """
+                !interface *
+                    port link-type hybrid
+                    dot1x enable
+                interface NULL0
+            """
         else:
             text = """
                 stp mode mstp
@@ -158,10 +171,14 @@ def _implicit_tree(device):
             """
         if device.hw.Cisco.Catalyst:
             # this configuration is not visible in running-config when enabled
+            # no vstack and system mtu are default values
             text += r"""
                 # line console aaa config
                 !line con 0
                     authorization exec default
+                no vstack
+                system mtu routing 1500
+                system mtu jumbo 9000
             """
     return parse_text(text)
 
