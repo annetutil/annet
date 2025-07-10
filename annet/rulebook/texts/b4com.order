@@ -24,3 +24,15 @@ interface *
         exit
     sflow
 ip community-list
+router bgp *
+    bgp ~
+    neighbor */(\w+_?-?)+/ peer-group
+    neighbor */(\w+_?-?)+/ remote-as
+    neighbor */[\da-f\.\:]+/ peer-group
+    neighbor */[\da-f\.\:]+/ remote-as
+    neighbor * description *
+    neighbor * fall-over bfd
+    neighbor * advertisement-interval *
+    address-family ~
+        max-paths ebgp *
+        neighbor * activate
