@@ -119,6 +119,9 @@ class InterfaceMode:
 class InterfaceVlan(Entity):
     vid: int
 
+    def __hash__(self):
+        return hash(self.__repr__())
+
 
 def vrf_object(vrf: str | None) -> Entity | None:
     if vrf is None:
@@ -348,3 +351,13 @@ class NetboxDevice(Entity, Generic[_InterfaceT, _DeviceIPT]):
             if iface.name == name:
                 return iface
         return None
+
+    def get_vlans(self) -> Optional[List[InterfaceVlan]]:
+        """"Returns device's list of unique VLANs"""
+        vlan_set = set()
+        for iface in list(filter(lambda x: x.tagged_vlans or x.untagged_vlan, self.interfaces)):
+            if iface.untagged_vlan:
+                vlan_set.add(iface.untagged_vlan)
+            if iface.tagged_vlans:
+                vlan_set.update(iface.tagged_vlans)
+        return list(vlan_set) if vlan_set else None
