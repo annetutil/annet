@@ -66,13 +66,13 @@ def _implicit_tree(device):
         elif device.hw.Huawei.Quidway.S5700.S5735I:
             text = """
                 !interface *
-                    port link-type access
+                    !port link-type access
                 interface NULL0
             """
         elif device.hw.Huawei.Quidway.S2x:
             text = """
                 !interface *
-                    port link-type hybrid
+                    !port link-type hybrid
                     dot1x enable
                 interface NULL0
             """
