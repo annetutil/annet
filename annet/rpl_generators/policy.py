@@ -696,16 +696,11 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             else:
                 yield "set", "as-path match all replacement", *action.value.set
 
-        if action.value.expand_last_as:
-            last_as_suffix: Sequence[str] = "last-as", action.value.expand_last_as
-        else:
-            last_as_suffix = ()
-
         if action.value.prepend:
-            for path_item in action.value.prepend:
-                yield "set", "as-path prepend", path_item, *last_as_suffix
-        else:
-            yield "set", "as-path prepend", *last_as_suffix
+            yield "set", "as-path prepend", *action.value.prepend
+        if action.value.expand_last_as:
+            yield "set", "as-path prepend last-as", action.value.expand_last_as
+
         if action.value.expand:
             raise RuntimeError("as_path.expand is not supported for arista")
         if action.value.delete:
