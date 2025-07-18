@@ -364,8 +364,59 @@ class B4comFormatter(BlockExitFormatter):
     def __init__(self, indent="  "):
         super().__init__("exit", indent)
 
+    def _fix_af_indentation(self, text: str) -> str:
+        """Fixes the indentation of address-family blocks in B4COM configuration.
+        This method ensures that lines within address-family blocks are indented correctly.
+        It adds one space before each line inside the address-family block.
+        For some reason, B4COM displays commands in address-family blocks without indentation,
+        but this is not correct; they are part of the address-family context.
+
+        Fixes this:
+        address-family ipv6 unicast
+        max-paths ebgp 48
+        exit-address-family
+        exit
+
+        To this:
+        address-family ipv6 unicast
+         max-paths ebgp 48
+         exit-address-family
+        exit
+        """
+        result = []
+        inside_af = False
+        af_re = re.compile(r"^\s*address-family\s+.*")
+        exit_af_re = re.compile(r"^\s*exit-address-family")
+
+        for line in text.splitlines():
+            if af_re.match(line):
+                inside_af = True
+                result.append(line)
+                continue
+
+            if exit_af_re.match(line):
+                result.append(" " + line)
+                inside_af = False
+                continue
+
+            if inside_af and line.strip():
+                result.append(" " + line)
+            else:
+                result.append(line)
+
+        return "\n".join(result)
+
     def split(self, text):
+        text = self._fix_af_indentation(text)
         return self.split_remove_spaces(text)
+
+    def block_exit(self, context: Optional[FormatterContext]) -> str:
+        current = context and context.row or ""
+
+        if current.startswith(("address-family")):
+            yield from block_wrapper("exit-address-family")
+        else:
+            yield from super().block_exit(context)
 
 
 class ArubaFormatter(BlockExitFormatter):
