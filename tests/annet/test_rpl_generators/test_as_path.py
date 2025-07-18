@@ -4,7 +4,7 @@ from annet.rpl import R, RouteMap, Route
 from annet.rpl_generators import (
     AsPathFilter
 )
-from .helpers import scrub, cumulus, iosxr, generate
+from .helpers import scrub, cumulus, iosxr, arista, generate
 
 
 def test_cumulus_as_path_set():
@@ -98,5 +98,44 @@ route-policy policy
   if as-path in asf1 then
     prepend as-path 65432
     done
+""")
+    assert result == expected
+
+
+def test_arista_as_path_change():
+    routemaps = RouteMap[Mock]()
+
+    @routemaps
+    def policy(device: Mock, route: Route):
+        with route(number=10) as rule:
+            rule.as_path.set("65431")
+            rule.allow()
+        with route(number=20) as rule:
+            rule.as_path.prepend("65432")
+            rule.allow()
+        with route(number=30) as rule:
+            rule.as_path.prepend("65435", "65435", "65435")
+            rule.allow()
+        with route(number=40) as rule:
+            rule.as_path.expand_last_as("3")
+            rule.allow()
+        with route(number=50) as rule:
+            rule.as_path.prepend("65435", "65435", "65435")
+            rule.as_path.expand_last_as("3")
+            rule.allow()
+
+    result = generate(routemaps=routemaps, dev=arista())
+    expected = scrub("""
+route-map policy permit 10
+  set as-path match all replacement 65431
+route-map policy permit 20
+  set as-path prepend 65432
+route-map policy permit 30
+  set as-path prepend 65435 65435 65435
+route-map policy permit 40
+  set as-path prepend last-as 3
+route-map policy permit 50
+  set as-path prepend 65435 65435 65435
+  set as-path prepend last-as 3
 """)
     assert result == expected
