@@ -145,9 +145,8 @@
     "PC.Whitebox.Ufispace.S.S9300.S9321_64EO": " S9321-64EO",
     "PC.Nebius": "^Nebius",
     "PC.Nebius.NB-E-BR-DCU-AST2600": "^Nebius NB-E-BR-DCU-AST2600",
-    "PC.Vertiv": "^VERTIV",
-    "PC.Vertiv.Avocent": "^VERTIV [Aa]vocent",
-    "PC.Vertiv.Avocent.ACS8000": "^VERTIV [Aa]vocent (ACS|acs)8000",
+    "PC.Avocent": " [Aa]vocent",
+    "PC.Avocent.ACS8000": " [Aa]vocent (ACS|acs)8000",
 
     "RouterOS": "^([Rr]outer[Oo][Ss]|[Mm]ikro[Tt]ik)",
 
