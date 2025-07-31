@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence, Iterable
 from typing import Any, Literal
+from itertools import chain
 
 from annet.generators import PartialGenerator
 from annet.rpl import PrefixMatchValue, MatchField, SingleCondition, RoutingPolicy
@@ -169,4 +170,40 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                         if plist.name in processed_names:
                             continue
                         yield from self._iosxr_prefixlist(plist)
+                        processed_names.add(plist.name)
+
+
+    def acl_juniper(self, _):
+        return r"""
+        policy-options     %cant_delete
+            prefix-list *
+                ~
+        """
+
+    def _juniper_prefixlist(self, prefixlist: IpPrefixList):
+        with self.block("policy-options"):
+            with self.block("prefix-list", prefixlist.name):
+                for n, member in enumerate(prefixlist.members):
+                     yield f"{member.prefix}"
+
+
+    def run_juniper(self, device: Any):
+        prefix_lists = self.get_prefix_lists(device)
+        policies = self.get_policies(device)
+
+        name_generator = PrefixListNameGenerator(prefix_lists, policies)
+        processed_names = set()
+        for policy in policies:
+            for statement in policy.statements:
+                conds = chain(
+                    statement.match.find_all(MatchField.ip_prefix),
+                    statement.match.find_all(MatchField.ipv6_prefix),
+                )
+                cond: SingleCondition[PrefixMatchValue]
+                for cond in conds:
+                    for name in cond.value.names:
+                        plist = name_generator.get_prefix(name, cond.value)
+                        if plist.name in processed_names:
+                            continue
+                        yield from self._juniper_prefixlist(plist)
                         processed_names.add(plist.name)
