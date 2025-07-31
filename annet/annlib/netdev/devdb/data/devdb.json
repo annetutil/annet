@@ -146,7 +146,7 @@
     "PC.Nebius": "^Nebius",
     "PC.Nebius.NB-E-BR-DCU-AST2600": "^Nebius NB-E-BR-DCU-AST2600",
     "PC.Avocent": " [Aa]vocent",
-    "PC.Avocent.ACS8000": " [Aa]vocent (ACS|acs)8000",
+    "PC.Avocent.ACS8000": " (ACS|acs)8000",
 
     "RouterOS": "^([Rr]outer[Oo][Ss]|[Mm]ikro[Tt]ik)",
 
