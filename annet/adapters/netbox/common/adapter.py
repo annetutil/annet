@@ -47,7 +47,7 @@ class NetboxAdapter(
     ],
 ):
     @abstractmethod
-    def list_all_fqdns(self) -> list[str]:
+    def list_fqdns(self, query: dict[str, list[str]] | None = None) -> list[str]:
         raise NotImplementedError()
 
     @abstractmethod

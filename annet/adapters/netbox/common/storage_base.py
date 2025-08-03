@@ -54,6 +54,7 @@ class BaseNetboxStorage(
             token = opts.token
             threads = opts.threads
             self.exact_host_filter = opts.exact_host_filter
+            self.all_hosts_filter = opts.all_hosts_filter
         self.netbox = self._init_adapter(url=url, token=token, ssl_context=ctx, threads=threads)
         self._all_fqdns: Optional[list[str]] = None
         self._id_devices: dict[int, NetboxDeviceT] = {}
@@ -87,7 +88,7 @@ class BaseNetboxStorage(
 
     def resolve_all_fdnds(self) -> list[str]:
         if self._all_fqdns is None:
-            self._all_fqdns = self.netbox.list_all_fqdns()
+            self._all_fqdns = self.netbox.list_fqdns(self.all_hosts_filter)
         return self._all_fqdns
 
     def make_devices(
