@@ -194,3 +194,37 @@
       end-filter
     q
     save
+- vendor: Huawei
+  diff: |+
+    + xpl route-filter PRGS_foo4
+      + if ip route-destination in PFXS-foo then
+        + refuse
+      + if ip route-destination in PFXS-BAR then
+        + refuse
+      + if ip route-destination in PFXS-BAR-SATELLITES then
+        + refuse
+      + if ip route-destination in {0.0.0.0 0 ge 25 le 32} then
+        + refuse
+      + if as-path length ge 100 then
+        + refuse
+  patch: |+
+    system-view
+    xpl route-filter PRGS_foo4
+      if ip route-destination in PFXS-foo then
+        refuse
+      endif
+      if ip route-destination in PFXS-BAR then
+        refuse
+      endif
+      if ip route-destination in PFXS-BAR-SATELLITES then
+        refuse
+      endif
+      if ip route-destination in {0.0.0.0 0 ge 25 le 32} then
+        refuse
+      endif
+      if as-path length ge 100 then
+        refuse
+      endif
+      end-filter
+    q
+    save
