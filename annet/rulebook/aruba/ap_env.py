@@ -1,7 +1,7 @@
 # pylint: disable=unused-argument
 
 from annet.annlib.types import Op
-from annet.executor import CommandList, Command
+from annet.annlib.command import Command, CommandList
 
 
 def apply(hw, do_commit, do_finalize, **_):
