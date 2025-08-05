@@ -72,10 +72,11 @@ class NetboxV42Adapter(NetboxAdapter[
             list[FHRPGroupV41],
         )
 
-    def list_all_fqdns(self) -> list[str]:
+    def list_fqdns(self, query: dict[str, list[str]] | None = None) -> list[str]:
+        query = query or {}
         return [
             d.name
-            for d in self.netbox.dcim_all_devices_brief().results
+            for d in self.netbox.dcim_all_devices_brief(**query).results
         ]
 
     def list_devices(self, query: dict[str, list[str]]) -> list[NetboxDeviceV42]:
