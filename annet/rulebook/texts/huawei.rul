@@ -200,9 +200,11 @@ aaa
 
 hwtacacs-server template *
     hwtacacs-server shared-key
+    hwtacacs-server source-ip
 
 hwtacacs server template *
     hwtacacs server shared-key
+    hwtacacs server source-ip
 
 !radius-server template default
 
