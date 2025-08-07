@@ -6,7 +6,7 @@ from annet.generators import PartialGenerator
 from annet.rpl import (
     CommunityActionValue,
     ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator, SingleCondition, SingleAction, ActionType,
-    MatchField, PrefixMatchValue,
+    MatchField, PrefixMatchValue, AndCondition, Action,
 )
 from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, ThenField
 from annet.rpl_generators.entities import (
@@ -78,6 +78,45 @@ IOSXR_RESULT_MAP = {
     ResultType.ALLOW: "done",
     ResultType.DENY: "drop",
     ResultType.NEXT: "pass"
+}
+JUNIPER_MATCH_COMMAND_MAP: dict[str, str] = {
+    MatchField.protocol: "protocol {option_value}",
+    MatchField.metric: "metric {option_value}",
+    MatchField.as_path_filter: "as-path {option_value}",
+    # unsupported: community
+    # unsupported: large_community
+    # unsupported: extcommunity_rt
+    # unsupported: extcommunity_soo
+    # unsupported: rd
+    # unsupported: interface
+    # unsupported: net_len
+    # unsupported: local_pref
+    # unsupported: family
+    # unsupported: as_path_length
+    # unsupported: ipv6_prefix
+    # unsupported: ip_prefix
+}
+JUNIPER_THEN_COMMAND_MAP: dict[str, str] = {
+    ThenField.local_pref: "local-preference {option_value}",
+    ThenField.origin: "origin {option_value}",
+    ThenField.tag: "tag {option_value}",
+    # unsupported: community
+    # unsupported: large_community
+    # unsupported: extcommunity_rt
+    # unsupported: extcommunity_soo
+    # unsupported: extcommunity
+    # unsupported: as_path
+    # unsupported: metric
+    # unsupported: rpki_valid_state
+    # unsupported: resolution
+    # unsupported: mpls_label
+    # unsupported: metric_type
+    # unsupported: next_hop
+}
+JUNIPER_RESULT_MAP = {
+    ResultType.ALLOW: "accept",
+    ResultType.DENY: "reject",
+    ResultType.NEXT: "next term"
 }
 
 
@@ -1118,4 +1157,120 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 for statement in policy.statements:
                     yield from self._iosxr_statement(
                         communities, rd_filters, device, policy, statement, prefix_name_generator,
+                    )
+
+
+    # Juniper
+    def acl_juniper(self, device):
+        return r"""
+        policy-options       %cant_delete
+            policy-statement
+                ~            %global
+        """
+
+    def _juniper_match_community(
+            self,
+            community_type: Literal["community", "extcommunity rt", "extcommunity soo"],
+            community: CommunityList,
+    ) -> Iterator[Sequence[str]]:
+        if community.logic is CommunityLogic.AND:
+            yield community_type, "matches-every", community.name
+        elif community.logic is CommunityLogic.OR:
+            yield community_type, "matches-any", community.name
+        else:
+            raise ValueError(f"Unknown community logic {community.logic}")
+
+    def _juniper_match_communities(
+            self,
+            conditions: list[SingleCondition],
+    ) -> Iterator[Sequence[str]]:
+        names: list[str] = [name for cond in conditions for name in cond.value]
+        operators = {x.operator for x in conditions}
+        if len(conditions) > 1 and operators != {ConditionOperator.HAS_ANY}:
+            raise NotImplementedError(
+                f"Multiple community match [{' '.join(names)}] without has_any is not supported for Juniper",
+            )
+        if len(names) == 1:
+            yield "community", names[0]
+        elif len(names) > 1:
+            yield "community", f"[ {' '.join(names)} ]"
+
+    def _juniper_match(
+            self,
+            device: Any,
+            conditions: AndCondition,
+    ) -> Iterator[Sequence[str]]:
+        community_conditions: list[SingleCondition] = []
+        for condition in conditions:
+            if condition.field == MatchField.community:
+                community_conditions.append(condition)
+                continue
+            elif condition.field == MatchField.extcommunity_rt:
+                community_conditions.append(condition)
+                continue
+            elif condition.field == MatchField.extcommunity_soo:
+                community_conditions.append(condition)
+                continue
+
+        if community_conditions:
+            yield from self._juniper_match_communities(community_conditions)
+
+    def _juniper_then_community(self, action: SingleAction[CommunityActionValue]):
+        if action.value.replaced is not None:
+            for name in action.value.replaced:
+                yield "community", "set", name
+        for name in action.value.added:
+            yield "community", "add", name
+        for name in action.value.removed:
+            yield "community", "delete", name
+
+    def _juniper_then(
+            self,
+            device: Any,
+            actions: Action,
+    ) -> Iterator[Sequence[str]]:
+        for action in actions:
+            if action.field == ThenField.community:
+                yield from self._juniper_then_community(action)
+            elif action.field == ThenField.extcommunity_rt:
+                yield from self._juniper_then_community(action)
+            elif action.field == ThenField.extcommunity_soo:
+                yield from self._juniper_then_community(action)
+
+
+    def _juniper_statements(
+            self,
+            device: Any,
+            policy: RoutingPolicy,
+            communities: dict[str, CommunityList],
+            rd_filters: dict[str, RDFilter],
+            prefix_name_generator: PrefixListNameGenerator,
+    ) -> Iterator[Sequence[str]]:
+        for i, statement in enumerate(policy.statements):
+            term_name = statement.name
+            if not term_name:
+                term_name = f"{policy.name}_{i}"
+            with self.block("term", term_name):
+                if statement.match:
+                    with self.block("from"):
+                        yield from self._juniper_match(device, statement.match)
+                if statement.then:
+                    with self.block("then"):
+                        yield from self._juniper_then(device, statement.then)
+                        yield JUNIPER_RESULT_MAP[statement.result]
+                else:
+                    yield "then", JUNIPER_RESULT_MAP[statement.result]
+
+    def run_juniper(self, device):
+        prefix_lists = self.get_prefix_lists(device)
+        policies = self.get_policies(device)
+        prefix_name_generator = PrefixListNameGenerator(prefix_lists, policies)
+        communities = {c.name: c for c in self.get_community_lists(device)}
+        rd_filters =  {f.name: f for f in self.get_rd_filters(device)}
+
+        for policy in policies:
+            with self.block("policy-options"):
+                with self.block("policy-statement", policy.name):
+                    yield from self._juniper_statements(
+                        device, policy, communities, rd_filters, prefix_name_generator,
                     )
