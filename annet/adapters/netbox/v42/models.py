@@ -46,6 +46,9 @@ class InterfaceV42(Interface[IpAddressV42, FHRPGroupAssignmentV41]):
 
 @dataclass
 class NetboxDeviceV42(NetboxDeviceV41):
+    def __repr__(self):
+        return f"NetboxDeviceV42(id={self.id}, name={self.name})"
+
     def __hash__(self):
         return hash((self.id, type(self)))
 
