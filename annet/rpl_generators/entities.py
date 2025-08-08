@@ -135,3 +135,10 @@ def group_community_members(
         community = all_communities[community_name]
         members[community.type].extend(community.members)
     return members
+
+
+def is_orlonger(plist: IpPrefixList) -> bool:
+    for m in plist.members:
+        if any(m.or_longer):
+            return True
+    return False

@@ -5,7 +5,7 @@ from itertools import chain
 
 from annet.generators import PartialGenerator
 from annet.rpl import PrefixMatchValue, MatchField, SingleCondition, RoutingPolicy
-from .entities import IpPrefixList, PrefixListNameGenerator
+from .entities import IpPrefixList, PrefixListNameGenerator, is_orlonger
 
 
 class PrefixListFilterGenerator(PartialGenerator, ABC):
@@ -178,13 +178,29 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
         policy-options     %cant_delete
             prefix-list *
                 ~
+            route-filter-list *
+                ~
         """
 
     def _juniper_prefixlist(self, prefixlist: IpPrefixList):
         with self.block("policy-options"):
             with self.block("prefix-list", prefixlist.name):
-                for n, member in enumerate(prefixlist.members):
+                for member in prefixlist.members:
                      yield f"{member.prefix}"
+
+    def _juniper_router_filter_list(self, prefixlist: IpPrefixList):
+        with self.block("policy-options"):
+            with self.block("route-filter-list", prefixlist.name):
+                for member in prefixlist.members:
+                    ge, le = member.or_longer
+                    if not ge and not le:
+                        yield f"{member.prefix}"
+                    elif ge and le:
+                        yield f"{member.prefix}", "prefix-length-range", f"/{ge}-/{le}"
+                    else:
+                        raise NotImplementedError(
+                            f"Partial or_longer {member.or_longer} is not supported",
+                        )
 
 
     def run_juniper(self, device: Any):
@@ -202,8 +218,12 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                 cond: SingleCondition[PrefixMatchValue]
                 for cond in conds:
                     for name in cond.value.names:
-                        plist = name_generator.get_prefix(name, cond.value)
-                        if plist.name in processed_names:
+                        if name in processed_names:
                             continue
-                        yield from self._juniper_prefixlist(plist)
-                        processed_names.add(plist.name)
+                        processed_names.add(name)
+
+                        plist = name_generator.get_prefix(name, cond.value)
+                        if not is_orlonger(plist):
+                            yield from self._juniper_prefixlist(plist)
+                        else:
+                            yield from self._juniper_router_filter_list(plist)
