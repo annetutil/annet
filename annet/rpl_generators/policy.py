@@ -12,7 +12,7 @@ from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, T
 from annet.rpl_generators.entities import (
     arista_well_known_community,
     CommunityList, RDFilter, PrefixListNameGenerator, CommunityLogic, mangle_united_community_list_name,
-    IpPrefixList, group_community_members, CommunityType,
+    IpPrefixList, group_community_members, CommunityType, is_orlonger,
 )
 
 HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
@@ -83,18 +83,13 @@ JUNIPER_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.protocol: "protocol {option_value}",
     MatchField.metric: "metric {option_value}",
     MatchField.as_path_filter: "as-path {option_value}",
-    # unsupported: community
+    MatchField.as_path_length: "as-path-calc-length {option_value}",
+    MatchField.local_pref: "local-preference {option_value}",
     # unsupported: large_community
-    # unsupported: extcommunity_rt
-    # unsupported: extcommunity_soo
     # unsupported: rd
     # unsupported: interface
     # unsupported: net_len
-    # unsupported: local_pref
     # unsupported: family
-    # unsupported: as_path_length
-    # unsupported: ipv6_prefix
-    # unsupported: ip_prefix
 }
 JUNIPER_THEN_COMMAND_MAP: dict[str, str] = {
     ThenField.local_pref: "local-preference {option_value}",
@@ -1195,25 +1190,61 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         elif len(names) > 1:
             yield "community", f"[ {' '.join(names)} ]"
 
+    def _juniper_match_prefix_lists(self,
+            conditions: list[SingleCondition[PrefixMatchValue]],
+            name_generator: PrefixListNameGenerator,
+    ) -> Iterator[Sequence[str]]:
+        operators = {x.operator for x in conditions}
+        supported = {ConditionOperator.HAS_ANY, ConditionOperator.CUSTOM}  # CUSTOM is ANY
+        not_supported = operators - supported
+        if len(conditions) > 1 and not_supported > 1:
+            raise NotImplementedError(
+                f"Multiple prefix match with ops {not_supported} is not supported for Juniper",
+            )
+        for cond in conditions:
+            for name in cond.value.names:
+                prefix_list = name_generator.get_prefix(name, cond.value)
+                if not is_orlonger(prefix_list):
+                    yield "prefix-list", prefix_list.name
+                else:
+                    yield "route-filter-list", prefix_list.name
+
     def _juniper_match(
             self,
             device: Any,
             conditions: AndCondition,
+            prefix_name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         community_conditions: list[SingleCondition] = []
+        prefix_conditions: list[SingleCondition] = []
+        simple_conditions: list[SingleCondition] = []
         for condition in conditions:
             if condition.field == MatchField.community:
                 community_conditions.append(condition)
-                continue
             elif condition.field == MatchField.extcommunity_rt:
                 community_conditions.append(condition)
-                continue
             elif condition.field == MatchField.extcommunity_soo:
                 community_conditions.append(condition)
-                continue
+            elif condition.field == MatchField.ip_prefix:
+                prefix_conditions.append(condition)
+            elif condition.field == MatchField.ipv6_prefix:
+                prefix_conditions.append(condition)
+            else:
+                simple_conditions.append(condition)
 
         if community_conditions:
             yield from self._juniper_match_communities(community_conditions)
+        if prefix_conditions:
+            yield from self._juniper_match_prefix_lists(prefix_conditions, prefix_name_generator)
+
+        for condition in simple_conditions:
+            if condition.operator is not ConditionOperator.EQ:
+                raise NotImplementedError(
+                    f"`{condition.field}` with operator {condition.operator} is not supported for Juniper",
+                )
+            if condition.field not in JUNIPER_MATCH_COMMAND_MAP:
+                raise NotImplementedError(f"Match using `{condition.field}` is not supported for Juniper")
+            yield JUNIPER_MATCH_COMMAND_MAP[condition.field].format(option_value=condition.value)
 
     def _juniper_then_community(self, action: SingleAction[CommunityActionValue]):
         if action.value.replaced is not None:
@@ -1237,7 +1268,6 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             elif action.field == ThenField.extcommunity_soo:
                 yield from self._juniper_then_community(action)
 
-
     def _juniper_statements(
             self,
             device: Any,
@@ -1253,7 +1283,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             with self.block("term", term_name):
                 if statement.match:
                     with self.block("from"):
-                        yield from self._juniper_match(device, statement.match)
+                        yield from self._juniper_match(device, statement.match, prefix_name_generator)
                 if statement.then:
                     with self.block("then"):
                         yield from self._juniper_then(device, statement.then)
