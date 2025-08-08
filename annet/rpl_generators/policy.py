@@ -95,18 +95,13 @@ JUNIPER_THEN_COMMAND_MAP: dict[str, str] = {
     ThenField.local_pref: "local-preference {option_value}",
     ThenField.origin: "origin {option_value}",
     ThenField.tag: "tag {option_value}",
-    # unsupported: community
+    ThenField.metric: "metric {option_value}",
     # unsupported: large_community
-    # unsupported: extcommunity_rt
-    # unsupported: extcommunity_soo
-    # unsupported: extcommunity
     # unsupported: as_path
-    # unsupported: metric
     # unsupported: rpki_valid_state
     # unsupported: resolution
     # unsupported: mpls_label
     # unsupported: metric_type
-    # unsupported: next_hop
 }
 JUNIPER_RESULT_MAP = {
     ResultType.ALLOW: "accept",
@@ -1246,27 +1241,67 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 raise NotImplementedError(f"Match using `{condition.field}` is not supported for Juniper")
             yield JUNIPER_MATCH_COMMAND_MAP[condition.field].format(option_value=condition.value)
 
-    def _juniper_then_community(self, action: SingleAction[CommunityActionValue]):
-        if action.value.replaced is not None:
-            for name in action.value.replaced:
-                yield "community", "set", name
-        for name in action.value.added:
-            yield "community", "add", name
-        for name in action.value.removed:
-            yield "community", "delete", name
+    def _juniper_then_community(self, actions: list[SingleAction[CommunityActionValue]]):
+        for action in actions:
+            if action.value.replaced is not None:
+                for name in action.value.replaced:
+                    yield "community", "set", name
+            for name in action.value.added:
+                yield "community", "add", name
+            for name in action.value.removed:
+                yield "community", "delete", name
+
+    def _juniper_then_next_hop(self, actions: list[SingleAction[NextHopActionValue]]):
+        if len(actions) > 1:
+            raise NotImplementedError(f"Only single next-hop action is supported for Juniper")
+
+        action = actions[0]
+        if action.value.target == "self":
+            yield "next-hop", "self"
+        elif action.value.target == "discard":
+            yield "next-hop", "discard"
+        elif action.value.target == "peer":
+            yield "next-hop", "peer-address"
+        elif action.value.target == "ipv4_addr":
+            yield "next-hop", action.value.addr
+        elif action.value.target == "ipv6_addr":
+            yield "next-hop", action.value.addr.lower()
+        elif action.value.target == "mapped_ipv4":
+            yield "next-hop", f"::ffff:{action.value.addr}"
+        else:
+            raise NotImplementedError(f"Next_hop target {action.value.target} is not supported for Juniper") 
 
     def _juniper_then(
             self,
             device: Any,
             actions: Action,
     ) -> Iterator[Sequence[str]]:
+        community_actions: list[SingleAction] = []
+        next_hop_actions: list[SingleAction] = []
+        simple_actions: list[SingleAction] = []
         for action in actions:
             if action.field == ThenField.community:
-                yield from self._juniper_then_community(action)
+                community_actions.append(action)
             elif action.field == ThenField.extcommunity_rt:
-                yield from self._juniper_then_community(action)
+                community_actions.append(action)
             elif action.field == ThenField.extcommunity_soo:
-                yield from self._juniper_then_community(action)
+                community_actions.append(action)
+            elif action.field == ThenField.next_hop:
+                next_hop_actions.append(action)
+            else:
+                simple_actions.append(action)
+
+        if community_actions:
+            yield from self._juniper_then_community(community_actions)
+        if next_hop_actions:
+            yield from self._juniper_then_next_hop(next_hop_actions)
+
+        for action in simple_actions:
+            if action.type not in {ActionType.SET, ActionType.CUSTOM}:  # CUSTOM is SET
+                raise NotImplementedError(f"Action type {action.type} for `{action.field}` is not supported for Juniper")
+            if action.field not in JUNIPER_THEN_COMMAND_MAP:
+                raise NotImplementedError(f"Then action using `{action.field}` is not supported for Juniper")
+            yield JUNIPER_THEN_COMMAND_MAP[action.field].format(option_value=action.value)
 
     def _juniper_statements(
             self,
