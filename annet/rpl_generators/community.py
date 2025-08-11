@@ -13,6 +13,7 @@ from .entities import (
 def get_used_community_lists(
         communities: Collection[CommunityList], policies: Collection[RoutingPolicy],
 ) -> list[CommunityList]:
+    assert_unique_names(communities)
     communities_dict = {c.name: c for c in communities}
     used_communities: set[str] = set()
     for policy in policies:
@@ -45,6 +46,7 @@ def get_used_united_community_lists(
     """
     Return communities united into groups according to HAS_ANY policy
     """
+    assert_unique_names(communities)
     communities_dict = {c.name: c for c in communities}
     used_communities: dict[str, list[CommunityList]] = {}
     for policy in policies:
@@ -92,6 +94,17 @@ def get_used_united_community_lists(
     return [
         used_communities[name] for name in sorted(used_communities)
     ]
+
+
+def assert_unique_names(communities: Collection[CommunityList]) -> None:
+    duplicated: list[str] = []
+    seen_names: set[str] = set()
+    for c in communities:
+        if c.name in seen_names:
+            duplicated.append(c.name)
+        seen_names.add(c.name)
+    if duplicated:
+        raise NotImplementedError(f"Non-unique community-list names are not supported: {duplicated}")
 
 
 class CommunityListGenerator(PartialGenerator, ABC):
