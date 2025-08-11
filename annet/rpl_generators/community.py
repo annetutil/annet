@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from collections.abc import Sequence, Collection, Iterator
+from collections import defaultdict
+from collections.abc import Sequence, Collection, Iterator, Mapping
 from typing import Any
 
 from annet.generators import PartialGenerator
@@ -274,3 +275,56 @@ class CommunityListGenerator(PartialGenerator, ABC):
     def run_iosxr(self, device):
         for community_list in self.get_used_community_lists(device):
             yield from self._iosxr_community_list(community_list)
+
+    def acl_juniper(self, _) -> str:
+        return r"""
+        policy-options  %cant_delete
+            community ~
+        """
+
+    def _juniper_community_list(self, name: str, community_lists: list[CommunityList]) -> Iterator[Sequence[str]]:
+        members: list[str] = []
+        for community_list in community_lists:
+            prefix: str
+            if community_list.type is CommunityType.BASIC:
+                prefix = ""
+            elif community_list.type is CommunityType.RT:
+                prefix = "target:"
+            elif community_list.type is CommunityType.SOO:
+                prefix = "origin:"
+            elif community_list.type is CommunityType.LARGE:
+                prefix = "large:"
+            else:
+                raise NotImplementedError(f"CommunityList type {community_list.type} not implemented for Cisco IOS XR")
+
+            for community in community_list.members:
+                members.append(prefix + community)
+
+        definition = ("community", name, "members")
+        with self.block("policy-options"):
+            if len(members) == 1:
+                yield definition, members
+            if len(members) > 1:
+                yield definition, "[", members, "]"
+
+    def run_juniper(self, device):
+        # Juniper allows different community types
+        # so we write generator in a generic way to reflect that.
+        #
+        # But get_used_community_lists DOES NOT allow multiple names
+        # This is in part because juniper does not have a type-aware match
+        # It would mean that there is no way to describe a following config via rpl.py:
+        #
+        #    CommunityList("COMM_LIST", ["65000:4000"], CommunityType.BASIC),
+        #    CommunityList("COMM_LIST", ["65000:4000"], CommunityType.RT),
+        #
+        #    # match only route-target but not basic one
+        #    with route(R.extcommunity_rt.has("COMM_LIST")) as rule:
+        #       ...
+        used = self.get_used_community_lists(device)
+        by_name: Mapping[str, list[CommunityList]] = defaultdict(list)
+        for community_list in used:
+            by_name[community_list.name].append(community_list)
+
+        for name, community_lists in by_name.items():
+            yield from self._juniper_community_list(name, community_lists)
