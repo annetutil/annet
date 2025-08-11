@@ -85,7 +85,6 @@ JUNIPER_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.as_path_filter: "as-path {option_value}",
     MatchField.as_path_length: "as-path-calc-length {option_value}",
     MatchField.local_pref: "local-preference {option_value}",
-    # unsupported: large_community
     # unsupported: rd
     # unsupported: interface
     # unsupported: net_len
@@ -96,7 +95,6 @@ JUNIPER_THEN_COMMAND_MAP: dict[str, str] = {
     ThenField.origin: "origin {option_value}",
     ThenField.tag: "tag {option_value}",
     ThenField.metric: "metric {option_value}",
-    # unsupported: large_community
     # unsupported: as_path
     # unsupported: rpki_valid_state
     # unsupported: resolution
@@ -1220,6 +1218,8 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 community_conditions.append(condition)
             elif condition.field == MatchField.extcommunity_soo:
                 community_conditions.append(condition)
+            elif condition.field == MatchField.large_community:
+                community_conditions.append(condition)
             elif condition.field == MatchField.ip_prefix:
                 prefix_conditions.append(condition)
             elif condition.field == MatchField.ipv6_prefix:
@@ -1285,6 +1285,8 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             elif action.field == ThenField.extcommunity_rt:
                 community_actions.append(action)
             elif action.field == ThenField.extcommunity_soo:
+                community_actions.append(action)
+            elif action.field == ThenField.large_community:
                 community_actions.append(action)
             elif action.field == ThenField.next_hop:
                 next_hop_actions.append(action)
