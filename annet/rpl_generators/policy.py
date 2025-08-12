@@ -83,7 +83,7 @@ JUNIPER_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.protocol: "protocol {option_value}",
     MatchField.metric: "metric {option_value}",
     MatchField.as_path_filter: "as-path {option_value}",
-    MatchField.as_path_length: "as-path-calc-length {option_value}",
+    MatchField.as_path_length: "as-path-calc-length {option_value} equal",
     MatchField.local_pref: "local-preference {option_value}",
     # unsupported: rd
     # unsupported: interface
@@ -1155,20 +1155,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 ~            %global
         """
 
-    def _juniper_match_community(
-            self,
-            community_type: Literal["community", "extcommunity rt", "extcommunity soo"],
-            community: CommunityList,
-    ) -> Iterator[Sequence[str]]:
-        if community.logic is CommunityLogic.AND:
-            yield community_type, "matches-every", community.name
-        elif community.logic is CommunityLogic.OR:
-            yield community_type, "matches-any", community.name
-        else:
-            raise ValueError(f"Unknown community logic {community.logic}")
-
     def _juniper_match_communities(
             self,
+            section: Literal["", "from"],
             conditions: list[SingleCondition],
     ) -> Iterator[Sequence[str]]:
         names: list[str] = [name for cond in conditions for name in cond.value]
@@ -1178,11 +1167,13 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 f"Multiple community match [{' '.join(names)}] without has_any is not supported for Juniper",
             )
         if len(names) == 1:
-            yield "community", names[0]
+            yield section, "community", names[0]
         elif len(names) > 1:
-            yield "community", f"[ {' '.join(names)} ]"
+            yield section, "community", f"[ {' '.join(names)} ]"
 
-    def _juniper_match_prefix_lists(self,
+    def _juniper_match_prefix_lists(
+            self,
+            section: Literal["", "from"],
             conditions: list[SingleCondition[PrefixMatchValue]],
             name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
@@ -1197,39 +1188,69 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             for name in cond.value.names:
                 prefix_list = name_generator.get_prefix(name, cond.value)
                 if not is_orlonger(prefix_list):
-                    yield "prefix-list", prefix_list.name
+                    yield section, "prefix-list", prefix_list.name
                 else:
-                    yield "route-filter-list", prefix_list.name
+                    yield section, "route-filter-list", prefix_list.name
+
+    def _juniper_match_community_fields(self) -> set[MatchField]:
+        return {
+            MatchField.community,
+            MatchField.extcommunity_rt,
+            MatchField.extcommunity_soo,
+            MatchField.large_community,
+        }
+
+    def _juniper_match_prefix_fields(self) -> set[MatchField]:
+        return {
+            MatchField.ip_prefix,
+            MatchField.ipv6_prefix,
+        }
+
+    def _juniper_is_match_inlined(self, conditions: AndCondition) -> bool:
+        used_fields: set[MatchField] = {x.field for x in conditions}
+        used_prefix_fields = used_fields & self._juniper_match_prefix_fields()
+        used_community_fields = used_fields & self._juniper_match_community_fields()
+
+        # prefix-list match is never inlined
+        if used_prefix_fields:
+            return False
+
+        # as-path-calc-length is never inlined
+        if MatchField.as_path_length in used_fields:
+            return False
+
+        # only community matches and nothing more
+        if used_community_fields and used_fields == used_community_fields:
+            return True
+
+        # inline when empty or just one match
+        if len(used_fields) <= 1:
+            return True
+        return False
 
     def _juniper_match(
             self,
-            device: Any,
+            section: Literal["", "from"],
             conditions: AndCondition,
             prefix_name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
+        community_fields = self._juniper_match_community_fields()
+        prefix_fields = self._juniper_match_prefix_fields()
         community_conditions: list[SingleCondition] = []
         prefix_conditions: list[SingleCondition] = []
         simple_conditions: list[SingleCondition] = []
         for condition in conditions:
-            if condition.field == MatchField.community:
+            if condition.field in community_fields:
                 community_conditions.append(condition)
-            elif condition.field == MatchField.extcommunity_rt:
-                community_conditions.append(condition)
-            elif condition.field == MatchField.extcommunity_soo:
-                community_conditions.append(condition)
-            elif condition.field == MatchField.large_community:
-                community_conditions.append(condition)
-            elif condition.field == MatchField.ip_prefix:
-                prefix_conditions.append(condition)
-            elif condition.field == MatchField.ipv6_prefix:
+            elif condition.field in prefix_fields:
                 prefix_conditions.append(condition)
             else:
                 simple_conditions.append(condition)
 
         if community_conditions:
-            yield from self._juniper_match_communities(community_conditions)
+            yield from self._juniper_match_communities(section, community_conditions)
         if prefix_conditions:
-            yield from self._juniper_match_prefix_lists(prefix_conditions, prefix_name_generator)
+            yield from self._juniper_match_prefix_lists(section, prefix_conditions, prefix_name_generator)
 
         for condition in simple_conditions:
             if condition.operator is not ConditionOperator.EQ:
@@ -1238,39 +1259,51 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 )
             if condition.field not in JUNIPER_MATCH_COMMAND_MAP:
                 raise NotImplementedError(f"Match using `{condition.field}` is not supported for Juniper")
-            yield JUNIPER_MATCH_COMMAND_MAP[condition.field].format(option_value=condition.value)
+            yield section, JUNIPER_MATCH_COMMAND_MAP[condition.field].format(option_value=condition.value)
 
-    def _juniper_then_community(self, actions: list[SingleAction[CommunityActionValue]]):
+    def _juniper_then_community(
+            self,
+            section: Literal["", "then"],
+            actions: list[SingleAction[CommunityActionValue]]
+        ):
         for action in actions:
             if action.value.replaced is not None:
                 for name in action.value.replaced:
-                    yield "community", "set", name
+                    yield section, "community", "set", name
             for name in action.value.added:
-                yield "community", "add", name
+                yield section, "community", "add", name
             for name in action.value.removed:
-                yield "community", "delete", name
+                yield section, "community", "delete", name
 
-    def _juniper_then_next_hop(self, actions: list[SingleAction[NextHopActionValue]]):
+    def _juniper_then_next_hop(
+            self,
+            section: Literal["", "then"],
+            actions: list[SingleAction[NextHopActionValue]],
+        ):
         if len(actions) > 1:
             raise NotImplementedError(f"Only single next-hop action is supported for Juniper")
 
         action = actions[0]
         if action.value.target == "self":
-            yield "next-hop", "self"
+            yield section, "next-hop", "self"
         elif action.value.target == "discard":
-            yield "next-hop", "discard"
+            yield section, "next-hop", "discard"
         elif action.value.target == "peer":
-            yield "next-hop", "peer-address"
+            yield section, "next-hop", "peer-address"
         elif action.value.target == "ipv4_addr":
-            yield "next-hop", action.value.addr
+            yield section, "next-hop", action.value.addr
         elif action.value.target == "ipv6_addr":
-            yield "next-hop", action.value.addr.lower()
+            yield section, "next-hop", action.value.addr.lower()
         elif action.value.target == "mapped_ipv4":
-            yield "next-hop", f"::ffff:{action.value.addr}"
+            yield section, "next-hop", f"::ffff:{action.value.addr}"
         else:
             raise NotImplementedError(f"Next_hop target {action.value.target} is not supported for Juniper") 
 
-    def _juniper_then_as_path(self, actions: list[SingleAction[AsPathActionValue]]):
+    def _juniper_then_as_path(
+            self,
+            section: Literal["", "then"],
+            actions: list[SingleAction[AsPathActionValue]],
+        ):
         if len(actions) > 1:
             raise NotImplementedError(f"Only single next-hop action is supported for Juniper")
 
@@ -1279,19 +1312,26 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             raise NotImplementedError("Setting both `as_path.expand` and `as_path.expand_last_as` is not supported for Juniper")
 
         if action.value.prepend:
-            yield "as-path-prepend", action.value.prepend
+            yield section, "as-path-prepend", action.value.prepend
         if action.value.expand:
-            yield "as-path-expand", action.value.expand
+            yield section, "as-path-expand", action.value.expand
         if action.value.expand_last_as:
-            yield "as-path-expand last-as count", action.value.expand_last_as
+            yield section, "as-path-expand last-as count", action.value.expand_last_as
         if action.value.set is not None:
             raise RuntimeError("as_path.set is not supported for Juniper")
         if action.value.delete:
             raise RuntimeError("as_path.delete is not supported for Juniper")
 
+    def _juniper_is_then_inlined(self, action: Action) -> bool:
+        used_fields: set[ThenField] = {x.field for x in action}
+        # inline when no actions permormed
+        if not used_fields:
+            return True
+        return False
+
     def _juniper_then(
             self,
-            device: Any,
+            section: Literal["", "then"],
             actions: Action,
     ) -> Iterator[Sequence[str]]:
         community_actions: list[SingleAction] = []
@@ -1315,18 +1355,18 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 simple_actions.append(action)
 
         if community_actions:
-            yield from self._juniper_then_community(community_actions)
+            yield from self._juniper_then_community(section, community_actions)
         if next_hop_actions:
-            yield from self._juniper_then_next_hop(next_hop_actions)
+            yield from self._juniper_then_next_hop(section, next_hop_actions)
         if as_path_actions:
-            yield from self._juniper_then_as_path(as_path_actions)
+            yield from self._juniper_then_as_path(section, as_path_actions)
 
         for action in simple_actions:
             if action.type not in {ActionType.SET, ActionType.CUSTOM}:  # CUSTOM is SET
                 raise NotImplementedError(f"Action type {action.type} for `{action.field}` is not supported for Juniper")
             if action.field not in JUNIPER_THEN_COMMAND_MAP:
                 raise NotImplementedError(f"Then action using `{action.field}` is not supported for Juniper")
-            yield JUNIPER_THEN_COMMAND_MAP[action.field].format(option_value=action.value)
+            yield section, JUNIPER_THEN_COMMAND_MAP[action.field].format(option_value=action.value)
 
     def _juniper_statements(
             self,
@@ -1341,15 +1381,22 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             if not term_name:
                 term_name = f"{policy.name}_{i}"
             with self.block("term", term_name):
+                # see test_juniper_inline
+                match_inlined = self._juniper_is_match_inlined(statement.match)
+                then_inlined = self._juniper_is_then_inlined(statement.then)
+                match_section = "from" if match_inlined else ""
+                then_section = "then" if then_inlined else ""
+
                 if statement.match:
-                    with self.block("from"):
-                        yield from self._juniper_match(device, statement.match, prefix_name_generator)
+                    with self.block_if("from", condition=not match_inlined):
+                        yield from self._juniper_match(match_section, statement.match, prefix_name_generator)
+
                 if statement.then:
-                    with self.block("then"):
-                        yield from self._juniper_then(device, statement.then)
-                        yield JUNIPER_RESULT_MAP[statement.result]
-                else:
-                    yield "then", JUNIPER_RESULT_MAP[statement.result]
+                    with self.block_if("then", condition=not then_inlined):
+                        yield from self._juniper_then(then_section, statement.then)
+
+                with self.block_if("then", condition=not then_inlined):
+                    yield then_section, JUNIPER_RESULT_MAP[statement.result]
 
     def run_juniper(self, device):
         prefix_lists = self.get_prefix_lists(device)
