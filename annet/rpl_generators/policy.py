@@ -83,7 +83,6 @@ JUNIPER_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.protocol: "protocol {option_value}",
     MatchField.metric: "metric {option_value}",
     MatchField.as_path_filter: "as-path {option_value}",
-    MatchField.as_path_length: "as-path-calc-length {option_value} equal",
     MatchField.local_pref: "local-preference {option_value}",
     # unsupported: rd
     # unsupported: interface
@@ -1192,6 +1191,26 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 else:
                     yield section, "route-filter-list", prefix_list.name
 
+    def _juniper_match_as_path_length(
+            self,
+            section: Literal["", "from"],
+            conditions: list[SingleCondition],
+    ) -> Iterator[Sequence[str]]:
+        for condition in conditions:
+            if condition.operator is ConditionOperator.EQ:
+                yield section, "as-path-calc-length", str(condition.value), "equal"
+            elif condition.operator is ConditionOperator.LE:
+                yield section, "as-path-calc-length", str(condition.value), "orlower"
+            elif condition.operator is ConditionOperator.GE:
+                yield section, "as-path-calc-length", str(condition.value), "orhigher"
+            elif condition.operator is ConditionOperator.BETWEEN_INCLUDED:
+                yield section, "as-path-calc-length", str(condition.value[0]), "orhigher"
+                yield section, "as-path-calc-length", str(condition.value[1]), "orlower"
+            else:
+                raise NotImplementedError(
+                    f"Operator {condition.operator} is not supported for {condition.field} on Juniper",
+                )
+
     def _juniper_match_community_fields(self) -> set[MatchField]:
         return {
             MatchField.community,
@@ -1239,11 +1258,14 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         community_conditions: list[SingleCondition] = []
         prefix_conditions: list[SingleCondition] = []
         simple_conditions: list[SingleCondition] = []
+        as_path_length_conditions: list[SingleCondition] = []
         for condition in conditions:
             if condition.field in community_fields:
                 community_conditions.append(condition)
             elif condition.field in prefix_fields:
                 prefix_conditions.append(condition)
+            elif condition.field == MatchField.as_path_length:
+                as_path_length_conditions.append(condition)
             else:
                 simple_conditions.append(condition)
 
@@ -1251,6 +1273,8 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             yield from self._juniper_match_communities(section, community_conditions)
         if prefix_conditions:
             yield from self._juniper_match_prefix_lists(section, prefix_conditions, prefix_name_generator)
+        if as_path_length_conditions:
+            yield from self._juniper_match_as_path_length(section, as_path_length_conditions)
 
         for condition in simple_conditions:
             if condition.operator is not ConditionOperator.EQ:
