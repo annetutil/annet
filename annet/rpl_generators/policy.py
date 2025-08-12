@@ -95,7 +95,6 @@ JUNIPER_THEN_COMMAND_MAP: dict[str, str] = {
     ThenField.origin: "origin {option_value}",
     ThenField.tag: "tag {option_value}",
     ThenField.metric: "metric {option_value}",
-    # unsupported: as_path
     # unsupported: rpki_valid_state
     # unsupported: resolution
     # unsupported: mpls_label
@@ -1271,6 +1270,25 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         else:
             raise NotImplementedError(f"Next_hop target {action.value.target} is not supported for Juniper") 
 
+    def _juniper_then_as_path(self, actions: list[SingleAction[AsPathActionValue]]):
+        if len(actions) > 1:
+            raise NotImplementedError(f"Only single next-hop action is supported for Juniper")
+
+        action = actions[0]
+        if action.value.expand and action.value.expand_last_as:
+            raise NotImplementedError("Setting both `as_path.expand` and `as_path.expand_last_as` is not supported for Juniper")
+
+        if action.value.prepend:
+            yield "as-path-prepend", action.value.prepend
+        if action.value.expand:
+            yield "as-path-expand", action.value.expand
+        if action.value.expand_last_as:
+            yield "as-path-expand last-as count", action.value.expand_last_as
+        if action.value.set is not None:
+            raise RuntimeError("as_path.set is not supported for Juniper")
+        if action.value.delete:
+            raise RuntimeError("as_path.delete is not supported for Juniper")
+
     def _juniper_then(
             self,
             device: Any,
@@ -1278,6 +1296,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     ) -> Iterator[Sequence[str]]:
         community_actions: list[SingleAction] = []
         next_hop_actions: list[SingleAction] = []
+        as_path_actions: list[SingleAction] = []
         simple_actions: list[SingleAction] = []
         for action in actions:
             if action.field == ThenField.community:
@@ -1290,6 +1309,8 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 community_actions.append(action)
             elif action.field == ThenField.next_hop:
                 next_hop_actions.append(action)
+            elif action.field == ThenField.as_path:
+                as_path_actions.append(action)
             else:
                 simple_actions.append(action)
 
@@ -1297,6 +1318,8 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             yield from self._juniper_then_community(community_actions)
         if next_hop_actions:
             yield from self._juniper_then_next_hop(next_hop_actions)
+        if as_path_actions:
+            yield from self._juniper_then_as_path(as_path_actions)
 
         for action in simple_actions:
             if action.type not in {ActionType.SET, ActionType.CUSTOM}:  # CUSTOM is SET
