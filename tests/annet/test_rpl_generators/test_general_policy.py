@@ -267,3 +267,81 @@ policy-options {
 }
 """)
     assert result == expected
+
+
+def test_juniper_term_numbers():
+    routemaps = RouteMap[Mock]()
+    @routemaps
+    def policy(device: Mock, route: Route):
+        # term policy_10
+        with route(number=10) as rule:
+            rule.allow()
+        # term policy_11
+        with route() as rule:
+            rule.allow()
+        # term policy_20
+        with route(number=20) as rule:
+            rule.allow()
+        # term policy_21
+        with route() as rule:
+            rule.allow()
+
+    result = generate(
+        routemaps=routemaps,
+        dev=juniper(),
+    )
+    expected = scrub("""
+policy-options {
+    policy-statement policy {
+        term policy_10 {
+            then accept;
+        }
+        term policy_11 {
+            then accept;
+        }
+        term policy_20 {
+            then accept;
+        }
+        term policy_21 {
+            then accept;
+        }
+    }
+}
+""")
+    assert result == expected
+
+
+def test_juniper_term_number_and_name():
+    routemaps = RouteMap[Mock]()
+    @routemaps
+    def policy(device: Mock, route: Route):
+        # term policy_0
+        with route() as rule:
+            rule.allow()
+        # term ALLOW
+        with route(name="ALLOW", number=10) as rule:
+            rule.allow()
+        # term policy_11
+        with route() as rule:
+            rule.allow()
+
+    result = generate(
+        routemaps=routemaps,
+        dev=juniper(),
+    )
+    expected = scrub("""
+policy-options {
+    policy-statement policy {
+        term policy_0 {
+            then accept;
+        }
+        term ALLOW {
+            then accept;
+        }
+        term policy_11 {
+            then accept;
+        }
+    }
+}
+""")
+    assert result == expected
