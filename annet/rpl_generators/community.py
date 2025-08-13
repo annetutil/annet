@@ -297,6 +297,7 @@ class CommunityListGenerator(PartialGenerator, ABC):
 
     def _juniper_community_list(self, name: str, community_lists: list[CommunityList]) -> Iterator[Sequence[str]]:
         members: list[str] = []
+        logic: set[CommunityLogic] = set()
         for community_list in community_lists:
             prefix: str
             if community_list.type is CommunityType.BASIC:
@@ -308,10 +309,14 @@ class CommunityListGenerator(PartialGenerator, ABC):
             elif community_list.type is CommunityType.LARGE:
                 prefix = "large:"
             else:
-                raise NotImplementedError(f"CommunityList type {community_list.type} not implemented for Cisco IOS XR")
+                raise NotImplementedError(f"CommunityList {name}: type {community_list.type} not implemented for Juniper")
 
+            logic.add(community_list.logic)
             for community in community_list.members:
                 members.append(prefix + community)
+
+        if len(members) > 1 and logic != {CommunityLogic.AND}:
+            raise NotImplementedError(f"CommunityList {name}: only AND logic between members is implemeted for Juniper")
 
         definition = ("community", name, "members")
         with self.block("policy-options"):
