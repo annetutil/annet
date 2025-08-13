@@ -41,16 +41,13 @@
     set full name=full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,winbox,password,web,sniff,sensitive,api,romon,dude,tikapp skin=default
     add name=nocmon policy=read,test,api,!local,!telnet,!ssh,!ftp,!reboot,!write,!policy,!winbox,!password,!web,!sniff,!sensitive,!romon,!dude,!tikapp skin=default
   patch: |
-    /file
-    remove [ find name=gg.txt ]
-    print file=user4@Example.ssh_key.txt
-    print file=user5@example.com.ssh_key.txt
-    set user4@Example.ssh_key.txt contents="ssh-dss AAAAAAAA== user4@Example"
-    set user5@example.com.ssh_key.txt contents="ssh-dss AAAABBBB== user5@example.com"
-    /user
-    remove [ find address="" disabled=no group=full name=superuser ]
-    add address="" disabled=no group=full name=user4
-    add address="" disabled=no group=nocmon name=user5
-    /user ssh-keys
-    import public-key-file=user4@Example.ssh_key.txt user=user4
-    import public-key-file=user5@example.com.ssh_key.txt user=user5
+    /file remove [ find name=gg.txt ]
+    /file print file=user4@Example.ssh_key.txt
+    /file print file=user5@example.com.ssh_key.txt
+    /file set user4@Example.ssh_key.txt contents="ssh-dss AAAAAAAA== user4@Example"
+    /file set user5@example.com.ssh_key.txt contents="ssh-dss AAAABBBB== user5@example.com"
+    /user remove [ find address="" disabled=no group=full name=superuser ]
+    /user add address="" disabled=no group=full name=user4
+    /user add address="" disabled=no group=nocmon name=user5
+    /user ssh-keys import public-key-file=user4@Example.ssh_key.txt user=user4
+    /user ssh-keys import public-key-file=user5@example.com.ssh_key.txt user=user5
