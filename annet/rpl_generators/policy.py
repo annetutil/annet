@@ -1408,10 +1408,15 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             rd_filters: dict[str, RDFilter],
             prefix_name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
-        for i, statement in enumerate(policy.statements):
+        term_number = 0
+        for statement in policy.statements:
+            if statement.number is not None:
+                term_number = statement.number
             term_name = statement.name
             if not term_name:
-                term_name = f"{policy.name}_{i}"
+                term_name = f"{policy.name}_{term_number}"
+            term_number += 1
+
             with self.block("term", term_name):
                 # see test_juniper_inline
                 match_inlined = self._juniper_is_match_inlined(statement.match)

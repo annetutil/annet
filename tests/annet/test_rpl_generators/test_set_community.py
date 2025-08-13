@@ -176,14 +176,14 @@ def test_juniper_comm_match_set():
 
     @routemaps
     def policy(device: Mock, route: Route):
-        with route(R.community.has_any(BASIC_CLIST, BASIC2_CLIST), number=1) as rule:
+        with route(R.community.has_any(BASIC_CLIST, BASIC2_CLIST)) as rule:
             rule.community.remove(BASIC2_CLIST)
             rule.community.add(BASIC_CLIST)
             rule.allow()
-        with route(R.community.has(BASIC2_CLIST), number=2) as rule:
+        with route(R.community.has(BASIC2_CLIST)) as rule:
             rule.community.remove(BASIC2_CLIST)
             rule.allow()
-        with route(R.community.has(RT_CLIST), number=2) as rule:
+        with route(R.community.has(RT_CLIST)) as rule:
             rule.community.set(RT2_CLIST)
             rule.allow()
 
