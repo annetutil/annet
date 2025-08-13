@@ -1161,7 +1161,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     ) -> Iterator[Sequence[str]]:
         names: list[str] = [name for cond in conditions for name in cond.value]
         operators = {x.operator for x in conditions}
-        if len(conditions) > 1 and operators != {ConditionOperator.HAS_ANY}:
+        if len(names) > 1 and operators != {ConditionOperator.HAS_ANY}:
             raise NotImplementedError(
                 f"Multiple community match [{' '.join(names)}] without has_any is not supported for Juniper",
             )
@@ -1290,14 +1290,22 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             section: Literal["", "then"],
             actions: list[SingleAction[CommunityActionValue]]
         ):
-        for action in actions:
-            if action.value.replaced is not None:
-                for name in action.value.replaced:
-                    yield section, "community", "set", name
-            for name in action.value.added:
-                yield section, "community", "add", name
-            for name in action.value.removed:
+        # juniper community ops are ORDERED
+        # since data model does not support it
+        # we use the order that makes sense: delete, set, add
+        for single_action in actions:
+            action = single_action.value
+            for name in action.removed:
                 yield section, "community", "delete", name
+
+            if action.replaced is not None:
+                if not action.replaced:
+                    raise NotImplementedError("Empty community.set() is not supported for Juniper")
+                for name in action.replaced:
+                    yield section, "community", "set", name
+
+            for name in action.added:
+                yield section, "community", "add", name
 
     def _juniper_then_next_hop(
             self,
