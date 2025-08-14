@@ -19,9 +19,9 @@ class Filter(TypedDict, total=False):
     device_type: list[str]
     status: list[str]
     tenant: list[str]
-    location_id: list[str]
-    has_oob_ip: list[str]
-    has_primary_ip: list[str]
+    location_id: list[int]
+    has_oob_ip: bool
+    has_primary_ip: bool
 
 
 @dataclass
