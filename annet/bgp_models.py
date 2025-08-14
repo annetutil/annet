@@ -400,6 +400,9 @@ def _used_redistribute_policies(opts: Union[GlobalOptions, VrfOptions]) -> Itera
                 yield red.policy
         if family_opts.aggregate and family_opts.aggregate.policy:
             yield family_opts.aggregate.policy
+        for aggregate in family_opts.aggregates:
+            if aggregate.policy:
+                yield aggregate.policy
 
 
 def extract_policies(config: BgpConfig) -> Sequence[str]:
