@@ -1,0 +1,12 @@
+- # test that the same two commands inside different blocks
+  # will not be in conflict with each other
+  vendor: routeros
+  before: |
+  after: |
+    /ipv6 firewall
+     add action=accept chain=input
+    /ip firewall
+     add action=accept chain=input
+  patch: |
+    /ipv6 firewall add action=accept chain=input
+    /ip firewall add action=accept chain=input
