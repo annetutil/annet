@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from unittest.mock import Mock
 
 from annet.rpl import RouteMap, Route, R

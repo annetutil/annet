@@ -36,6 +36,8 @@ class FamilyOptions(BaseMeshModel):
     rib_group: bool
     loops: int
     advertise_bgp_static: bool
+    import_policy: Optional[str]
+    export_policy: Optional[str]
 
 
 class _FamiliesMixin:
