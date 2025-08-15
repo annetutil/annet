@@ -172,7 +172,6 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                         yield from self._iosxr_prefixlist(plist)
                         processed_names.add(plist.name)
 
-
     def acl_juniper(self, _):
         return r"""
         policy-options     %cant_delete
@@ -186,7 +185,7 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
         with self.block("policy-options"):
             with self.block("prefix-list", prefixlist.name):
                 for member in prefixlist.members:
-                     yield f"{member.prefix}"
+                    yield f"{member.prefix}"
 
     def _juniper_router_filter_list(self, prefixlist: IpPrefixList):
         with self.block("policy-options"):
