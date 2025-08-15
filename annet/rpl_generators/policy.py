@@ -1145,7 +1145,6 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                         communities, rd_filters, device, policy, statement, prefix_name_generator,
                     )
 
-
     # Juniper
     def acl_juniper(self, device):
         return r"""
@@ -1320,7 +1319,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             actions: list[SingleAction[NextHopActionValue]],
         ):
         if len(actions) > 1:
-            raise NotImplementedError(f"Only single next-hop action is supported for Juniper")
+            raise NotImplementedError("Only single next-hop action is supported for Juniper")
 
         action = actions[0]
         if action.value.target == "self":
@@ -1336,7 +1335,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         elif action.value.target == "mapped_ipv4":
             yield section, "next-hop", f"::ffff:{action.value.addr}"
         else:
-            raise NotImplementedError(f"Next_hop target {action.value.target} is not supported for Juniper") 
+            raise NotImplementedError(f"Next_hop target {action.value.target} is not supported for Juniper")
 
     def _juniper_then_as_path(
             self,
@@ -1344,7 +1343,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             actions: list[SingleAction[AsPathActionValue]],
         ):
         if len(actions) > 1:
-            raise NotImplementedError(f"Only single next-hop action is supported for Juniper")
+            raise NotImplementedError("Only single next-hop action is supported for Juniper")
 
         action = actions[0]
         if action.value.expand and action.value.expand_last_as:
@@ -1411,8 +1410,6 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             self,
             device: Any,
             policy: RoutingPolicy,
-            communities: dict[str, CommunityList],
-            rd_filters: dict[str, RDFilter],
             prefix_name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         term_number = 0
@@ -1446,12 +1443,10 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         prefix_lists = self.get_prefix_lists(device)
         policies = self.get_policies(device)
         prefix_name_generator = PrefixListNameGenerator(prefix_lists, policies)
-        communities = {c.name: c for c in self.get_community_lists(device)}
-        rd_filters =  {f.name: f for f in self.get_rd_filters(device)}
 
         for policy in policies:
             with self.block("policy-options"):
                 with self.block("policy-statement", policy.name):
                     yield from self._juniper_statements(
-                        device, policy, communities, rd_filters, prefix_name_generator,
+                        device, policy, prefix_name_generator,
                     )
