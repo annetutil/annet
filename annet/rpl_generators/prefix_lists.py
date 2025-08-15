@@ -5,7 +5,7 @@ from itertools import chain
 
 from annet.generators import PartialGenerator
 from annet.rpl import PrefixMatchValue, MatchField, SingleCondition, RoutingPolicy
-from .entities import IpPrefixList, PrefixListNameGenerator, is_orlonger
+from .entities import IpPrefixList, PrefixListNameGenerator, plist_flavour
 
 
 class PrefixListFilterGenerator(PartialGenerator, ABC):
@@ -193,15 +193,21 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
             with self.block("route-filter-list", prefixlist.name):
                 for member in prefixlist.members:
                     ge, le = member.or_longer
-                    if not ge and not le:
-                        yield f"{member.prefix}"
-                    elif ge and le:
-                        yield f"{member.prefix}", "prefix-length-range", f"/{ge}-/{le}"
-                    else:
-                        raise NotImplementedError(
-                            f"Partial or_longer {member.or_longer} is not supported",
-                        )
+                    if ge is None and le is None:
+                        yield f"{member.prefix} exact"
+                        continue
+                    if ge is None:
+                        ge = member.prefix.prefixlen
+                    if le is None:
+                        le = member.prefix.max_prefixlen
+                    # may produce config that is not accepted by commit
+                    # since juniper enforces that n <= ge <= le
+                    # where n is prefix len: .../n
 
+                    # this is done specifically to match other generators behaviour
+                    # can be revised in two ways: exeption or enforce via max/min
+                    # but need to be consistent across vendors so will leave it for now
+                    yield f"{member.prefix}", "prefix-length-range", f"/{ge}-/{le}"
 
     def run_juniper(self, device: Any):
         prefix_lists = self.get_prefix_lists(device)
@@ -223,7 +229,12 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                         processed_names.add(name)
 
                         plist = name_generator.get_prefix(name, cond.value)
-                        if not is_orlonger(plist):
+                        flavour = plist_flavour(plist)
+                        if flavour == "simple" or flavour == "orlonger":
                             yield from self._juniper_prefixlist(plist)
-                        else:
+                        elif flavour == "custom":
                             yield from self._juniper_router_filter_list(plist)
+                        else:
+                            raise NotImplementedError(
+                                f"Prefix list {plist.name} flavour {flavour} is not supported for Juniper",
+                            )

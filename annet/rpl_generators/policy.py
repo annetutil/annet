@@ -12,7 +12,7 @@ from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, T
 from annet.rpl_generators.entities import (
     arista_well_known_community,
     CommunityList, RDFilter, PrefixListNameGenerator, CommunityLogic, mangle_united_community_list_name,
-    IpPrefixList, group_community_members, CommunityType, is_orlonger,
+    IpPrefixList, group_community_members, CommunityType, plist_flavour
 )
 
 HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
@@ -1186,10 +1186,17 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         for cond in conditions:
             for name in cond.value.names:
                 prefix_list = name_generator.get_prefix(name, cond.value)
-                if not is_orlonger(prefix_list):
+                flavour = plist_flavour(prefix_list)
+                if flavour == "simple":
                     yield section, "prefix-list", prefix_list.name
-                else:
+                elif flavour == "orlonger":
+                    yield section, "prefix-list-filter", prefix_list.name, "orlonger"
+                elif flavour == "custom":
                     yield section, "route-filter-list", prefix_list.name
+                else:
+                    raise NotImplementedError(
+                        f"Prefix list {prefix_list.name} flavour {flavour} is not supported for Juniper",
+                    )
 
     def _juniper_match_as_path_length(
             self,

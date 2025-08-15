@@ -3,7 +3,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Literal
 
 from annet.rpl import RoutingPolicy, PrefixMatchValue, OrLonger
 
@@ -137,8 +137,29 @@ def group_community_members(
     return members
 
 
-def is_orlonger(plist: IpPrefixList) -> bool:
+def plist_flavour(plist: IpPrefixList) -> Literal["simple", "orlonger", "custom"]:
+    is_orlonger: bool = False
+    is_custom: bool = False
     for m in plist.members:
-        if any(m.or_longer):
-            return True
-    return False
+        ge, le = m.or_longer
+
+        # or_longer != (None, None)
+        if ge is not None or le is not None:
+            is_orlonger = True
+
+        # orlonger != (n, None), where n is .../n
+        if ge is not None and ge != m.prefix.prefixlen:
+            is_custom = True
+            break
+
+        # orlonger != (None, n), where n is 32 or 128 (ipv4/ipv6)
+        if le is not None and le != m.prefix.max_prefixlen:
+            is_custom = True
+            break
+
+    if is_custom:
+        return "custom"
+    elif is_orlonger:
+        return "orlonger"
+    else:
+        return "simple"
