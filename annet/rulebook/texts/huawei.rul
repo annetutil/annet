@@ -72,6 +72,11 @@ bfd
 
 observe-port *
 
+drop-profile *
+    color *
+    ecn weight
+    ecn
+
 qos local-precedence-queue-map *
 
 qos group %logic=huawei.misc.undo_children
