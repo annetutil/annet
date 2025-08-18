@@ -5,7 +5,10 @@ from typing import cast, List, Union, Iterable, Optional, TypedDict
 from annet.storage import Query
 
 FIELD_VALUE_SEPARATOR = ":"
-ALLOWED_GLOB_GROUPS = ["site", "tag", "role", "device_type", "status", "tenant"]
+ALLOWED_GLOB_GROUPS = [
+    "site", "tag", "role", "device_type", "status", "tenant", "location_id",
+    "has_oob_ip", "has_primary_ip",
+]
 
 
 class Filter(TypedDict, total=False):
@@ -16,6 +19,9 @@ class Filter(TypedDict, total=False):
     device_type: list[str]
     status: list[str]
     tenant: list[str]
+    location_id: list[int]
+    has_oob_ip: bool
+    has_primary_ip: bool
 
 
 @dataclass
