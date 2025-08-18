@@ -31,6 +31,7 @@ L2VPN = "evpn1"
 
 def on_device_x(device: GlobalOptions):
     device.vrf[VRF].export_policy = EXPORT_POLICY1
+    device.vrf[VRF].ipv4_unicast.export_policy = EXPORT_POLICY2
     device.vrf[VRF].groups[GROUP].mtu = 1499
     device.vrf[VRF].groups[GROUP].local_as = 11111
     device.vrf[VRF].groups[GROUP].remote_as = 22222
@@ -180,6 +181,8 @@ def test_storage(registry, storage, device1):
     assert vrf.static_label is None
     assert vrf.export_policy == EXPORT_POLICY1
     assert vrf.import_policy == ""
+    assert vrf.ipv4_unicast.export_policy == EXPORT_POLICY2
+    assert vrf.ipv6_unicast.export_policy == None
     assert len(vrf.groups) == 1
     assert vrf.groups[0].mtu == 1499
     assert vrf.groups[0].local_as == 11111
