@@ -1176,9 +1176,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             name_generator: PrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         operators = {x.operator for x in conditions}
-        supported = {ConditionOperator.HAS_ANY, ConditionOperator.CUSTOM}  # CUSTOM is ANY
+        supported = {ConditionOperator.HAS_ANY}
         not_supported = operators - supported
-        if len(conditions) > 1 and not_supported > 1:
+        if len(conditions) > 1 and not_supported:
             raise NotImplementedError(
                 f"Multiple prefix match with ops {not_supported} is not supported for Juniper",
             )
@@ -1255,6 +1255,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
 
     def _juniper_match(
             self,
+            policy: RoutingPolicy,
             section: Literal["", "from"],
             conditions: AndCondition,
             prefix_name_generator: PrefixListNameGenerator,
@@ -1285,10 +1286,10 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         for condition in simple_conditions:
             if condition.operator is not ConditionOperator.EQ:
                 raise NotImplementedError(
-                    f"`{condition.field}` with operator {condition.operator} is not supported for Juniper",
+                    f"`{condition.field}` with operator {condition.operator} in {policy.name} is not supported for Juniper",
                 )
             if condition.field not in JUNIPER_MATCH_COMMAND_MAP:
-                raise NotImplementedError(f"Match using `{condition.field}` is not supported for Juniper")
+                raise NotImplementedError(f"Match using `{condition.field}` in {policy.name} is not supported for Juniper")
             yield section, JUNIPER_MATCH_COMMAND_MAP[condition.field].format(option_value=condition.value)
 
     def _juniper_then_community(
@@ -1369,6 +1370,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
 
     def _juniper_then(
             self,
+            policy: RoutingPolicy,
             section: Literal["", "then"],
             actions: Action,
     ) -> Iterator[Sequence[str]]:
@@ -1378,6 +1380,8 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         simple_actions: list[SingleAction] = []
         for action in actions:
             if action.field == ThenField.community:
+                community_actions.append(action)
+            elif action.field == ThenField.extcommunity:
                 community_actions.append(action)
             elif action.field == ThenField.extcommunity_rt:
                 community_actions.append(action)
@@ -1401,9 +1405,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
 
         for action in simple_actions:
             if action.type not in {ActionType.SET, ActionType.CUSTOM}:  # CUSTOM is SET
-                raise NotImplementedError(f"Action type {action.type} for `{action.field}` is not supported for Juniper")
+                raise NotImplementedError(f"Action type {action.type} for `{action.field}` in {policy.name} is not supported for Juniper")
             if action.field not in JUNIPER_THEN_COMMAND_MAP:
-                raise NotImplementedError(f"Then action using `{action.field}` is not supported for Juniper")
+                raise NotImplementedError(f"Then action using `{action.field}` in {policy.name} is not supported for Juniper")
             yield section, JUNIPER_THEN_COMMAND_MAP[action.field].format(option_value=action.value)
 
     def _juniper_statements(
@@ -1430,11 +1434,11 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
 
                 if statement.match:
                     with self.block_if("from", condition=not match_inlined):
-                        yield from self._juniper_match(match_section, statement.match, prefix_name_generator)
+                        yield from self._juniper_match(policy, match_section, statement.match, prefix_name_generator)
 
                 if statement.then:
                     with self.block_if("then", condition=not then_inlined):
-                        yield from self._juniper_then(then_section, statement.then)
+                        yield from self._juniper_then(policy, then_section, statement.then)
 
                 with self.block_if("then", condition=not then_inlined):
                     yield then_section, JUNIPER_RESULT_MAP[statement.result]
