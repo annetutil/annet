@@ -823,41 +823,23 @@ class RosFormatter(CommonFormatter):
             (re.compile(r"^add "), ""),
             (re.compile(r"^print file="), "name="),
         )
-        patch_items = []
+
+        commands = odict()
         for item in patch.itms:
             key, childs, context = item.row, item.child, item.context
             if childs:
-                patch_items.append((key, childs, context))
+                childs_prev = f"{_prev} {key.strip()}".lstrip()
+                commands.update(self.cmd_paths(childs, _prev=childs_prev))
             else:
-                patch_items.append((key, None, context))
+                if key.startswith("remove"):
+                    find_cmd = key.removeprefix("remove").strip()
+                    for regex, repl_line in rm_regexs:
+                        find_cmd = regex.sub(repl_line, find_cmd)
+                    cmd = f"/{_prev} remove [ find {find_cmd} ]"
+                else:
+                    cmd = f"/{_prev} {key}"
+                commands[(cmd,)] = context
 
-        commands = odict()
-        prev_cmd = None
-        prev_context = None
-        for childs, items in itertools.groupby(patch_items, lambda x: x[1]):
-            if childs is None:
-                if prev_cmd:
-                    commands[(prev_cmd,)] = prev_context
-                for key, _, context in items:
-                    if key.startswith("remove"):
-                        find_cmd = key.replace("remove", "", 1).strip()
-                        for (regex, repl_line) in rm_regexs:
-                            find_cmd = regex.sub(repl_line, find_cmd)
-                        cmd = "remove [ find " + find_cmd + " ]"
-                    else:
-                        cmd = key
-                    commands[(cmd,)] = context
-            else:
-                for key, _, context in items:
-                    if _prev:
-                        prev_cmd = _prev
-                        prev_context = context
-                        block_cmd = f"{_prev} {key}"
-                    else:
-                        block_cmd = f"/{key}"
-                    commands[(block_cmd,)] = context
-                    for k, v in self.cmd_paths(childs, block_cmd).items():
-                        commands[k] = v
         return commands
 
 
