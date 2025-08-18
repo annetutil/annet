@@ -194,7 +194,7 @@ Go to to root of your folder and create folders for cEOS configuration files and
   end
   EOF
 
-Crete docker-compose override file.
+Create docker-compose override file.
 
 .. code:: bash
 
