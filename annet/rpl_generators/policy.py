@@ -1164,10 +1164,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             raise NotImplementedError(
                 f"Multiple community match [{' '.join(names)}] without has_any is not supported for Juniper",
             )
-        if len(names) == 1:
-            yield section, "community", names[0]
-        elif len(names) > 1:
-            yield section, "community", f"[ {' '.join(names)} ]"
+        yield section, "community", self._juniper_list_bracket(names)
 
     def _juniper_match_prefix_lists(
             self,
@@ -1218,6 +1215,21 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                     f"Operator {condition.operator} is not supported for {condition.field} on Juniper",
                 )
 
+    def _juniper_match_rd_filter(
+            self,
+            section: Literal["", "from"],
+            conditions: list[SingleCondition[Sequence[str]]],
+    ) -> Iterator[Sequence[str]]:
+        names = [x for c in conditions for x in c.value]
+        operators = {x.operator for x in conditions}
+        supported = {ConditionOperator.HAS_ANY}
+        not_supported = operators - supported
+        if len(names) > 1 and not_supported:
+            raise NotImplementedError(
+                f"Multiple rd_filter matches with ops {not_supported} is not supported for Juniper",
+            )
+        yield section, "route-distinguisher", self._juniper_list_bracket(names)
+
     def _juniper_match_community_fields(self) -> set[MatchField]:
         return {
             MatchField.community,
@@ -1267,6 +1279,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         prefix_conditions: list[SingleCondition] = []
         simple_conditions: list[SingleCondition] = []
         as_path_length_conditions: list[SingleCondition] = []
+        rd_filter_conditions: list[SingleAction] = []
         for condition in conditions:
             if condition.field in community_fields:
                 community_conditions.append(condition)
@@ -1274,6 +1287,8 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 prefix_conditions.append(condition)
             elif condition.field == MatchField.as_path_length:
                 as_path_length_conditions.append(condition)
+            elif condition.field == MatchField.rd:
+                rd_filter_conditions.append(condition)
             else:
                 simple_conditions.append(condition)
 
@@ -1283,6 +1298,8 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             yield from self._juniper_match_prefix_lists(section, prefix_conditions, prefix_name_generator)
         if as_path_length_conditions:
             yield from self._juniper_match_as_path_length(section, as_path_length_conditions)
+        if rd_filter_conditions:
+            yield from self._juniper_match_rd_filter(section, rd_filter_conditions)
 
         for condition in simple_conditions:
             if condition.operator is not ConditionOperator.EQ:
@@ -1343,6 +1360,12 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         joined = " ".join(items)
         if len(items) > 1:
             joined = f'"{joined}"'
+        return joined
+
+    def _juniper_list_bracket(self, items: list[str]) -> str:
+        joined = " ".join(items)
+        if len(items) > 1:
+            joined = f"[ {joined} ]"
         return joined
 
     def _juniper_then_as_path(
