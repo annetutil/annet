@@ -1410,7 +1410,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             yield from self._juniper_then_as_path(section, as_path_actions)
 
         for action in simple_actions:
-            if action.type not in {ActionType.SET, ActionType.CUSTOM}:  # CUSTOM is SET
+            if action.type not in {ActionType.SET}:
                 raise NotImplementedError(f"Action type {action.type} for `{action.field}` in {policy.name} is not supported for Juniper")
             if action.field not in JUNIPER_THEN_COMMAND_MAP:
                 raise NotImplementedError(f"Then action using `{action.field}` in {policy.name} is not supported for Juniper")
