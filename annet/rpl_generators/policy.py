@@ -1338,6 +1338,12 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         else:
             raise NotImplementedError(f"Next_hop target {action.value.target} is not supported for Juniper")
 
+    def _juniper_list_quote(self, items: list[str]) -> str:
+        joined = " ".join(items)
+        if len(items) > 1:
+            joined = f'"{joined}"'
+        return joined
+
     def _juniper_then_as_path(
             self,
             section: Literal["", "then"],
@@ -1351,9 +1357,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             raise NotImplementedError("Setting both `as_path.expand` and `as_path.expand_last_as` is not supported for Juniper")
 
         if action.value.prepend:
-            yield section, "as-path-prepend", action.value.prepend
+            yield section, "as-path-prepend", self._juniper_list_quote(action.value.prepend)
         if action.value.expand:
-            yield section, "as-path-expand", action.value.expand
+            yield section, "as-path-expand", self._juniper_list_quote(action.value.expand)
         if action.value.expand_last_as:
             yield section, "as-path-expand last-as count", action.value.expand_last_as
         if action.value.set is not None:
