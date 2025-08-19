@@ -12,7 +12,7 @@ from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, T
 from annet.rpl_generators.entities import (
     arista_well_known_community,
     CommunityList, RDFilter, PrefixListNameGenerator, CommunityLogic, mangle_united_community_list_name,
-    IpPrefixList, group_community_members, CommunityType, plist_flavour
+    IpPrefixList, group_community_members, CommunityType, JuniperPrefixListNameGenerator
 )
 
 HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
@@ -1173,7 +1173,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             self,
             section: Literal["", "from"],
             conditions: list[SingleCondition[PrefixMatchValue]],
-            name_generator: PrefixListNameGenerator,
+            name_generator: JuniperPrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         operators = {x.operator for x in conditions}
         supported = {ConditionOperator.HAS_ANY}
@@ -1185,16 +1185,17 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         for cond in conditions:
             for name in cond.value.names:
                 prefix_list = name_generator.get_prefix(name, cond.value)
-                flavour = plist_flavour(prefix_list)
-                if flavour == "simple":
+                plist_type = name_generator.get_type(name, cond.value)
+                flavour = name_generator.get_plist_flavour(prefix_list)
+                if plist_type == "prefix-list" and flavour == "simple":
                     yield section, "prefix-list", prefix_list.name
-                elif flavour == "orlonger":
+                elif plist_type == "prefix-list" and flavour == "orlonger":
                     yield section, "prefix-list-filter", prefix_list.name, "orlonger"
-                elif flavour == "custom":
+                elif plist_type == "route-filter":
                     yield section, "route-filter-list", prefix_list.name
                 else:
                     raise NotImplementedError(
-                        f"Prefix list {prefix_list.name} flavour {flavour} is not supported for Juniper",
+                        f"Prefix list {prefix_list.name} type {plist_type} flavour {flavour} is not supported for Juniper",
                     )
 
     def _juniper_match_as_path_length(
@@ -1258,7 +1259,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             policy: RoutingPolicy,
             section: Literal["", "from"],
             conditions: AndCondition,
-            prefix_name_generator: PrefixListNameGenerator,
+            prefix_name_generator: JuniperPrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         community_fields = self._juniper_match_community_fields()
         prefix_fields = self._juniper_match_prefix_fields()
@@ -1452,7 +1453,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     def run_juniper(self, device):
         prefix_lists = self.get_prefix_lists(device)
         policies = self.get_policies(device)
-        prefix_name_generator = PrefixListNameGenerator(prefix_lists, policies)
+        prefix_name_generator = JuniperPrefixListNameGenerator(prefix_lists, policies)
 
         for policy in policies:
             with self.block("policy-options"):
