@@ -109,8 +109,12 @@ policy-options
     community ~
     prefix-list ~
     policy-statement *
-        ~                 %ordered
-            ~             %global
+        term *               %ordered
+            then
+                community ~  %ordered
+                ~
+            ~                %global
+        ~                    %global
 
 
 firewall

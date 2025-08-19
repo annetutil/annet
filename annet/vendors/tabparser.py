@@ -487,7 +487,7 @@ class JuniperFormatter(CommonFormatter):
 
         self._sub_regexs = (
             (re.compile(self._block_begin + r"\s*" + self._block_end + r"$"), ""),  # collapse empty blocks
-            (re.compile(self._block_begin + "(\t# .+)?$"), ""),
+            (re.compile(self._block_begin + r"\s*" + r"(\t# .+)?$"), ""),
             (re.compile(self._statement_end + r"$"), ""),
             (re.compile(r"\s*" + self._block_end + "(\t# .+)?$"), ""),
             (re.compile(self._endofline_comment + r".*$"), ""),
