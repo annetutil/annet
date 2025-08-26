@@ -144,8 +144,8 @@
     "PC.Whitebox.Ufispace.S.S9300.S9301_32DB": " S9301-32DB",
     "PC.Whitebox.Ufispace.S.S9300.S9321_64EO": " S9321-64EO",
     "PC.Nebius": "^Nebius",
-    "PC.Nebius.NB-D-M-CSM-R": "^Nebius NB-D-M-CSM-R",
-    "PC.Nebius.NB-E-BR-DCU-AST2600": "^Nebius NB-E-BR-DCU-AST2600",
+    "PC.Nebius.NB_D_M_CSM_R": "^Nebius NB-D-M-CSM-R",
+    "PC.Nebius.NB_E_BR_DCU_AST2600": "^Nebius NB-E-BR-DCU-AST2600",
     "PC.Avocent": " [Aa]vocent",
     "PC.Avocent.ACS8000": " (ACS|acs)8000",
 
