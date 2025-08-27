@@ -95,8 +95,12 @@ class Checkable:
     def match_v6(
             self,
             *names: str,
-            or_longer: OrLonger = (None, None),
+            or_longer: bool | OrLonger = (None, None),
     ) -> SingleCondition[PrefixMatchValue]:
+        if or_longer is True:
+            or_longer = (None, 128)
+        if or_longer is False:
+            or_longer = (None, None)
         return SingleCondition(
             MatchField.ipv6_prefix,
             ConditionOperator.CUSTOM,
@@ -106,8 +110,12 @@ class Checkable:
     def match_v4(
             self,
             *names: str,
-            or_longer: OrLonger = (None, None),
+            or_longer: bool | OrLonger = (None, None),
     ) -> SingleCondition[PrefixMatchValue]:
+        if or_longer is True:
+            or_longer = (None, 32)
+        if or_longer is False:
+            or_longer = (None, None)
         return SingleCondition(
             MatchField.ip_prefix,
             ConditionOperator.CUSTOM,

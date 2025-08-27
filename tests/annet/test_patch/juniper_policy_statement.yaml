@@ -1,0 +1,70 @@
+# policy-statement's terms are ordered
+- vendor: juniper
+  before: |-
+    policy-options {
+        policy-statement XXX {
+            term a {
+                then accept;
+            }
+            term b {
+                then reject;
+            }
+        }
+    }
+  after: |-
+    policy-options {
+        policy-statement XXX {
+            term b {
+                then reject;
+            }
+            term a {
+                then accept;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete policy-options policy-statement XXX term b
+    delete policy-options policy-statement XXX term a
+    set policy-options policy-statement XXX term b then reject
+    set policy-options policy-statement XXX term a then accept
+    commit
+    exit
+
+
+# then community is ordered
+- vendor: juniper
+  before: |-
+    policy-options {
+        policy-statement XXX {
+            term a {
+                then {
+                    local-preference 123;
+                    community add b;
+                    community set c;
+                    accept;
+                }
+            }
+        }
+    }
+  after: |-
+    policy-options {
+        policy-statement XXX {
+            term a {
+                then {
+                    local-preference 123;
+                    community set c;
+                    community add b;
+                    accept;
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete policy-options policy-statement XXX term a then community set c
+    delete policy-options policy-statement XXX term a then community add b
+    set policy-options policy-statement XXX term a then community set c
+    set policy-options policy-statement XXX term a then community add b
+    commit
+    exit

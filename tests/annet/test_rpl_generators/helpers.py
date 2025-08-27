@@ -48,6 +48,13 @@ def iosxr():
         "iosxr",
     )
 
+def juniper():
+    return MockDevice(
+        "Juniper MX304",
+        "JUNOS 22.4R3-S4.5",
+        "juniper",
+    )
+
 
 def cumulus_generator(
     routemaps: RouteMap,
