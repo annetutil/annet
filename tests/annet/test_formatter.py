@@ -836,3 +836,30 @@ def test_asr_parse_to_tree(asr_config):
     formatter = registry_connector.get().match(make_hw_stub("asr")).make_formatter()
     parsed = parse_to_tree(asr_config, formatter.split)
     assert parsed == expected
+
+
+def test_jun_formatter_split_whitespaces01(juniper_config):
+    # sometimes juniper adds bunch of whitespaces
+    # in the output of show configuration for some reason
+    # here they are after the the term POLICY_0 {
+    juniper_config = textwrap.dedent(r"""
+    policy-options {
+        policy-statement POLICY {
+            term POLICY_0 {            
+                then {
+                    origin igp;
+                    accept;
+                }
+            }
+        }
+    }
+    """)
+    formatter = registry_connector.get().match(make_hw_stub("juniper")).make_formatter()
+    assert formatter.split(juniper_config) == [
+        "policy-options",
+        "    policy-statement POLICY",
+        "        term POLICY_0",
+        "            then",
+        "                origin igp",
+        "                accept",
+    ]

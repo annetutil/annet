@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence, Iterable
 from typing import Any, Literal
+from itertools import chain
 
 from annet.generators import PartialGenerator
 from annet.rpl import PrefixMatchValue, MatchField, SingleCondition, RoutingPolicy
-from .entities import IpPrefixList, PrefixListNameGenerator
+from .entities import IpPrefixList, PrefixListNameGenerator, JuniperPrefixListNameGenerator
 
 
 class PrefixListFilterGenerator(PartialGenerator, ABC):
@@ -170,3 +171,68 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
                             continue
                         yield from self._iosxr_prefixlist(plist)
                         processed_names.add(plist.name)
+
+    def acl_juniper(self, _):
+        return r"""
+        policy-options     %cant_delete
+            prefix-list *
+                ~
+            route-filter-list *
+                ~
+        """
+
+    def _juniper_prefixlist(self, name: str, prefixlist: IpPrefixList):
+        with self.block("policy-options"):
+            with self.block("prefix-list", name):
+                for member in prefixlist.members:
+                    yield f"{member.prefix}"
+
+    def _juniper_router_filter_list(self, name: str, prefixlist: IpPrefixList):
+        with self.block("policy-options"):
+            with self.block("route-filter-list", name):
+                for member in prefixlist.members:
+                    ge, le = member.or_longer
+                    if ge is None and le is None:
+                        yield f"{member.prefix} exact"
+                        continue
+                    if ge is None:
+                        ge = member.prefix.prefixlen
+                    if le is None:
+                        le = member.prefix.max_prefixlen
+                    # may produce config that is not accepted by commit
+                    # since juniper enforces that n <= ge <= le
+                    # where n is prefix len: .../n
+
+                    # this is done specifically to match other generators behaviour
+                    # can be revised in two ways: exeption or enforce via max/min
+                    # but need to be consistent across vendors so will leave it for now
+                    yield f"{member.prefix}", "prefix-length-range", f"/{ge}-/{le}"
+
+    def run_juniper(self, device: Any):
+        prefix_lists = self.get_prefix_lists(device)
+        policies = self.get_policies(device)
+
+        name_generator = JuniperPrefixListNameGenerator(prefix_lists, policies)
+        processed_names: set[str] = set()
+        for policy in policies:
+            for statement in policy.statements:
+                conds = chain(
+                    statement.match.find_all(MatchField.ip_prefix),
+                    statement.match.find_all(MatchField.ipv6_prefix),
+                )
+                cond: SingleCondition[PrefixMatchValue]
+                for cond in conds:
+                    for cond_name in cond.value.names:
+                        plist = name_generator.get_prefix(cond_name, cond.value)
+                        plist_type = name_generator.get_type(cond_name, cond.value)
+
+                        if plist.name not in processed_names:
+                            processed_names.add(plist.name)
+                            if plist_type == "prefix-list":
+                                yield from self._juniper_prefixlist(plist.name, plist)
+                            elif plist_type == "route-filter":
+                                yield from self._juniper_router_filter_list(plist.name, plist)
+                            else:
+                                raise NotImplementedError(
+                                    f"Prefix list {cond_name} type {plist_type} is not supported for Juniper",
+                                )
