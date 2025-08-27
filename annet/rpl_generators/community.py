@@ -318,12 +318,12 @@ class CommunityListGenerator(PartialGenerator, ABC):
         if len(members) > 1 and logic != {CommunityLogic.AND}:
             raise NotImplementedError(f"CommunityList {name}: only AND logic between members is implemeted for Juniper")
 
-        definition = ("community", name, "members")
+        definition = ["community", name, "members"]
         with self.block("policy-options"):
             if len(members) == 1:
-                yield definition, members
+                yield *definition, *members
             if len(members) > 1:
-                yield definition, "[", members, "]"
+                yield *definition, "[", *members, "]"
 
     def run_juniper(self, device):
         # Juniper allows different community types

@@ -1245,7 +1245,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         }
 
     def _juniper_is_match_inlined(self, conditions: AndCondition) -> bool:
-        used_fields: set[MatchField] = {x.field for x in conditions}
+        used_fields = {x.field for x in conditions}
         used_prefix_fields = used_fields & self._juniper_match_prefix_fields()
         used_community_fields = used_fields & self._juniper_match_community_fields()
 
@@ -1279,7 +1279,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         prefix_conditions: list[SingleCondition] = []
         simple_conditions: list[SingleCondition] = []
         as_path_length_conditions: list[SingleCondition] = []
-        rd_filter_conditions: list[SingleAction] = []
+        rd_filter_conditions: list[SingleCondition] = []
         for condition in conditions:
             if condition.field in community_fields:
                 community_conditions.append(condition)
@@ -1392,7 +1392,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             raise RuntimeError("as_path.delete is not supported for Juniper")
 
     def _juniper_is_then_inlined(self, action: Action) -> bool:
-        used_fields: set[ThenField] = {x.field for x in action}
+        used_fields = {x.field for x in action}
         # inline when no actions permormed
         if not used_fields:
             return True
@@ -1444,7 +1444,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             self,
             device: Any,
             policy: RoutingPolicy,
-            prefix_name_generator: PrefixListNameGenerator,
+            prefix_name_generator: JuniperPrefixListNameGenerator,
     ) -> Iterator[Sequence[str]]:
         term_number = 0
         for statement in policy.statements:
@@ -1459,8 +1459,8 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 # see test_juniper_inline
                 match_inlined = self._juniper_is_match_inlined(statement.match)
                 then_inlined = self._juniper_is_then_inlined(statement.then)
-                match_section = "from" if match_inlined else ""
-                then_section = "then" if then_inlined else ""
+                match_section: Literal["", "from"] = "from" if match_inlined else ""
+                then_section: Literal["", "then"] = "then" if then_inlined else ""
 
                 if statement.match:
                     with self.block_if("from", condition=not match_inlined):
