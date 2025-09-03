@@ -694,46 +694,35 @@ class RosFormatter(CommonFormatter):
         is_patch: bool,
         context: Optional[FormatterContext] = None
     ):
+        if is_patch:
+            raise RuntimeError("Ros not supported blocks in patch")
+
         rows = []
 
-        if is_patch:
-            items = ((item.row, item.child, item.context) for item in tree.itms)
-        else:
-            items = ((row, child, {}) for row, child in tree.items())
-
+        items = ((row, child, {}) for row, child in tree.items())
         for row, sub_config, row_context in items:
-            if sub_config or (is_patch and sub_config is not None):
-                rows.append((row, sub_config, row_context))
-            else:
-                rows.append((row, None, row_context))
+            rows.append((row, sub_config if sub_config else None, row_context))
 
-        prev_prow = None
-        prev_prow_context = {}
         for sub_config, row_group in itertools.groupby(rows, lambda x: x[1]):
             if sub_config is None:
-                if prev_prow:
-                    yield prev_prow, prev_prow_context
-                    yield BlockBegin, None
+                blocks, leaf = [], context
+                while leaf:
+                    if leaf.current:
+                        blocks.append(leaf.current[0])
+                    leaf = leaf.parent
+
+                yield " ".join(reversed(blocks)), None
+                yield BlockBegin, None
                 for row, _, row_context in row_group:
                     yield row, row_context
-                if prev_prow:
-                    yield BlockEnd, None
+                yield BlockEnd, None
             else:
                 for row, _, row_context in row_group:
-                    if context and context.parent and context.parent.row:
-                        prev_prow, prev_prow_context = context.parent.current
-                        prow = f"{context.parent.row} {row}"
-                    else:
-                        prow = row
-                    yield prow, row_context
-
-                    yield BlockBegin, None
                     yield from self.blocks_and_context(
                         sub_config,
                         is_patch,
-                        context=FormatterContext(parent=context, current=(prow, row_context))
+                        context=FormatterContext(parent=context, current=(row, row_context))
                     )
-                    yield BlockEnd, None
 
     def _formatted_blocks(self, blocks):
         line = None
