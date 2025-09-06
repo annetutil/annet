@@ -1,6 +1,7 @@
 from abc import ABC
 from copy import copy
 from enum import Enum
+from dataclasses import is_dataclass, replace, fields
 from typing import (
     TypeVar, Any, Annotated, get_origin, get_type_hints, get_args, Callable, Union, ClassVar, overload,
 )
@@ -143,13 +144,15 @@ ModelT = TypeVar("ModelT", bound=BaseMeshModel)
 def _merge(a: ModelT, b: BaseMeshModel) -> ModelT:
     result = copy(a)
     for attr_name, merger in a._field_mergers.items():
-        new_value = merger(
-            attr_name,
-            getattr(a, attr_name, Special.NOT_SET),
-            getattr(b, attr_name, Special.NOT_SET),
-        )
-        if new_value is not Special.NOT_SET:
-            setattr(result, attr_name, new_value)
+        aval = getattr(a, attr_name, Special.NOT_SET)
+        bval = getattr(b, attr_name, Special.NOT_SET)
+        if is_dataclass(aval) and is_dataclass(bval):
+            new_dto = merge_dataclass(aval, bval)
+            setattr(result, attr_name, new_dto)
+        else:
+            new_value = merger(attr_name, aval, bval)
+            if new_value is not Special.NOT_SET:
+                setattr(result, attr_name, new_value)
     return result
 
 
@@ -176,6 +179,43 @@ def merge(first: Any, /, *others: Any) -> Any:
     for second in others:
         first = _merge(first, second)
     return first
+
+
+def merge_dataclass(a: Any, b: Any) -> Any:
+    if a.__class__ != b.__class__:
+        raise MergeForbiddenError(
+            f"Dataclasses belonging to different instaces can't be merged:\n"
+            f"Old: {a}\n"
+            f"New: {b}"
+        )
+
+    empty = a.__class__()
+    merged = {}
+    for f in fields(empty):
+        default = getattr(empty, f.name)
+        aval = getattr(a, f.name)
+        bval = getattr(b, f.name)
+        if aval == default:
+            merged[f.name] = bval
+        elif bval == default:
+            merged[f.name] = aval
+        elif aval == bval:
+            merged[f.name] = aval
+        elif is_dataclass(aval) and is_dataclass(bval):
+            merged[f.name] = merge_dataclass(aval, bval)
+        else:
+            raise MergeForbiddenError(
+                f"Dataclasses with non-equal field {f.name} can't be merged:\n"
+                f"Old: {aval}\n"
+                f"New: {bval}"
+            )
+
+    return replace(empty, **merged)
+
+
+def is_dataclass_empty(a: Any) -> bool:
+    empty = a.__class__()
+    return empty == a
 
 
 class KeyDefaultDict(dict):
