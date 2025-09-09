@@ -45,12 +45,13 @@ def storage_factory(opts: NetboxStorageOpts) -> Storage:
 
 class NetboxProvider(StorageProvider, AdapterWithName, AdapterWithConfig):
     def __init__(self, url: Optional[str] = None, token: Optional[str] = None, insecure: bool = False,
-                 exact_host_filter: bool = False, threads: int = 1):
+                 exact_host_filter: bool = False, threads: int = 1, all_hosts_filter: dict[str, list[str]] | None = None):
         self.url = url
         self.token = token
         self.insecure = insecure
         self.exact_host_filter = exact_host_filter
         self.threads = threads
+        self.all_hosts_filter = all_hosts_filter
 
     @classmethod
     def with_config(cls, **kwargs: Dict[str, Any]) -> T:

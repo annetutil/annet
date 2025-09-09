@@ -222,4 +222,7 @@ def _apply_filters_to_json_pointers(
                 ret.update(map(pointer.join, _resolve_json_pointers(deeper_pattern, deeper_doc)))
             else:
                 ret.add(pointer)
-    return sorted(ret)
+    # sort return value by some stable key, to decrease the chance
+    # that some bug may lead to unstable output being produced
+    # (since `type(ret) is set`)
+    return sorted(ret, key=str)

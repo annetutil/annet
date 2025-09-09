@@ -96,21 +96,21 @@
     "Juniper.PTX": " PTX",
 
     "Arista": "^[Aa]rista",
-    "Arista.A7368": " 7368",
+    "Arista.A7368": " (DCS-)?7368",
     "Arista.A7368.X4": "X4",
-    "Arista.A7280": " DCS-7280",
-    "Arista.A7260": " DCS-7260",
+    "Arista.A7280": " (DCS-)?7280",
+    "Arista.A7260": " (DCS-)?7260",
     "Arista.A7260.CX3": "CX3",
-    "Arista.A7050": " 7050",
+    "Arista.A7050": " (DCS-)?7050",
     "Arista.A7050.SX3": "SX3",
-    "Arista.A7060": " DCS-7060",
+    "Arista.A7060": " (DCS-)?7060",
     "Arista.A7060.DX4": "DX4",
 
     "Nokia": "^[Nn]okia",
     "Nokia.NS7750": " 7750",
     "Nokia.SR_1s": "SR-1s",
 
-    "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa|NVIDIA|Nebius|[Aa]sterfusion CX|[Uu]fi[Ss]pace)",
+    "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa|NVIDIA|Nebius|[Aa]sterfusion CX|[Uu]fi[Ss]pace|(VERTIV )?[Aa]vocent)",
 
     "PC.Whitebox": "([Mm]ellanox SN|[Ee]dge-?[Cc]ore|NVIDIA|[Aa]sterfusion CX|[Uu]fi[Ss]pace)",
     "PC.Whitebox.Mellanox": "[Mm]ellanox",
@@ -144,7 +144,9 @@
     "PC.Whitebox.Ufispace.S.S9300.S9301_32DB": " S9301-32DB",
     "PC.Whitebox.Ufispace.S.S9300.S9321_64EO": " S9321-64EO",
     "PC.Nebius": "^Nebius",
-    "PC.Nebius.NB-E-BR-DCU-AST2600": "^Nebius NB-E-BR-DCU-AST2600",
+    "PC.Nebius.Octoport": " NB-D-M-CSM-R",
+    "PC.Avocent": " [Aa]vocent",
+    "PC.Avocent.ACS8000": " (ACS|acs)8000",
 
     "RouterOS": "^([Rr]outer[Oo][Ss]|[Mm]ikro[Tt]ik)",
 

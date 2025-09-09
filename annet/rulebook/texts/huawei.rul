@@ -72,6 +72,11 @@ bfd
 
 observe-port *
 
+drop-profile *
+    color *
+    ecn weight
+    ecn
+
 qos local-precedence-queue-map *
 
 qos group %logic=huawei.misc.undo_children
@@ -200,9 +205,11 @@ aaa
 
 hwtacacs-server template *
     hwtacacs-server shared-key
+    hwtacacs-server source-ip
 
 hwtacacs server template *
     hwtacacs server shared-key
+    hwtacacs server source-ip
 
 !radius-server template default
 

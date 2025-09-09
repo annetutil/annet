@@ -262,12 +262,15 @@ def test_new_json_fragment_files():
         "/etc/sonic/config_db.json": {
             "INTERFACE": {
                 "Ethernet0": {"admin_status": "up", "description": "Ether0"},
+                "Ethernet8": {"admin_status": "up", "description": "Ether8"},
             },
             "BREAKOUT_CFG": {
                 "Ethernet0": {"brkout_mode": "1x400G"},
+                "Ethernet8": {"brkout_mode": "1x400G"},
             },
             "VLAN_INTERFACE": {
                 "Ethernet0": {"vrf_name": "default", "description": "Ether0 VLAN"},
+                "Ethernet8": {"vrf_name": "default", "description": "Ether8 VLAN"},
             },
         },
     }
@@ -278,10 +281,12 @@ def test_new_json_fragment_files():
             "INTERFACE": {
                 "Ethernet0": {"admin_status": "up", "description": "Ether0"},  # unchanged
                 "Ethernet4": {"admin_status": "up", "description": "Ether4"},  # added
+                "Ethernet8": {"admin_status": "up", "description": "Ether8"},  # unchanged
             },
             "BREAKOUT_CFG": {
                 "Ethernet0": {"brkout_mode": "2x200G"},  # updated
                 "Ethernet4": {"brkout_mode": "1x10G"},  # added
+                "Ethernet8": {"brkout_mode": "1x400G"},  # unchanged
             },
             # no "VLAN_INTERFACE"
         }),
@@ -294,10 +299,12 @@ def test_new_json_fragment_files():
                 "INTERFACE": {
                     "Ethernet0": {"admin_status": "up", "description": "Ether0"},  # unchanged
                     "Ethernet4": {"admin_status": "up", "description": "Ether4"},  # added
+                    "Ethernet8": {"admin_status": "up", "description": "Ether8"},  # unchanged
                 },
                 "BREAKOUT_CFG": {
                     "Ethernet0": {"brkout_mode": "2x200G"},  # updated
                     "Ethernet4": {"brkout_mode": "1x10G"},  # added
+                    "Ethernet8": {"brkout_mode": "1x400G"},  # unchanged
                 },
                 # "VLAN_INTEFACE" deleted
             },
@@ -311,54 +318,63 @@ def test_new_json_fragment_files():
                 "INTERFACE": {
                     "Ethernet0": {"admin_status": "up", "description": "Ether0"},  # unchanged
                     "Ethernet4": {"description": "Ether4"},  # added (only description)
+                    "Ethernet8": {"admin_status": "up", "description": "Ether8"},  # unchanged
                 },
                 "BREAKOUT_CFG": {
                     "Ethernet0": {"brkout_mode": "1x400G"},  # unchanged
                     # no "Ethernet4" (not in safe ACL)
+                    "Ethernet8": {"brkout_mode": "1x400G"},  # unchanged
                 },
                 "VLAN_INTERFACE": {  # unchanged (not in safe ACL)
                     "Ethernet0": {"vrf_name": "default"},
+                    "Ethernet8": {"vrf_name": "default"},
                 },
             },
             "sonic-reload",
         ),
     }
 
-    # unsafe diff with filter
-    filters = ["/*/Ethernet4"]
+    # unsafe diff with filters
+    filters = ["/*/Ethernet[48]"]
     assert gen_res.new_json_fragment_files(old_files, safe=False, filters=filters) == {
         "/etc/sonic/config_db.json": (
             {
                 "INTERFACE": {
                     "Ethernet0": {"admin_status": "up", "description": "Ether0"},  # unchanged (not in filters)
                     "Ethernet4": {"admin_status": "up", "description": "Ether4"},  # added
+                    "Ethernet8": {"admin_status": "up", "description": "Ether8"},  # unchanged
                 },
                 "BREAKOUT_CFG": {
                     "Ethernet0": {"brkout_mode": "1x400G"},  # unchanged (not in filters)
                     "Ethernet4": {"brkout_mode": "1x10G"},  # added
+                    "Ethernet8": {"brkout_mode": "1x400G"},  # unchanged
                 },
                 "VLAN_INTERFACE": {
                     "Ethernet0": {"vrf_name": "default", "description": "Ether0 VLAN"},  # unchanged (not in filters)
+                    # no "Ethernet8" (deleted: present in filters)
                 }
             },
             "sonic-reload",
         ),
     }
-    # safe diff with filter
-    filters = ["/*/Ethernet4"]
+    # safe diff with filters
+    filters = ["/*/Ethernet[48]"]
     assert gen_res.new_json_fragment_files(old_files, safe=True, filters=filters) == {
         "/etc/sonic/config_db.json": (
             {
                 "INTERFACE": {
                     "Ethernet0": {"admin_status": "up", "description": "Ether0"},  # unchanged (not in filters)
                     "Ethernet4": {"description": "Ether4"},  # added (only description)
+                    "Ethernet8": {"admin_status": "up", "description": "Ether8"},  # unchanged
                 },
                 "BREAKOUT_CFG": {
                     "Ethernet0": {"brkout_mode": "1x400G"},  # unchanged (not in filters)
                     # no "Ethernet4" (not in safe ACL)
+                    "Ethernet8": {"brkout_mode": "1x400G"},  # unchanged
                 },
                 "VLAN_INTERFACE": {
                     "Ethernet0": {"vrf_name": "default", "description": "Ether0 VLAN"},  # unchanged (not in filters)
+                    "Ethernet8": {"vrf_name": "default"},  # unchanged (not in ACL)
                 }
             },
             "sonic-reload",

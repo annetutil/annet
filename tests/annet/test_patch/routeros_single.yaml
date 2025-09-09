@@ -1,8 +1,7 @@
 - vendor: RouterOS
   before: ""
   after: |
-    system
-      hostname "test"
+    system identity
+      set name=test
   patch: |
-    /system
-    hostname "test"
+    /system identity set name=test

@@ -255,6 +255,8 @@ class FamilyOptions:
     rib_group: bool = False
     loops: int = 0
     advertise_bgp_static: bool = False
+    import_policy: Optional[str] = None
+    export_policy: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -387,7 +389,7 @@ def _used_policies(peer: Union[Peer, PeerGroup, VrfOptions]) -> Iterable[str]:
         yield peer.export_policy
 
 
-def _used_redistribute_policies(opts: Union[GlobalOptions, VrfOptions]) -> Iterable[str]:
+def _used_families_policies(opts: Union[GlobalOptions, VrfOptions]) -> Iterable[str]:
     for family_opts in (
         opts.ipv4_unicast,
         opts.ipv6_unicast,
@@ -400,6 +402,13 @@ def _used_redistribute_policies(opts: Union[GlobalOptions, VrfOptions]) -> Itera
                 yield red.policy
         if family_opts.aggregate and family_opts.aggregate.policy:
             yield family_opts.aggregate.policy
+        for aggregate in family_opts.aggregates:
+            if aggregate.policy:
+                yield aggregate.policy
+        if family_opts.export_policy:
+            yield family_opts.export_policy
+        if family_opts.import_policy:
+            yield family_opts.import_policy
 
 
 def extract_policies(config: BgpConfig) -> Sequence[str]:
@@ -407,11 +416,11 @@ def extract_policies(config: BgpConfig) -> Sequence[str]:
     for vrf in config.global_options.vrf.values():
         for group in vrf.groups:
             result.extend(_used_policies(group))
-        result.extend(_used_redistribute_policies(vrf))
+        result.extend(_used_families_policies(vrf))
         result.extend(_used_policies(vrf))
     for group in config.global_options.groups:
         result.extend(_used_policies(group))
     for peer in config.peers:
         result.extend(_used_policies(peer))
-    result.extend(_used_redistribute_policies(config.global_options))
+    result.extend(_used_families_policies(config.global_options))
     return result

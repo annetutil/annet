@@ -64,8 +64,36 @@ class FormatterContext:
         return self.next and self.next[0]
 
 
+class NotUniquePatch:
+    def __init__(self):
+        """In the case of comments, odict is not suitable: there may be several identical edit and exit"""
+        self._items = []
+        self._keys = set()
+
+    def __setitem__(self, key, value):
+        self._keys.add(key)
+        self._items.append((key, value))
+
+    def keys(self):
+        return list(self)
+
+    def items(self):
+        return self._items
+
+    def __contains__(self, item):
+        return item in self._keys
+
+    def __iter__(self):
+        return iter(item[0] for item in self._items)
+
+    def __bool__(self) -> bool:
+        return bool(self._items)
+
+
 # =====
 class CommonFormatter:
+    cmd_path_cls = odict
+
     def __init__(self, indent="  "):
         self._indent = indent
         self._block_begin = ""
@@ -96,7 +124,7 @@ class CommonFormatter:
         )
 
     def cmd_paths(self, patch: "PatchTree") -> odict:
-        ret = odict()
+        ret = self.cmd_path_cls()
         path = []
         for row, context in self.blocks_and_context(patch, is_patch=True):
             if row is BlockBegin:
@@ -222,7 +250,20 @@ class BlockExitFormatter(CommonFormatter):
                     yield exit_statement, last_row_context
 
 
+class HuaweiPatch(NotUniquePatch):
+    policy_end_blocks = ("end-list", "endif", "end-filter")
+
+    def __setitem__(self, key, value):
+        if not key:
+            return
+
+        if key not in self or (key[0].startswith("xpl") and key[-1] in self.policy_end_blocks):
+            super().__setitem__(key, value)
+
+
 class HuaweiFormatter(BlockExitFormatter):
+    cmd_path_cls = HuaweiPatch
+
     def __init__(self, indent="  "):
         super().__init__(
             block_exit="quit",
@@ -237,9 +278,8 @@ class HuaweiFormatter(BlockExitFormatter):
     def split(self, text):
         # на старых прошивка наблюдается баг с двумя пробелами в этом месте в конфиге
         # например на VRP V100R006C00SPC500 + V100R006SPH003
-        policy_end_blocks = ("end-list", "endif", "end-filter")
         tree = self.split_remove_spaces(text)
-        tree[:] = filter(lambda x: not str(x).strip().startswith(policy_end_blocks), tree)
+        tree[:] = filter(lambda x: not str(x).strip().startswith(HuaweiPatch.policy_end_blocks), tree)
         return tree
 
     def block_exit(self, context: Optional[FormatterContext]):
@@ -256,7 +296,9 @@ class HuaweiFormatter(BlockExitFormatter):
             return
 
         if parent_row.startswith("xpl route-filter"):
-            if (row.startswith(("if", "elseif")) and row.endswith("then")) and not row_next:
+            if (row.startswith(("if", "elseif")) and row.endswith("then")) and (
+                not row_next or not row_next.startswith(("elseif", "else"))
+            ):
                 yield "endif"
             elif row == "else":
                 yield "endif"
@@ -407,29 +449,9 @@ class AsrFormatter(BlockExitFormatter):
             yield from super().block_exit(context)
 
 
-class JuniperPatch:
-    def __init__(self):
-        """In the case of comments, odict is not suitable: there may be several identical edit and exit"""
-        self._items = []
-
-    def __setitem__(self, key, value):
-        self._items.append((key, value))
-
-    def keys(self):
-        return list(self)
-
-    def items(self):
-        return self._items
-
-    def __iter__(self):
-        return iter(item[0] for item in self._items)
-
-    def __bool__(self) -> bool:
-        return bool(self._items)
-
-
 class JuniperFormatter(CommonFormatter):
     patch_set_prefix = "set"
+    cmd_path_cls = NotUniquePatch
 
     @dataclasses.dataclass
     class Comment:
@@ -465,7 +487,7 @@ class JuniperFormatter(CommonFormatter):
 
         self._sub_regexs = (
             (re.compile(self._block_begin + r"\s*" + self._block_end + r"$"), ""),  # collapse empty blocks
-            (re.compile(self._block_begin + "(\t# .+)?$"), ""),
+            (re.compile(self._block_begin + r"\s*" + r"(\t# .+)?$"), ""),
             (re.compile(self._statement_end + r"$"), ""),
             (re.compile(r"\s*" + self._block_end + "(\t# .+)?$"), ""),
             (re.compile(self._endofline_comment + r".*$"), ""),
@@ -526,7 +548,7 @@ class JuniperFormatter(CommonFormatter):
             yield line + self._statement_end
 
     def cmd_paths(self, patch, _prev=tuple()):
-        commands = JuniperPatch()
+        commands = self.cmd_path_cls()
 
         for item in patch.itms:
             key, childs, context = item.row, item.child, item.context
@@ -672,46 +694,35 @@ class RosFormatter(CommonFormatter):
         is_patch: bool,
         context: Optional[FormatterContext] = None
     ):
+        if is_patch:
+            raise RuntimeError("Ros not supported blocks in patch")
+
         rows = []
 
-        if is_patch:
-            items = ((item.row, item.child, item.context) for item in tree.itms)
-        else:
-            items = ((row, child, {}) for row, child in tree.items())
-
+        items = ((row, child, {}) for row, child in tree.items())
         for row, sub_config, row_context in items:
-            if sub_config or (is_patch and sub_config is not None):
-                rows.append((row, sub_config, row_context))
-            else:
-                rows.append((row, None, row_context))
+            rows.append((row, sub_config if sub_config else None, row_context))
 
-        prev_prow = None
-        prev_prow_context = {}
         for sub_config, row_group in itertools.groupby(rows, lambda x: x[1]):
             if sub_config is None:
-                if prev_prow:
-                    yield prev_prow, prev_prow_context
-                    yield BlockBegin, None
+                blocks, leaf = [], context
+                while leaf:
+                    if leaf.current:
+                        blocks.append(leaf.current[0])
+                    leaf = leaf.parent
+
+                yield " ".join(reversed(blocks)), None
+                yield BlockBegin, None
                 for row, _, row_context in row_group:
                     yield row, row_context
-                if prev_prow:
-                    yield BlockEnd, None
+                yield BlockEnd, None
             else:
                 for row, _, row_context in row_group:
-                    if context and context.parent and context.parent.row:
-                        prev_prow, prev_prow_context = context.parent.current
-                        prow = f"{context.parent.row} {row}"
-                    else:
-                        prow = row
-                    yield prow, row_context
-
-                    yield BlockBegin, None
                     yield from self.blocks_and_context(
                         sub_config,
                         is_patch,
-                        context=FormatterContext(parent=context, current=(prow, row_context))
+                        context=FormatterContext(parent=context, current=(row, row_context))
                     )
-                    yield BlockEnd, None
 
     def _formatted_blocks(self, blocks):
         line = None
@@ -801,41 +812,23 @@ class RosFormatter(CommonFormatter):
             (re.compile(r"^add "), ""),
             (re.compile(r"^print file="), "name="),
         )
-        patch_items = []
+
+        commands = odict()
         for item in patch.itms:
             key, childs, context = item.row, item.child, item.context
             if childs:
-                patch_items.append((key, childs, context))
+                childs_prev = f"{_prev} {key.strip()}".lstrip()
+                commands.update(self.cmd_paths(childs, _prev=childs_prev))
             else:
-                patch_items.append((key, None, context))
+                if key.startswith("remove"):
+                    find_cmd = key.removeprefix("remove").strip()
+                    for regex, repl_line in rm_regexs:
+                        find_cmd = regex.sub(repl_line, find_cmd)
+                    cmd = f"/{_prev} remove [ find {find_cmd} ]"
+                else:
+                    cmd = f"/{_prev} {key}"
+                commands[(cmd,)] = context
 
-        commands = odict()
-        prev_cmd = None
-        prev_context = None
-        for childs, items in itertools.groupby(patch_items, lambda x: x[1]):
-            if childs is None:
-                if prev_cmd:
-                    commands[(prev_cmd,)] = prev_context
-                for key, _, context in items:
-                    if key.startswith("remove"):
-                        find_cmd = key.replace("remove", "", 1).strip()
-                        for (regex, repl_line) in rm_regexs:
-                            find_cmd = regex.sub(repl_line, find_cmd)
-                        cmd = "remove [ find " + find_cmd + " ]"
-                    else:
-                        cmd = key
-                    commands[(cmd,)] = context
-            else:
-                for key, _, context in items:
-                    if _prev:
-                        prev_cmd = _prev
-                        prev_context = context
-                        block_cmd = f"{_prev} {key}"
-                    else:
-                        block_cmd = f"/{key}"
-                    commands[(block_cmd,)] = context
-                    for k, v in self.cmd_paths(childs, block_cmd).items():
-                        commands[k] = v
         return commands
 
 
