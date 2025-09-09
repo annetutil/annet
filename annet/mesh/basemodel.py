@@ -1,9 +1,9 @@
 from abc import ABC
 from copy import copy
 from enum import Enum
-from dataclasses import is_dataclass, replace, fields
+from dataclasses import is_dataclass, replace, fields, MISSING
 from typing import (
-    TypeVar, Any, Annotated, get_origin, get_type_hints, get_args, Callable, Union, ClassVar, overload,
+    TypeVar, Any, Annotated, get_origin, get_type_hints, get_args, Callable, Union, ClassVar, overload, cast,
 )
 
 
@@ -189,7 +189,10 @@ def merge_dataclass(a: Any, b: Any) -> Any:
             f"New: {b}"
         )
 
-    empty = a.__class__()
+    if a == b:
+        return replace(a)
+
+    empty = dataclass_default(a.__class__)
     merged = {}
     for f in fields(empty):
         default = getattr(empty, f.name)
@@ -214,8 +217,26 @@ def merge_dataclass(a: Any, b: Any) -> Any:
 
 
 def is_dataclass_empty(a: Any) -> bool:
-    empty = a.__class__()
-    return empty == a
+    try:
+        dataclass_default(a.__class__)
+    except ValueError:
+        return False
+    return True
+
+
+def dataclass_default(dataclass_cls: type[T]) -> T:
+    if not is_dataclass(dataclass_cls):
+        raise TypeError(f"Class {dataclass_cls} is not a dataclass")
+
+    non_default_fields = []
+    for f in fields(dataclass_cls):
+        if f.default == MISSING and f.default_factory == MISSING:
+            non_default_fields.append(f.name)
+
+    if non_default_fields:
+        raise ValueError(f"Class {dataclass_cls} has non-default fields: {' '.join(non_default_fields)}")
+
+    return cast(T, dataclass_cls())
 
 
 class KeyDefaultDict(dict):

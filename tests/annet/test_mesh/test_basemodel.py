@@ -149,3 +149,17 @@ def test_merge_model_with_dataclasses():
     assert merge(A(x=X(m=1)), A(x=X(n=2))) == A(x=X(m=1,n=2))
     with pytest.raises(MergeForbiddenError):
         merge(A(x=X(m=1)), A(x=X(m=2)))
+
+
+def test_equal_not_default_dataclass():
+    @dataclass
+    class X:
+        m: int
+
+    class A(BaseMeshModel):
+        x: X | None = None
+
+        def __eq__(self, other):
+            return vars(self) == vars(other)
+
+    assert merge(A(x=X(1)), A(x=X(1))) == A(x=X(1))
