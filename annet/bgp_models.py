@@ -204,11 +204,29 @@ class PeerOptions:
 
 
 @dataclass
+class PeerFamilyOption:
+    af_loops: Optional[int] = None
+    import_limit: Optional[int] = None
+
+
+@dataclass
+class PeerFamilyOptions:
+    ipv4_unicast: PeerFamilyOption = field(default_factory=PeerFamilyOption)
+    ipv6_unicast: PeerFamilyOption = field(default_factory=PeerFamilyOption)
+    ipv4_vpn_unicast: PeerFamilyOption = field(default_factory=PeerFamilyOption)
+    ipv6_vpn_unicast: PeerFamilyOption = field(default_factory=PeerFamilyOption)
+    ipv4_labeled_unicast: PeerFamilyOption = field(default_factory=PeerFamilyOption)
+    ipv6_labeled_unicast: PeerFamilyOption = field(default_factory=PeerFamilyOption)
+    l2vpn_evpn: PeerFamilyOption = field(default_factory=PeerFamilyOption)
+
+
+@dataclass
 class Peer:
     addr: str
     interface: Optional[str]
     remote_as: ASN
     families: set[Family] = field(default_factory=set)
+    family_options: PeerFamilyOptions = field(default_factory=PeerFamilyOptions)
     description: str = ""
     vrf_name: str = ""
     group_name: str = ""
@@ -264,6 +282,7 @@ class PeerGroup:
     name: str
     remote_as: ASN = ASN(None)
     families: set[Family] = field(default_factory=set)
+    family_options: PeerFamilyOptions = field(default_factory=PeerFamilyOptions)
     internal_name: str = ""
     description: str = ""
     update_source: str = ""

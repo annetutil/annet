@@ -7,7 +7,7 @@ from adaptix import Retort, loader, Chain, name_mapping, as_is_loader
 from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO, VirtualLocalDTO
 from ..bgp_models import (
     Aggregate, GlobalOptions, VrfOptions, FamilyOptions, Peer, PeerGroup, ASN, PeerOptions,
-    Redistribute, BFDTimers, L2VpnOptions, VidCollection,
+    Redistribute, BFDTimers, L2VpnOptions, VidCollection, PeerFamilyOptions, PeerFamilyOption
 )
 
 
@@ -56,6 +56,8 @@ retort = Retort(
         loader(FamilyOptions, ObjMapping, Chain.FIRST),
         loader(Aggregate, ObjMapping, Chain.FIRST),
         loader(PeerOptions, ObjMapping, Chain.FIRST),
+        loader(PeerFamilyOptions, ObjMapping, Chain.FIRST),
+        loader(PeerFamilyOption, ObjMapping, Chain.FIRST),
         as_is_loader(Redistribute),
         as_is_loader(BFDTimers),
         name_mapping(PeerOptions, map={
@@ -98,4 +100,5 @@ def to_bgp_peer(local: LocalDTO, connected: PeerDTO, connected_hostname: str, in
     result.import_policy = getattr(local, "import_policy", result.import_policy)
     result.export_policy = getattr(local, "export_policy", result.export_policy)
     result.update_source = getattr(local, "update_source", result.update_source)
+    result.family_options = getattr(local, "family_options", result.family_options)
     return result
