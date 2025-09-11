@@ -201,6 +201,7 @@ class PeerOptions:
     not_active: Optional[bool] = None
     mtu: Optional[int] = None
     password: Optional[str] = None
+    cluster_id: Optional[str] = None
 
 
 @dataclass
@@ -339,6 +340,7 @@ class PeerGroup:
     not_active: bool = False
     mtu: int = 0
     password: Optional[str] = None
+    cluster_id: Optional[str] = None
 
 
 @dataclass
@@ -390,6 +392,8 @@ class GlobalOptions:
     loops: int = 0
     multipath: int = 0
     router_id: str = ""
+    cluster_id: Optional[str] = None
+
     vrf: dict[str, VrfOptions] = field(default_factory=dict)
     groups: list[PeerGroup] = field(default_factory=list)
     l2vpn: dict[str, L2VpnOptions] = field(default_factory=dict)
