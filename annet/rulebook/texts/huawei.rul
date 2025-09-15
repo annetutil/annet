@@ -492,6 +492,9 @@ cpu-defend-policy
 slot *
     cpu-defend-policy
 
+user-interface con 0
+    set authentication password cipher * %logic=huawei.aaa.console_pass
+
 description %global
 
 undo ~ %global
