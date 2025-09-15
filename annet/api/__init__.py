@@ -683,7 +683,7 @@ async def adeploy(
 ) -> ExitCode:
     """ Сгенерировать конфиг для устройств и задеплоить его """
     ret: ExitCode = 0
-    ann_gen.live_configs = await fetcher.fetch(devices=loader.devices, processes=args.parallel)
+    ann_gen.live_configs = await fetcher.fetch(devices=loader.devices, processes=args.parallel, max_slots=args.max_slots)
 
     device_ids = [d.id for d in loader.devices]
     for res in ann_gen.old_new(
