@@ -73,7 +73,6 @@ def _implicit_tree(device):
             text = """
                 !interface *
                     !port link-type hybrid
-                    dot1x enable
                 interface NULL0
             """
         else:
