@@ -39,7 +39,7 @@ save
     dialog: Please input the file name(*.cfg, *.zip, *.dat): ::: vrpcfg.zip
 undo rsa peer-public-key
     dialog: /Do you want to remove the public key named .*\? \[Y/N\]:/ ::: Y
-    dialog: /% Do you really want to remove the public key named .*\? \[y/n\]:/ ::: Y
+    dialog: /% Do you really want to remove the public key named .*\? \[y/n\]:/ ::: y
 undo stelnet server enable
     dialog: Warning: The operation will stop the STelnet server. Do you want to continue? [Y/N]: ::: Y
 undo telnet * server enable
@@ -178,7 +178,7 @@ info-center max-logfile-number *
 
 rsa peer-public-key * 
     dialog: Do you really want to replace it? [Y/N]: ::: Y
-    dialog: /% You already have RSA public key named .*.\r\n% Do you really want to replace it\? \[y/n\]:/ ::: Y
+    dialog: /% You already have RSA public key named .*.\r\n% Do you really want to replace it\? \[y/n\]:/ ::: y
 
 ip binding vpn-instance
     dialog: Warning: This operation will modify the router ID to 0.0.0.0, which may affect the establishment of BGP peer relationships. Continue? [Y/N]: ::: Y

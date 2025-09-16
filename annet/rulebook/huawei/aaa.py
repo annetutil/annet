@@ -25,13 +25,6 @@ def user(key, diff, **_):
     yield from added
 
 
-def console_pass(_, diff, **__):
-    # do not delete password, just assign the new one
-    if diff[Op.ADDED]:
-        new_pass_line = diff[Op.ADDED][0]["row"]
-        yield from [(True, new_pass_line, None)]
-
-
 def _added_contains(array: list[dict], lookup_string: str) -> bool:
     for item in array:
         if item["row"].startswith(lookup_string):
