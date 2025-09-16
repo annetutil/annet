@@ -492,6 +492,9 @@ cpu-defend-policy
 slot *
     cpu-defend-policy
 
+user-interface con 0
+    set authentication password cipher
+
 description %global
 
 undo ~ %global
