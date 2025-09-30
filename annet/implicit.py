@@ -25,7 +25,7 @@ def compile_tree(tree):
         rule = {
             "type": attrs["type"],
             "children": compile_tree(attrs["children"]) if attrs.get("children") else odict(),
-            "regexp": syntax.compile_row_regexp(attrs["row"]),
+            "regexp": attrs["params"]["regexp"] or syntax.compile_row_regexp(attrs["row"]),
         }
         rules[attrs["row"]] = rule
     return rules
@@ -66,13 +66,14 @@ def _implicit_tree(device):
         elif device.hw.Huawei.Quidway.S5700.S5735I:
             text = """
                 !interface *
-                    !port link-type access
+                    port link-type access %regexp=port link-type .*
                 interface NULL0
             """
         elif device.hw.Huawei.Quidway.S2x:
             text = """
                 !interface *
-                    !port link-type hybrid
+                    port link-type hybrid %regexp=port link-type .*
+                    dot1x enable
                 interface NULL0
             """
         else:
@@ -179,8 +180,14 @@ def _implicit_tree(device):
                 system mtu routing 1500
                 system mtu jumbo 9000
             """
+
     return parse_text(text)
 
 
 def parse_text(text):
-    return syntax.parse_text(text, {})
+    return syntax.parse_text(text, {
+        "regexp": {
+            "default": None,
+            "validator": lambda x: syntax.compile_row_regexp(x),
+        },
+    })
