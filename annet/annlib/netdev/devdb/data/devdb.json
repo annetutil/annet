@@ -110,9 +110,9 @@
     "Nokia.NS7750": " 7750",
     "Nokia.SR_1s": "SR-1s",
 
-    "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa|NVIDIA|Nebius|[Aa]sterfusion CX|[Uu]fi[Ss]pace|(VERTIV )?[Aa]vocent)",
+    "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa|NVIDIA|Nebius|[Aa]sterfusion CX|[Uu]fi[Ss]pace|NADDOD|FSCOM|(VERTIV )?[Aa]vocent)",
 
-    "PC.Whitebox": "([Mm]ellanox SN|[Ee]dge-?[Cc]ore|NVIDIA|[Aa]sterfusion CX|[Uu]fi[Ss]pace)",
+    "PC.Whitebox": "([Mm]ellanox SN|[Ee]dge-?[Cc]ore|NVIDIA|[Aa]sterfusion CX|[Uu]fi[Ss]pace|NADDOD|FSCOM)",
     "PC.Whitebox.Mellanox": "[Mm]ellanox",
     "PC.Whitebox.Mellanox.SN": " SN",
     "PC.Whitebox.Mellanox.SN.SN2100": " SN2100",
