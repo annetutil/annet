@@ -36,9 +36,12 @@ class HardwareLeaf(DumpableView):
             raise AttributeError("HW: " + ".".join(path))
 
     def __str__(self):
-        return str(" | ".join(".".join(x) for x in self.__true_sequences))
+        for seq in sorted(self.__true_sequences, key=len, reverse=True):
+            return ".".join(seq)
+        return ""
 
-    __repr__ = __str__
+    def __repr__(self):
+        return str(" | ".join(".".join(x) for x in self.__true_sequences))
 
     def dump(self, prefix, **kwargs):  # pylint: disable=arguments-differ
         ret = super().dump(prefix, **kwargs)
