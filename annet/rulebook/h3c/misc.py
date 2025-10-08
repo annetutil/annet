@@ -29,7 +29,7 @@ def undo_redo(rule, key, diff, **_):
 
 def prefix_list(rule, key, diff, **kwargs):
     # To determine whether the prefix list is being fully modified,
-    # the key (family, name) is defined in the huawei.rul rulebook.
+    # the key (family, name) is defined in the h3c.rul rulebook.
     # However, from the command’s point of view, each index represents a separate command.
     # Therefore, we group them by index here and pass them to common.
     diff_by_index = {}
@@ -53,14 +53,14 @@ def prefix_list(rule, key, diff, **kwargs):
         indexed_rule = copy.deepcopy(rule)
         indexed_rule["reverse"] = "undo ip {}-prefix {} index {}"
 
-        # The stub_index is referenced in the huawei.order rulebook
+        # The stub_index is referenced in the h3c.order rulebook
         # to ensure that the stub is added or removed first or last in order.
 
         stub, stub_index = "", 99999999
 
         # If we’re only adding new commands (for example, creating entries) in the prefix list,
         # or deleting/moving them while keeping some parts unchanged,
-        # Huawei will not treat the list as being removed, and the stub rule is not needed.
+        # h3c will not treat the list as being removed, and the stub rule is not needed.
 
         if (diff[Op.REMOVED] or diff[Op.MOVED]) and not diff[Op.UNCHANGED]:
             stub = "deny 0.0.0.0 32" if family == "ip" else "deny :: 128"
@@ -123,38 +123,7 @@ def netstream_undo(rule, key, diff, **_):
 
 
 def snmpagent_sysinfo_version(rule, key, diff, hw, **_):
-    if hw.Huawei.CE and (diff[Op.ADDED] or diff[Op.REMOVED]):
-        assert len(diff[Op.AFFECTED]) == 0, "WTF? Affected not empty: %r" % (diff[Op.AFFECTED])
-        versions = set(["v1", "v2c", "v3"])
-
-        result = set()
-        for op in [Op.REMOVED, Op.ADDED]:
-            for action in diff[op]:
-                args = action["row"].split()[3:]
-                assert len(args) > 0, "Empty op %r: %r" % (op, action["row"])
-
-                if args[-1] == "disable":
-                    args = args[:-1]
-                    disable = True
-                else:
-                    disable = False
-                if "all" in args:
-                    args = versions
-                else:
-                    assert len(set(args).difference(versions)) == 0, "Incorrect args: %r" % (args)
-
-                if (op == Op.REMOVED and disable) or (op == Op.ADDED and not disable):
-                    result.update(args)
-                else:
-                    result.difference_update(args)
-
-        if result == versions:
-            yield (True, "snmp-agent sys-info version all", None)
-        else:
-            yield (False, "snmp-agent sys-info version all disable", None)
-            yield (True, "snmp-agent sys-info version %s" % (" ".join(result)), None)
-    else:
-        yield from common.default(rule, key, diff)
+    yield from common.default(rule, key, diff)
 
 
 def vty_acl_undo(rule, key, diff, **_):
