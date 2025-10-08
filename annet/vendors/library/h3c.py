@@ -29,6 +29,9 @@ class H3CVendor(AbstractVendor):
     def hardware(self) -> HardwareView:
         return HardwareView("H3C")
 
+    def svi_name(self, num: int) -> str:
+        return f"Vlan-interface{num}"
+
     def make_formatter(self, **kwargs) -> HuaweiFormatter:
         return HuaweiFormatter(**kwargs)
 
