@@ -240,7 +240,7 @@ interface */Tunnel.+/
     mpls te path
     mpls te tunnel-id
 
-interface *                             %logic=h3c.iface.permanent 
+interface *
     mtu                                 %logic=h3c.misc.undo_redo
     undo port link-mode *
     port link-mode *                    %logic=h3c.misc.undo_port_link_mode
@@ -325,7 +325,7 @@ xpl ~
 bgp path-attribute attr-set *
 bgp path-attribute * 
 
-bgp %logic=h3c.bgp.undo_commit
+bgp 
     router-id
 
     # эти команды могут быть как в top-level, так и внутри family

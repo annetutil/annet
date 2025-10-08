@@ -5,30 +5,18 @@ from annet.annlib.types import Op
 from annet.rulebook import common
 
 
-def undo_commit(rule, key, diff, **_):
-    # Huawei не даёт снести конфигурацию bgp и написать заново одним коммитом. Говорит:
-    #    Invalid configuration. BGP is under undo.
-    # при попытке создать новую после удаления
-    if diff[Op.REMOVED]:
-        rule["force_commit"] = True
-        yield (False, rule["reverse"], None)
-    # commit нужен под undo bgp
-    rule["force_commit"] = False
-    yield from common.default(rule, key, diff)
-
-
 def peer(rule, key, diff, **_):  # pylint: disable=unused-argument
     """
-        Особенность peer-команд в том, что
-            peer IP as-number N
-        является основной командой, и отменить её можно только через
-            undo peer IP
-        , то есть полностью удалив все настройки пира.
+        The peculiarity of peer commands is that  
+            peer IP as-number N  
+        is the main command, and it can only be removed with  
+            undo peer IP  
+        which completely deletes all settings of the peer.
 
-        При этом, as-number может выставляться и для группы:
-            group SPINES
-            peer SPINES as-number 13238
-        в таком случае игнорим, позволяем удалить эту настройку поскольку она не дефайнит группу
+        At the same time, the as-number can also be set for a group:  
+            group SPINES  
+            peer SPINES as-number 13238  
+        In this case, we ignore it and allow this setting to be deleted, since it does not define the group itself:  
             undo peer SPINES as-number
     """
 
@@ -40,8 +28,8 @@ def peer(rule, key, diff, **_):  # pylint: disable=unused-argument
             if _is_ip_addr(addr_or_group_name):
                 yield (False, "undo peer {}".format(*key), None)
             else:
-                # мы не можем делать common.default потому что правило определено как peer * а не peer * *
-                # таким образом дефолтное поведение тут будет "undo peer PEERGROUP" что не то что мы хотим
+                # We can’t use common.default because the rule is defined as "peer *" and not "peer * *".
+                # Therefore, the default behavior here would be "undo peer PEERGROUP", which is not what we want.
                 yield (False, "undo peer {} as-number".format(*key), None)
             break
 

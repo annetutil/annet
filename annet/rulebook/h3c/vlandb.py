@@ -28,19 +28,22 @@ def vlan_diff(old, new, diff_pre, _pops):
     ret = []
     for item in common.default_diff(old, new, diff_pre, _pops):
         prefix, vlan_ids = _parse_vlancfg(item.row)
-        # если влан был объявлен глобально и при этом остается в батче
-        # команда undo vlan ... будет пытаться полностью выпилить его с устройства
-        # и из батча тоже. при этом делать undo vlan ... ; vlan batch ... не выход
-        # поскольку для удаления cli требует удалить все vlanif"ы и проч
+        # If a VLAN was declared globally and still remains in the batch,
+        # the command "undo vlan ..." will attempt to completely remove it from the device
+        # as well as from the batch. However, using "undo vlan ... ; vlan batch ..." is not a solution,
+        # since to delete it, the CLI requires removing all VLAN interfaces and related elements first.
+
         if prefix == "vlan" and item.op == Op.REMOVED and batch_new.intersection(vlan_ids):
             result_item = DiffItem(Op.AFFECTED, item.row, item.children, item.diff_pre)
-        # если влан объявлен глобально и одновременно с этим в батче
-        # и при этом в блоке глобального объявления нет никаких опций
-        # не добавляем его он будет висеть зазря - таким образом мы сохраним
-        # симметрию с предыдущей логикой оба инварианта будут выдавать пустой патч
+        # If a VLAN is declared both globally and in the batch,
+        # and the global declaration block has no additional options,
+        # we don’t include it — it would just hang there unnecessarily.
+        # This way, we preserve symmetry with the previous logic,
+        # and both invariants will produce an empty patch.
+
         elif prefix == "vlan" and batch_new.intersection(vlan_ids) and not item.children:
             result_item = None
-        # vlan batch и остальное мы не трогаем
+        # We don’t touch "vlan batch" or anything else.
         else:
             result_item = item
         if result_item:

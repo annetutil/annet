@@ -5,16 +5,7 @@ from annet.annlib.types import Op
 from annet.rulebook import common
 
 
-def permanent(rule, key, diff, **kwargs):  # pylint: disable=redefined-outer-name
-    ifname = key[0]
-    if re.match(r"(Eth-Trunk|Vlanif|Vbdif|Loop[Bb]ack|Tunnel|.*\.\d+)", ifname):
-        # эти интерфейсы можно удалять
-        yield from common.default(rule, key, diff, **kwargs)
-    else:
-        yield from common.permanent(rule, key, diff, **kwargs)
-
-
-# [NOCDEV-2180] Хуавей просит переввести ip конфигурацию после изменения vrf
+# [NOCDEV-2180] After vrf was change we put ip config one more time
 def binding_change(old, new, diff_pre, _pops=(Op.AFFECTED,)):
     ret = common.default_diff(old, new, diff_pre, _pops)
     vpn_changed = False

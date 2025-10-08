@@ -14,7 +14,7 @@ def user(key, diff, **_):
             check_for_remove = False
     if check_for_remove:
         for rem in diff[Op.REMOVED]:
-            # Обрабатывать удаление только пароля или привилегий, если меняется что-то другое, можно просто накатить без удаления
+            # we abe able to overwrite new command without undo
             if rem["row"].startswith("local-user %s password" % key[0]):
                 yield (False, "undo local-user %s" % key[0], None)
                 return
