@@ -198,8 +198,6 @@ snmp-agent protocol ipv6 *
 
 ipv6 icmp * send disable %logic=h3c.misc.clear_instead_undo
 
-stelnet ~ %logic=h3c.misc.stelnet
-
 # this is not a block
 user-interface maximum-vty
 

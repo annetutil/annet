@@ -195,6 +195,30 @@ def classifier(rule, key, diff, **_):
         yield (True, diff[Op.REMOVED][0]["row"], diff[Op.REMOVED][0]["children"])
     yield from common.default(rule, key, diff)
 
+def undo_children(rule, key, diff, **_):
+    def removed_count(subdiff):
+        ret = 0
+        for child in subdiff["children"].values():
+            for child_diff in child["items"].values():
+                ret += len(child_diff[Op.REMOVED])
+        return ret
+
+    def common_default(op, subdiff):
+        newdiff = {Op.ADDED: [], Op.REMOVED: [], Op.MOVED: [], Op.AFFECTED: [], Op.UNCHANGED: []}
+        newdiff[op] = [subdiff]
+        yield from common.default(rule, key, newdiff)
+
+    # we should say undo because we pretend as single block
+    for subdiff in diff[Op.REMOVED]:
+        # firstly remove all group-members
+        if diff[Op.REMOVED][0]["children"]:
+            yield (True, diff[Op.REMOVED][0]["row"], diff[Op.REMOVED][0]["children"])
+        yield False, "undo " + subdiff["row"], None
+    # firstly destroy affected because inside we can have an undo
+    for subdiff in sorted(diff[Op.AFFECTED], key=removed_count, reverse=True):
+        yield from common_default(Op.AFFECTED, subdiff)
+    for subdiff in diff[Op.ADDED]:
+        yield from common_default(Op.ADDED, subdiff)
 
 def clear_instead_undo(rule, key, diff, **_):
     # For some configuration lines, a persistent diff occurs because the line in the config is either explicitly enabled
