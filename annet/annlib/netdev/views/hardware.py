@@ -106,4 +106,6 @@ def lag_name(hw: HardwareView, nlagg: int) -> str:
         return f"lagg{nlagg}"
     if hw.Nokia:
         return f"lagg-{nlagg}"
+    if hw.H3C:
+        return f"Bridge-Aggregation{nlagg}"
     raise NotImplementedError(hw)
