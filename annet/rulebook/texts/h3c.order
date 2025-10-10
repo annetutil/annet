@@ -27,6 +27,14 @@ ip vpn-instance */[OoMm][OoLl][BbAa].*/
 #rsa
 #ecc
 
+# из-за того, что h3c не позволяет иметь в одном prefix-list 2 одинаковых правила,
+# нужно сначала удалить все несовпадающие, а затем заполнить их заново
+# в таком случае нужно расскомментить эту строчку, но она не позволяет снести plist целиком
+# сначала мы добавляем stub-правило в рулсет чтобы оно не позволяло prefix-list'у "пропасть"
+# индекс референсится в логике патчинга префикс-листа h3c.misc.prefix_list
+*/(ip|ipv6)/ prefix-list * index 99999999
+undo */(ip|ipv6)/ prefix-list * index *   %order_reverse
+*/(ip|ipv6)/ prefix-list
 
 # common block для фабрики
 bfd peer-ip
@@ -137,11 +145,11 @@ mpls ldp remote-peer *
 explicit-path
 
 vsi *
- mtu 
- vxlan
- evpn encapsulation vxlan
-  route-distinguisher
-  vpn-target
+    mtu 
+    vxlan
+    evpn encapsulation vxlan
+        route-distinguisher
+        vpn-target
 
 interface */Vsi\d+/
 interface */Bridge-Aggregation\d+/
@@ -372,8 +380,8 @@ undo sflow %order_reverse
 # Данное стаб-правило должно удаляться в самую посленюю очередь
 # поскольку если префикс-лист должен уходить из конфигурации полностью
 # перед этим должны быть удалены все его референсы в конфиге
-# индекс референсится в логике патчинга префикс-листа huawei.misc.prefix_list
-undo ip */(ip|ipv6)/-prefix * index 99999999  %order_reverse
+# индекс референсится в логике патчинга префикс-листа h3c.misc.prefix_list
+undo */(ip|ipv6)/ prefix-list * index 99999999  %order_reverse
 
 #remove template only after all references will be cleared
 undo radius-server template %order_reverse
