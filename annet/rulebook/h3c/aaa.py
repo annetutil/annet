@@ -1,8 +1,4 @@
-from collections import defaultdict
-
 from annet.annlib.types import Op
-
-from annet.rulebook.common import default, default_diff
 
 
 def user(key, diff, **_):
@@ -30,6 +26,3 @@ def _added_contains(array: list[dict], lookup_string: str) -> bool:
         if item["row"].startswith(lookup_string):
             return True
     return False
-
-
-

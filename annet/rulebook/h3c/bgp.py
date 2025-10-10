@@ -7,17 +7,16 @@ from annet.rulebook import common
 
 def peer(rule, key, diff, **_):  # pylint: disable=unused-argument
     """
-        The peculiarity of peer commands is that  
-            peer IP as-number N  
-        is the main command, and it can only be removed with  
-            undo peer IP  
-        which completely deletes all settings of the peer.
-
-        At the same time, the as-number can also be set for a group:  
-            group SPINES  
-            peer SPINES as-number 13238  
-        In this case, we ignore it and allow this setting to be deleted, since it does not define the group itself:  
-            undo peer SPINES as-number
+    The peculiarity of peer commands is that
+        peer IP as-number N
+    is the main command, and it can only be removed with
+        undo peer IP
+    which completely deletes all settings of the peer.
+    At the same time, the as-number can also be set for a group:
+        group SPINES
+        peer SPINES as-number 13238
+    In this case, we ignore it and allow this setting to be deleted, since it does not define the group itself:
+        undo peer SPINES as-number
     """
 
     assert not diff[Op.AFFECTED], "Peer commands could not contain subcommands"

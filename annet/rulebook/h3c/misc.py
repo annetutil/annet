@@ -1,9 +1,6 @@
 import copy
-import re
-from collections import namedtuple
 
 from annet.annlib.types import Op
-from contextlog import get_logger
 
 from annet.rulebook import common
 
@@ -195,6 +192,7 @@ def classifier(rule, key, diff, **_):
         yield (True, diff[Op.REMOVED][0]["row"], diff[Op.REMOVED][0]["children"])
     yield from common.default(rule, key, diff)
 
+
 def undo_children(rule, key, diff, **_):
     def removed_count(subdiff):
         ret = 0
@@ -220,16 +218,16 @@ def undo_children(rule, key, diff, **_):
     for subdiff in diff[Op.ADDED]:
         yield from common_default(Op.ADDED, subdiff)
 
+
 def clear_instead_undo(rule, key, diff, **_):
     # For some configuration lines, a persistent diff occurs because the line in the config is either explicitly enabled
     # or explicitly disabled. If it is not described in the generator (i.e., we rely on the default),
     # then by using "clear" instead of "undo" we return the configuration to its default state.
     # NOC-20102 @gslv 11-02-2022
-
     if diff[Op.REMOVED]:
         if diff[Op.REMOVED][0]["row"].endswith(" disable"):
             cmd = diff[Op.REMOVED][0]["row"].replace(" disable", "")
-        yield (True, "clear " + cmd, False)
+            yield (True, "clear " + cmd, False)
     else:
         yield from common.default(rule, key, diff)
 
@@ -241,11 +239,11 @@ def undo_port_link_mode(rule, key, diff, **_):
 
     if diff[Op.REMOVED]:
         if key[0] == "route":
-            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0],"bridge")
-            yield (True, cmd, False)   
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0], "bridge")
+            yield (True, cmd, False)
 
         if key[0] == "bridge":
-            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0],"route")
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0], "route")
             yield (True, cmd, False)
 
 
@@ -257,11 +255,11 @@ def hardware_resource_bfd(rule, key, diff, **_):
 
     if diff[Op.REMOVED]:
         if key[0] == "INT-PTP":
-            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0],"INT-BFD")
-            yield (True, cmd, False)   
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0], "INT-BFD")
+            yield (True, cmd, False)
 
         if key[0] == "INT-BFD":
-            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0],"INT-PTP")
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0], "INT-PTP")
             yield (True, cmd, False)
 
 
@@ -274,9 +272,9 @@ def change_user_password(rule, key, diff, **_):
 
     if diff[Op.REMOVED]:
         if key[0] == "route":
-            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0],"bridge")
-            yield (True, cmd, False)   
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0], "bridge")
+            yield (True, cmd, False)
 
         if key[0] == "bridge":
-            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0],"route")
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0], "route")
             yield (True, cmd, False)
