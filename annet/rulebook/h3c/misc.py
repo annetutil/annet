@@ -241,11 +241,11 @@ def undo_port_link_mode(rule, key, diff, **_):
 
     if diff[Op.REMOVED]:
         if key[0] == "route":
-            cmd = f"{diff[Op.REMOVED][0]["row"]}".replace(key[0],"bridge")
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0],"bridge")
             yield (True, cmd, False)   
 
         if key[0] == "bridge":
-            cmd = f"{diff[Op.REMOVED][0]["row"]}".replace(key[0],"route")
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0],"route")
             yield (True, cmd, False)
 
 
@@ -257,11 +257,11 @@ def hardware_resource_bfd(rule, key, diff, **_):
 
     if diff[Op.REMOVED]:
         if key[0] == "INT-PTP":
-            cmd = f"{diff[Op.REMOVED][0]["row"]}".replace(key[0],"INT-BFD")
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0],"INT-BFD")
             yield (True, cmd, False)   
 
         if key[0] == "INT-BFD":
-            cmd = f"{diff[Op.REMOVED][0]["row"]}".replace(key[0],"INT-PTP")
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0],"INT-PTP")
             yield (True, cmd, False)
 
 
@@ -274,9 +274,9 @@ def change_user_password(rule, key, diff, **_):
 
     if diff[Op.REMOVED]:
         if key[0] == "route":
-            cmd = f"{diff[Op.REMOVED][0]["row"]}".replace(key[0],"bridge")
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0],"bridge")
             yield (True, cmd, False)   
 
         if key[0] == "bridge":
-            cmd = f"{diff[Op.REMOVED][0]["row"]}".replace(key[0],"route")
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0],"route")
             yield (True, cmd, False)
