@@ -1,52 +1,10 @@
 import copy
-import re
-from collections import namedtuple
 
 from annet.annlib.types import Op
-from contextlog import get_logger
 
 from annet.rulebook import common
 
 
-class VRPVersion(namedtuple("VRPVersionBase", ["V", "R", "C", "SPC"])):
-    ANY = object()
-    ATTR_NAMES = ["V", "R", "C", "SPC"]
-
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return False
-
-        for attr_name in self.ATTR_NAMES:
-            self_attr = getattr(self, attr_name)
-            if self_attr is self.ANY:
-                continue
-            other_attr = getattr(other, attr_name)
-            if other_attr is self.ANY:
-                continue
-
-            if self_attr != other_attr:
-                return False
-
-        return True
-
-    def __ne__(self, other):
-        return not self == other
-
-
-def parse_version(version: str) -> VRPVersion:
-    # CP - Cold Patch
-    # HP - Hot Patch
-    if not version:
-        # FIXME: возможно, если в RT нет данных, надо спрашивать у самого устройства?
-        version = "VRP V200R002C50SPC800"
-        get_logger().warning("SW version not set, falling back to %r", version)
-    res = re.match(r"(?:VRP )?V(?P<v>\d+)R(?P<r>\d+)C(?P<c>\d+)(SPC(?P<spc>\d+))?(?P<opt>T)?", version)
-    assert res is not None, f"can't parse version '{version}'"
-    m = res.groupdict()  # pylint: disable=invalid-name
-    return VRPVersion(int(m["v"]), int(m["r"]), int(m["c"] or 0), int(m["spc"] or 0))
-
-
-# =====
 def rp_node(rule, key, diff, **_):
     # route-policy NAME ACTION node NUM
     (rp_name, node_id) = key
@@ -67,14 +25,14 @@ def undo_redo(rule, key, diff, **_):
 
 
 def prefix_list(rule, key, diff, **kwargs):
-    # для того чтобы опредилить полностью ли изменяется
-    # префикс лист в рулбуке huawei.rul описан ключ (family, name)
-    # однако с точки зрения команды каждый индекс - отдельная команда
-    # поэтому мы группируем их по индексу тут и передаем в common
+    # To determine whether the prefix list is being fully modified,
+    # the key (family, name) is defined in the h3c.rul rulebook.
+    # However, from the command’s point of view, each index represents a separate command.
+    # Therefore, we group them by index here and pass them to common.
     diff_by_index = {}
     for op, rows in diff.items():
         for row in rows:
-            # ожидаемый формат команды префикс-листа
+            # prefix list format:
             # ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 15 ..
             # ip ipv6-prefix PFXS_SPECIALv6 index 20 ..
             _ip, _family, _name, _index, index, *_ = row["row"].split()
@@ -87,18 +45,20 @@ def prefix_list(rule, key, diff, **kwargs):
     if family not in {"ip", "ipv6"}:
         raise NotImplementedError("Unknown family '%s'" % family)
     if diff[Op.ADDED] or diff[Op.REMOVED] or diff[Op.MOVED]:
-        # поскольку исходно у нас в ключе правила нет индекса
-        # нужно добавить его туда иначе undo-правило будет без оного
+        # Since the rule key originally doesn’t include the index,
+        # we need to add it; otherwise, the undo rule will be missing it.
         indexed_rule = copy.deepcopy(rule)
         indexed_rule["reverse"] = "undo ip {}-prefix {} index {}"
 
-        # stub_index референсится в рулбуке huawei.order чтобы обеспечить
-        # добавление/удаление стаба в первую/последнюю очередь
+        # The stub_index is referenced in the h3c.order rulebook
+        # to ensure that the stub is added or removed first or last in order.
+
         stub, stub_index = "", 99999999
 
-        # если мы только добавляем новые команды (например создаем) в префик-лист
-        # либо удаляем/двигаем но при этом у нас есть не изменяемые части
-        # хуавей не будет считать лист удаляемым и стаб-правило не нужно
+        # If we’re only adding new commands (for example, creating entries) in the prefix list,
+        # or deleting/moving them while keeping some parts unchanged,
+        # h3c will not treat the list as being removed, and the stub rule is not needed.
+
         if (diff[Op.REMOVED] or diff[Op.MOVED]) and not diff[Op.UNCHANGED]:
             stub = "deny 0.0.0.0 32" if family == "ip" else "deny :: 128"
         if stub:
@@ -111,10 +71,10 @@ def prefix_list(rule, key, diff, **kwargs):
 
 def static(rule, key, diff, **_):
     """
-    Для отката статического маршрута фактически необходимо передавать почти все аргументы,
-    кроме различных track ...
-    При этом, аргументов может быть разное количество - опциональный VRF, опциональный интерфейс.
-    Поэтому мы не парсим саму команду, а только удаляем ненужные аргументы.
+    To roll back a static route, we actually need to pass almost all arguments
+    except for the various "track" options.
+    At the same time, the number of arguments may vary — optional VRF, optional interface.
+    Therefore, we don’t parse the command itself; we just remove the unnecessary arguments.
     """
     if diff[Op.REMOVED]:
         param = key[0]
@@ -130,26 +90,15 @@ def static(rule, key, diff, **_):
     yield from common.default(rule, key, diff)
 
 
-def undo_trust(rule, key, diff, hw, **_):
-    """на CE свитчах команда undo trust; на S undo trust *"""
-    if diff[Op.REMOVED]:
-        if hw.Quidway and not hw.S6700:
-            yield False, "undo trust %s" % key, None
-        else:
-            yield False, "undo trust", None
-    else:
-        yield from common.default(rule, key, diff)
-
-
 def port_queue(rule, key, diff, **_):
     """
-    Для отката конфигурации port-queue на интерфейсе требуется только частичное указание параметров.
-    Пример отключения/включения:
+    To roll back the port-queue configuration on an interface, only a partial parameter specification is required.
+    Example of disabling/enabling:
     interface 100GE0/1/33
         undo port-queue af3 wfq outbound
         port-queue af3 wfq weight 30 port-wred WRED outbound
 
-    По сути на убрать все параметры между 'wfq' и 'outbound'
+    Essentially, we need to remove all parameters between 'wfq' and 'outbound'.
     NOC-19414
     """
     if diff[Op.REMOVED]:
@@ -170,62 +119,8 @@ def netstream_undo(rule, key, diff, **_):
     yield from common.default(rule, key, diff)
 
 
-def old_snmp_iface_trap_undo(rule, key, diff, hw, **_):
-    # хитрая логика для старый хуавеев
-    # тут вместо полной команды с undo нужно сгенерить не полную строку
-    if diff[Op.REMOVED]:
-        if hw.Quidway:
-            yield False, "undo mac-address trap notification", None
-        else:
-            yield False, "undo mac-address trap notification learn", None
-    else:
-        yield from common.default(rule, key, diff)
-
-
-def stelnet(rule, key, diff, **_):
-    # не заменяем строки stelnet ipv4 server enable и stelnet ipv6 server enable на stelnet server enable
-    # чтобы не дергать SSH
-    if diff[Op.REMOVED] and diff[Op.ADDED]:
-        removed = {x["row"] for x in diff[Op.REMOVED]}
-        added = {x["row"] for x in diff[Op.ADDED]}
-        if removed == {"stelnet ipv4 server enable", "stelnet ipv6 server enable"} and added == {"stelnet server enable"}:
-            return
-    yield from common.default(rule, key, diff)
-
-
 def snmpagent_sysinfo_version(rule, key, diff, hw, **_):
-    if hw.Huawei.CE and (diff[Op.ADDED] or diff[Op.REMOVED]):
-        assert len(diff[Op.AFFECTED]) == 0, "WTF? Affected not empty: %r" % (diff[Op.AFFECTED])
-        versions = set(["v1", "v2c", "v3"])
-
-        result = set()
-        for op in [Op.REMOVED, Op.ADDED]:
-            for action in diff[op]:
-                args = action["row"].split()[3:]
-                assert len(args) > 0, "Empty op %r: %r" % (op, action["row"])
-
-                if args[-1] == "disable":
-                    args = args[:-1]
-                    disable = True
-                else:
-                    disable = False
-                if "all" in args:
-                    args = versions
-                else:
-                    assert len(set(args).difference(versions)) == 0, "Incorrect args: %r" % (args)
-
-                if (op == Op.REMOVED and disable) or (op == Op.ADDED and not disable):
-                    result.update(args)
-                else:
-                    result.difference_update(args)
-
-        if result == versions:
-            yield (True, "snmp-agent sys-info version all", None)
-        else:
-            yield (False, "snmp-agent sys-info version all disable", None)
-            yield (True, "snmp-agent sys-info version %s" % (" ".join(result)), None)
-    else:
-        yield from common.default(rule, key, diff)
+    yield from common.default(rule, key, diff)
 
 
 def vty_acl_undo(rule, key, diff, **_):
@@ -291,8 +186,8 @@ def _expand_portsplit(row):
 
 
 def classifier(rule, key, diff, **_):
-    # если type меняется нужно сначала удалить все if-match
-    # а после этого пересоздать classifier
+    # if type changes firstly remove all if-match
+    # and then recreate classifier
     if diff[Op.ADDED] and diff[Op.REMOVED]:
         yield (True, diff[Op.REMOVED][0]["row"], diff[Op.REMOVED][0]["children"])
     yield from common.default(rule, key, diff)
@@ -311,13 +206,13 @@ def undo_children(rule, key, diff, **_):
         newdiff[op] = [subdiff]
         yield from common.default(rule, key, newdiff)
 
-    # Приходится самим говорить undo поскольку мы притворяемся одним блоком
+    # we should say undo because we pretend as single block
     for subdiff in diff[Op.REMOVED]:
-        # Сначала нужно удалить все group-member'ы
+        # firstly remove all group-members
         if diff[Op.REMOVED][0]["children"]:
             yield (True, diff[Op.REMOVED][0]["row"], diff[Op.REMOVED][0]["children"])
         yield False, "undo " + subdiff["row"], None
-    # Сначала разбираем affected, там внутри могут быть undo
+    # firstly destroy affected because inside we can have an undo
     for subdiff in sorted(diff[Op.AFFECTED], key=removed_count, reverse=True):
         yield from common_default(Op.AFFECTED, subdiff)
     for subdiff in diff[Op.ADDED]:
@@ -325,112 +220,61 @@ def undo_children(rule, key, diff, **_):
 
 
 def clear_instead_undo(rule, key, diff, **_):
-    # Для ряда конфигурационных строк возникает вечный diff, поскольку в конфиге строка либо явно включена,
-    # либо явно выключена. Если она не описана в генераторе, т.е. мы полагаемся на дефолт, то используя clear
-    # вместо undo мы возвращаем конфиг в дефолтное состояние.
+    # For some configuration lines, a persistent diff occurs because the line in the config is either explicitly enabled
+    # or explicitly disabled. If it is not described in the generator (i.e., we rely on the default),
+    # then by using "clear" instead of "undo" we return the configuration to its default state.
     # NOC-20102 @gslv 11-02-2022
     if diff[Op.REMOVED]:
         if diff[Op.REMOVED][0]["row"].endswith(" disable"):
             cmd = diff[Op.REMOVED][0]["row"].replace(" disable", "")
-        yield (True, "clear " + cmd, False)
+            yield (True, "clear " + cmd, False)
     else:
         yield from common.default(rule, key, diff)
 
+
 def undo_port_link_mode(rule, key, diff, **_):
     """
-    Если режим порта меняется с bridge на route или с route на bridge
-    то отрабатывает этот кусок кода
-    
+    Сhanging port mode from bridge to route and back
     """
-    #diff = kwargs.get("diff")
-    #key = kwargs.get("key")
-    #value = kwargs.get("value")
-    #print(f"diff={diff}")
-    #print(f"key={key}")
-    #print(f"value={value}")
-
-    #print(diff)
-    #print(key)
-    #print(rule)
 
     if diff[Op.REMOVED]:
         if key[0] == "route":
-            cmd = f"{diff[Op.REMOVED][0]["row"]}".replace(key[0],"bridge")
-            yield (True, cmd, False)   
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0], "bridge")
+            yield (True, cmd, False)
 
         if key[0] == "bridge":
-            cmd = f"{diff[Op.REMOVED][0]["row"]}".replace(key[0],"route")
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0], "route")
             yield (True, cmd, False)
-        
 
-    
-    #return []
 
 def hardware_resource_bfd(rule, key, diff, **_):
     """
-    Если режим hardware-resource firmware-mode меняется
-    с дефолта hardware-resource firmware-mode INT-PTP
-    на кастомный (аппаратный) hardware-resource firmware-mode INT-BFD
-    то вызывается этот обработчик
+    Changing hardware-resource firmware-mode from software
+    to hardware and back without undo
     """
 
     if diff[Op.REMOVED]:
         if key[0] == "INT-PTP":
-            cmd = f"{diff[Op.REMOVED][0]["row"]}".replace(key[0],"INT-BFD")
-            yield (True, cmd, False)   
-
-        if key[0] == "INT-BFD":
-            cmd = f"{diff[Op.REMOVED][0]["row"]}".replace(key[0],"INT-PTP")
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0], "INT-BFD")
             yield (True, cmd, False)
 
-def undo_bfd_peerip(rule, key, diff, **_):
-    """
-    !!! ЗАМЕНИЛ ЭТОТ КУСОК КОДА НА СТАНДАРТНЫЙ generic.misc.remove_last_param
-    !!! ВНУТРИ h3c.rul
-    !!! ЭТОТ КОД ОСТАЕТСЯ ЗДЕСЬ В КАЧЕСТВЕ ПРИМЕРА
-
-    Если у нас уже был пул для bfd peer-ip опции
-    и нам нужно его снести, то делается это командой
-    undo bfd peer-ip 10.203.77.0 24 ttl multi-hop
-    а если нужно добавить, то добавляем
-    bfd peer-ip 10.203.77.0 24 ttl multi-hop 255
-    """
-
-    for op, rows in diff.items():
-        for row in rows:
-            _bfd, _peer_ip, ip, mask, _ttl, bfd_type, ttl_num, *_ = row["row"].split()
-
-            # можно еще так
-            #if op == "removed":
-            # либо через Op класс
-            if diff[Op.REMOVED]:
-                cmd = f"undo bfd peer-ip {ip} {mask} ttl {bfd_type}"
-                yield (True, cmd, False)
-            if diff[Op.ADDED]:
-                yield (True, row["row"], False)
+        if key[0] == "INT-BFD":
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0], "INT-PTP")
+            yield (True, cmd, False)
 
 
 def change_user_password(rule, key, diff, **_):
     """
-    Если меняется хеш пароля, тогда мы просто
-    проливаем новый пароль, без удаления старого
+    If we have to change password hash
+    then we just push new hash to configuration
+    without undo
     """
-    #diff = kwargs.get("diff")
-    #key = kwargs.get("key")
-    #value = kwargs.get("value")
-    #print(f"diff={diff}")
-    #print(f"key={key}")
-    #print(f"value={value}")
-
-    #print(diff)
-    #print(key)
-    #print(rule)
 
     if diff[Op.REMOVED]:
         if key[0] == "route":
-            cmd = f"{diff[Op.REMOVED][0]["row"]}".replace(key[0],"bridge")
-            yield (True, cmd, False)   
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0], "bridge")
+            yield (True, cmd, False)
 
         if key[0] == "bridge":
-            cmd = f"{diff[Op.REMOVED][0]["row"]}".replace(key[0],"route")
+            cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0], "route")
             yield (True, cmd, False)
