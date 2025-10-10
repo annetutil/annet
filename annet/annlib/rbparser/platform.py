@@ -1,1 +1,1 @@
-VENDOR_ALIASES = {}
+VENDOR_ALIASES: dict[str, str] = {}
