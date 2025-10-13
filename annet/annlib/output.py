@@ -114,7 +114,7 @@ class Dumpable(abc.ABC):
         pass
 
 
-def print_as_json(data, fh=sys.stdout):
+def print_as_json(data, fh=sys.stdout, highlight=True):
     """
     В выводе dict ключи отсортированы по имени, кроме ключей в OrderedDict,
     которые сохраняют свой оригинальный порядок
@@ -176,17 +176,19 @@ def print_as_json(data, fh=sys.stdout):
             except TypeError:
                 raise TypeError("can't serialize %r to json" % o)
 
-    dump = json.dumps(UnsortableOdict.convert_odicts(data), cls=JsonEncoder,
-                      ensure_ascii=False, indent=4, sort_keys=True) + "\n"
-    if fh.isatty():
+    dump_data = UnsortableOdict.convert_odicts(data)
+    dump_kwargs = dict(cls=JsonEncoder, ensure_ascii=False)
+
+    if fh.isatty() and highlight:
         pygments.highlight(
-            code=dump,
+            code=json.dumps(dump_data, indent=4, sort_keys=True, **dump_kwargs) + "\n",
             lexer=pygments.lexers.data.JsonLexer(),
             formatter=pygments.formatters.TerminalFormatter(bg="dark"),
             outfile=fh,
         )
     else:
-        fh.write(dump)
+        json.dump(dump_data, fh, **dump_kwargs)
+        fh.write("\n")
 
 
 class TextArgs:
