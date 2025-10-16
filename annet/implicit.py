@@ -73,7 +73,6 @@ def _implicit_tree(device):
             text = """
                 !interface (?!Vlanif).*
                     port link-type hybrid %regexp=port link-type .*
-                    dot1x enable
                 interface NULL0
             """
         else:
