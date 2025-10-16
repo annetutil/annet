@@ -489,8 +489,7 @@ def worker(device_id, args: ShowGenOptions, stdin, loader: "Loader", filterer: F
         # Consider result of partial run empty and create an empty dest file
         # only if there are some acl rules that has been matched.
         # Otherwise treat it as if no supported generators have been found.
-        acl_rules = res.get_acl_rules(args.acl_safe)
-        if acl_rules:
+        if args.no_acl or res.get_acl_rules(args.acl_safe):
             orderer = patching.Orderer.from_hw(device.hw)
             yield (output_driver.cfg_file_names(device)[0],
                    format_config_blocks(
