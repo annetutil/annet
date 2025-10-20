@@ -62,6 +62,7 @@ def _is_allowed_on_channel(cmd_line):
         "switchport host",
         "switchport",
         "shutdown",
+        "no shutdown",
         "rate-limit cpu",
         "snmp trap link-status",
         "mtu",
