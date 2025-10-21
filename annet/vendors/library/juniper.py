@@ -14,7 +14,7 @@ class JuniperVendor(AbstractVendor):
 
         before.add_cmd(Command("configure exclusive"))
         if do_commit:
-            after.add_cmd(Command("commit", timeout=30))
+            after.add_cmd(Command("commit", timeout=30, read_timeout=30))
         after.add_cmd(Command("exit"))
 
         return before, after
