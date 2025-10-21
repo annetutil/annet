@@ -217,6 +217,9 @@ radius-server template *
     radius-server accounting * *
     radius-server authentication * *
 
+radius server
+radius-server
+
 ssh authentication-type default password
 
 ssh server rsa-key min-length
