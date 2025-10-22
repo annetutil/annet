@@ -27,7 +27,7 @@ class NetboxV42Adapter(NetboxAdapter[
             token: str,
             ssl_context: ssl.SSLContext | None,
             threads: int,
-            session_factory: Callable[[], Session] | None,
+            session_factory: Callable[[Session], Session] | None,
     ):
         self.netbox = client_sync.NetboxV42(url=url, token=token, ssl_context=ssl_context, threads=threads, session_factory=session_factory)
         self.convert_device = get_converter(
@@ -139,7 +139,7 @@ class NetboxStorageV42(BaseNetboxStorage[
             token: str,
             ssl_context: ssl.SSLContext | None,
             threads: int,
-            session_factory: Callable[[], Session] | None = None,
+            session_factory: Callable[[Session], Session] | None = None,
     ) -> NetboxAdapter[
         NetboxDeviceV42, InterfaceV42, IpAddressV42, PrefixV42,
         FHRPGroupV41, FHRPGroupAssignmentV41,

@@ -46,7 +46,8 @@ def storage_factory(opts: NetboxStorageOpts) -> Storage:
 
 class NetboxProvider(StorageProvider, AdapterWithName, AdapterWithConfig):
     def __init__(self, url: Optional[str] = None, token: Optional[str] = None, insecure: bool = False,
-                 exact_host_filter: bool = False, threads: int = 1, all_hosts_filter: dict[str, list[str]] | None = None):
+                 exact_host_filter: bool = False, threads: int = 1, all_hosts_filter: dict[str, list[str]] | None = None,
+                 cache_path: str = "", cache_ttl: int = 0):
         self.url = url
         self.token = token
         self.insecure = insecure
