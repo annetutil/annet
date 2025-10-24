@@ -380,3 +380,69 @@ def test_new_json_fragment_files():
             "sonic-reload",
         ),
     }
+
+
+def test_new_json_fragment_files_append_list():
+    # test that items can be successfully appended to the end of the list if acl filters is present
+
+    def make_interface_fragment(config: dict[str, Any]) -> GeneratorJSONFragmentResult:
+        return GeneratorJSONFragmentResult(
+            name="acl_table",
+            tags=["acl_table"],
+            path="/etc/sonic/config_db.json",
+            acl=["/ACL_TABLE"],
+            acl_safe=[],
+            config=config,
+            reload="sonic-reload",
+            perf=GeneratorPerf(1.0, None, None),
+            reload_prio=100,
+        )
+
+    old_files = {
+        "/etc/sonic/config_db.json": {
+            "ACL_TABLE": {
+                "YATTL": {
+                    "ports": [
+                        "Ethernet432",
+                        "Ethernet496.201",
+                        "Ethernet496",  # will be removed
+                    ],
+                },
+            },
+        },
+    }
+
+    gen_res = RunGeneratorResult()
+    gen_res.add_json_fragment(
+        make_interface_fragment({
+            "ACL_TABLE": {
+                "YATTL": {
+                    "ports": [
+                        "Ethernet432",
+                        "Ethernet496.201",
+                        "Ethernet496.202",  # added
+                        "Ethernet496.203",  # added
+                        "Ethernet496.204",  # added
+                    ],
+                },
+            },
+        }),
+    )
+    assert gen_res.new_json_fragment_files(old_files, filters=["/ACL_TABLE/YATTL/ports/*"]) == {
+        "/etc/sonic/config_db.json": (
+            {
+                "ACL_TABLE": {
+                    "YATTL": {
+                        "ports": [
+                            "Ethernet432",
+                            "Ethernet496.201",
+                            "Ethernet496.202",  # added
+                            "Ethernet496.203",  # added
+                            "Ethernet496.204",  # added
+                        ],
+                    },
+                },
+            },
+            "sonic-reload",
+        ),
+    }
