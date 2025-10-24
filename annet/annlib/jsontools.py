@@ -91,7 +91,23 @@ def _pointer_set(pointer: jsonpointer.JsonPointer, doc: Any, value: Any) -> None
 
 def make_patch(old: Dict[str, Any], new: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Generate a JSON patch by comparing the old document with the new one."""
-    return sorted(jsonpatch.make_patch(old, new).patch, key=itemgetter("path"))
+    # NOTE: changing order of the patch operations (e.g. sorting)
+    #  may interfere with the `move` logic.
+    #  E.g.:
+    #  ```python
+    #  old = [["a", "b"], ["c", "d"]]
+    #  new = [["d", "c"], ["b", "a"]]
+    #  ```
+    #  produces the following patch:
+    #  ```json
+    #  [{"op": "move", "path": "/0/0", "from": "/1/0"},
+    #   {"op": "move", "path": "/1/0", "from": "/0/2"},
+    #   {"op": "move", "path": "/0/0", "from": "/1/1"},
+    #   {"op": "move", "path": "/1/1", "from": "/0/2"}]
+    #  ```
+    #  which relies on proper ordering to be correctly applied.
+    #  See https://github.com/annetutil/annet/pull/452 for details.
+    return jsonpatch.make_patch(old, new).patch
 
 
 def apply_patch(content: Optional[bytes], patch_bytes: bytes) -> bytes:
