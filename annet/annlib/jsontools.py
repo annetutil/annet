@@ -10,6 +10,7 @@ from typing import Any, Dict, Iterable, List, Optional
 
 import jsonpatch
 import jsonpointer
+from ordered_set import OrderedSet
 
 
 def format_json(data: Any, stable: bool = False) -> str:
@@ -42,8 +43,7 @@ def apply_json_fragment(
 
         for pointer in new_pointers:
             new_value = pointer.get(new_fragment)
-            _ensure_pointer_exists(full_new_config, pointer)
-            pointer.set(full_new_config, new_value)
+            _pointer_set(pointer, full_new_config, new_value)
 
         # delete matched parts in old config whicn are not present in the new
         paths = {p.path for p in new_pointers}
@@ -56,31 +56,37 @@ def apply_json_fragment(
     return full_new_config
 
 
-def _ensure_pointer_exists(doc: Dict[str, Any], pointer: jsonpointer.JsonPointer) -> None:
+def _pointer_set(pointer: jsonpointer.JsonPointer, doc: Any, value: Any) -> None:
     """
-    Ensure that document has all pointer parts (if possible).
+    Resolve `pointer` against the `doc`, creating new elements if neccessary,
+    and set the target's value to `value`, all in place.
 
-    This is workaround for errors of type:
+    If `pointer` in any it's part points to the non-existing key,
+    or if value at this point is `None`, new object will be created.
+    (See https://github.com/stefankoegl/python-json-pointer/issues/41)
 
-    ```
-    jsonpointer.JsonPointerException: member 'MY_PART' not found in {}
-    ```
-
-    See for details: https://github.com/stefankoegl/python-json-pointer/issues/41
+    If `pointer` in any it's part points to the index of next to be appended
+    element of the array, new document / `value` will be appended to that list.
     """
-    parts_except_the_last = pointer.get_parts()[:-1]
-    doc_pointer: Dict[str, Any] = doc
-    for part in parts_except_the_last:
-        if isinstance(doc_pointer, dict):
-            if part not in doc_pointer or doc_pointer[part] is None:
-                # create an empty object by the pointer part
-                doc_pointer[part] = {}
+    if len(pointer.parts) == 0:
+        raise jsonpointer.JsonPointerException("Cannot set root in place")
+    *parts_expect_the_last, last_part = pointer.parts
 
-            # follow the pointer to delve deeper
-            doc_pointer = doc_pointer[part]
-        else:
-            # not a dict - cannot delve deeper
-            break
+    for part in parts_expect_the_last:
+        key = pointer.get_part(doc, part)
+        if isinstance(doc, dict):
+            if doc.get(key, None) is None:
+                doc[key] = {}
+        elif isinstance(doc, list):
+            if key == len(doc):
+                doc.append({})
+        doc = doc[key]
+
+    key = pointer.get_part(doc, last_part)
+    if isinstance(doc, list) and key == len(doc):
+        doc.append(value)
+    else:
+        doc[key] = value
 
 
 def make_patch(old: Dict[str, Any], new: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -175,12 +181,11 @@ def _apply_filters_to_json_pointers(
         pointers: Iterable[jsonpointer.JsonPointer],
         filters: Sequence[str], *,
         content: Any,
-) -> list[jsonpointer.JsonPointer]:
+) -> Sequence[jsonpointer.JsonPointer]:
 
     """
-    Takes a list of pointers, a list of filters and a document
-    and returns a list of pointers that match at least one of the filters
-    (if necessary, pointers may be deeper than from the input).
+    Takes a list of pointers, a list of filters and a document, and returns
+    a list of pointers that match at least one of the filters, preserving order.
 
     For example, given:
     pointers=["/foo", "/lorem/ipsum", "/lorem/dolor"],
@@ -205,7 +210,7 @@ def _apply_filters_to_json_pointers(
     ["/foo/bar/qux", "/lorem/ipsum", "/lorem/dolor"]
     """
 
-    ret: set[jsonpointer.JsonPointer] = set()
+    ret = OrderedSet[jsonpointer.JsonPointer]()
     for filter_item in filters:
         filter_parts = jsonpointer.JsonPointer(filter_item).parts
         for pointer in pointers:
@@ -222,7 +227,4 @@ def _apply_filters_to_json_pointers(
                 ret.update(map(pointer.join, _resolve_json_pointers(deeper_pattern, deeper_doc)))
             else:
                 ret.add(pointer)
-    # sort return value by some stable key, to decrease the chance
-    # that some bug may lead to unstable output being produced
-    # (since `type(ret) is set`)
-    return sorted(ret, key=str)
+    return ret
