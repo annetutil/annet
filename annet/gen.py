@@ -267,11 +267,20 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
             filters = filters_text.removesuffix("\n").split("\n")
 
         old_json_fragment_files = old_files.json_fragment_files.copy()
-        new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files, filters=filters)
+        new_json_fragment_files = res.new_json_fragment_files(
+            old_json_fragment_files,
+            use_acl=not ctx.args.no_acl,
+            filters=filters,
+        )
 
         if ctx.args.acl_safe:
             safe_new_files = res.new_files(safe=True)
-            safe_new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files, safe=True, filters=filters)
+            safe_new_json_fragment_files = res.new_json_fragment_files(
+                old_json_fragment_files,
+                use_acl=not ctx.args.no_acl,
+                safe=True,
+                filters=filters,
+            )
 
     if ctx.args.profile:
         perf = res.perf_mesures()
