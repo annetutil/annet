@@ -17,6 +17,7 @@ class NetboxStorageOpts:
             all_hosts_filter: dict[str, list[str]] | None = None,
             cache_path: str = "",
             cache_ttl: timedelta = timedelta(0),
+            recache: bool = False,
     ):
         self.url = url
         self.token = token
@@ -26,6 +27,7 @@ class NetboxStorageOpts:
         self.all_hosts_filter: dict[str, list[str]] = all_hosts_filter or {}
         self.cache_path = cache_path
         self.cache_ttl = cache_ttl
+        self.recache = recache
 
     @classmethod
     def parse_params(cls, conf_params: Optional[dict[str, str]], cli_opts: Any):
@@ -66,4 +68,5 @@ class NetboxStorageOpts:
             all_hosts_filter=all_hosts_filter,
             cache_path=cache_path,
             cache_ttl=cache_ttl,
+            recache=cli_opts.recache,
         )

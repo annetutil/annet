@@ -140,6 +140,12 @@ opt_tolerate_fails = Arg(
     help="Show errors without interrupting the generation"
 )
 
+opt_recache = Arg(
+    "--recache", default=False,
+    help="Force expiration of storage's local cache if it is supported"
+)
+
+
 # При параллельном запуске и включённом --tolerate-fails код возврата
 # всегда нулевой. Это не позволяет нам легко понять, прошла ли генерация
 # успешно для всех устройств. С этим флажком код будет ненулевой, если
@@ -353,6 +359,7 @@ opt_selected_context_name = Arg(
 
 # ====
 class CacheOptions(ArgGroup):
+    recache = opt_recache
     no_mesh = False
 
 

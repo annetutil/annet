@@ -62,9 +62,12 @@ class BaseNetboxStorage(
             self.all_hosts_filter = opts.all_hosts_filter
 
         if opts.cache_path:
+            backend = SQLiteCache(db_path=opts.cache_path)
+            if opts.recache:
+                backend.clear()
             session_factory = lambda session: CachedSession.wrap(
                 session,
-                backend=SQLiteCache(db_path=opts.cache_path),
+                backend=backend,
                 expire_after=opts.cache_ttl,
             )
 
