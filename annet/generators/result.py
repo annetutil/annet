@@ -85,6 +85,7 @@ class RunGeneratorResult:
     def new_json_fragment_files(
             self,
             old_files: Dict[str, Optional[str]],
+            use_acl: bool = True,
             safe: bool = False,
             filters: Sequence[str] | None = None,
     ) -> Dict[str, Tuple[Any, Optional[str]]]:
@@ -98,9 +99,12 @@ class RunGeneratorResult:
                     files[filepath] = (old_files[filepath], None)
                 else:
                     files[filepath] = ({}, None)
-            result_acl = generator_result.acl
-            if safe:
-                result_acl = generator_result.acl_safe
+            if use_acl:
+                result_acl = generator_result.acl
+                if safe:
+                    result_acl = generator_result.acl_safe
+            else:
+                result_acl = None
             previous_config: Dict[str, Any] = files[filepath][0]
             new_fragment = generator_result.config
             new_config = jsontools.apply_json_fragment(

@@ -6,11 +6,14 @@ import json
 from collections.abc import Mapping, Sequence
 from itertools import starmap
 from operator import itemgetter
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Final, Iterable, List, Optional
 
 import jsonpatch
 import jsonpointer
 from ordered_set import OrderedSet
+
+
+EVERYTHING_ACL: Final = "/*"
 
 
 def format_json(data: Any, stable: bool = False) -> str:
@@ -21,14 +24,17 @@ def format_json(data: Any, stable: bool = False) -> str:
 def apply_json_fragment(
         old: Dict[str, Any],
         new_fragment: Dict[str, Any], *,
-        acl: Sequence[str],
+        acl: Sequence[str] | None = None,
         filters: Sequence[str] | None = None,
 ) -> Dict[str, Any]:
     """
-    Replace parts of the old document with 'new_fragment' using ACL restrictions.
+    Replace parts of the old document with 'new_fragment'.
+    If `acl` is not `None`, replacement will only be made within specified keys.
     If `filter` is not `None`, only those parts which also matches at least one filter
     from the list will be modified (updated or deleted).
     """
+    if acl is None:
+        acl = [EVERYTHING_ACL]
     full_new_config = copy.deepcopy(old)
     for acl_item in acl:
         new_pointers = _resolve_json_pointers(acl_item, new_fragment)
