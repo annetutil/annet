@@ -61,15 +61,8 @@ class BaseNetboxStorage(
             self.exact_host_filter = opts.exact_host_filter
             self.all_hosts_filter = opts.all_hosts_filter
 
-        if opts.cache_path:
-            backend = SQLiteCache(db_path=opts.cache_path)
-            if opts.recache:
-                backend.clear()
-            session_factory = lambda session: CachedSession.wrap(
-                session,
-                backend=backend,
-                expire_after=opts.cache_ttl,
-            )
+            if opts.cache_path:
+                session_factory = cached_requests_session(opts)
 
         self.netbox = self._init_adapter(
             url=url,
@@ -282,3 +275,16 @@ def parse_glob(exact_host_filter: bool, query: NetboxQuery) -> dict[str, list[st
         else:
             query_groups["name__ic"] = [_hostname_dot_hack(name) for name in names]
     return query_groups
+
+
+def cached_requests_session(opts: NetboxStorageOpts) -> Callable[[Session], Session]:
+    def session_factory(session: Session) -> Session:
+        backend = SQLiteCache(db_path=opts.cache_path)
+        if opts.recache:
+            backend.clear()
+        return CachedSession.wrap(
+            session,
+            backend=backend,
+            expire_after=opts.cache_ttl,
+        )
+    return session_factory
