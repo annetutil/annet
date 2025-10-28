@@ -1,7 +1,11 @@
 import ssl
 from ipaddress import ip_interface
 from logging import getLogger
-from typing import Any, Optional, List, Union, Dict, cast, Generic, TypeVar
+from typing import Any, Callable, Optional, List, Union, Dict, cast, Generic, TypeVar
+
+from requests import Session
+
+from requests_cache import CachedSession, SQLiteCache
 
 from annetbox.v37 import models as api_models
 
@@ -45,6 +49,7 @@ class BaseNetboxStorage(
         token = ""
         self.exact_host_filter = False
         threads = 1
+        session_factory = None
         if opts:
             if opts.insecure:
                 ctx = ssl.create_default_context()
@@ -55,7 +60,17 @@ class BaseNetboxStorage(
             threads = opts.threads
             self.exact_host_filter = opts.exact_host_filter
             self.all_hosts_filter = opts.all_hosts_filter
-        self.netbox = self._init_adapter(url=url, token=token, ssl_context=ctx, threads=threads)
+
+            if opts.cache_path:
+                session_factory = cached_requests_session(opts)
+
+        self.netbox = self._init_adapter(
+            url=url,
+            token=token,
+            ssl_context=ctx,
+            threads=threads,
+            session_factory=session_factory,
+        )
         self._all_fqdns: Optional[list[str]] = None
         self._id_devices: dict[int, NetboxDeviceT] = {}
         self._name_devices: dict[str, NetboxDeviceT] = {}
@@ -67,6 +82,7 @@ class BaseNetboxStorage(
             token: str,
             ssl_context: Optional[ssl.SSLContext],
             threads: int,
+            session_factory: Callable[[Session], Session] | None = None,
     ) -> NetboxAdapter[NetboxDeviceT, InterfaceT, IpAddressT, PrefixT, FHRPGroupT, FHRPGroupAssignmentT]:
         raise NotImplementedError()
 
@@ -259,3 +275,16 @@ def parse_glob(exact_host_filter: bool, query: NetboxQuery) -> dict[str, list[st
         else:
             query_groups["name__ic"] = [_hostname_dot_hack(name) for name in names]
     return query_groups
+
+
+def cached_requests_session(opts: NetboxStorageOpts) -> Callable[[Session], Session]:
+    def session_factory(session: Session) -> Session:
+        backend = SQLiteCache(db_path=opts.cache_path)
+        if opts.recache:
+            backend.clear()
+        return CachedSession.wrap(
+            session,
+            backend=backend,
+            expire_after=opts.cache_ttl,
+        )
+    return session_factory

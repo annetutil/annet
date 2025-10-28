@@ -1,5 +1,6 @@
 import os
 from typing import Any, Optional
+from datetime import timedelta
 from .query import parse_query
 
 DEFAULT_URL = "http://localhost"
@@ -14,6 +15,9 @@ class NetboxStorageOpts:
             exact_host_filter: bool = False,
             threads: int = 1,
             all_hosts_filter: dict[str, list[str]] | None = None,
+            cache_path: str = "",
+            cache_ttl: timedelta = timedelta(0),
+            recache: bool = False,
     ):
         self.url = url
         self.token = token
@@ -21,6 +25,9 @@ class NetboxStorageOpts:
         self.exact_host_filter = exact_host_filter
         self.threads = threads
         self.all_hosts_filter: dict[str, list[str]] = all_hosts_filter or {}
+        self.cache_path = cache_path
+        self.cache_ttl = cache_ttl
+        self.recache = recache
 
     @classmethod
     def parse_params(cls, conf_params: Optional[dict[str, str]], cli_opts: Any):
@@ -41,6 +48,17 @@ class NetboxStorageOpts:
             exact_host_filter = exact_host_filter_env in ("true", "1", "t")
         else:
             exact_host_filter = bool(conf_params.get("exact_host_filter") or False)
+
+        if cache_path := os.getenv("NETBOX_CACHE_PATH"):
+            cache_path = cache_path
+        else:
+            cache_path = str(conf_params.get("cache_path", ""))
+
+        if cache_ttl := os.getenv("NETBOX_CACHE_TTL"):
+            cache_ttl = timedelta(seconds=int(cache_ttl))
+        else:
+            cache_ttl = timedelta(seconds=conf_params.get("cache_ttl", 0))
+
         return cls(
             url=url,
             token=token,
@@ -48,4 +66,7 @@ class NetboxStorageOpts:
             exact_host_filter=exact_host_filter,
             threads=int(threads),
             all_hosts_filter=all_hosts_filter,
+            cache_path=cache_path,
+            cache_ttl=cache_ttl,
+            recache=cli_opts.recache,
         )
