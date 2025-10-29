@@ -1,16 +1,10 @@
 from __future__ import annotations
 
 import contextlib
-from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    Set,
-    Union,
-)
+from typing import Any, Optional, Union
 
 from annet.storage import Device, Storage
+
 from .base import TreeGenerator, _filter_str
 
 
@@ -18,13 +12,12 @@ class JSONFragment(TreeGenerator):
     """Generates parts of JSON config file."""
 
     TYPE = "JSON_FRAGMENT"
-    TAGS: List[str] = []
 
     def __init__(self, storage: Storage):
         super().__init__()
         self.storage = storage
-        self._json_config: Dict[str, Any] = {}
-        self._config_pointer: List[str] = []
+        self._json_config: dict[str, Any] = {}
+        self._config_pointer: list[str] = []
 
         # if two generators edit same file, commands from generator with greater `reload_prio` will be used
         if not hasattr(self, "reload_prio"):
@@ -36,11 +29,7 @@ class JSONFragment(TreeGenerator):
     def path(self, device: Device) -> Optional[str]:
         raise NotImplementedError("Required PATH for JSON_FRAGMENT generator")
 
-    @classmethod
-    def get_aliases(cls) -> Set[str]:
-        return {cls.__name__, *cls.TAGS}
-
-    def acl(self, device: Device) -> Union[str, List[str]]:
+    def acl(self, device: Device) -> Union[str, list[str]]:
         """
         Restrict the generator to a specified ACL using JSON Pointer syntax.
 
@@ -48,7 +37,7 @@ class JSONFragment(TreeGenerator):
         """
         raise NotImplementedError("Required ACL for JSON_FRAGMENT generator")
 
-    def acl_safe(self, device: Device) -> Union[str, List[str]]:
+    def acl_safe(self, device: Device) -> Union[str, list[str]]:
         """
         Restrict the generator to a specified safe ACL using JSON Pointer syntax.
 
