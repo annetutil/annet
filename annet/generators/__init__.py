@@ -26,11 +26,12 @@ from annet.types import (
 )
 from annet.vendors import registry_connector, tabparser
 
+from .annotate import AbstractAnnotateFormatter, annotate_formatter_connector
 from .base import BaseGenerator
 from .base import ParamsList as ParamsList
 from .base import TextGenerator as TextGenerator
 from .entire import Entire
-from .exceptions import GeneratorError, NotSupportedDevice
+from .exceptions import GeneratorError, InvalidValueFromGenerator, NotSupportedDevice
 from .jsonfragment import JSONFragment
 from .partial import PartialGenerator
 from .perf import GeneratorPerfMesurer
@@ -165,11 +166,10 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
     safe_config = odict()
 
     if not gen.supports_device(device):
-        logger.info("generator %s is not supported for device %s", gen, device.hostname)
+        logger.debug("generator %s is not supported for device %s", gen, device.hostname)
         return None
 
-    span = tracing_connector.get().get_current_span()
-    if span:
+    if span := tracing_connector.get().get_current_span():
         tracing_connector.get().set_device_attributes(span, run_args.device)
         tracing_connector.get().set_dimensions_attributes(span, gen, run_args.device)
         span.set_attributes({
@@ -184,8 +184,7 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
                 logger.info("Generating PARTIAL ...")
             try:
                 output = gen(device, run_args.annotate)
-            except NotSupportedDevice:
-                # это исключение нужно передать выше в оригинальном виде
+            except NotSupportedDevice:  # это исключение нужно передать выше в оригинальном виде
                 raise
             except Exception as err:
                 filename, lineno = gen.get_running_line()

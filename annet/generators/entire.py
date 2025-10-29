@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import pkgutil
-import re
 import types
-from typing import FrozenSet, Iterable, List, Optional, Set, Union
+from typing import FrozenSet, Iterable, List, Optional, Union
 
 from annet.lib import flatten, mako_render
 
-from .base import BaseGenerator, _filter_str
-from .exceptions import NotSupportedDevice
+from .base import NONE_SEARCHER, BaseGenerator, _filter_str
+from .exceptions import InvalidValueFromGenerator
 
 
 class Entire(BaseGenerator):
@@ -62,10 +61,6 @@ class Entire(BaseGenerator):
 
     # =====
 
-    @classmethod
-    def get_aliases(cls) -> Set[str]:
-        return {cls.__name__, *cls.TAGS}
-
     def __call__(self, device):
         self.__device = device
         parts = []
@@ -73,15 +68,19 @@ class Entire(BaseGenerator):
         if isinstance(run_res, str):
             run_res = (run_res,)
         if run_res is None or not isinstance(run_res, (tuple, types.GeneratorType)):
-            raise Exception("generator %s returns %s" % (
-                self.__class__.__name__, type(run_res)))
+            raise Exception("generator %s returns %s" % (self.__class__.__name__, type(run_res)))
+
         for text in run_res:
             if isinstance(text, tuple):
                 text = " ".join(map(_filter_str, flatten(text)))
-            assert re.search(r"\bNone\b", text) is None, \
-                "Found 'None' in yield result: %s" % text
+            if NONE_SEARCHER.search(text):
+                raise InvalidValueFromGenerator(
+                    "Found 'None' in yield result: %s" % text
+                )
             parts.append(text)
+
         ret = "\n".join(parts)
         if self.ENSURE_END_NEWLINE and not ret.endswith("\n"):
             ret += "\n"
+
         return ret

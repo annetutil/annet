@@ -2,13 +2,18 @@ from __future__ import annotations
 
 import abc
 import contextlib
+import re
 import textwrap
-from typing import Union, List
+from typing import List, Union
 
 from annet import tracing
-from annet.vendors import tabparser
 from annet.tracing import tracing_connector
+from annet.vendors import tabparser
+
 from .exceptions import InvalidValueFromGenerator
+
+
+NONE_SEARCHER = re.compile(r"\bNone\b")
 
 
 class DefaultBlockIfCondition:
@@ -53,10 +58,14 @@ def _split_and_strip(text):
 # =====
 class BaseGenerator:
     TYPE: str
-    TAGS: List[str]
+    TAGS: List[str] = []
 
     def supports_device(self, device) -> bool:  # pylint: disable=unused-argument
         return True
+
+    @classmethod
+    def get_aliases(cls) -> set[str]:
+        return {cls.__name__, *cls.TAGS}
 
 
 class TreeGenerator(BaseGenerator):

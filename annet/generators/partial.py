@@ -1,32 +1,23 @@
 from __future__ import annotations
 
-import re
-from typing import (
-    Iterable,
-    List,
-    Set,
-    Union,
-)
+from typing import Iterable, Union
 
-from annet.lib import (
-    add_annotation,
-    flatten,
-)
-from .base import TreeGenerator, _filter_str
-from .exceptions import NotSupportedDevice
+from annet.lib import add_annotation, flatten
+
+from .annotate import AbstractAnnotateFormatter, annotate_formatter_connector
+from .base import NONE_SEARCHER, TreeGenerator, _filter_str
+from .exceptions import InvalidValueFromGenerator
 
 
 class PartialGenerator(TreeGenerator):
     TYPE = "PARTIAL"
-    TAGS: List[str] = []
 
     def __init__(self, storage):
         super().__init__()
         self.storage = storage
-        self._annotate = False
         self._running_gen = None
+        self._annotate: AbstractAnnotateFormatter = annotate_formatter_connector.get(self)
         self._annotations = []
-        self._annotation_module = self.__class__.__module__ or ""
 
     def supports_device(self, device) -> bool:
         if self.__class__.run is PartialGenerator.run:
@@ -35,19 +26,19 @@ class PartialGenerator(TreeGenerator):
             return True
 
     def acl(self, device):
-        acl_func = self._get_vendor_func(device.hw.vendor, "acl")
-        if acl_func:
+        if acl_func := self._get_vendor_func(device.hw.vendor, "acl"):
             return acl_func(device)
+        return None
 
     def acl_safe(self, device):
-        acl_func = self._get_vendor_func(device.hw.vendor, "acl_safe")
-        if acl_func:
+        if acl_func := self._get_vendor_func(device.hw.vendor, "acl_safe"):
             return acl_func(device)
+        return None
 
-    def run(self, device) -> Iterable[Union[str, tuple]]:
-        run_func = self._get_vendor_func(device.hw.vendor, "run")
-        if run_func:
+    def run(self, device) -> Iterable[Union[str, tuple]] | None:
+        if run_func := self._get_vendor_func(device.hw.vendor, "run"):
             return run_func(device)
+        return None
 
     def get_user_runner(self, device):
         if self.__class__.run is not PartialGenerator.run:
@@ -56,26 +47,15 @@ class PartialGenerator(TreeGenerator):
 
     def _get_vendor_func(self, vendor: str, func_name: str):
         attr_name = f"{func_name}_{vendor}"
-        if hasattr(self, attr_name):
-            return getattr(self, attr_name)
-        return None
+        return getattr(self, attr_name, None)
 
     # =====
 
-    @classmethod
-    def get_aliases(cls) -> Set[str]:
-        return {cls.__name__, *cls.TAGS}
-
-    def __call__(self, device, annotate=False):
+    def __call__(self, device, annotate: bool = False):
         self._indents = []
         self._rows = []
+
         self._running_gen = self.run(device)
-        self._annotate = annotate
-
-        if annotate and self.__class__.__module__:
-            self._annotation_module = ".".join(
-                self.__class__.__module__.split(".")[-2:])
-
         for text in self._running_gen:
             if isinstance(text, tuple):
                 text = " ".join(map(_filter_str, flatten(text)))
@@ -83,9 +63,12 @@ class PartialGenerator(TreeGenerator):
                 text = _filter_str(text)
             self._append_text(text)
 
-        for row in self._rows:
-            assert re.search(r"\bNone\b", row) is None, \
-                "Found 'None' in yield result: %s" % (row)
+        for (row, annotation) in zip(self._rows, self._annotations):
+            if NONE_SEARCHER.search(row):
+                raise InvalidValueFromGenerator(
+                    "Found 'None' in yield result: %s" % add_annotation(row, annotation)
+                )
+
         if annotate:
             generated_rows = (
                 add_annotation(x, y)
@@ -93,23 +76,20 @@ class PartialGenerator(TreeGenerator):
             )
         else:
             generated_rows = self._rows
-        return "\n".join(generated_rows) + "\n"
+
+        return "\n".join((*generated_rows, ""))
 
     def _append_text(self, text):
         def annotation_cb(row):
-            annotation = "%s:%d" % self.get_running_line()
-            self._annotations.append(annotation)
+            self._annotations.append(
+                self._annotate.make_annotation(self._running_gen)
+            )
             return row
 
-        self._append_text_cb(
-            text,
-            annotation_cb if self._annotate else None
-        )
+        self._append_text_cb(text, row_cb=annotation_cb)
 
-    def get_running_line(self):
-        if not self._running_gen or not self._running_gen.gi_frame:
-            return (repr(self._running_gen), -1)
-        return self._annotation_module, self._running_gen.gi_frame.f_lineno
+    def get_running_line(self) -> tuple[str, int]:
+        return self._annotate.get_running_line(self._running_gen)
 
     @classmethod
     def literal(cls, item):
