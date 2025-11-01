@@ -72,19 +72,20 @@ def _parse_tree_with_params(raw_tree, scheme, context=None):
     return tree
 
 
-def _parse_raw_rule(raw_rule, scheme):
-    try:
-        index = raw_rule.index("%")
-        params = {
-            key: (value.strip() if len(value.strip()) != 0 else "1")
-            for (key, value) in re.findall(r"%([a-zA-Z_]\w*)(?:=([^%]*))?", raw_rule[index:])
-        }
-        if params:
-            raw_rule = raw_rule[:index].strip()
-    except ValueError:
-        params = {}
+def _parse_raw_rule(raw_rule: str, scheme) -> tuple[str, dict[str, str]]:
+    params: dict[str, str] = {}
+    row_parts: list[str] = []
 
-    row = re.sub(r"\s+", " ", raw_rule.strip())
+    for part in raw_rule.split():
+        if part.startswith("%"):
+            part = part.removeprefix("%")
+            key, _, value = part.partition("=")
+            params[key] = value or "1"
+
+        else:
+            row_parts.append(part)
+
+    row = " ".join(row_parts)
     params = _fill_and_validate(params, scheme, raw_rule)
     return row, params
 
