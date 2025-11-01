@@ -84,6 +84,7 @@ def _parse_raw_rule(raw_rule: str, scheme) -> tuple[str, dict[str, str]]:
     params = _fill_and_validate(params, scheme, raw_rule)
     return row, params
 
+
 def _fill_and_validate(params, scheme, raw_rule):
     return {
         key: (attrs["validator"](params[key]) if key in params else (
