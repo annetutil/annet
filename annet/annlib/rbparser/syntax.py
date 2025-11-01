@@ -75,17 +75,14 @@ def _parse_tree_with_params(raw_tree, scheme, context=None):
 def _parse_raw_rule(raw_rule: str, scheme) -> tuple[str, dict[str, str]]:
     params: dict[str, str] = {}
 
-    first_param_idx: int | None = None
+    row, *params_raw = re.split(r"(?:^|\s)%(?=[a-zA-Z_]\w*)", raw_rule)
+    for param in params_raw:
+        name, _, value = param.partition("=")
+        params[name] = value.strip() or "1"
 
-    for m in re.finditer(r"(?:^|(?<=\s))%([a-zA-Z_]\w*)(?:(?:=([^%]*))|\s|$)", raw_rule):
-        if first_param_idx is None:
-            first_param_idx = m.start(0)
-        params[m.group(1)] = (m.group(2) or "1").strip()
-
-    row = raw_rule[:first_param_idx].strip()
+    row = re.sub(r"\s+", " ", row.strip())
     params = _fill_and_validate(params, scheme, raw_rule)
     return row, params
-
 
 def _fill_and_validate(params, scheme, raw_rule):
     return {
