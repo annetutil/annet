@@ -246,6 +246,9 @@ ip route-static
 ipv6 route-static
 
 route-policy
+    apply ~
+    if-match ~
+
 
 ospf
     opaque-capability enable

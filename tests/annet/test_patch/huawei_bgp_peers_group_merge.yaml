@@ -62,13 +62,13 @@ patch: |
   bgp 64203.10
     ipv6-family vpn-instance Vpn1
       undo peer SPINE_D1 as-number
-      undo peer fe80::c1:d1 group SPINE_D1
-      undo peer fe80::c1:d2 group SPINE_D2
       undo peer SPINE_D2 as-number
-      undo peer fe80::c1:d3 group SPINE_D3
-      undo peer fe80::c1:d4 group SPINE_D4
       undo peer SPINE_D3 as-number
       undo peer SPINE_D4 as-number
+      undo peer fe80::c1:d1 group SPINE_D1
+      undo peer fe80::c1:d2 group SPINE_D2
+      undo peer fe80::c1:d3 group SPINE_D3
+      undo peer fe80::c1:d4 group SPINE_D4
       undo group SPINE_D1
       undo group SPINE_D2
       undo group SPINE_D3

@@ -1,10 +1,12 @@
+from __future__ import annotations
 import dataclasses
 import itertools
 import json
 import re
 import textwrap
 from collections import OrderedDict as odict
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, List
+from collections.abc import Callable, Iterator
+from typing import TYPE_CHECKING, Any, Dict, Generic, Iterable, Optional, Tuple, List, TypeAlias
 
 from annet.annlib.types import Op
 
@@ -103,7 +105,7 @@ class CommonFormatter:
     def split(self, text: str):
         return list(filter(None, text.split("\n")))
 
-    def join(self, config: "PatchTree"):
+    def join(self, config: PatchTree) -> str:
         return "\n".join(
             _filtered_block_marks(
                 self._indent_blocks(self._blocks(config, is_patch=False))
@@ -884,7 +886,9 @@ class RosFormatter(CommonFormatter):
 
 
 # ====
-def parse_to_tree(text, splitter, comments=("!", "#")):
+
+
+def parse_to_tree(text: str, splitter: Callable[[str], Iterator[str]], comments: Iterable[str] = ("!", "#")):
     tree = odict()
     for stack in _stacked(splitter(text), tuple(comments)):
         local_tree = tree
@@ -894,10 +898,22 @@ def parse_to_tree(text, splitter, comments=("!", "#")):
             local_tree = local_tree[key]
     return tree
 
+SimpleTree: TypeAlias = list[tuple[str, "SimpleTree"]]
+
+def parse_to_tree_multi(text: str, splitter: Callable[[str], Iterator[str]], comments: Iterable[str] = ("!", "#")) -> SimpleTree:
+    tree = []
+    for stack in _stacked(splitter(text), tuple(comments)):
+        local_tree = tree
+        for key in stack:
+            if not local_tree or local_tree[-1][0] != key:
+                local_tree.append((key, []))
+            local_tree = local_tree[-1][1]
+    return tree
+
 
 # =====
-def _stacked(lines, comments):
-    stack = []
+def _stacked(lines: Iterator[str], comments: tuple[str, ...]) -> Iterator[tuple[str, ...]]:
+    stack: list[str] = []
     for (level, line) in _stripped_indents(lines, comments):
         level += 1
         if level > len(stack):
@@ -909,8 +925,8 @@ def _stacked(lines, comments):
         yield tuple(stack)
 
 
-def _stripped_indents(lines, comments):
-    indents = []
+def _stripped_indents(lines: Iterator[str], comments: tuple[str, ...]) -> Iterator[tuple[int, str]]:
+    indents: list[int] = []
     curr_level = 0
     g_level = None
 
@@ -920,7 +936,7 @@ def _stripped_indents(lines, comments):
                 g_level = level
             level = level - (g_level or 0)
             if level < 0:
-                raise ParserError("Invalid top indention: line %d: %s" % (number, line))
+                raise ParserError("Invalid top indentation: line %d: %s" % (number, line))
 
             if level > curr_level:
                 indents.append(level - curr_level)
@@ -929,7 +945,7 @@ def _stripped_indents(lines, comments):
                 while curr_level > level and len(indents):
                     curr_level -= indents.pop()
                 if curr_level != level:
-                    raise ParserError("Invalid top indention: line %d: %s" % (number, line))
+                    raise ParserError("Invalid top indentation: line %d: %s" % (number, line))
 
             yield (len(indents), line)
 
@@ -939,7 +955,7 @@ def _stripped_indents(lines, comments):
             g_level = None
 
 
-def _parsed_indents(lines, comments):
+def _parsed_indents(lines: Iterator[str], comments: tuple[str, ...]) -> Iterator[tuple[int, str | type[BlockEnd] | type[_CommentOrEmpty]]]:
     for line in _filtered_lines(lines, comments):
         if isinstance(line, str):
             yield (_parse_indent(line), line.strip())
@@ -947,7 +963,7 @@ def _parsed_indents(lines, comments):
             yield (0, line)
 
 
-def _filtered_lines(lines, comments):
+def _filtered_lines(lines: Iterator[str], comments: tuple[str, ...]) -> Iterator[str | type[BlockEnd] | type[_CommentOrEmpty]]:
     for line in lines:
         stripped = line.strip()
         # TODO Это для хуавей, так что хелпер нужно унести в Formatter
@@ -963,7 +979,7 @@ def _filtered_block_marks(blocks):
     return filter(lambda b: isinstance(b, str), blocks)
 
 
-def _parse_indent(line):
+def _parse_indent(line: str) -> int:
     level = 0
     for ch in line:
         if ch in ("\t", " "):
