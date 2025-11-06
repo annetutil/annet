@@ -78,7 +78,7 @@ def _parse_raw_rule(raw_rule: str, scheme) -> tuple[str, dict[str, str]]:
     row, *params_raw = re.split(r"(?:^|\s)%(?=[a-zA-Z_]\w*)", raw_rule)
     for param in params_raw:
         name, _, value = param.partition("=")
-        params[name] = value.strip() or "1"
+        params[name.strip()] = value.strip() or "1"
 
     row = re.sub(r"\s+", " ", row.strip())
     params = _fill_and_validate(params, scheme, raw_rule)
