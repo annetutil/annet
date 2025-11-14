@@ -258,7 +258,7 @@ interface *
     ipv6 ~                              %diff_logic=h3c.iface.binding_change
     dhcpv6 ~
     port link-type
-    port trunk pvid vlan
+    port trunk pvid vlan                %logic=h3c.misc.remove_trunk_pvid
     port trunk allow-pass vlan %logic=h3c.vlandb.multi_all
     undo port trunk allow-pass ~
     port hybrid pvid vlan
