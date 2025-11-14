@@ -129,7 +129,7 @@ def snmpagent_sysinfo_version(rule, key, diff, **_):
         for rem in diff[Op.REMOVED]:
             row = rem.get("row", "").strip()
             # If removed row contains a v3 variant, produce undo for v3
-            if re.search(r'\bv3\b', row, flags=re.IGNORECASE):
+            if re.search(r"\bv3\b", row, flags=re.IGNORECASE):
                 yield False, "undo snmp-agent sys-info version v3", None
                 return
     yield from common.default(rule, key, diff)
