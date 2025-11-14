@@ -243,16 +243,18 @@ bgp
     group
     peer * as-number *
     peer * local-as *
-    address-family ipv[46]|l2vpn evpn
+    peer * group *
+    peer * connect-interface *
+    address-family l2vpn evpn
+        peer * enable
+        peer * ~
+    address-family ipv[46]
         balance
         pic
         additional-paths
         import-route
         group
         peer * as-number *
-        peer * enable
-        peer * ~
-    l2vpn-ad-family
         peer * enable
         peer * ~
     # [NOCDEV-2043] Остальное в глобальном блоке делаем тут
