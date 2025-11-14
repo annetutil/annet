@@ -300,7 +300,7 @@ def remove_trunk_pvid(rule, key, diff, **_):
     if diff[Op.REMOVED]:
         for rem in diff[Op.REMOVED]:
             row = rem.get("row", "").strip()
-            if re.match(r'^port\s+trunk\s+pvid\s+vlan\s+\d+$', row, flags=re.IGNORECASE):
+            if re.match(r"^port\s+trunk\s+pvid\s+vlan\s+\d+$", row, flags=re.IGNORECASE):
                 yield False, "undo port trunk pvid", None
                 return
     yield from common.default(rule, key, diff)
