@@ -1,7 +1,6 @@
 import copy
-
+import re
 from annet.annlib.types import Op
-
 from annet.rulebook import common
 
 
@@ -119,7 +118,20 @@ def netstream_undo(rule, key, diff, **_):
     yield from common.default(rule, key, diff)
 
 
-def snmpagent_sysinfo_version(rule, key, diff, hw, **_):
+def snmpagent_sysinfo_version(rule, key, diff, **_):
+    """
+    Special handling for SNMP sys-info version:
+    If device has 'snmp-agent sys-info version v3' that must be removed,
+    generate "undo snmp-agent sys-info version v3".
+    Falls back to common.default for other cases.
+    """
+    if diff[Op.REMOVED]:
+        for rem in diff[Op.REMOVED]:
+            row = rem.get("row", "").strip()
+            # If removed row contains a v3 variant, produce undo for v3
+            if re.search(r"\bv3\b", row, flags=re.IGNORECASE):
+                yield False, "undo snmp-agent sys-info version v3", None
+                return
     yield from common.default(rule, key, diff)
 
 
@@ -278,3 +290,17 @@ def change_user_password(rule, key, diff, **_):
         if key[0] == "bridge":
             cmd = f"{diff[Op.REMOVED][0]['row']}".replace(key[0], "route")
             yield (True, cmd, False)
+
+
+def remove_trunk_pvid(rule, key, diff, **_):
+    """
+    Special-case undo for H3C: "port trunk pvid vlan <num>" -> "undo port trunk pvid"
+    Falls back to common.default for other cases.
+    """
+    if diff[Op.REMOVED]:
+        for rem in diff[Op.REMOVED]:
+            row = rem.get("row", "").strip()
+            if re.match(r"^port\s+trunk\s+pvid\s+vlan\s+\d+$", row, flags=re.IGNORECASE):
+                yield False, "undo port trunk pvid", None
+                return
+    yield from common.default(rule, key, diff)
