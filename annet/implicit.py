@@ -156,6 +156,17 @@ def _implicit_tree(device):
                 !interface */port-channel[0-9.]+/
                     no shutdown
             """
+        elif device.hw.Cisco.XR:
+            text += r"""
+                !interface */\S*Ethernet\S+/
+                    mtu 1500
+                    no shutdown
+                !interface */Loopback[0-9.]+/
+                    no shutdown
+                !interface */port-channel[0-9.]+/
+                    mtu 1500
+                    no shutdown
+            """
         else:
             text += r"""
                 !interface */\S*Ethernet\S+/
