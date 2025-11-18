@@ -189,7 +189,7 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
             except Exception as err:
                 filename, lineno = gen.get_running_line()
                 logger.error("Generator error in file '%s:%i'", filename, lineno)
-                raise GeneratorError(f"{gen} on {device}") from err
+                raise GeneratorError(f"{gen} on {device.__class__.__name__}(id={device.id}, hostname={device.hostname})") from err
 
             fmtr = registry_connector.get().match(device.hw).make_formatter()
 
