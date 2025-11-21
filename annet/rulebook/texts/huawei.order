@@ -71,7 +71,11 @@ ntp
 acl port-pool
 acl ip-pool
 acl ipv6-pool
-acl
+acl ~
+    undo rule * description %order_reverse
+    undo rule ~ %order_reverse
+    rule * */deny|permit/
+    rule * description
 
 system tcam
 
@@ -95,6 +99,7 @@ vlan
 
 hwtacacs-server
 hwtacacs server
+radius-server
 
 aaa
     undo local-user policy security-enhance
@@ -112,6 +117,12 @@ aaa
 
     task-group
     user-group
+
+    #pin removal order to ensure that local-user will be deleted last
+    undo local-user * ftp-directory %order_reverse
+    undo local-user * privilege %order_reverse
+    undo local-user * level %order_reverse
+    undo local-user * %order_reverse
     ~
 
 
@@ -257,6 +268,9 @@ bgp
         peer * as-number *
         peer * enable
         peer * ~
+    l2vpn-ad-family
+        peer * enable
+        peer * ~
     # [NOCDEV-2043] Остальное в глобальном блоке делаем тут
     undo peer * description %order_reverse
     undo peer * * * %order_reverse
@@ -384,5 +398,9 @@ undo sflow %order_reverse
 # перед этим должны быть удалены все его референсы в конфиге
 # индекс референсится в логике патчинга префикс-листа huawei.misc.prefix_list
 undo ip */(ip|ipv6)/-prefix * index 99999999  %order_reverse
+
+#remove template only after all references will be cleared
+undo radius-server template %order_reverse
+undo hwtacacs-server template %order_reverse
 
 ~

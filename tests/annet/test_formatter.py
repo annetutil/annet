@@ -37,7 +37,16 @@ interface Vlan1234
   ipv6 dhcp relay address 2001:db8:0:1200::1:101
 interface Ethernet1/1/1
   speed 10000
-  no shutdown\
+  no shutdown
+banner exec ^C
+             .oooooo.   ooooo  .oooooo..o   .oooooo.     .oooooo.
+            d8P'  `Y8b  `888' d8P'    `Y8  d8P'  `Y8b   d8P'  `Y8b
+           888           888  Y88bo.      888          888      888
+           888           888   `"Y8888o.  888          888      888
+           888           888       `"Y88b 888          888      888
+           `88b    ooo   888  oo     .d8P `88b    ooo  `88b    d88'
+            `Y8bood8P'  o888o 8""88888P'   `Y8bood8P'   `Y8bood8P'
+^C\
 """
 
 
@@ -827,3 +836,30 @@ def test_asr_parse_to_tree(asr_config):
     formatter = registry_connector.get().match(make_hw_stub("asr")).make_formatter()
     parsed = parse_to_tree(asr_config, formatter.split)
     assert parsed == expected
+
+
+def test_jun_formatter_split_whitespaces01(juniper_config):
+    # sometimes juniper adds bunch of whitespaces
+    # in the output of show configuration for some reason
+    # here they are after the the term POLICY_0 {
+    juniper_config = textwrap.dedent(r"""
+    policy-options {
+        policy-statement POLICY {
+            term POLICY_0 {            
+                then {
+                    origin igp;
+                    accept;
+                }
+            }
+        }
+    }
+    """)
+    formatter = registry_connector.get().match(make_hw_stub("juniper")).make_formatter()
+    assert formatter.split(juniper_config) == [
+        "policy-options",
+        "    policy-statement POLICY",
+        "        term POLICY_0",
+        "            then",
+        "                origin igp",
+        "                accept",
+    ]

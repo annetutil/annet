@@ -18,7 +18,6 @@ MULTILINE_DIFF_LOGIC = "common.multiline_diff"
 # =====
 @functools.lru_cache()
 def compile_patching_text(text, vendor):
-
     return _compile_patching(
         tree=syntax.parse_text(text, params_scheme={
             "global": {
@@ -44,6 +43,10 @@ def compile_patching_text(text, vendor):
             "ordered": {
                 "validator": valid_bool,
                 "default": False,
+            },
+            "context": {
+                "validator": str,
+                "default": None,
             },
             "rewrite": {
                 "validator": valid_bool,

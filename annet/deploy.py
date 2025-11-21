@@ -157,14 +157,13 @@ class RulebookQuestionHandler:
 
 
 def rb_question_to_question(q: MakeMessageMatcher, a: Answer) -> Question:  # TODO: drop MakeMessageMatcher
-    if not a.send_nl:
-        raise Exception("not supported false send_nl")
     text: str = q._text  # pylint: disable=protected-access
+    answer: str = a.text
     is_regexp = False
     if text.startswith("/") and text.endswith("/"):
         is_regexp = True
         text = text[1:-1]
-    res = Question(question=text, answer=a.text, is_regexp=is_regexp)
+    res = Question(question=text, answer=answer, is_regexp=is_regexp, not_send_nl=not a.send_nl)
     return res
 
 
@@ -194,7 +193,10 @@ def fill_cmd_params(rules: OrderedDict, cmd: Command):
     if rule:
         cmd_params = make_cmd_params(rule)
         cmd.questions = cmd_params.get("questions", None)
-        cmd.timeout = cmd_params["timeout"]
+        if cmd.timeout is None:
+            cmd.timeout = cmd_params["timeout"]
+        if cmd.read_timeout is None:
+            cmd.read_timeout = cmd.timeout
 
 
 def apply_deploy_rulebook(hw: HardwareView, cmd_paths, do_finalize=True, do_commit=True):

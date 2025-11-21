@@ -1,6 +1,6 @@
 from collections.abc import Sequence, Iterable
 from dataclasses import dataclass, field
-from typing import Literal, Union, Optional
+from typing import Literal, Union, Optional, Annotated
 
 
 class VidRange:
@@ -162,7 +162,8 @@ class PeerOptions:
     send_lcommunity: Optional[bool] = None
     send_extcommunity: Optional[bool] = None
     send_labeled: Optional[bool] = None
-    import_limit: Optional[bool] = None
+    import_limit: Optional[int] = None
+    import_limit_action: Optional[str] = None
     teardown_timeout: Optional[bool] = None
     redistribute: Optional[bool] = None
     passive: Optional[bool] = None
@@ -199,6 +200,25 @@ class PeerOptions:
     soft_reconfiguration_inbound: Optional[bool] = None
     not_active: Optional[bool] = None
     mtu: Optional[int] = None
+    password: Optional[str] = None
+    cluster_id: Optional[str] = None
+
+
+@dataclass
+class PeerFamilyOption:
+    af_loops: Optional[int] = None
+    import_limit: Optional[int] = None
+
+
+@dataclass
+class PeerFamilyOptions:
+    ipv4_unicast: PeerFamilyOption = field(default_factory=PeerFamilyOption)
+    ipv6_unicast: PeerFamilyOption = field(default_factory=PeerFamilyOption)
+    ipv4_vpn_unicast: PeerFamilyOption = field(default_factory=PeerFamilyOption)
+    ipv6_vpn_unicast: PeerFamilyOption = field(default_factory=PeerFamilyOption)
+    ipv4_labeled_unicast: PeerFamilyOption = field(default_factory=PeerFamilyOption)
+    ipv6_labeled_unicast: PeerFamilyOption = field(default_factory=PeerFamilyOption)
+    l2vpn_evpn: PeerFamilyOption = field(default_factory=PeerFamilyOption)
 
 
 @dataclass
@@ -207,6 +227,7 @@ class Peer:
     interface: Optional[str]
     remote_as: ASN
     families: set[Family] = field(default_factory=set)
+    family_options: PeerFamilyOptions = field(default_factory=PeerFamilyOptions)
     description: str = ""
     vrf_name: str = ""
     group_name: str = ""
@@ -240,7 +261,9 @@ class FamilyOptions:
     vrf_name: str = ""
     multipath: int = 0
     global_multipath: int = 0
-    aggregate: Aggregate = field(default_factory=Aggregate)
+    aggregate: Aggregate = field(default_factory=Aggregate)  # use `aggregates` instead
+    aggregates: tuple[Aggregate, ...] = ()
+    af_loops: Optional[int] = None
     redistributes: tuple[Redistribute, ...] = ()
     allow_default: bool = False
     aspath_relax: bool = False
@@ -251,6 +274,8 @@ class FamilyOptions:
     rib_group: bool = False
     loops: int = 0
     advertise_bgp_static: bool = False
+    import_policy: Optional[str] = None
+    export_policy: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -258,6 +283,7 @@ class PeerGroup:
     name: str
     remote_as: ASN = ASN(None)
     families: set[Family] = field(default_factory=set)
+    family_options: PeerFamilyOptions = field(default_factory=PeerFamilyOptions)
     internal_name: str = ""
     description: str = ""
     update_source: str = ""
@@ -275,7 +301,8 @@ class PeerGroup:
     send_lcommunity: bool = False
     send_extcommunity: bool = False
     send_labeled: bool = False
-    import_limit: bool = False
+    import_limit: int = False
+    import_limit_action: Optional[str] = None
     teardown_timeout: bool = False
     redistribute: bool = False
     passive: bool = False
@@ -312,6 +339,8 @@ class PeerGroup:
     soft_reconfiguration_inbound: bool = False
     not_active: bool = False
     mtu: int = 0
+    password: Optional[str] = None
+    cluster_id: Optional[str] = None
 
 
 @dataclass
@@ -363,6 +392,8 @@ class GlobalOptions:
     loops: int = 0
     multipath: int = 0
     router_id: str = ""
+    cluster_id: Optional[str] = None
+
     vrf: dict[str, VrfOptions] = field(default_factory=dict)
     groups: list[PeerGroup] = field(default_factory=list)
     l2vpn: dict[str, L2VpnOptions] = field(default_factory=dict)
@@ -381,7 +412,7 @@ def _used_policies(peer: Union[Peer, PeerGroup, VrfOptions]) -> Iterable[str]:
         yield peer.export_policy
 
 
-def _used_redistribute_policies(opts: Union[GlobalOptions, VrfOptions]) -> Iterable[str]:
+def _used_families_policies(opts: Union[GlobalOptions, VrfOptions]) -> Iterable[str]:
     for family_opts in (
         opts.ipv4_unicast,
         opts.ipv6_unicast,
@@ -394,6 +425,13 @@ def _used_redistribute_policies(opts: Union[GlobalOptions, VrfOptions]) -> Itera
                 yield red.policy
         if family_opts.aggregate and family_opts.aggregate.policy:
             yield family_opts.aggregate.policy
+        for aggregate in family_opts.aggregates:
+            if aggregate.policy:
+                yield aggregate.policy
+        if family_opts.export_policy:
+            yield family_opts.export_policy
+        if family_opts.import_policy:
+            yield family_opts.import_policy
 
 
 def extract_policies(config: BgpConfig) -> Sequence[str]:
@@ -401,11 +439,11 @@ def extract_policies(config: BgpConfig) -> Sequence[str]:
     for vrf in config.global_options.vrf.values():
         for group in vrf.groups:
             result.extend(_used_policies(group))
-        result.extend(_used_redistribute_policies(vrf))
+        result.extend(_used_families_policies(vrf))
         result.extend(_used_policies(vrf))
     for group in config.global_options.groups:
         result.extend(_used_policies(group))
     for peer in config.peers:
         result.extend(_used_policies(peer))
-    result.extend(_used_redistribute_policies(config.global_options))
+    result.extend(_used_families_policies(config.global_options))
     return result

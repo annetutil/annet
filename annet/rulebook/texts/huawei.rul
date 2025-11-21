@@ -72,6 +72,11 @@ bfd
 
 observe-port *
 
+drop-profile *
+    color *
+    ecn weight
+    ecn
+
 qos local-precedence-queue-map *
 
 qos group %logic=huawei.misc.undo_children
@@ -113,13 +118,11 @@ acl ip-pool *
 acl ipv6-pool *
     ~ %global
 
-acl name *
+acl */(name|number)/ *
+    rule * description
     rule * %logic=huawei.misc.undo_redo
-acl number *
-    rule * %logic=huawei.misc.undo_redo
-acl ipv6 name *
-    rule * %logic=huawei.misc.undo_redo
-acl ipv6 number *
+acl ipv6 */(name|number)/ *
+    rule * description
     rule * %logic=huawei.misc.undo_redo
 
 */(ftp|FTP|ssh|telnet)/ server acl
@@ -141,6 +144,7 @@ ssh server key-exchange
 ssh server dh-exchange
 ssh server cipher
 ssh server hmac
+ssh server publickey
 
 ftp client source %logic=huawei.misc.undo_redo
 
@@ -180,20 +184,34 @@ aaa
     undo user-password complexity-check
     task-group *
         task *
-    local-user * privilege level                   %diff_logic=huawei.aaa.local_user_diff
+    local-user * ftp-directory
+    local-user * privilege level                   %diff_logic=huawei.aaa.local_user_diff %logic=huawei.aaa.user
     local-user * level                             %diff_logic=huawei.aaa.local_user_diff
     local-user *                                   %diff_logic=huawei.aaa.local_user_diff %logic=huawei.aaa.user
     */(accounting|authentication|authorization)/-scheme *
         */(accounting|authentication|authorization)/-mode
+
+    domain default
+        */(accounting|authentication|authorization)/-scheme * %logic=huawei.aaa.domain
+        !radius-server default
+        radius-server * %logic=generic.misc.remove_last_param
+        hwtacacs-server * %logic=generic.misc.remove_last_param
+
     domain *
         */(accounting|authentication|authorization)/-scheme * %logic=huawei.aaa.domain
+        radius-server * %logic=generic.misc.remove_last_param
+        hwtacacs-server * %logic=generic.misc.remove_last_param
     ~ %global
 
 hwtacacs-server template *
     hwtacacs-server shared-key
+    hwtacacs-server source-ip
 
 hwtacacs server template *
     hwtacacs server shared-key
+    hwtacacs server source-ip
+
+!radius-server template default
 
 radius-server template *
     radius-server accounting * *
@@ -417,6 +435,12 @@ isis *
 
 error-down auto-recovery cause link-flap
 
+configuration file auto-save backup-to-server server
+configuration file auto-save
+
+
+set save-configuration backup-to-server *
+set save-configuration *
 
 ip route-static default-bfd
 ipv6 route-static default-bfd
@@ -467,6 +491,9 @@ cpu-defend-policy * global
 cpu-defend-policy
 slot *
     cpu-defend-policy
+
+user-interface con 0
+    set authentication password cipher
 
 description %global
 

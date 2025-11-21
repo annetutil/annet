@@ -1,7 +1,9 @@
+from collections.abc import Sequence
 from unittest.mock import Mock
 
 from annet.rpl import RouteMap, Route, R
-from .helpers import scrub, iosxr, generate
+from annet.rpl_generators.entities import CommunityList, AsPathFilter, ip_prefix_list
+from .helpers import scrub, iosxr, generate, juniper
 
 
 def test_iosxr_action():
@@ -174,5 +176,172 @@ route-policy policy1
   if as-path length eq 12 then
     set local-preference 42
     pass
+""")
+    assert result == expected
+
+
+
+def test_juniper_inline():
+    # juniper inlines "from" for *SOME* match fields or if there is only one
+    # and "then" when there is no attribute modifications and only result:
+    #
+    # term DENY {
+    #     from {
+    #         community DENY;         term DENY {
+    #     }                     ==>       from community DENY;
+    #     then {                          then reject;
+    #         reject;                 }
+    #     }
+    # }
+    routemaps = RouteMap[Mock]()
+    community_lists = [
+        CommunityList("CMNT_LIST01", ["65000:1234"]),
+    ]
+    as_path_filters = [
+        AsPathFilter("AS_PATH_FILTER01", ["1299"])
+    ]
+    prefix_lists = [
+        ip_prefix_list("PFX_LIST01", ["10.0.0.0/8"])
+    ]
+    @routemaps
+    def policy01(device: Mock, route: Route):
+        # then accept
+        with route() as rule:
+            rule.allow()
+        # from community CMNT_LIST01
+        with route(R.community.has("CMNT_LIST01")) as rule:
+            rule.allow()
+        # from as-path AS_PATH_FILTER01
+        with route(R.as_path_filter("AS_PATH_FILTER01")) as rule:
+            rule.allow()
+        # from {
+        #    prefix-list PFX_LIST01;
+        # }
+        with route(R.match_v4("PFX_LIST01")) as rule:
+            rule.allow()
+        # from {
+        #    as-path-calc-length 1;
+        # }
+        with route(R.as_path_length == 1) as rule:
+            rule.allow()
+
+    result = generate(
+        routemaps=routemaps,
+        dev=juniper(),
+        community_lists=community_lists,
+        as_path_filters=as_path_filters,
+        prefix_lists=prefix_lists,
+    )
+    expected = scrub("""
+policy-options {
+    prefix-list PFX_LIST01 {
+        10.0.0.0/8;
+    }
+    as-path AS_PATH_FILTER01 1299;
+    community CMNT_LIST01 members 65000:1234;
+    policy-statement policy01 {
+        term policy01_0 {
+            then accept;
+        }
+        term policy01_1 {
+            from community CMNT_LIST01;
+            then accept;
+        }
+        term policy01_2 {
+            from as-path AS_PATH_FILTER01;
+            then accept;
+        }
+        term policy01_3 {
+            from {
+                prefix-list PFX_LIST01;
+            }
+            then accept;
+        }
+        term policy01_4 {
+            from {
+                as-path-calc-length 1 equal;
+            }
+            then accept;
+        }
+    }
+}
+""")
+    assert result == expected
+
+
+def test_juniper_term_numbers():
+    routemaps = RouteMap[Mock]()
+    @routemaps
+    def policy(device: Mock, route: Route):
+        # term policy_10
+        with route(number=10) as rule:
+            rule.allow()
+        # term policy_11
+        with route() as rule:
+            rule.allow()
+        # term policy_20
+        with route(number=20) as rule:
+            rule.allow()
+        # term policy_21
+        with route() as rule:
+            rule.allow()
+
+    result = generate(
+        routemaps=routemaps,
+        dev=juniper(),
+    )
+    expected = scrub("""
+policy-options {
+    policy-statement policy {
+        term policy_10 {
+            then accept;
+        }
+        term policy_11 {
+            then accept;
+        }
+        term policy_20 {
+            then accept;
+        }
+        term policy_21 {
+            then accept;
+        }
+    }
+}
+""")
+    assert result == expected
+
+
+def test_juniper_term_number_and_name():
+    routemaps = RouteMap[Mock]()
+    @routemaps
+    def policy(device: Mock, route: Route):
+        # term policy_0
+        with route() as rule:
+            rule.allow()
+        # term ALLOW
+        with route(name="ALLOW", number=10) as rule:
+            rule.allow()
+        # term policy_11
+        with route() as rule:
+            rule.allow()
+
+    result = generate(
+        routemaps=routemaps,
+        dev=juniper(),
+    )
+    expected = scrub("""
+policy-options {
+    policy-statement policy {
+        term policy_0 {
+            then accept;
+        }
+        term ALLOW {
+            then accept;
+        }
+        term policy_11 {
+            then accept;
+        }
+    }
+}
 """)
     assert result == expected

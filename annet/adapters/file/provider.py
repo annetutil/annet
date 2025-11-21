@@ -10,6 +10,7 @@ from annet.connectors import AdapterWithName
 from annet.hardware import hardware_connector
 from annet.storage import Device as DeviceProtocol
 from annet.storage import Query, Storage, StorageProvider
+from annet.adapters.netbox.common.manufacturer import get_breed
 
 
 @dataclass
@@ -30,6 +31,7 @@ class DeviceStorage:
     vendor: Optional[str] = None
     hw_model: Optional[str] = None
     sw_version: Optional[str] = None
+    breed: Optional[str] = None
 
     hostname: Optional[str] = None
     serial: Optional[str] = None
@@ -58,6 +60,14 @@ class DeviceStorage:
                 raise Exception("unknown vendor")
             self.hw_model = hw.model
         self.hw = hw
+
+        if not self.breed:
+            if self.hw.model:
+                parts = self.hw.model.split(maxsplit=1)
+                if len(parts) >= 2:
+                    self.breed = get_breed(parts[0], parts[1])
+            if not self.breed:
+                self.breed = self.hw.vendor
 
         if isinstance(self.interfaces, list):
             interfaces = []
@@ -107,7 +117,7 @@ class Device(DeviceProtocol, DumpableView):
 
     @property
     def breed(self) -> str:
-        return self.dev.hw.vendor
+        return self.dev.breed
 
     @property
     def neighbours_ids(self):

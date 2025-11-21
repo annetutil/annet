@@ -1,7 +1,7 @@
 from typing import Literal, Annotated, Union, Optional
 
 from .basemodel import BaseMeshModel, Concat, Unite
-from ..bgp_models import BFDTimers
+from ..bgp_models import BFDTimers, PeerFamilyOptions
 
 FamilyName = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled_unicast", "ipv6_labeled_unicast", "l2vpn_evpn"]
 
@@ -17,6 +17,7 @@ class _SharedOptionsDTO(BaseMeshModel):
     send_community: bool
     bfd: bool
     bfd_timers: BFDTimers
+    password: str
 
 
 class MeshSession(_SharedOptionsDTO):
@@ -38,13 +39,17 @@ class _OptionsDTO(_SharedOptionsDTO):
     """
     Options which can be set on group of peers or peer itself
     """
+    def __init__(self, **kwargs):
+        kwargs.setdefault("family_options", PeerFamilyOptions())
+        super().__init__(**kwargs)
     unnumbered: bool
     rr_client: bool
     next_hop_self: bool
     extended_next_hop: bool
     send_lcommunity: bool
     send_extcommunity: bool
-    import_limit: bool
+    import_limit: Optional[int]
+    import_limit_action: Optional[str]
     teardown_timeout: bool
     redistribute: bool
     passive: bool
@@ -75,6 +80,8 @@ class _OptionsDTO(_SharedOptionsDTO):
     soft_reconfiguration_inbound: bool
     not_active: bool
     mtu: int
+    family_options: PeerFamilyOptions
+    cluster_id: Optional[str]
 
 
 class DirectPeerDTO(MeshSession, _OptionsDTO):

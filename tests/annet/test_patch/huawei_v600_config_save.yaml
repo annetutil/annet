@@ -1,0 +1,48 @@
+- vendor: huawei
+  before:
+  after: |
+    configuration file auto-save backup-to-server server 1.1.1.1 transport-type sftp user cfg password XXXXXXX path xxxx
+    configuration file auto-save interval 43200 delay 1
+  patch: |
+    system-view
+    configuration file auto-save interval 43200 delay 1
+    configuration file auto-save backup-to-server server 1.1.1.1 transport-type sftp user cfg password XXXXXXX path xxxx
+    q
+    save
+
+- vendor: huawei
+  before: |
+    configuration file auto-save interval 43200 delay 1
+    configuration file auto-save backup-to-server server 1.1.1.1 transport-type sftp user cfg password XXXXXXX path xxxx
+  after: |
+    configuration file auto-save interval 43200 delay 1
+    configuration file auto-save backup-to-server server 1.1.1.1 transport-type ftp user cfg password XXXXXXX path xxxx
+  patch: |
+    system-view
+    configuration file auto-save backup-to-server server 1.1.1.1 transport-type ftp user cfg password XXXXXXX path xxxx
+    q
+    save
+
+- vendor: huawei
+  before: |
+    configuration file auto-save interval 43200 delay 1
+    configuration file auto-save backup-to-server server 1.1.1.1 transport-type sftp user cfg password XXXXXXX path xxxx
+  after: |
+    configuration file auto-save backup-to-server server 1.1.1.1 transport-type sftp user cfg password XXXXXXX path xxxx
+  patch: |
+    system-view
+    undo configuration file auto-save
+    q
+    save
+
+- vendor: huawei
+  before: |
+    configuration file auto-save interval 43200 delay 1
+    configuration file auto-save backup-to-server server 1.1.1.1 transport-type sftp user cfg password XXXXXXX path xxxx
+  after: |
+    configuration file auto-save interval 43200 delay 1
+  patch: |
+    system-view
+    undo configuration file auto-save backup-to-server server
+    q
+    save

@@ -52,13 +52,14 @@ def _parse_tree_with_params(raw_tree, scheme, context=None):
     for (raw_rule, children) in raw_tree.items():
         (row, params) = _parse_raw_rule(raw_rule, scheme)
         row_type = "normal"
+
         if row.startswith("!"):
             row = row[1:].strip()
             if len(row) == 0:
                 continue
             row_type = "ignore"
-        elif row.startswith(r"%context="):
-            context = _parse_context(context, row)
+        elif context_raw := params.get("context"):
+            context = _parse_context(context, context_raw)
             continue
         tree[raw_rule] = {
             "row": row,
@@ -71,21 +72,17 @@ def _parse_tree_with_params(raw_tree, scheme, context=None):
     return tree
 
 
-def _parse_raw_rule(raw_rule, scheme):
-    try:
-        index = raw_rule.index("%")
-        params = {
-            key: (value if len(value) != 0 else "1")
-            for (key, value) in re.findall(r"\s%([a-zA-Z_]\w*)(?:=([^\s]*))?", raw_rule)
-        }
-        if params:
-            raw_rule = raw_rule[:index].strip()
-    except ValueError:
-        params = {}
+def _parse_raw_rule(raw_rule: str, scheme) -> tuple[str, dict[str, str]]:
+    params: dict[str, str] = {}
 
-    row = re.sub(r"\s+", " ", raw_rule.strip())
+    row, *params_raw = re.split(r"(?:^|\s)%(?=[a-zA-Z_]\w*)", raw_rule)
+    for param in params_raw:
+        name, _, value = param.partition("=")
+        params[name.strip()] = value.strip() or "1"
+
+    row = re.sub(r"\s+", " ", row.strip())
     params = _fill_and_validate(params, scheme, raw_rule)
-    return (row, params)
+    return row, params
 
 
 def _fill_and_validate(params, scheme, raw_rule):
@@ -109,8 +106,5 @@ def match_context(ifcontext, context):
 
 
 def _parse_context(context, row):
-    keyword = r"%context="
-    if not row.startswith(keyword):
-        raise ValueError(row)
-    name, value = row[len(keyword):].strip().split(":")
+    name, value = row.strip().split(":")
     return lib.merge_dicts(context, {name: value})

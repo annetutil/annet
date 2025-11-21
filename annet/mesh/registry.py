@@ -6,6 +6,7 @@ from .match_args import MatchedArgs
 from .device_models import GlobalOptionsDTO
 from .peer_models import MeshSession, IndirectPeerDTO, VirtualLocalDTO, VirtualPeerDTO, DirectPeerDTO
 from .port_processor import PortProcessor, united_ports
+from .basemodel import is_dataclass_empty
 
 
 class DirectPeer(DirectPeerDTO):
@@ -22,7 +23,9 @@ class DirectPeer(DirectPeerDTO):
         self.all_connected_ports = all_connected_ports
 
     def is_empty(self):
-        return self.__dict__.keys() == {"match", "device", "ports", "all_connected_ports"}
+        if not is_dataclass_empty(self.family_options):
+            return False
+        return self.__dict__.keys() == {"match", "device", "ports", "all_connected_ports", "family_options"}
 
 
 class IndirectPeer(IndirectPeerDTO):
@@ -35,7 +38,9 @@ class IndirectPeer(IndirectPeerDTO):
         self.device = device
 
     def is_empty(self):
-        return self.__dict__.keys() == {"match", "device"}
+        if not is_dataclass_empty(self.family_options):
+            return False
+        return self.__dict__.keys() == {"match", "device", "family_options"}
 
 
 class VirtualLocal(VirtualLocalDTO):
@@ -48,7 +53,9 @@ class VirtualLocal(VirtualLocalDTO):
         self.device = device
 
     def is_empty(self):
-        return self.__dict__.keys() == {"match", "device"}
+        if not is_dataclass_empty(self.family_options):
+            return False
+        return self.__dict__.keys() == {"match", "device", "family_options"}
 
 
 class VirtualPeer(VirtualPeerDTO):

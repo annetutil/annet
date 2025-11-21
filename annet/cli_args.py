@@ -140,6 +140,12 @@ opt_tolerate_fails = Arg(
     help="Show errors without interrupting the generation"
 )
 
+opt_recache = Arg(
+    "--recache", default=False,
+    help="Force expiration of storage's local cache if it is supported"
+)
+
+
 # При параллельном запуске и включённом --tolerate-fails код возврата
 # всегда нулевой. Это не позволяет нам легко понять, прошла ли генерация
 # успешно для всех устройств. С этим флажком код будет ненулевой, если
@@ -248,6 +254,11 @@ opt_max_slots = Arg(
     help="The amount of devices parsed at the same time with asyncio"
 )
 
+opt_max_deploy = Arg(
+    "--max-deploy", default=DefaultFromEnv("ANN_MAX_DEPLOY", "0"), type=int,
+    help="The amount of devices deployed at the same time"
+)
+
 opt_hosts_range = Arg(
     "--hosts-range", type=valid_range,
     help="Only work with the specified hosts range: 10 - the first 10. 10:20 - host from 10th up to 20th"
@@ -348,6 +359,7 @@ opt_selected_context_name = Arg(
 
 # ====
 class CacheOptions(ArgGroup):
+    recache = opt_recache
     no_mesh = False
 
 
@@ -498,6 +510,7 @@ class DeployOptions(ShowDiffOptions, PatchOptions, DeviceCliOptions):
     no_check_diff = opt_no_check_diff
     entire_reload = opt_entire_reload
     rollback = opt_rollback
+    max_parallel = opt_max_deploy
 
 
 class SelectContext(ArgGroup):

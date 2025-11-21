@@ -331,7 +331,16 @@ def diff(
     loader: ann_gen.Loader,
     device_ids: List[Any]
 ) -> tuple[Mapping[Device, Union[Diff, PCDiff]], Mapping[Device, Exception]]:
-    """ Сгенерировать конфиг для устройств """
+    """ Сгенерировать дифф для устройств """
+    if args.config == "running":
+        fetcher = annet.deploy.get_fetcher()
+        ann_gen.live_configs = annet.lib.do_async(
+            fetcher.fetch(
+                [device for device in loader.devices if device.id in device_ids],
+                processes=args.parallel
+            ),
+            new_thread=True
+        )
     stdin = args.stdin(filter_acl=args.filter_acl, config=None)
 
     filterer = filtering.filterer_connector.get()
@@ -674,7 +683,7 @@ async def adeploy(
 ) -> ExitCode:
     """ Сгенерировать конфиг для устройств и задеплоить его """
     ret: ExitCode = 0
-    ann_gen.live_configs = await fetcher.fetch(devices=loader.devices, processes=args.parallel)
+    ann_gen.live_configs = await fetcher.fetch(devices=loader.devices, processes=args.parallel, max_slots=args.max_slots)
 
     device_ids = [d.id for d in loader.devices]
     for res in ann_gen.old_new(

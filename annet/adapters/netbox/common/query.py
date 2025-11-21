@@ -5,7 +5,7 @@ from typing import cast, List, Union, Iterable, Optional, TypedDict
 from annet.storage import Query
 
 FIELD_VALUE_SEPARATOR = ":"
-ALLOWED_GLOB_GROUPS = ["site", "tag", "role", "device_type", "status", "tenant"]
+ALLOWED_GLOB_GROUPS = ["site", "tag", "role", "device_type", "status", "tenant", "asset_tag"]
 
 
 class Filter(TypedDict, total=False):
@@ -16,6 +16,7 @@ class Filter(TypedDict, total=False):
     device_type: list[str]
     status: list[str]
     tenant: list[str]
+    asset_tag: list[str]
 
 
 @dataclass
@@ -37,19 +38,7 @@ class NetboxQuery(Query):
         return self.query
 
     def parse_query(self) -> Filter:
-        query_groups = defaultdict(list)
-        for q in self.globs:
-            if FIELD_VALUE_SEPARATOR in q:
-                glob_type, param = q.split(FIELD_VALUE_SEPARATOR, 2)
-                if glob_type not in ALLOWED_GLOB_GROUPS:
-                    raise Exception(f"unknown query type: '{glob_type}'")
-                if not param:
-                    raise Exception(f"empty param for '{glob_type}'")
-                query_groups[glob_type].append(param)
-            else:
-                query_groups["name"].append(q)
-
-        query_groups.default_factory = None
+        query_groups = parse_query(self.globs)
         return cast(Filter, query_groups)
 
     def is_empty(self) -> bool:
@@ -62,3 +51,18 @@ class NetboxQuery(Query):
             if FIELD_VALUE_SEPARATOR in q:
                 return False
         return True
+
+
+def parse_query(query: list[str]) -> dict[str, list[str]]:
+    query_groups = defaultdict(list)
+    for q in query:
+        if FIELD_VALUE_SEPARATOR in q:
+            glob_type, param = q.split(FIELD_VALUE_SEPARATOR, 2)
+            if glob_type not in ALLOWED_GLOB_GROUPS:
+                raise Exception(f"unknown query type: '{glob_type}'")
+            if not param:
+                raise Exception(f"empty param for '{glob_type}'")
+            query_groups[glob_type].append(param)
+        else:
+            query_groups["name"].append(q)
+    return dict(query_groups)

@@ -1,0 +1,21 @@
+- vendor: huawei
+  before: |
+    acl name TEST 2000
+      rule 30 permit source 1.2.3.4 0
+      rule 30 description desc1
+      rule 40 permit source 2.3.4.5 0
+      rule 40 description desc2
+  after: |
+    acl name TEST 2000
+      rule 30 permit source 1.2.3.4 0
+      rule 30 description desc1
+      rule 40 permit source 3.4.5.6 0
+  patch: |
+    system-view
+    acl name TEST 2000
+      undo rule 40 description
+      undo rule 40
+      rule 40 permit source 3.4.5.6 0
+      quit
+    q
+    save

@@ -19,7 +19,7 @@
     community-set NEW_COMMUNITY
       64496:3082
       end-set
-    commit
+    commit show-error
     exit
 
 - vendor: asr
@@ -51,7 +51,7 @@
     prefix-set block-bad-masks
       0.0.0.0/0 ge 25
       end-set
-    commit
+    commit show-error
     exit
 
 - vendor: asr
@@ -76,7 +76,7 @@
     community-set PRGS_COM_PORT_INDEX_170
       64496:10170
       end-set
-    commit
+    commit show-error
     exit
 
 - vendor: asr
@@ -116,7 +116,7 @@
         endif
       drop
       end-policy
-    commit
+    commit show-error
     exit
 
 - vendor: asr
@@ -250,5 +250,5 @@
         done
         endif
       end-policy
-    commit
+    commit show-error
     exit

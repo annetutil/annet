@@ -6,7 +6,6 @@ from typing import Optional, Type, Union
 
 from annet.connectors import CachedConnector
 
-
 MinDurationT = Optional[Union[str, int]]
 
 
@@ -145,9 +144,9 @@ def function(arg=None, /, **outer_kwargs):
 
 def contextmanager(arg=None, /, **outer_kwargs):
     def decorator(cls_or_func):
-        if inspect.isfunction(cls_or_func):
-            cache = None
+        cache = None
 
+        if inspect.isfunction(cls_or_func):
             @contextlib.contextmanager
             @wraps(cls_or_func)
             def wrapper(*args, **kwargs):
@@ -159,12 +158,61 @@ def contextmanager(arg=None, /, **outer_kwargs):
 
             return wrapper
         else:
-            @wraps(cls_or_func.__enter__)
-            def enter(*args, **kwargs):
-                tracing_connector.get().contextmanager(cls_or_func, **outer_kwargs)  # redefine __enter__ and __exit__
-                return cls_or_func.__enter__(*args, **kwargs)  # pylint: disable=unnecessary-dunder-call
+            original_enter = cls_or_func.__enter__
+            original_exit = cls_or_func.__exit__
 
-            setattr(cls_or_func, "__enter__", enter)
+            @wraps(original_enter)
+            def one_shot_enter(*args, **kwargs):
+                """Wrap after first call, tracing_connector was set up"""
+                nonlocal cache
+                if cache is None:
+                    cls_or_func.__enter__ = original_enter
+                    cls_or_func.__exit__ = original_exit
+                    cache = tracing_connector.get().contextmanager(cls_or_func, **outer_kwargs)
+                return cache.__enter__(*args, **kwargs)  # pylint: disable=unnecessary-dunder-call
+
+            @wraps(original_exit)
+            def one_shot_exit(*args, **kwargs):
+                nonlocal cache
+                return cache.__exit__(*args, **kwargs)
+
+            setattr(cls_or_func, "__enter__", one_shot_enter)
+            setattr(cls_or_func, "__exit__", one_shot_exit)
+
             return cls_or_func
 
     return decorator if arg is None else decorator(arg)
+
+
+def class_methods(arg=None, /, **outer_kwargs):
+    def decorator(cls):
+        has_enter, has_exit = False, False
+
+        for name, attr in inspect.getmembers(cls, lambda x: (
+            inspect.isroutine(x)
+            and not inspect.ismethoddescriptor(x)
+            and not inspect.isbuiltin(x)
+        )):
+            if getattr(attr, "_disable_class_methods", False):
+                continue
+            if name == "__enter__":
+                has_enter = True
+            elif name == "__exit__":
+                has_exit = True
+            else:
+                method = function(**outer_kwargs)(attr)
+                if isinstance(inspect.getattr_static(cls, name), staticmethod):
+                    method = staticmethod(method)
+                setattr(cls, name, method)
+
+        if all((has_enter, has_exit)):
+            cls = contextmanager(**outer_kwargs)(cls)
+
+        return cls
+
+    return decorator if arg is None else decorator(arg)
+
+
+def disable_class_methods(func):
+    setattr(func, "_disable_class_methods", True)
+    return func

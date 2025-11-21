@@ -1,14 +1,19 @@
 from abc import abstractmethod, ABC
-from typing import Protocol, Generic, TypeVar
+from typing import Generic, TypeVar
 
 from annet.annlib.netdev.views.hardware import HardwareView
 from .manufacturer import get_breed, get_hw
-from .models import NetboxDevice, Interface, IpAddress, Prefix
+from .models import NetboxDevice, Interface, IpAddress, Prefix, \
+    FHRPGroupAssignment, FHRPGroup
 
 NetboxDeviceT = TypeVar("NetboxDeviceT", bound=NetboxDevice)
 InterfaceT = TypeVar("InterfaceT", bound=Interface)
 IpAddressT = TypeVar("IpAddressT", bound=IpAddress)
 PrefixT = TypeVar("PrefixT", bound=Prefix)
+FHRPGroupT = TypeVar("FHRPGroupT", bound=FHRPGroup)
+FHRPGroupAssignmentT = TypeVar(
+    "FHRPGroupAssignmentT", bound=FHRPGroupAssignment,
+)
 
 
 def get_device_breed(device: NetboxDeviceT) -> str:
@@ -30,9 +35,19 @@ def get_device_hw(device: NetboxDeviceT) -> HardwareView:
     return HardwareView("", "")
 
 
-class NetboxAdapter(ABC, Generic[NetboxDeviceT, InterfaceT, IpAddressT, PrefixT]):
+class NetboxAdapter(
+    ABC,
+    Generic[
+        NetboxDeviceT,
+        InterfaceT,
+        IpAddressT,
+        PrefixT,
+        FHRPGroupT,
+        FHRPGroupAssignmentT,
+    ],
+):
     @abstractmethod
-    def list_all_fqdns(self) -> list[str]:
+    def list_fqdns(self, query: dict[str, list[str]] | None = None) -> list[str]:
         raise NotImplementedError()
 
     @abstractmethod
@@ -57,4 +72,16 @@ class NetboxAdapter(ABC, Generic[NetboxDeviceT, InterfaceT, IpAddressT, PrefixT]
 
     @abstractmethod
     def list_ipprefixes(self, prefixes: list[str]) -> list[PrefixT]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def list_fhrp_group_assignments(
+            self, iface_ids: list[int],
+    ) -> list[FHRPGroupAssignmentT]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def list_fhrp_groups(
+            self, ids: list[int],
+    ) -> list[FHRPGroupT]:
         raise NotImplementedError()

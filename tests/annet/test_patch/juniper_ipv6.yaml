@@ -1,0 +1,109 @@
+- vendor: juniper
+  before: |-
+    interfaces {
+        xe-0/0/33 {
+            unit 80 {
+                family inet6 {
+                    address fd00:008:fc00:0041:0102::1/80;
+                }
+            }
+        }
+    }
+  after: |-
+    interfaces {
+        xe-0/0/33 {
+            unit 80 {
+                family inet6 {
+                    address fd00:8:fc00:41:102::1/80;
+                }
+            }
+        }
+    }
+  patch: ""
+
+- vendor: juniper
+  before: |-
+    interfaces {
+        xe-0/0/33 {
+            unit 80 {
+                family inet6 {
+                    address fd00:8:fc00:41:102::1/80;
+                }
+            }
+        }
+    }
+  after: |-
+    interfaces {
+        xe-0/0/33 {
+            unit 80 {
+                family inet6 {
+                    address fd00:008:fc00:0041:0102::1/80;
+                }
+            }
+        }
+    }
+  patch: ""
+
+- vendor: juniper
+  before: |-
+    interfaces {
+        xe-0/0/33 {
+            unit 80 {
+                family inet6 {
+                    address fd00:8:fc00:41:102::1/80;
+                    address fd00:0008:fc00:0042:0102:0000:0000:0001/64;
+                }
+            }
+        }
+    }
+  after: |-
+    interfaces {
+        xe-0/0/33 {
+            unit 80 {
+                family inet6 {
+                    address fd00:008:fc00:0041:0102::1/80;
+                    address fd00:8:fc00:42:102::1/64;
+                }
+            }
+        }
+    }
+  patch: ""
+
+- vendor: juniper
+  before: |-
+    interfaces {
+        et-0/0/2 {
+            vlan-tagging;
+            unit 80 {
+                vlan-id 80;
+                family inet6 {
+                    address fd00:8:fa01:1:102::/127;
+                }
+            }
+            unit 90 {
+                vlan-id 90;
+                family inet6 {
+                    address fd00:8:fa01:0:102::/127;
+                }
+            }
+        }
+    }
+  after: |-
+    interfaces {
+        et-0/0/2 {
+            vlan-tagging;
+            unit 80 {
+                vlan-id 80;
+                family inet6 {
+                    address fd00:8:fa01:0001:102::/127;
+                }
+            }
+            unit 90 {
+                vlan-id 90;
+                family inet6 {
+                    address fd00:8:fa01:0000:102::/127;
+                }
+            }
+        }
+    }
+  patch: ""

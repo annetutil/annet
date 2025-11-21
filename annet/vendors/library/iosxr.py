@@ -14,7 +14,7 @@ class IosXrVendor(AbstractVendor):
 
         before.add_cmd(Command("configure exclusive"))
         if do_commit:
-            after.add_cmd(Command("commit"))
+            after.add_cmd(Command("commit show-error"))
         after.add_cmd(Command("exit"))
 
         return before, after
