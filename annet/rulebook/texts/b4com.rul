@@ -35,3 +35,13 @@ interface */(ce|xe|po|eth(-0-)?|vlan1\.)[0-9\/]+$/     %logic=common.permanent %
         !dcbx *
         !exit
 ip community-list ~
+router bgp *
+    bgp ~
+    no neighbor * send-community extended
+    neighbor * peer-group                       %logic=b4com.bgp.undo_peer_group
+    neighbor ~                                  %logic=b4com.bgp.undo_peer
+    address-family ~
+        max-paths ebgp *
+        neighbor * peer-group                   %logic=b4com.bgp.undo_peer_group
+        neighbor ~                              %logic=b4com.bgp.undo_peer
+        no neighbor * send-community extended
