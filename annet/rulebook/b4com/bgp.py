@@ -2,7 +2,6 @@ from annet.annlib.types import Op
 from annet.rulebook import common
 
 
-
 def undo_peer_group(rule, key, diff, **_):
     """Correctly removes neighbors that were added to the peer-group."""
     for action in diff[Op.ADDED]:
