@@ -65,7 +65,9 @@ def add_context_extension(path: str, default: str, *checks: str) -> str:
         return path + default
     elif len(existing) == 1:
         return existing[0]
-    raise ValueError(f"Multiple context files found: {existing}; either delete all but one, or merge them")
+    exc = ValueError(f"Multiple context files found: {existing}; either delete all but one, or merge them")
+    setattr(exc, "formatted_output", str(exc))
+    raise exc
 
 
 def get_template_context_path() -> str:
