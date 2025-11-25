@@ -96,17 +96,21 @@ def _read_old_new_diff_patch(old: Dict[str, Dict], new: Dict[str, Dict], hw: Har
     return rb, diff_obj, pre, patchtree
 
 
-def _read_old_new_configs(old_path, new_path):
+def _read_old_new_configs(old_path: str, new_path: str, empty_missing: bool = False) -> tuple[str, str]:
     _logger = get_logger()
-    with open(old_path) as f:
-        _logger.debug("Reading %r ...", old_path)
-        old_config = f.read()
+    ret = []
+    for path in (old_path, new_path):
+        _logger.debug("Reading %r ...", path)
+        if not os.path.exists(path):
+            if empty_missing:
+                ret.append("")
+                continue
+            else:
+                raise FileNotFoundError(f"File {path} not found")
+        with open(path) as f:
+            ret.append(f.read())
 
-    with open(new_path) as f:
-        _logger.debug("Reading %r ...", new_path)
-        new_config = f.read()
-
-    return old_config, new_config
+    return tuple(ret)
 
 
 def _read_old_new_hw(old_path: str, old_config: str, new_path: str, new_config: str, args: cli_args.FileInputOptions):
@@ -149,12 +153,21 @@ def _read_old_new_cfgdumps(args: cli_args.FileInputOptions):
     if os.path.isdir(old_path) and os.path.isdir(new_path):
         if cfgdump_reg.match(os.path.basename(old_path)) and cfgdump_reg.match(os.path.basename(new_path)):
             yield (old_path, new_path)
-    for name in os.listdir(old_path):
+    names = sorted(set(os.listdir(old_path)) | set(os.listdir(new_path)))
+    for name in names:
         old_path_name = os.path.join(old_path, name)
         new_path_name = os.path.join(new_path, name)
-        if not os.path.exists(new_path_name):
-            _logger.debug("Ignoring file %s: not exist %s", name, new_path_name)
-            continue
+
+        if not args.include_missing:
+            skipped = False
+            for path in (old_path_name, new_path_name):
+                if not os.path.exists(path):
+                    _logger.debug("Ignoring file %s: not exist %s", name, path)
+                    skipped = True
+                    break
+            if skipped:
+                continue
+
         yield (old_path_name, new_path_name)
 
 
@@ -779,7 +792,7 @@ def file_diff_worker(
             if diff_text:
                 yield diff_file.label, diff_text, False
     else:
-        old_config, new_config = _read_old_new_configs(old_path, new_path)
+        old_config, new_config = _read_old_new_configs(old_path, new_path, args.include_missing)
         if old_config == new_config:
             return
 
@@ -807,7 +820,7 @@ def file_patch_worker(old_new: Tuple[str, str], args: cli_args.FileDiffOptions) 
             label = os.path.join(os.path.basename(new_path), relative_cfg_path)
             yield label, cfg_text, False
     else:
-        old_config, new_config = _read_old_new_configs(old_path, new_path)
+        old_config, new_config = _read_old_new_configs(old_path, new_path, args.include_missing)
         if old_config == new_config:
             return
 
