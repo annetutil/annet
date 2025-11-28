@@ -1,20 +1,25 @@
+from __future__ import annotations
+from collections.abc import Iterable
 import copy
 import operator
+import re
+import sys
 import textwrap
 from collections import OrderedDict as odict
 from typing import (
     Any,
-    Dict,
+    Callable,
     Iterator,
-    List,
-    Optional,
-    Tuple,
-    Union,
+    TypeAlias,
+    TypedDict,
 )
+if sys.version_info >= (3, 11):
+    from typing import NotRequired as NotRequired
+else:
+    from typing import Union as NotRequired
 
 from .lib import jun_activate, merge_dicts, strip_annotation, uniq
-from .rbparser import platform
-from .rbparser.ordering import compile_ordering_text
+from .rbparser.ordering import CompiledTree, compile_ordering_text
 from .rulebook.common import call_diff_logic
 from .rulebook.common import default as common_default
 from annet.vendors.tabparser import CommonFormatter
@@ -34,7 +39,7 @@ class AclNotExclusiveError(AclError):
 class PatchRow:
     row: str
 
-    def __init__(self, row: str):
+    def __init__(self, row: str) -> None:
         self.row = row
 
     def __eq__(self, other: object) -> bool:
@@ -53,11 +58,11 @@ class PatchRow:
 
 class PatchItem:
     row: str
-    child: "Union[PatchTree, None]"
-    context: Dict[str, str]
-    sort_key: Tuple[Any, ...]
+    child: PatchTree | None
+    context: dict[str, str]
+    sort_key: tuple[Any, ...]
 
-    def __init__(self, row, child, context, sort_key):
+    def __init__(self, row: str, child: PatchTree | None, context: dict[str, str], sort_key: tuple[Any, ...]) -> None:
         self.row = row
         self.child = child
         self.context = context
@@ -72,7 +77,7 @@ class PatchItem:
         }
 
     @classmethod
-    def from_json(cls, data: dict[str, Any]) -> "PatchItem":
+    def from_json(cls, data: dict[str, Any]) -> PatchItem:
         return cls(
             row=data["row"],
             child=PatchTree.from_json(data["child"]) if data["child"] is not None else None,
@@ -80,10 +85,10 @@ class PatchItem:
             sort_key=data["sort_key"],
         )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return (
             f"PatchItem(\n"
-            f'    row="{self.row}",\n'
+            f"    row={self.row!r},\n"
             f"    child={textwrap.indent(str(self.child), '    ').strip()},\n"
             f"    context={self.context}\n"
             f"    sort_key={self.sort_key}\n"
@@ -92,17 +97,23 @@ class PatchItem:
 
 
 class PatchTree:
-    itms: List[PatchItem]
+    itms: list[PatchItem]
 
-    def __init__(self, row: Optional[str] = None):
+    def __init__(self, row: str | None = None) -> None:
         self.itms = []
         if row:
             self.add(row, {})
 
-    def add(self, row: str, context: Dict[str, str], sort_key=()) -> None:
+    def add(self, row: str, context: dict[str, str], sort_key: tuple[Any, ...] = ()) -> None:
         self.itms.append(PatchItem(row, None, context, sort_key))
 
-    def add_block(self, row: str, subtree: "Optional[PatchTree]" = None, context: Dict[str, str] = None, sort_key=()) -> "PatchTree":
+    def add_block(
+        self,
+        row: str,
+        subtree: PatchTree | None = None,
+        context: dict[str, str] | None = None,
+        sort_key: tuple[Any, ...] = (),
+    ) -> PatchTree:
         if subtree is None:
             subtree = PatchTree()
         if context is None:
@@ -110,11 +121,11 @@ class PatchTree:
         self.itms.append(PatchItem(row, subtree, context, sort_key))
         return subtree
 
-    def items(self) -> "Iterator[Tuple[str, Union[PatchTree, None]]]":
+    def items(self) -> Iterator[tuple[str, PatchTree | None]]:
         for item in self.itms:
             yield str(item.row), item.child
 
-    def asdict(self) -> Dict:
+    def asdict(self) -> odict[str, Any]:
         ret = odict()
         for row in uniq(i.row for i in self.itms):
             subtrees = []
@@ -131,7 +142,7 @@ class PatchTree:
         return [i.to_json() for i in self.itms]
 
     @classmethod
-    def from_json(cls, data: list[dict[str, Any]]) -> "PatchTree":
+    def from_json(cls, data: list[dict[str, Any]]) -> PatchTree:
         ret = cls()
         ret.itms = [PatchItem.from_json(i) for i in data]
         return ret
@@ -139,13 +150,13 @@ class PatchTree:
     def sort(self) -> None:
         self.itms.sort(key=operator.attrgetter("sort_key"))
         for item in self.itms:
-            if item.child:
+            if item.child is not None:
                 item.child.sort()
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self.itms)
 
-    def __str__(self):
+    def __str__(self) -> str:
         n = ",\n"
         itms = map(lambda x: textwrap.indent(str(x), "    "), self.itms)
         return (
@@ -157,8 +168,48 @@ class PatchTree:
         )
 
 
+def string_similarity(s: str, pattern: str) -> float:
+    """
+    >>> string_similarity("abc", "ab")
+    0.6666666666666666
+    >>> string_similarity("aabb", "ab")
+    0.5
+    >>> string_similarity("aabb", "x")
+    0.0
+    >>> string_similarity("a", "ab")
+    1.0
+    """
+    return len(set(s) & set(pattern)) / len(s)
+
+
+class _ReversedSortWrapper:
+    def __init__(self, obj):
+        self.obj = obj
+
+    def __lt__(self, other):
+        return not (self.obj < other.obj)
+
+
+def reversed_sort_by(obj):
+    return _ReversedSortWrapper(obj)
+
+
+_PatchRowSortItem: TypeAlias = tuple[
+    float,
+    # position of a row inside current block, might be negative for reverse commands
+    tuple[str, ...],
+    # "key" of a row: a tuple of regex groups that this row matched
+
+    # note: position will be used for sorting, but keys are used only for grouping
+]
+PatchRowSortKey: TypeAlias = tuple[
+    tuple[_PatchRowSortItem, ...],  # path from rulebook root to the deepest match
+    bool,  # is direct command?
+]
+
+
 class Orderer:
-    def __init__(self, rb, vendor):
+    def __init__(self, rb: CompiledTree, vendor: str) -> None:
         self.rb = rb
         self.vendor = vendor
 
@@ -168,90 +219,185 @@ class Orderer:
         for _, defs in reversed(ref_tracker.configs()):
             self.insert(defs)
 
-    def insert(self, rules):
+    def insert(self, rules: str | dict) -> None:
         if isinstance(rules, dict):
             fmtr = CommonFormatter()
             rules = fmtr.join(rules)
-        rules = compile_ordering_text(rules, self.vendor)
-        self.rb = merge_dicts(rules, self.rb)
+        rb = compile_ordering_text(rules, self.vendor)
+        self.rb = self.rb + rb
 
-    def rule_weight(self, row, rule, regexp_key):
-        return len(set(row).intersection(set(rule["attrs"][regexp_key].pattern))) / len(row)
-
-    def get_order(self, row, cmd_direct, scope: str | None = None):
-        f_order = None
-        f_weight = 0
-        f_rule = ""
-        children = []
-        ordering = self.rb
-
+    def get_order(
+        self,
+        row: tuple[str, ...],
+        cmd_direct: bool,
+        keys: tuple[tuple[str, ...], ...] = (),  # keys are not present when ordering config
+        scope: str | None = None,
+    ) -> PatchRowSortKey:
         block_exit = registry_connector.get()[self.vendor].exit
 
-        for (order, (raw_rule, rule)) in enumerate(ordering.items()):
-            if (
-                (rule_scope := rule["attrs"]["scope"]) is not None
-                and scope not in rule_scope
-            ):
-                continue
+        vectors: list[tuple[
+            tuple[float, ...],  # weight(=priority) of a vector, shows how well the vector matches the row, best one wins
+            PatchRowSortKey,  # key that will be used to order patch rows
+        ]] = []
 
-            if rule["attrs"]["global"]:
-                children.append((raw_rule, rule))
+        # we might have to consider several paths through the rulebook,
+        # so we do it in BFS-style: start from the root and go deeper where possible
+        queue: list[
+            tuple[
+                # prefixes: gradually constructed from scratch
+                tuple[float, ...],  # weights prefix
+                tuple[_PatchRowSortItem, ...],  # vector prefix
+                # suffixes: gradually deconstructed until exhausted
+                tuple[str, ...],  # row suffix
+                tuple[tuple[str, ...], ...],  # keys suffix
+                #
+                CompiledTree,  # children
+            ]
+        ] = [
+            (
+                (),
+                (),
+                row,
+                keys,
+                self.rb,
+            )
+        ]
 
-            direct_matched = bool(rule["attrs"]["direct_regexp"].match(row))
-            if not rule["attrs"]["order_reverse"] and (direct_matched or rule["attrs"]["reverse_regexp"].match(row)):
-                # если не указано order_reverse - правило считается прямым
-                regexp_key = ("direct_regexp" if direct_matched else "reverse_regexp")
-                weight = self.rule_weight(row, rule, regexp_key)
-                if f_order is None or f_weight < weight:
-                    f_order = order
-                    f_weight = weight
-                    f_rule = (raw_rule, rule["attrs"][regexp_key])
-                children.extend(ordering[raw_rule]["children"].items())
+        while queue:
+            weights_prefix, vector_prefix, row_suffix, keys_suffix, children = queue.pop()
 
-            elif rule["attrs"]["order_reverse"] and not cmd_direct and direct_matched:
-                weight = self.rule_weight(row, rule, "direct_regexp")
-                if f_order is None or f_weight < weight or (f_weight == weight and not cmd_direct):
-                    f_order = order
-                    f_weight = weight
-                    f_rule = (raw_rule, rule["attrs"]["direct_regexp"])
-                    cmd_direct = True
-                children = []
+            # shared instance that will be stored in the queue several times and mutated simultaneously,
+            # this is done this way to avoid walking over children twice: we do only one pass both collecting children and filling the queue
+            sub_children: CompiledTree = []
 
-            elif block_exit and block_exit == row:
-                f_order = float("inf")
-                f_rule = (raw_rule, block_exit)
-                cmd_direct = True
-                children = []
+            for rb_idx, (raw_rule, rule) in enumerate(children, start=0):
+                rb_attrs = rule["attrs"]
 
-        return (f_order or 0), cmd_direct, odict(children), f_rule
+                if not keys_suffix:  # we are either ordering a config or keys are somehow exhausted - not a problem
+                    key = ()
+                else:
+                    key = keys_suffix[0]
 
-    def order_config(self, config):
+                # we reached the end of our command,
+                # submit the results - they will be considered at the end
+                if not row_suffix:
+                    vectors.append((
+                        weights_prefix,
+                        (vector_prefix, cmd_direct),
+                    ))
+                    continue
+
+                if (
+                    (rule_scope := rb_attrs["scope"]) is not None
+                    and scope not in rule_scope
+                ):
+                    continue
+
+                row_item = row_suffix[0]
+                direct_matched = bool(rb_attrs["direct_regexp"].match(row_item))
+                reverse_matched = bool(rb_attrs["reverse_regexp"].match(row_item))
+                order_reverse = rb_attrs["order_reverse"]
+
+                # global rules
+                if rule["attrs"]["global"]:
+                    sub_children.append((raw_rule, rule))
+
+                if not order_reverse and (direct_matched or reverse_matched):
+                    if direct_matched:
+                        weight = string_similarity(row_item, rb_attrs["direct_regexp"].pattern)
+                    else:
+                        # sometimes the same command matched one rule in "direct" direction, and the other rule in "reverse" direction;
+                        # for example 'remove add' on Routeros is both a direct command for 'remove' and a reverse command for 'add';
+                        # in such case the "direct" option should be choosed, so we deprioritize reverse matches by reducing their weight:
+                        weight = string_similarity(row_item, rb_attrs["reverse_regexp"].pattern) * 0.5
+
+                    if rule["attrs"]["split"]:
+                        # note: create new list so that later we do not mutate previous instances
+                        sub_children = rule["children"].copy()
+                    else:
+                        sub_children.extend(rule["children"])
+
+                    is_final_cmd_item = len(row_suffix) == 1
+                    queue.append((
+                        weights_prefix + (weight,),
+                        vector_prefix + ((rb_idx * (-1 if is_final_cmd_item and not cmd_direct else +1), key),),
+                        row_suffix[1:],
+                        keys_suffix[1:],
+                        sub_children,  # note: mutable copy
+                    ))
+
+                elif order_reverse and not cmd_direct and direct_matched:
+                    weight = string_similarity(row_item, rb_attrs["direct_regexp"].pattern)
+                    sub_children[:] = []
+                    queue.append((
+                        weights_prefix + (weight,),
+                        vector_prefix + ((+rb_idx, key),),
+                        row_suffix[1:],
+                        keys_suffix[1:],
+                        sub_children,  # note: mutable copy
+                    ))
+
+                elif block_exit and block_exit == row_item:
+                    sub_children[:] = []
+                    vectors.append((
+                        weights_prefix + (float("inf"),),
+                        (vector_prefix + ((float("inf"), ()),), cmd_direct),
+                    ))
+
+                else:
+                    pass
+
+            # we reached a leaf - submit results
+            if not sub_children:
+                vectors.append((
+                    weights_prefix,
+                    (vector_prefix, cmd_direct),
+                ))
+
+        if not vectors:
+            # no match -> zero index
+            return (
+                (
+                    (
+                        0,  # position
+                        (),  # key
+                    ),
+                ),
+                cmd_direct,
+            )
+
+        vectors.sort(key=lambda x: (
+            -len(x[1][0]),  # pick vectors with most precise position
+            reversed_sort_by(x[0]),  # then amongst them ones with the biggest weight
+            x[1],  # if there are multiple options - pick the one with smallest index
+        ))
+
+        return (
+            vectors[0]  # the coolest vector - the one we are looking for!
+            [1]  # pass only sort key, weights are no longer important
+        )
+
+    def order_config(self, config: dict[str, Any], _path: tuple[str, ...] = ()) -> dict[str, Any]:
         if self.vendor not in registry_connector.get():
             return config
         if not config:
             return odict()
 
-        ordered = []
-        reverse_prefix = registry_connector.get()[self.vendor].reverse
+        ret: dict[str, Any] = {}
+        sort_keys: dict[str, PatchRowSortKey] = {}
 
+        reverse_prefix = registry_connector.get()[self.vendor].reverse
         for row, children in config.items():
             cmd_direct = not row.startswith(reverse_prefix)
-            (order, direct, rb, _) = self.get_order(row, cmd_direct)
-            child_orderer = Orderer(rb, self.vendor)
-            children = child_orderer.order_config(children)
-            ordered.append({
-                "row": row,
-                "children": children,
-                "direct": direct,
-                "order": order,
-            })
+
+            sort_key = self.get_order(_path + (row,), cmd_direct=cmd_direct)
+            children = self.order_config(children, _path=(*_path, row))
+            ret[row] = children
+            sort_keys[row] = sort_key
 
         return odict(
-            (item["row"], item["children"])
-            for item in sorted(ordered, key=(lambda item: (
-                (item["order"] if item["direct"] else -item["order"]),
-                item["direct"],
-            )))
+            (row, children)
+            for row, children in sorted(ret.items(), key=lambda kv: sort_keys[kv[0]])
         )
 
 
@@ -349,7 +495,7 @@ def apply_diff_rb(old, new, rb):
     return diff_pre
 
 
-def make_pre(diff: Diff, _parent_match=None) -> Dict[str, Any]:
+def make_pre(diff: Diff, _parent_match=None) -> dict[str, Any]:
     pre = odict()
     for (op, row, children, match) in diff:
         if _parent_match and _parent_match["attrs"]["multiline"]:
@@ -398,17 +544,49 @@ _comment_macros = {
 }
 
 
-def make_patch(pre, rb, hw, add_comments, orderer=None, _root_pre=None, do_commit=True):
-    patch = []
-    if not orderer:
-        orderer = Orderer(rb["ordering"], hw.vendor)
+class _PreAttrs(TypedDict):
+    logic: Callable[..., Iterable[tuple[bool | None, str, odict[str, _Pre] | None]]]
+    diff_logic: Callable
+    regexp: re.Pattern[str]
+    reverse: str
+    comment: list[str]
+    multiline: bool
+    parent: NotRequired[bool]
+    force_commit: bool
+    ignore_case: bool
+    context: Any
 
-    for (raw_rule, content) in pre.items():
-        for (key, diff) in content["items"].items():
-            # чтобы logic не мог поменять атрибуты
+
+class _DiffItem(TypedDict):
+    row: str
+    children: odict[str, _Pre]
+
+
+class _Pre(TypedDict):
+    attrs: _PreAttrs
+    items: odict[tuple[str, ...], dict[Op, list[_DiffItem]]]
+
+
+class _PatchRow(TypedDict):
+    row: tuple[str, ...]
+    keys: tuple[tuple[str, ...], ...]
+    attrs: _PreAttrs
+    direct: bool
+    rules: tuple[str, ...]
+    block: bool
+
+
+def _iterate_over_patch(
+    pre: odict[str, _Pre],
+    hw,
+    do_commit: bool,
+    add_comments: bool,
+    _root_pre: odict[str, _Pre] | None = None,
+) -> Iterable[_PatchRow]:
+    for raw_rule, content in pre.items():
+        for key, diff in content["items"].items():
             rule_pre = content.copy()
             attrs = copy.deepcopy(rule_pre["attrs"])
-
             iterable = attrs["logic"](
                 rule=attrs,
                 key=key,
@@ -418,57 +596,193 @@ def make_patch(pre, rb, hw, add_comments, orderer=None, _root_pre=None, do_commi
                 root_pre=(_root_pre or pre),
             )
             for (direct, row, sub_pre) in iterable:
-                if direct is not None:
-                    patch_row = row
-                    if add_comments:
-                        comments = " ".join(attrs["comment"])
-                        for (macro, m_value) in _comment_macros.items():
-                            comments = comments.replace(macro, m_value)
-                        if comments:
-                            patch_row = "%s %s" % (row, comments)
+                if direct is None:
+                    continue
 
-                    # pylint: disable=unused-variable
-                    (order, order_direct, ordering, order_rule) = orderer.get_order(row, direct, scope="patch")
-                    fmt_row = patch_row
-                    # fmt_row += "  # %s" % str(order_rule)  # uncomment to debug ordering
+                if add_comments:
+                    comments = " ".join(attrs["comment"])
+                    for (macro, m_value) in _comment_macros.items():
+                        comments = comments.replace(macro, m_value)
+                    if comments:
+                        row = f"{row} {comments}"
 
-                    if not do_commit and attrs.get("force_commit", False):
-                        # if do_commit is false skip patch that couldn't be applied without commit
-                        continue
+                if not do_commit and attrs.get("force_commit", False):
+                    # if do_commit is false skip patch that couldn't be applied without commit
+                    continue
 
-                    patch.append({
-                        "row": fmt_row,
-                        "children": (PatchTree() if not sub_pre else make_patch(
-                            pre=sub_pre,
-                            rb={"ordering": ordering},  # Нужен только кусок, касающийся правил для ордеринга
-                            hw=hw,
-                            add_comments=add_comments,
-                            _root_pre=(_root_pre or pre),
-                            do_commit=do_commit,
-                        )),
-                        "raw_rule": raw_rule,
-                        "direct": direct,
-                        "order": order,
-                        "order_direct": order_direct,
-                        "parent": attrs.get("parent", False),
-                        "force_commit": attrs.get("force_commit", False),
-                        "ignore_case": attrs.get("ignore_case", False),
-                        "context": attrs["context"],
-                    })
-    tree = PatchTree()
-    for item in patch:
-        sort_key = (
-            (item["order"] if item["order_direct"] else -item["order"]),
-            item["raw_rule"],
-            item["order_direct"],
+                if not sub_pre:
+                    # leaf -> emit itself
+                    yield _PatchRow(
+                        row=(row,),
+                        keys=(key,),
+                        attrs=attrs.copy(),
+                        direct=direct,
+                        rules=(raw_rule,),
+                        block=False,
+                    )
+
+                else:
+                    # block -> emit children, but no block
+                    for sub_row in _iterate_over_patch(
+                        sub_pre,
+                        hw=hw,
+                        add_comments=add_comments,
+                        do_commit=do_commit,
+                        _root_pre=(_root_pre or pre),
+                    ):
+                        yield _PatchRow(
+                            row=(row, *sub_row["row"]),
+                            keys=(key, *sub_row["keys"]),
+                            attrs=sub_row["attrs"],
+                            direct=sub_row["direct"],
+                            rules=(raw_rule, *sub_row["rules"]),
+                            block=sub_row["block"],
+                        )
+
+
+def sort_patch_rows(orderer: Orderer, patch_rows: list[_PatchRow]) -> list[_PatchRow]:
+    """
+    regular sorting will not work here
+    consider this case:
+    ```huawei.order
+    interface *
+        ip address
+        ipv6 address
+    ```
+    ```patch
+    interface A
+        ip address 123
+        ipv6 address AB::CD
+
+    interface B
+        ip address 234
+        ipv6 address CD::EF
+    ```
+
+    If we just take the indices of rulebook entries, then we get this result:
+    ```
+    interface A ip address 123       -> (0, 0)
+    # ^ we took 0-th entry at the root ('interface *' block), and then 0-th entry there ('ip address' line)
+    interface A ipv6 address AB::CD  -> (0, 1)
+    interface B ip address 234       -> (0, 0)
+    interface B ipv6 address CD::EF  -> (0, 1)
+    ```
+    If we then sort this, we get this:
+    ```
+    interface A ip address 123       -> (0, 0)
+    interface B ip address 234       -> (0, 0)
+    interface A ipv6 address AB::CD  -> (0, 1)
+    interface B ipv6 address CD::EF  -> (0, 1)
+    ```
+    which is not good, since commands of the same interface are not interleaved.
+
+    The solution is to not only use indices while sorting, but also consider the keys (see _PatchRowSortItem above):
+    ```
+    interface A ip address 123       -> ((0, A), (0, ()))
+    interface A ipv6 address AB::CD  -> ((0, A), (1, ()))
+    interface B ip address 234       -> ((0, B), (0, ()))
+    interface B ipv6 address CD::EF  -> ((0, B), (1, ()))
+    ```
+    We should sort that by indices, while simultaneously group by keys:
+      at some particular index the lines must be grouped by key.
+    It prevents orderings like this, since at index 0 in the root lines are not grouped by key:
+    ```
+    interface A ip address 123       -> ((0, A), (0, ()))
+    interface B ip address 234       -> ((0, B), (0, ()))
+    interface A ipv6 address AB::CD  -> ((0, A), (1, ()))
+    interface B ipv6 address CD::EF  -> ((0, B), (1, ()))
+    #                                        ^ mess in this column
+    ```
+    """
+
+    sort_keys = []
+    string_idxs: dict[tuple[tuple[str, ...], ...], int] = {}
+
+    for i, row in enumerate(patch_rows):
+        orderer_pos, direct = orderer.get_order(
+            row=row["row"],
+            keys=row["keys"],
+            cmd_direct=row["direct"],
+            scope="patch",
         )
-        if (not item["children"] and not item["parent"]) or not item["direct"]:
-            tree.add(item["row"], item["context"], sort_key)
-        else:
-            tree.add_block(item["row"], item["children"], item["context"], sort_key)
-        if item["force_commit"]:
-            tree.add("commit", item["context"], sort_key)
-    tree.sort()
+
+        # record where each command key first occured - all other occurences will be attempted to be placed nearby
+        keys = tuple(key for _, key in orderer_pos)
+        for prefix_size in range(len(keys) + 1):
+            prefix = keys[:prefix_size]
+            if prefix not in string_idxs:
+                string_idxs[prefix] = i
+
+        sort_key: list[tuple[
+            float,  # index
+            str,    # raw rule that was matched in vendor.rul
+            bool,   # cmd_direct
+            int,    # index of the command key, will be used for grouping
+        ]] = []
+        for j, (idx, _) in enumerate(orderer_pos):
+            sort_key.append((
+                idx,
+                row["rules"][j] if j < len(row["rules"]) else "",
+                True if j < len(row["row"]) - 1 else row["direct"],
+                string_idxs[keys[:j + 1]],
+            ))
+        # since we want smallest, and [] < [-1], we need to pad the sorting key with zeros
+        # otherwise we will get order [],[-1],[+1] instead of [-1],[],[+1]
+        sort_key.append((
+            0,
+            "",
+            False,
+            0,
+        ))
+
+        sort_keys.append((sort_key, direct, keys))
+
+    patch_rows__idxs = [(row, i) for i, row in enumerate(patch_rows)]
+    patch_rows__idxs.sort(key=lambda row__idx: sort_keys[row__idx[1]])
+
+    return [row for row, _ in patch_rows__idxs]
+
+
+def make_patch(
+    pre: odict[str, _Pre],
+    rb: dict[str, CompiledTree],  # not correct, but good enough for now; TODO: make typeddict for this
+    hw,
+    add_comments: bool,
+    orderer: Orderer | None = None,
+    _root_pre: odict[str, _Pre] | None = None,
+    do_commit: bool = True,
+) -> PatchTree:
+    if not orderer:
+        orderer = Orderer(rb["ordering"], hw.vendor)
+
+    patch_rows = list(_iterate_over_patch(
+        pre,
+        hw,
+        add_comments=add_comments,
+        do_commit=do_commit,
+        _root_pre=(_root_pre or pre),
+    ))
+    patch_rows = sort_patch_rows(orderer, patch_rows)
+
+    tree = PatchTree()
+    for patch_row in patch_rows:
+        node = tree
+        for i, x in enumerate(patch_row["row"]):
+            if not node.itms or node.itms[-1].row != x:
+                if not patch_row["block"] and not patch_row["attrs"].get("parent", False) or not patch_row["direct"]:
+                    subtree = None
+                else:
+                    subtree = PatchTree()
+                node.itms.append(PatchItem(x, subtree, patch_row["attrs"]["context"], ()))
+
+                if patch_row["attrs"].get("force_commit", False):
+                    node.itms.append(PatchItem("commit", None, patch_row["attrs"]["context"], ()))
+
+            if i != len(patch_row["row"]) - 1:
+                if node.itms[-1].child is None:
+                    node.itms[-1].child = PatchTree()
+                node = node.itms[-1].child
+
     return tree
 
 
@@ -517,7 +831,7 @@ def _find_acl_matches(row, rules):
                     rule["attrs"]["prio"],
                     # Calculate how specific matched regex is for the row
                     # based on how many symbols they share
-                    len(set(row).intersection(set(rule["attrs"][regexp_key].pattern))) / len(row),
+                    string_similarity(row, rule["attrs"][regexp_key].pattern)
                 )
                 item = (
                     metric,

@@ -25,6 +25,19 @@ system
         add
 
 interface
+    bridge
+        vlan %split
+            remove
+        port %split
+            remove
+        remove %order_reverse
+        add
+        port %split
+            add
+        vlan %split
+            add
+
+interface
     gre
         add
 

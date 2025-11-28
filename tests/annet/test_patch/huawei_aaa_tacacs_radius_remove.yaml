@@ -20,8 +20,8 @@
     system-view
     aaa
       domain default
-        undo hwtacacs-server
         undo radius-server
+        undo hwtacacs-server
         quit
       quit
     undo radius-server template test123

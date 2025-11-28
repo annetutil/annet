@@ -1,0 +1,55 @@
+-
+  vendor: routeros
+  before: |
+    /interface bridge
+    add name=bridge1 priority=0x1000 vlan-filtering=yes
+    add arp=disabled name=lo1 protocol-mode=none
+    add arp=disabled name=lo4 protocol-mode=none
+
+    /interface bridge port
+    add bridge=bridge1 interface=ether1 pvid=4
+    add bridge=bridge1 interface=ether2
+
+    /interface bridge vlan
+    add bridge=bridge1 tagged=bridge1,ether2 vlan-ids=4
+    add bridge=bridge1 tagged=bridge1,ether2 vlan-ids=6
+    add bridge=bridge1 tagged=bridge1,ether2 vlan-ids=7
+    add bridge=bridge1 tagged=bridge1,ether2 vlan-ids=8
+    add bridge=bridge1 untagged=ether1 vlan-ids=4
+  after: |
+    /interface bridge
+    add name=bridge2 priority=0x1000 vlan-filtering=yes
+    add arp=disabled name=lo2 protocol-mode=none
+    add arp=disabled name=lo3 protocol-mode=none
+
+    /interface bridge port
+    add bridge=bridge2 interface=ether1 pvid=4
+    add bridge=bridge2 interface=ether2
+
+    /interface bridge vlan
+    add bridge=bridge2 tagged=bridge2,ether2 vlan-ids=4
+    add bridge=bridge2 tagged=bridge2,ether2 vlan-ids=6
+    add bridge=bridge2 tagged=bridge2,ether2 vlan-ids=7
+    add bridge=bridge2 tagged=bridge2,ether2 vlan-ids=8
+    add bridge=bridge2 untagged=ether1 vlan-ids=4
+  patch: |
+    /interface bridge vlan remove [ find bridge=bridge1 tagged=bridge1,ether2 vlan-ids=4 ]
+    /interface bridge vlan remove [ find bridge=bridge1 tagged=bridge1,ether2 vlan-ids=6 ]
+    /interface bridge vlan remove [ find bridge=bridge1 tagged=bridge1,ether2 vlan-ids=7 ]
+    /interface bridge vlan remove [ find bridge=bridge1 tagged=bridge1,ether2 vlan-ids=8 ]
+    /interface bridge vlan remove [ find bridge=bridge1 untagged=ether1 vlan-ids=4 ]
+    /interface bridge port remove [ find bridge=bridge1 interface=ether1 pvid=4 ]
+    /interface bridge port remove [ find bridge=bridge1 interface=ether2 ]
+    /interface bridge remove [ find name=bridge1 priority=0x1000 vlan-filtering=yes ]
+    /interface bridge remove [ find arp=disabled name=lo1 protocol-mode=none ]
+    /interface bridge remove [ find arp=disabled name=lo4 protocol-mode=none ]
+    /interface bridge add name=bridge2 priority=0x1000 vlan-filtering=yes
+    /interface bridge add arp=disabled name=lo2 protocol-mode=none
+    /interface bridge add arp=disabled name=lo3 protocol-mode=none
+    /interface bridge port add bridge=bridge2 interface=ether1 pvid=4
+    /interface bridge port add bridge=bridge2 interface=ether2
+    /interface bridge vlan add bridge=bridge2 tagged=bridge2,ether2 vlan-ids=4
+    /interface bridge vlan add bridge=bridge2 tagged=bridge2,ether2 vlan-ids=6
+    /interface bridge vlan add bridge=bridge2 tagged=bridge2,ether2 vlan-ids=7
+    /interface bridge vlan add bridge=bridge2 tagged=bridge2,ether2 vlan-ids=8
+    /interface bridge vlan add bridge=bridge2 untagged=ether1 vlan-ids=4
