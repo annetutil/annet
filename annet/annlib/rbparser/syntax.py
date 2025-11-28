@@ -17,7 +17,7 @@ def parse_text(text: str, params_scheme) -> odict:
             for rule_id, attrs in tree
         ])
 
-    ret =  _parse_tree_with_params(tabparser.parse_to_tree_multi(text, _split_rows, ["#"]), params_scheme)
+    ret = _parse_tree_with_params(tabparser.parse_to_tree_multi(text, _split_rows, ["#"]), params_scheme)
     return _convert(ret)
 
 
@@ -29,12 +29,14 @@ class _ParsedTreeNode(TypedDict):
     raw_rule: str
     context: Any
 
+
 ParsedTree = list[tuple[str, _ParsedTreeNode]]
 
 
 def parse_text_multi(text: str, params_scheme) -> ParsedTree:
-    ret =  _parse_tree_with_params(tabparser.parse_to_tree_multi(text, _split_rows, ["#"]), params_scheme)
+    ret = _parse_tree_with_params(tabparser.parse_to_tree_multi(text, _split_rows, ["#"]), params_scheme)
     return ret
+
 
 @functools.lru_cache()
 def compile_row_regexp(row, flags=0):

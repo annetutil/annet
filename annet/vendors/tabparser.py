@@ -898,7 +898,9 @@ def parse_to_tree(text: str, splitter: Callable[[str], Iterator[str]], comments:
             local_tree = local_tree[key]
     return tree
 
+
 SimpleTree: TypeAlias = list[tuple[str, "SimpleTree"]]
+
 
 def parse_to_tree_multi(text: str, splitter: Callable[[str], Iterator[str]], comments: Iterable[str] = ("!", "#")) -> SimpleTree:
     tree = []

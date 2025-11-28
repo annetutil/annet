@@ -1,5 +1,4 @@
 from __future__ import annotations
-from annet.annlib.rbparser.ordering import CompiledTree
 from collections.abc import Iterable
 import copy
 import operator
@@ -108,7 +107,13 @@ class PatchTree:
     def add(self, row: str, context: dict[str, str], sort_key: tuple[Any, ...] = ()) -> None:
         self.itms.append(PatchItem(row, None, context, sort_key))
 
-    def add_block(self, row: str, subtree: PatchTree | None = None, context: dict[str, str] | None = None, sort_key: tuple[Any, ...] = ()) -> PatchTree:
+    def add_block(
+        self,
+        row: str,
+        subtree: PatchTree | None = None,
+        context: dict[str, str] | None = None,
+        sort_key: tuple[Any, ...] = (),
+    ) -> PatchTree:
         if subtree is None:
             subtree = PatchTree()
         if context is None:
@@ -176,6 +181,7 @@ def string_similarity(s: str, pattern: str) -> float:
     """
     return len(set(s) & set(pattern)) / len(s)
 
+
 class _ReversedSortWrapper:
     def __init__(self, obj):
         self.obj = obj
@@ -183,8 +189,10 @@ class _ReversedSortWrapper:
     def __lt__(self, other):
         return not (self.obj < other.obj)
 
+
 def reversed_sort_by(obj):
     return _ReversedSortWrapper(obj)
+
 
 _PatchRowSortItem: TypeAlias = tuple[
     float,
@@ -198,6 +206,7 @@ PatchRowSortKey: TypeAlias = tuple[
     tuple[_PatchRowSortItem, ...],  # path from rulebook root to the deepest match
     bool,  # is direct command?
 ]
+
 
 class Orderer:
     def __init__(self, rb: CompiledTree, vendor: str) -> None:
@@ -236,13 +245,13 @@ class Orderer:
         queue: list[
             tuple[
                 # prefixes: gradually constructed from scratch
-                tuple[float, ...], # weights prefix
-                tuple[_PatchRowSortItem, ...], # vector prefix
+                tuple[float, ...],  # weights prefix
+                tuple[_PatchRowSortItem, ...],  # vector prefix
                 # suffixes: gradually deconstructed until exhausted
-                tuple[str, ...], # row suffix
-                tuple[tuple[str, ...], ...], # keys suffix
+                tuple[str, ...],  # row suffix
+                tuple[tuple[str, ...], ...],  # keys suffix
                 #
-                CompiledTree, # children
+                CompiledTree,  # children
             ]
         ] = [
             (
@@ -264,7 +273,7 @@ class Orderer:
             for rb_idx, (raw_rule, rule) in enumerate(children, start=0):
                 rb_attrs = rule["attrs"]
 
-                if not keys_suffix: # we are either ordering a config or keys are somehow exhausted - not a problem
+                if not keys_suffix:  # we are either ordering a config or keys are somehow exhausted - not a problem
                     key = ()
                 else:
                     key = keys_suffix[0]
@@ -351,22 +360,21 @@ class Orderer:
                 (
                     (
                         0,  # position
-                        (), # key
+                        (),  # key
                     ),
                 ),
                 cmd_direct,
             )
 
-
         vectors.sort(key=lambda x: (
-            -len(x[1][0]), # pick vectors with most precise position
-            reversed_sort_by(x[0]), # then amongst them ones with the biggest weight
-            x[1], # if there are multiple options - pick the one with smallest index
+            -len(x[1][0]),  # pick vectors with most precise position
+            reversed_sort_by(x[0]),  # then amongst them ones with the biggest weight
+            x[1],  # if there are multiple options - pick the one with smallest index
         ))
 
         return (
-            vectors[0] # the coolest vector - the one we are looking for!
-            [1] # pass only sort key, weights are no longer important
+            vectors[0]  # the coolest vector - the one we are looking for!
+            [1]  # pass only sort key, weights are no longer important
         )
 
     def order_config(self, config: dict[str, Any], _path: tuple[str, ...] = ()) -> dict[str, Any]:
@@ -391,7 +399,6 @@ class Orderer:
             (row, children)
             for row, children in sorted(ret.items(), key=lambda kv: sort_keys[kv[0]])
         )
-
 
 
 # =====
@@ -536,6 +543,7 @@ _comment_macros = {
     "!!HYES!!": "!!question!![Y/N]!!answer!!Y!! !!question!![y/n]!!answer!!Y!! !!question!![Yes/All/No/Cancel]!!answer!!Y!!"
 }
 
+
 class _PreAttrs(TypedDict):
     logic: Callable[..., Iterable[tuple[bool | None, str, odict[str, _Pre] | None]]]
     diff_logic: Callable
@@ -548,13 +556,16 @@ class _PreAttrs(TypedDict):
     ignore_case: bool
     context: Any
 
+
 class _DiffItem(TypedDict):
     row: str
     children: odict[str, _Pre]
 
+
 class _Pre(TypedDict):
     attrs: _PreAttrs
     items: odict[tuple[str, ...], dict[Op, list[_DiffItem]]]
+
 
 class _PatchRow(TypedDict):
     row: tuple[str, ...]
@@ -563,6 +574,7 @@ class _PatchRow(TypedDict):
     direct: bool
     rules: tuple[str, ...]
     block: bool
+
 
 def _iterate_over_patch(
     pre: odict[str, _Pre],
@@ -627,6 +639,7 @@ def _iterate_over_patch(
                             block=sub_row["block"],
                         )
 
+
 def sort_patch_rows(orderer: Orderer, patch_rows: list[_PatchRow]) -> list[_PatchRow]:
     """
     regular sorting will not work here
@@ -685,7 +698,12 @@ def sort_patch_rows(orderer: Orderer, patch_rows: list[_PatchRow]) -> list[_Patc
     string_idxs: dict[tuple[tuple[str, ...], ...], int] = {}
 
     for i, row in enumerate(patch_rows):
-        orderer_pos, direct = orderer.get_order(row["row"], keys=row["keys"],cmd_direct=row["direct"], scope="patch")
+        orderer_pos, direct = orderer.get_order(
+            row=row["row"],
+            keys=row["keys"],
+            cmd_direct=row["direct"],
+            scope="patch",
+        )
 
         # record where each command key first occured - all other occurences will be attempted to be placed nearby
         keys = tuple(key for _, key in orderer_pos)
@@ -695,17 +713,17 @@ def sort_patch_rows(orderer: Orderer, patch_rows: list[_PatchRow]) -> list[_Patc
                 string_idxs[prefix] = i
 
         sort_key: list[tuple[
-            float, # index
-            str,   # raw rule that was matched in vendor.rul
-            bool,  # cmd_direct
-            int,   # index of the command key, will be used for grouping
+            float,  # index
+            str,    # raw rule that was matched in vendor.rul
+            bool,   # cmd_direct
+            int,    # index of the command key, will be used for grouping
         ]] = []
         for j, (idx, _) in enumerate(orderer_pos):
             sort_key.append((
                 idx,
                 row["rules"][j] if j < len(row["rules"]) else "",
                 True if j < len(row["row"]) - 1 else row["direct"],
-                string_idxs[keys[:j+1]],
+                string_idxs[keys[:j + 1]],
             ))
         # since we want smallest, and [] < [-1], we need to pad the sorting key with zeros
         # otherwise we will get order [],[-1],[+1] instead of [-1],[],[+1]
@@ -722,6 +740,7 @@ def sort_patch_rows(orderer: Orderer, patch_rows: list[_PatchRow]) -> list[_Patc
     patch_rows__idxs.sort(key=lambda row__idx: sort_keys[row__idx[1]])
 
     return [row for row, _ in patch_rows__idxs]
+
 
 def make_patch(
     pre: odict[str, _Pre],
