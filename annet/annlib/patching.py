@@ -340,8 +340,8 @@ class Orderer:
                 elif block_exit and block_exit == row_item:
                     sub_children[:] = []
                     vectors.append((
-                        weights_prefix + (float('inf'),),
-                        (vector_prefix + ((float('inf'), ()),), cmd_direct),
+                        weights_prefix + (float("inf"),),
+                        (vector_prefix + ((float("inf"), ()),), cmd_direct),
                     ))
 
                 else:
@@ -661,7 +661,8 @@ def sort_patch_rows(orderer: Orderer, patch_rows: list[_PatchRow]) -> list[_Patc
 
     If we just take the indices of rulebook entries, then we get this result:
     ```
-    interface A ip address 123       -> (0, 0) = we took 0-th entry at the root ('interface *' block), and then 0-th entry there ('ip address' line)
+    interface A ip address 123       -> (0, 0)
+    # ^ we took 0-th entry at the root ('interface *' block), and then 0-th entry there ('ip address' line)
     interface A ipv6 address AB::CD  -> (0, 1)
     interface B ip address 234       -> (0, 0)
     interface B ipv6 address CD::EF  -> (0, 1)
@@ -783,6 +784,7 @@ def make_patch(
                 node = node.itms[-1].child
 
     return tree
+
 
 def match_row_to_acl(row, rules, exclusive=False):
     matches = _find_acl_matches(row, rules)
