@@ -224,7 +224,7 @@ class Orderer:
             fmtr = CommonFormatter()
             rules = fmtr.join(rules)
         rb = compile_ordering_text(rules, self.vendor)
-        self.rb = self.rb + rb
+        self.rb = rb + self.rb
 
     def get_order(
         self,
