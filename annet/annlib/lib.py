@@ -182,7 +182,7 @@ def make_ip4_mask(prefix_len, inverse=False):
     return socket.inet_ntop(socket.AF_INET, bin_mask)
 
 
-def merge_dicts(*args):
+def merge_dicts(*args: dict | odict) -> odict:
     if len(args) == 0:
         return odict()
     if len(args) == 1:
