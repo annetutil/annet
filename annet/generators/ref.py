@@ -7,8 +7,8 @@ class RefGenerator(PartialGenerator):
         self.groups = groups
 
     def ref(self, device):
-        if hasattr(self, "ref_" + device.hw.vendor):
-            return getattr(self, "ref_" + device.hw.vendor)(device)
+        if hasattr(self, f"ref_{device.hw.vendor}"):
+            return getattr(self, f"ref_{device.hw.vendor}")(device)
         return ""
 
     def with_groups(self, groups):
