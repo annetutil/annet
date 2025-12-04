@@ -26,6 +26,10 @@ system
 
 routing-options
     autonomous-system *
+    rib *
+        */(aggregate|static)/
+            route *                    %logic=common.undo_redo
+                ~
     ~
 
 services
@@ -61,6 +65,10 @@ routing-instances
     ~
         routing-options
             autonomous-system *
+            rib *
+                */(aggregate|static)/
+                    route *            %logic=common.undo_redo
+                        ~
         protocols
             bgp
                 group *
