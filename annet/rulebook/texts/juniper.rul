@@ -118,7 +118,9 @@ policy-options
     prefix-list ~
     policy-statement *
         term *               %ordered
-            then
+            from             %logic=common.undo_redo
+                ~
+            then             %logic=common.undo_redo
                 community ~  %ordered
                 ~
             ~                %global
