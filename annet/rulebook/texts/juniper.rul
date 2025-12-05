@@ -130,8 +130,12 @@ policy-options
 firewall
     family *
         filter *
-            ~       %ordered
-                ~   %global
+            term *     %ordered
+                from   %logic=common.undo_redo
+                    ~
+                then   %logic=common.undo_redo
+                    ~
+                ~      %global
 
 
 forwarding-options
