@@ -118,7 +118,9 @@ policy-options
     prefix-list ~
     policy-statement *
         term *               %ordered
-            then
+            from             %logic=common.undo_redo
+                ~
+            then             %logic=common.undo_redo
                 community ~  %ordered
                 ~
             ~                %global
@@ -128,8 +130,12 @@ policy-options
 firewall
     family *
         filter *
-            ~       %ordered
-                ~   %global
+            term *     %ordered
+                from   %logic=common.undo_redo
+                    ~
+                then   %logic=common.undo_redo
+                    ~
+                ~      %global
 
 
 forwarding-options
