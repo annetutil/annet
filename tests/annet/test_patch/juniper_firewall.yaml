@@ -1,0 +1,61 @@
+- vendor: juniper
+  before: |-
+    firewall {
+      family inet {
+        filter POLICY-OUT {
+          term ALLOW {
+            from {
+              source-prefix-list {
+                PRFX_01;
+              }
+            }
+            then accept;
+          }
+          term ICMP {
+            from {
+              protocol icmp;
+            }
+            then {
+              policer 160Kb;
+              accept;
+            }
+          }
+        }
+      }
+    }
+  after: |-
+    firewall {
+      family inet {
+        filter POLICY-OUT {
+          term ALLOW {
+            from {
+              source-prefix-list {
+                PRFX_02;
+              }
+            }
+            then {
+              accept;
+              dscp cs0;
+            }
+          }
+          term ICMP {
+            from {
+              protocol icmp;
+            }
+            then {
+              policer 160Kb;
+              accept;
+            }
+          }
+        }
+      }
+    }
+  patch: |
+    configure exclusive
+    delete firewall family inet filter POLICY-OUT term ALLOW from source-prefix-list PRFX_01
+    set firewall family inet filter POLICY-OUT term ALLOW from source-prefix-list PRFX_02
+    delete firewall family inet filter POLICY-OUT term ALLOW then
+    set firewall family inet filter POLICY-OUT term ALLOW then accept
+    set firewall family inet filter POLICY-OUT term ALLOW then dscp cs0
+    commit
+    exit
