@@ -4,6 +4,7 @@
     "Cisco.IE": " IE",
     "Cisco.AIR": "AIR",
     "Cisco.ASR": " ASR",
+    "Cisco.ASR.ASR1000": " ?1\\d{3}",
     "Cisco.ASR.ASR9000": " 9\\d{3}",
     "Cisco.XRV": "XRv",
     "Cisco.XR": " 8[\\d\\d\\d]",
