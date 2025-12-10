@@ -834,7 +834,7 @@ def file_patch_worker(old_new: Tuple[str, str], args: cli_args.FileDiffOptions) 
 def guess_hw(config_text: str):
     """Пытаемся угадать вендора и hw на основе
     текста конфига и annet/rulebook/texts/*.rul"""
-    scores = {}
+    scores = []
     hw_provider = hardware_connector.get()
     vendor_registry = registry_connector.get()
     for vendor in vendor_registry:
@@ -849,15 +849,13 @@ def guess_hw(config_text: str):
 
         pre = patching.make_pre(patching.make_diff({}, config, rb, []))
         metric = _count_pre_score(pre)
-        scores[metric] = hw
+        scores.append((hw, metric))
 
     if not scores:
         raise RuntimeError("No formatter was guessed")
 
-    max_score = max(scores.keys())
-    hw = scores[max_score]
-
-    return hw, max_score
+    scores.sort(key=lambda x: (x[1], x[0].vendor), reverse=True)
+    return scores[0]
 
 
 def _count_pre_score(top_pre) -> float:
