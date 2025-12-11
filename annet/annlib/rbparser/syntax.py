@@ -10,7 +10,7 @@ from annet.vendors import tabparser
 
 
 # =====
-def _merge_trees(t1: odict, t2: odict) -> odict:
+def _merge_trees(t1: odict[Any, Any], t2: odict[Any, Any]) -> odict[Any, Any]:
     if not t1:
         return t2
     if not t2:
@@ -24,8 +24,8 @@ def _merge_trees(t1: odict, t2: odict) -> odict:
     return ret
 
 
-def _convert(tree: ParsedTree) -> odict:
-    ret = odict()
+def _convert(tree: ParsedTree) -> odict[Any, Any]:
+    ret: odict[Any, Any] = odict()
     for rule_id, attrs in tree:
         if rule_id not in ret:
             ret[rule_id] = attrs | {"children": odict()}
@@ -33,7 +33,7 @@ def _convert(tree: ParsedTree) -> odict:
     return ret
 
 
-def parse_text(text: str, params_scheme) -> odict:
+def parse_text(text: str, params_scheme) -> odict[Any, Any]:
     ret = _parse_tree_with_params(tabparser.parse_to_tree_multi(text, _split_rows, ["#"]), params_scheme)
     return _convert(ret)
 
