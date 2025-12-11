@@ -10,13 +10,26 @@ from annet.vendors import tabparser
 
 
 # =====
-def parse_text(text: str, params_scheme) -> odict:
-    def _convert(tree: ParsedTree) -> odict:
-        return odict([
-            (rule_id, attrs | {"children": _convert(attrs["children"])})
-            for rule_id, attrs in tree
-        ])
+def _merge_trees(t1: odict, t2: odict) -> odict:
+    if not t1: return t2
+    if not t2: return t1
+    ret = t1.copy()
+    for k, v in t2.items():
+        if k in ret:
+            ret[k]["children"] = _merge_trees(ret[k]["children"], v["children"])
+        else:
+            ret[k] = v
+    return ret
 
+def _convert(tree: ParsedTree) -> odict:
+    ret = odict()
+    for rule_id, attrs in tree:
+        if rule_id not in ret:
+            ret[rule_id] = attrs | {"children": odict()}
+        ret[rule_id]["children"] = _merge_trees(ret[rule_id]["children"], _convert(attrs["children"]))
+    return ret
+
+def parse_text(text: str, params_scheme) -> odict:
     ret = _parse_tree_with_params(tabparser.parse_to_tree_multi(text, _split_rows, ["#"]), params_scheme)
     return _convert(ret)
 
