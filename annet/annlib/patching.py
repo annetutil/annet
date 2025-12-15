@@ -573,7 +573,6 @@ class _PatchRow(TypedDict):
     attrs: _PreAttrs
     direct: bool
     rules: tuple[str, ...]
-    block: bool
 
 
 def _iterate_over_patch(
@@ -581,7 +580,6 @@ def _iterate_over_patch(
     hw,
     do_commit: bool,
     add_comments: bool,
-    _root_pre: odict[str, _Pre] | None = None,
 ) -> Iterable[_PatchRow]:
     for raw_rule, content in pre.items():
         for key, diff in content["items"].items():
@@ -593,7 +591,7 @@ def _iterate_over_patch(
                 diff=diff,
                 hw=hw,
                 rule_pre=rule_pre,
-                root_pre=(_root_pre or pre),
+                root_pre=pre,
             )
             for (direct, row, sub_pre) in iterable:
                 if direct is None:
@@ -610,7 +608,7 @@ def _iterate_over_patch(
                     # if do_commit is false skip patch that couldn't be applied without commit
                     continue
 
-                if not sub_pre:
+                if sub_pre is None:
                     # leaf -> emit itself
                     yield _PatchRow(
                         row=(row,),
@@ -618,25 +616,33 @@ def _iterate_over_patch(
                         attrs=attrs.copy(),
                         direct=direct,
                         rules=(raw_rule,),
-                        block=False,
                     )
 
                 else:
-                    # block -> emit children, but no block
-                    for sub_row in _iterate_over_patch(
+                    # block
+                    children = list(_iterate_over_patch(
                         sub_pre,
                         hw=hw,
                         add_comments=add_comments,
                         do_commit=do_commit,
-                        _root_pre=(_root_pre or pre),
-                    ):
+                    ))
+                    if not children:
+                        # block, no children -> emit itself
+                        yield _PatchRow(
+                            row=(row,),
+                            keys=(key,),
+                            attrs=attrs.copy(),
+                            direct=direct,
+                            rules=(raw_rule,),
+                        )
+                    for sub_row in children:
+                        # block, has children -> emit only children
                         yield _PatchRow(
                             row=(row, *sub_row["row"]),
                             keys=(key, *sub_row["keys"]),
                             attrs=sub_row["attrs"],
                             direct=sub_row["direct"],
                             rules=(raw_rule, *sub_row["rules"]),
-                            block=sub_row["block"],
                         )
 
 
@@ -749,7 +755,6 @@ def make_patch(
     hw,
     add_comments: bool,
     orderer: Orderer | None = None,
-    _root_pre: odict[str, _Pre] | None = None,
     do_commit: bool = True,
 ) -> PatchTree:
     if not orderer:
@@ -760,7 +765,6 @@ def make_patch(
         hw,
         add_comments=add_comments,
         do_commit=do_commit,
-        _root_pre=(_root_pre or pre),
     ))
     patch_rows = sort_patch_rows(orderer, patch_rows)
 
@@ -769,7 +773,7 @@ def make_patch(
         node = tree
         for i, x in enumerate(patch_row["row"]):
             if not node.itms or node.itms[-1].row != x:
-                if not patch_row["block"] and not patch_row["attrs"].get("parent", False) or not patch_row["direct"]:
+                if not patch_row["attrs"].get("parent", False) or not patch_row["direct"]:
                     subtree = None
                 else:
                     subtree = PatchTree()

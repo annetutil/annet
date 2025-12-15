@@ -280,7 +280,7 @@ interface */Tunnel.+/
     mpls te path
     mpls te tunnel-id
 
-interface *                             %logic=huawei.iface.permanent 
+interface *                             %logic=huawei.iface.permanent
     %if hw.Quidway:
     mac-address trap notification
     %else:
@@ -377,7 +377,7 @@ xpl ~
     ~              %rewrite %global
 
 bgp path-attribute attr-set *
-bgp path-attribute * 
+bgp path-attribute *
 
 bgp %logic=huawei.bgp.undo_commit
     private-4-byte-as
