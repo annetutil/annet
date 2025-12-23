@@ -48,16 +48,28 @@ interface */(Vlan|Ethernet.*\.|port-channel.*\.?)\d+$/ %diff_logic=nexus.iface.d
     ipv6 nd ~                      %logic=cisco.misc.no_ipv6_nd_suppress_ra
     mtu
 
-# Port-Channel/Ethernet
-interface */\w*(Ethernet|port-channel)[0-9\/]+$/     %logic=common.permanent %diff_logic=nexus.iface.diff
+# Port-Channel
+interface */\w*port-channel[0-9\/]+$/     %logic=common.permanent %diff_logic=nexus.iface.diff
     switchport mode
     switchport trunk native vlan
     switchport access vlan
     switchport trunk allowed vlan %logic=nexus.vlandb.swtrunk
-    spanning-tree link-type
     vrf member
     ipv6 link-local
     ipv6 address *
+    mtu
+    storm-control * level
+
+# Ethernet
+interface */\w*Ethernet[0-9\/]+$/     %logic=common.permanent %diff_logic=nexus.iface.diff
+    switchport mode
+    switchport trunk native vlan
+    switchport access vlan
+    switchport trunk allowed vlan %logic=nexus.vlandb.swtrunk
+    vrf member
+    ipv6 link-local
+    ipv6 address *
+    channel-group
     mtu
     storm-control * level
 
