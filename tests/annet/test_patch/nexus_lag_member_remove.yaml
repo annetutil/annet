@@ -30,7 +30,6 @@
       service-policy type qos input CLASSIFIER
   patch: |
     conf t
-    no interface port-channel101
     interface Ethernet1/9/1
       no channel-group
       no ip redirects
@@ -43,5 +42,6 @@
       no shutdown
       service-policy type qos input CLASSIFIER
       exit
+    no interface port-channel101
     exit
     copy running-config startup-config
