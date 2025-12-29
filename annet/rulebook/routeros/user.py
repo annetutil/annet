@@ -20,7 +20,7 @@ def normalize_user_line(line: str) -> str:
     return normalized.strip()
 
 
-def user_diff(old: odict, new: odict, diff_pre: odict, _pops: tuple[Op, ...] = (Op.AFFECTED,)) -> list[DiffItem]:
+def diff(old: odict, new: odict, diff_pre: odict, _pops: tuple[Op, ...] = (Op.AFFECTED,)) -> list[DiffItem]:
     """Custom diff logic for RouterOS user commands."""
     diff_indexed = []
 

@@ -13,7 +13,7 @@
 
 
 user
-    add ~ %diff_logic=routeros.user_diff.user_diff
+    add ~ %diff_logic=routeros.user.diff
     ~
     group
         add ~
