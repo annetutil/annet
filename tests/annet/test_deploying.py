@@ -18,6 +18,7 @@ def test_compile_deploying_text_cisco_2_dialogs(ann_connectors):
             {
                 "attrs": {
                     "apply_logic": mock.ANY,
+                    "apply_logic_name": "common.apply",
                     "timeout": 30,
                     "dialogs": OrderedDict([
                         (
