@@ -3,6 +3,8 @@
 # - Если команда начинается с undo и прописан параметр %order_reverse - команда считается
 #   обратной, но занимает место между прямыми там, где указано.
 
+# Сначала было имя
+hostname
 # Фичи должны быть включены прежде всего
 feature
 # За ним сервисы
@@ -13,7 +15,9 @@ interface breakout
 no password strength-check
 username
 tacacs-server
-aaa
+radius-server
+
+aaa group server
 
 ip access-list
 ipv6 access-list
@@ -25,6 +29,8 @@ control-plane
 
 no policy-map %order_reverse
 no class-map %order_reverse
+
+bfd
 
 snmp-server source-interface
 snmp-server user
@@ -42,6 +48,7 @@ ntp distribute
 ntp server
 ntp commit
 
+aaa
 
 vlan
 vlan group
@@ -60,11 +67,19 @@ ipv6 dhcp relay
 
 vrf context
 
+vpc
+
+lldp
+
 interface */Vlan\d+/
+interface */port-channel\d+/
+interface nve
 interface *
-    no switchport
+    no switchport %order_reverse
     switchport
-    switchport access vlan *
+    switchport mode
+    switchport access *
+    switchport trunk *
     encapsulation
     vrf member
     ip
@@ -73,13 +88,18 @@ interface *
     ipv6 nd
     ~
     channel-group
+    no shutdown %order_reverse
 
 interface */\S+\.\d+/
 
-# удалять eth-trunk можно только после того, как вычистим member interfaces
-undo interface */port-channel\d+/  %order_reverse
+# удалять port-channel можно только после того, как вычистим member interfaces
+no interface */port-channel\d+/  %order_reverse
 
 router bgp
     address-family
     template
     neighbor
+
+evpn
+
+logging
