@@ -1,7 +1,6 @@
 from annet.annlib.lib import uniq
 from annet.annlib.rulebook import common
 from annet.annlib.types import Op
-
 from annet.rulebook.cisco.iface import is_in_channel, is_ip_cmd, is_vpn_cmd
 
 
@@ -62,6 +61,7 @@ def _is_allowed_on_channel(cmd_line):
         "switchport host",
         "switchport",
         "shutdown",
+        "no shutdown",
         "rate-limit cpu",
         "snmp trap link-status",
         "mtu",
