@@ -1,3 +1,4 @@
+import os
 import ssl
 from typing import Callable
 
@@ -14,6 +15,8 @@ from .models import (
     IpAddressV37, NetboxDeviceV37, InterfaceV37, PrefixV37,
     FHRPGroupAssignmentV37, FHRPGroupV37,
 )
+
+interfaces_page_size = int(os.getenv("NETBOX_INTERFACES_PAGE_SIZE", 100))
 
 
 class NetboxV37Adapter(NetboxAdapter[
@@ -91,7 +94,7 @@ class NetboxV37Adapter(NetboxAdapter[
         return self.convert_device(self.netbox.dcim_device(device_id))
 
     def list_interfaces_by_devices(self, device_ids: list[int]) -> list[InterfaceV37]:
-        return self.convert_interfaces(self.netbox.dcim_all_interfaces(device_id=device_ids).results)
+        return self.convert_interfaces(self.netbox.dcim_all_interfaces(device_id=device_ids, page_size=interfaces_page_size).results)
 
     def list_interfaces(self, ids: list[int]) -> list[InterfaceV37]:
         return self.convert_interfaces(self.netbox.dcim_all_interfaces(id=ids).results)
