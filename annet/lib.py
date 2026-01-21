@@ -39,7 +39,7 @@ from contextlog import get_logger
 
 _HOMEDIR_PATH: Optional[str] = None           # defaults to ~/.annet
 _TEMPLATE_CONTEXT_PATH: Optional[str] = None  # defaults to annet/configs/context.yml
-_DEFAULT_CONTEXT_PATH: Optional[str] = None   # defaults to ~/.annet/context.yml
+_DEFAULT_CONTEXT_PATH: Optional[str] = None   # defaults to ~/.annet/context.yml, checks for ~/.annet/context.yaml
 
 
 def get_homedir_path() -> str:
@@ -51,6 +51,23 @@ def get_homedir_path() -> str:
 def set_homedir_path(path: str) -> None:
     global _HOMEDIR_PATH  # pylint: disable=global-statement
     _HOMEDIR_PATH = path
+
+
+def add_context_extension(path: str, default: str, *checks: str) -> str:
+    existing = []
+    expanded = os.path.expanduser(path)
+    if os.path.exists(p := expanded + default):
+        existing.append(p)
+    for check in checks:
+        if os.path.exists(p := expanded + check):
+            existing.append(p)
+    if not existing:
+        return path + default
+    elif len(existing) == 1:
+        return existing[0]
+    exc = ValueError(f"Multiple context files found: {existing}; either delete all but one, or merge them")
+    setattr(exc, "formatted_output", str(exc))
+    raise exc
 
 
 def get_template_context_path() -> str:
@@ -66,7 +83,8 @@ def set_template_context_path(path: str) -> None:
 
 def get_default_context_path() -> str:
     if _DEFAULT_CONTEXT_PATH is None:
-        set_default_context_path("~/.annet/context.yml")
+        path = add_context_extension("~/.annet/context", ".yml", ".yaml")
+        set_default_context_path(path)
     return _DEFAULT_CONTEXT_PATH
 
 
