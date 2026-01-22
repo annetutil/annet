@@ -18,8 +18,8 @@ from .. import MockDevice
 class MockDefaultRulebookProvider(DefaultRulebookProvider):
     def __init__(self):
         super().__init__(
-            root_dir = (path.dirname(__file__),),
-            root_modules = ("tests.annet.test_pc_deploy",),
+            root_dir=(path.dirname(__file__),),
+            root_modules=("tests.annet.test_pc_deploy",),
         )
 
 
@@ -69,7 +69,11 @@ def mocks():
 
 @pytest.fixture
 def device():
-    return MockDevice("Edge-Core AS9736-64D", "SONiC ec_20240426_080601_ec202111_hsdk_6.5.23_701", "sonic")
+    return MockDevice(
+        "Edge-Core AS9736-64D",
+        "SONiC ec_20240426_080601_ec202111_hsdk_6.5.23_701",
+        "sonic",
+    )
 
 
 def test_pc_deployer_rulebooks(device: Device, mocks):

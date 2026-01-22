@@ -77,10 +77,7 @@ class PickleSafeException(Exception):
     @classmethod
     def from_exc(cls, orig_exc: Exception, device_id: str) -> "PickleSafeException":
         return PickleSafeException(
-            orig_exc.__class__,
-            str(orig_exc),
-            device_id,
-            pickle_safe_traceback_formatter_connector.get()(orig_exc)
+            orig_exc.__class__, str(orig_exc), device_id, pickle_safe_traceback_formatter_connector.get()(orig_exc)
         )
 
 
@@ -163,11 +160,7 @@ def _pool_worker(pool, index, task_queue, done_queue):
 
                     _logger.warning("Worker-%d start invoke %s", index, device_id)
                     task_result.result = invoke_retry(
-                        pool.func,
-                        pool.net_retry,
-                        task.payload,
-                        *pool.args,
-                        **pool.kwargs
+                        pool.func, pool.net_retry, task.payload, *pool.args, **pool.kwargs
                     )
                     _logger.warning("Worker-%d finish invoke %s", index, device_id)
 
@@ -206,7 +199,12 @@ class TaskResult:
 
     def __repr__(self):
         return "TaskResult(worker_name=%s, device_id=%s, result=%s, exc=%s, extra=%s)" % (
-            self.worker_name, self.device_id, self.result, self.exc, self.extra)
+            self.worker_name,
+            self.device_id,
+            self.result,
+            self.exc,
+            self.extra,
+        )
 
 
 class Parallel:
@@ -224,7 +222,7 @@ class Parallel:
         self.capture_output = False
 
     def tune(self, **kwargs):
-        for (kw, arg) in kwargs.items():
+        for kw, arg in kwargs.items():
             if not hasattr(self, kw):
                 raise ValueError("Can not tune Parallel.%s: attribute doesn't exist" % kw)
             setattr(self, kw, arg)
@@ -308,11 +306,7 @@ class Parallel:
                 try:
                     with capture_output(cap_stdout, cap_stderr):
                         task_result.result = invoke_retry(
-                            self.func,
-                            self.net_retry,
-                            device_id,
-                            *self.args,
-                            **self.kwargs
+                            self.func, self.net_retry, device_id, *self.args, **self.kwargs
                         )
                 except Exception as exc:
                     safe_exc = PickleSafeException.from_exc(exc, device_id)
@@ -346,11 +340,7 @@ class Parallel:
                 worker_name = "Worker-%d" % index
                 worker_args = (self, index, task_queue, done_queue, context_carrier)
 
-                worker = mp.Process(
-                    name=worker_name,
-                    target=pool_worker,
-                    args=worker_args
-                )
+                worker = mp.Process(name=worker_name, target=pool_worker, args=worker_args)
                 pool[worker_name] = worker
                 worker.start()
                 _logger.debug("Worker '%s' has been created with PID %d", worker_name, worker.pid)
@@ -387,7 +377,7 @@ class Parallel:
                         terminate_exc = annet.ExecError(f"Workers {failed_workers} exited with error")
 
                 if terminate_exc is not None:
-                    for (name, worker) in pool.items():
+                    for name, worker in pool.items():
                         if worker.exitcode is None:
                             if terminate_by_timeout:
                                 os.kill(worker.pid, signal.SIGUSR1)  # force dump stacktrace
@@ -434,8 +424,9 @@ class Parallel:
             if exitcode == 9:
                 retired_workers.append(name)
             elif exitcode != 0:
-                _logger.error("Worker '%s' (PID: %d) has exited with non-zero exit code %d", name, pool[name].pid,
-                              exitcode)
+                _logger.error(
+                    "Worker '%s' (PID: %d) has exited with non-zero exit code %d", name, pool[name].pid, exitcode
+                )
                 failed_workers.append(name)
             else:
                 _logger.debug("Worker '%s' (PID: %d) has been reaped with exitcode %d", name, pool[name].pid, exitcode)

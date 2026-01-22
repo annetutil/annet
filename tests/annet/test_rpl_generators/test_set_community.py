@@ -140,6 +140,7 @@ route-policy policy
 """)
     assert result == expected
 
+
 def test_iosxr_set_comm():
     routemaps = RouteMap[Mock]()
 
@@ -251,6 +252,7 @@ def test_juniper_community_empty_set():
 
     with pytest.raises(NotImplementedError):
         generate(routemaps=routemaps, community_lists=CLISTS, dev=juniper())
+
 
 def test_juniper_communities_remove_all():
     routemaps = RouteMap[Mock]()

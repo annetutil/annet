@@ -1,9 +1,7 @@
-import re
 import textwrap
 
 import annet.annlib.filter_acl
-from annet.annlib import lib
-from annet.vendors import registry_connector, tabparser
+from annet.vendors import registry_connector
 
 
 def test_filter_diff():
@@ -25,7 +23,10 @@ def test_filter_diff():
     fmtr = registry_connector.get()[vendor].make_formatter()
     acl = annet.annlib.filter_acl.make_acl("rsa ~\n  foo *", vendor)
 
-    assert annet.annlib.filter_acl.filter_diff(acl, fmtr, diff) == textwrap.dedent("""
+    assert (
+        annet.annlib.filter_acl.filter_diff(acl, fmtr, diff)
+        == textwrap.dedent("""
     - rsa peer-public-key johndoe encoding-type openssh
     -   foo bar
     """).strip()
+    )

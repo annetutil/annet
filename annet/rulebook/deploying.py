@@ -22,24 +22,27 @@ DEFAULT_APPLY_LOGIC = "common.apply"
 @functools.lru_cache()
 def compile_deploying_text(text, vendor):
     return _compile_deploying(
-        tree=syntax.parse_text(text, params_scheme={
-            "timeout": {
-                "validator": lambda arg: valid_number(arg, min=1, type=float),
-                "default": 30,
+        tree=syntax.parse_text(
+            text,
+            params_scheme={
+                "timeout": {
+                    "validator": lambda arg: valid_number(arg, min=1, type=float),
+                    "default": 30,
+                },
+                "send_nl": {
+                    "validator": valid_bool,
+                    "default": True,
+                },
+                "apply_logic": {
+                    "validator": valid_object_path,
+                    "default": DEFAULT_APPLY_LOGIC,
+                },
+                "ifcontext": {
+                    "validator": valid_string_list,
+                    "default": [],
+                },
             },
-            "send_nl": {
-                "validator": valid_bool,
-                "default": True,
-            },
-            "apply_logic": {
-                "validator": valid_object_path,
-                "default": DEFAULT_APPLY_LOGIC,
-            },
-            "ifcontext": {
-                "validator": valid_string_list,
-                "default": [],
-            }
-        }),
+        ),
         reverse_prefix=registry_connector.get()[vendor].reverse,
     )
 
@@ -47,7 +50,7 @@ def compile_deploying_text(text, vendor):
 # =====
 def _compile_deploying(tree, reverse_prefix):
     deploying = odict()
-    for (rule_id, attrs) in tree.items():
+    for rule_id, attrs in tree.items():
         if attrs["type"] == "normal" and not attrs["row"].startswith(("ignore:", "dialog:")):
             (ignore, dialogs) = compile_messages(attrs["children"])
             deploying[rule_id] = {
@@ -66,7 +69,7 @@ def _compile_deploying(tree, reverse_prefix):
 
 
 def match_deploy_rule(rules, cmd_path, context):
-    for (depth, row) in enumerate(cmd_path):
+    for depth, row in enumerate(cmd_path):
         for rule in rules.values():
             if rule["attrs"]["regexp"].match(row):
                 ifcontext = rule["attrs"]["ifcontext"]

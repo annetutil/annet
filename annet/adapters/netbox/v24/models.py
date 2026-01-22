@@ -143,23 +143,25 @@ class Interface(Entity):
 
         for existing_addr in self.ip_addresses:
             if existing_addr.address == address_mask and (
-                (existing_addr.vrf is None and vrf is None) or
-                (existing_addr.vrf is not None and existing_addr.vrf.name == vrf)
+                (existing_addr.vrf is None and vrf is None)
+                or (existing_addr.vrf is not None and existing_addr.vrf.name == vrf)
             ):
                 return
-        self.ip_addresses.append(IpAddress(
-            id=0,
-            display=address_mask,
-            address=address_mask,
-            vrf=vrf_obj,
-            prefix=None,
-            family=family,
-            created=datetime.now(timezone.utc),
-            last_updated=datetime.now(timezone.utc),
-            tags=[],
-            status=Label(value="active", label="Active"),
-            assigned_object_id=self.id,
-        ))
+        self.ip_addresses.append(
+            IpAddress(
+                id=0,
+                display=address_mask,
+                address=address_mask,
+                vrf=vrf_obj,
+                prefix=None,
+                family=family,
+                created=datetime.now(timezone.utc),
+                last_updated=datetime.now(timezone.utc),
+                tags=[],
+                status=Label(value="active", label="Active"),
+                assigned_object_id=self.id,
+            )
+        )
 
 
 @dataclass
@@ -267,10 +269,7 @@ class NetboxDevice(Entity):
         for interface in self.interfaces:
             if interface.name == name:
                 return interface
-        interface = self._make_interface(
-            name=name,
-            type=InterfaceType("virtual", "Virtual")
-        )
+        interface = self._make_interface(name=name, type=InterfaceType("virtual", "Virtual"))
         self.interfaces.append(interface)
         return interface
 
@@ -282,10 +281,7 @@ class NetboxDevice(Entity):
         for target_port in self.interfaces:
             if target_port.name == name:
                 return target_port
-        target_port = self._make_interface(
-            name=name,
-            type=InterfaceType("virtual", "Virtual")
-        )
+        target_port = self._make_interface(name=name, type=InterfaceType("virtual", "Virtual"))
         self.interfaces.append(target_port)
         return target_port
 

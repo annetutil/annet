@@ -6,11 +6,7 @@ from typing import Any, Literal
 from annet.generators import PartialGenerator
 from annet.rpl import MatchField, PrefixMatchValue, RoutingPolicy, SingleCondition
 
-from .entities import (
-    IpPrefixList,
-    JuniperPrefixListNameGenerator,
-    PrefixListNameGenerator,
-)
+from .entities import IpPrefixList, JuniperPrefixListNameGenerator, PrefixListNameGenerator
 
 
 class PrefixListFilterGenerator(PartialGenerator, ABC):
@@ -32,24 +28,24 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
         """
 
     def _huawei_prefix_list(
-            self,
-            prefix_type: Literal["ipv6-prefix", "ip-prefix"],
-            plist: IpPrefixList,
+        self,
+        prefix_type: Literal["ipv6-prefix", "ip-prefix"],
+        plist: IpPrefixList,
     ) -> Iterable[Sequence[str]]:
         for i, m in enumerate(plist.members):
             ge, le = m.or_longer
             yield (
-                "ip",
-                prefix_type,
-                plist.name,
-                f"index {i * 5 + 5}",
-                "permit",
-                str(m.prefix.network_address).upper(),
-                str(m.prefix.prefixlen),
-            ) + (
-                ("greater-equal", str(ge)) if ge is not None else ()
-            ) + (
-                ("less-equal", str(le)) if le is not None else ()
+                (
+                    "ip",
+                    prefix_type,
+                    plist.name,
+                    f"index {i * 5 + 5}",
+                    "permit",
+                    str(m.prefix.network_address).upper(),
+                    str(m.prefix.prefixlen),
+                )
+                + (("greater-equal", str(ge)) if ge is not None else ())
+                + (("less-equal", str(le)) if le is not None else ())
             )
 
     def run_huawei(self, device: Any):
@@ -86,21 +82,21 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
         """
 
     def _arista_prefix_list(
-            self,
-            prefix_type: Literal["ipv6", "ip"],
-            plist: IpPrefixList,
+        self,
+        prefix_type: Literal["ipv6", "ip"],
+        plist: IpPrefixList,
     ) -> Iterable[Sequence[str]]:
         with self.block(prefix_type, "prefix-list", plist.name):
             for i, m in enumerate(plist.members):
                 ge, le = m.or_longer
                 yield (
-                    f"seq {i * 10 + 10}",
-                    "permit",
-                    str(m.prefix),
-                ) + (
-                    ("ge", str(ge)) if ge is not None else ()
-                ) + (
-                    ("le", str(le)) if le is not None else ()
+                    (
+                        f"seq {i * 10 + 10}",
+                        "permit",
+                        str(m.prefix),
+                    )
+                    + (("ge", str(ge)) if ge is not None else ())
+                    + (("le", str(le)) if le is not None else ())
                 )
 
     def run_arista(self, device: Any):
@@ -143,15 +139,15 @@ class PrefixListFilterGenerator(PartialGenerator, ABC):
 
                 ge, le = member.or_longer
                 if ge is le is None:
-                    yield f"{member.prefix}{comma}",
+                    yield (f"{member.prefix}{comma}",)
                 elif ge is None:
-                    yield f"{member.prefix} le {le}{comma}",
+                    yield (f"{member.prefix} le {le}{comma}",)
                 elif le is None:
-                    yield f"{member.prefix} ge {ge}{comma}",
+                    yield (f"{member.prefix} ge {ge}{comma}",)
                 elif ge == le:
-                    yield f"{member.prefix} eq {ge}{comma}",
+                    yield (f"{member.prefix} eq {ge}{comma}",)
                 else:
-                    yield f"{member.prefix} ge {ge} le {le}{comma}",
+                    yield (f"{member.prefix} ge {ge} le {le}{comma}",)
 
     def run_iosxr(self, device: Any):
         prefix_lists = self.get_prefix_lists(device)

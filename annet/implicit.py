@@ -5,7 +5,7 @@ from annet.annlib.rbparser import syntax
 
 def config(config_tree, rules):
     implicit_config_tree = odict()
-    for (row, rule) in rules.items():
+    for row, rule in rules.items():
         matched_lines = [line for line in config_tree.keys() if rule["regexp"].match(line)]
         if rule["type"] != "ignore":
             if not any(matched_lines) and row not in config_tree:
@@ -21,7 +21,7 @@ def compile_rules(device):
 
 def compile_tree(tree):
     rules = odict()
-    for (_, attrs) in tree.items():
+    for _, attrs in tree.items():
         rule = {
             "type": attrs["type"],
             "children": compile_tree(attrs["children"]) if attrs.get("children") else odict(),
@@ -84,19 +84,26 @@ def _implicit_tree(device):
             """
     elif device.hw.Arista:
         # This part of configuration will not be visible in configuration
-        text = r"""
-                ip load-sharing trident fields ipv6 destination-port source-ip ingress-interface destination-ip source-port flow-label
-                ip load-sharing trident fields ip source-ip source-port destination-ip destination-port ingress-interface
-        """
+        text = "\n".join(
+            (
+                "ip load-sharing trident fields ipv6 destination-port source-ip ingress-interface destination-ip "
+                "source-port flow-label",
+                "ip load-sharing trident fields ip source-ip source-port destination-ip destination-port "
+                "ingress-interface",
+            )
+        )
     elif device.hw.Nexus:
         text = r"""
                 # This part of configuration will not be visible in configuration if enabled
                 snmp-server enable traps link linkDown
                 snmp-server enable traps link linkUp
         """
-        if device.hw.Nexus.N3x.N3432 \
-            or (device.hw.Nexus.N9x.N9500 and "spine1" in device.tags) \
-            or device.hw.Nexus.N9x.N9316 or device.hw.Cisco.Nexus.N9x.N9364:
+        if (
+            device.hw.Nexus.N3x.N3432
+            or (device.hw.Nexus.N9x.N9500 and "spine1" in device.tags)
+            or device.hw.Nexus.N9x.N9316
+            or device.hw.Cisco.Nexus.N9x.N9364
+        ):
             text += r"""
                 # SVI
                 !interface Vlan*
@@ -146,8 +153,12 @@ def _implicit_tree(device):
             """
     elif device.hw.Cisco:
         # C2900/C3500/C3600/AIR does not support the MTU on a per-interface basis
-        if device.hw.Cisco.Catalyst.C2900 or device.hw.Cisco.Catalyst.C3500 \
-           or device.hw.Cisco.Catalyst.C3600 or device.hw.Cisco.AIR:
+        if (
+            device.hw.Cisco.Catalyst.C2900
+            or device.hw.Cisco.Catalyst.C3500
+            or device.hw.Cisco.Catalyst.C3600
+            or device.hw.Cisco.AIR
+        ):
             text += r"""
                 !interface */\S*Ethernet\S+/
                     no shutdown
@@ -195,9 +206,12 @@ def _implicit_tree(device):
 
 
 def parse_text(text):
-    return syntax.parse_text(text, {
-        "regexp": {
-            "default": None,
-            "validator": lambda x: syntax.compile_row_regexp(x),
+    return syntax.parse_text(
+        text,
+        {
+            "regexp": {
+                "default": None,
+                "validator": lambda x: syntax.compile_row_regexp(x),
+            },
         },
-    })
+    )

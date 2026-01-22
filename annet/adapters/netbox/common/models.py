@@ -323,10 +323,7 @@ class NetboxDevice(Entity, Generic[_InterfaceT, _DeviceIPT]):
         for interface in self.interfaces:
             if interface.name == name:
                 return interface
-        interface = self._make_interface(
-            name=name,
-            type=InterfaceType("virtual", "Virtual")
-        )
+        interface = self._make_interface(name=name, type=InterfaceType("virtual", "Virtual"))
         self.interfaces.append(interface)
         return interface
 
@@ -338,10 +335,7 @@ class NetboxDevice(Entity, Generic[_InterfaceT, _DeviceIPT]):
         for target_port in self.interfaces:
             if target_port.name == name:
                 return target_port
-        target_port = self._make_interface(
-            name=name,
-            type=InterfaceType("virtual", "Virtual")
-        )
+        target_port = self._make_interface(name=name, type=InterfaceType("virtual", "Virtual"))
         self.interfaces.append(target_port)
         return target_port
 

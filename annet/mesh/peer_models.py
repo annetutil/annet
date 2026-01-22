@@ -11,6 +11,7 @@ class _SharedOptionsDTO(BaseMeshModel):
     """
     Options which can be set on connected pair or group of peers
     """
+
     add_path: bool
     multipath: bool
     advertise_irb: bool
@@ -25,6 +26,7 @@ class MeshSession(_SharedOptionsDTO):
     """
     Options which are set on connected pair
     """
+
     asnum: Union[int, str]
     vrf: str
     families: Annotated[set[FamilyName], Unite()]
@@ -40,9 +42,11 @@ class _OptionsDTO(_SharedOptionsDTO):
     """
     Options which can be set on group of peers or peer itself
     """
+
     def __init__(self, **kwargs):
         kwargs.setdefault("family_options", PeerFamilyOptions())
         super().__init__(**kwargs)
+
     unnumbered: bool
     rr_client: bool
     next_hop_self: bool

@@ -54,7 +54,7 @@ class RDFilterFilterGenerator(PartialGenerator, ABC):
                         comma = ","
                     else:
                         comma = ""
-                    yield f"{route_distinguisher}{comma}",
+                    yield (f"{route_distinguisher}{comma}",)
 
     def acl_juniper(self, _):
         return r"""

@@ -46,12 +46,15 @@ def test_merge_other_field():
         c1.merge(c2)
 
 
-@pytest.mark.parametrize(["v1", "op", "v2", "res"], [
-    (1, ConditionOperator.LT, 2, 1),
-    (1, ConditionOperator.LE, 2, 1),
-    (1, ConditionOperator.GE, 2, 2),
-    (1, ConditionOperator.GT, 2, 2),
-])
+@pytest.mark.parametrize(
+    ["v1", "op", "v2", "res"],
+    [
+        (1, ConditionOperator.LT, 2, 1),
+        (1, ConditionOperator.LE, 2, 1),
+        (1, ConditionOperator.GE, 2, 2),
+        (1, ConditionOperator.GT, 2, 2),
+    ],
+)
 def test_cmp(v1, op, v2, res):
     c1 = SingleCondition("f1", op, v1)
     c2 = SingleCondition("f1", op, v2)

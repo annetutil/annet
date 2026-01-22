@@ -14,7 +14,20 @@ def test_segment_cmp():
 
 @pytest.mark.parametrize(
     "supernet, subnet",
-    (("::/0", "::/0",), ("::/0", "::/1",), ("2001:db8::/32", "2001:db8::1/128",),),
+    (
+        (
+            "::/0",
+            "::/0",
+        ),
+        (
+            "::/0",
+            "::/1",
+        ),
+        (
+            "2001:db8::/32",
+            "2001:db8::1/128",
+        ),
+    ),
 )
 def test_segment_cmp_from_prefix(supernet, subnet):
     sup, sub = ipaddress.ip_network(supernet), ipaddress.ip_network(subnet)

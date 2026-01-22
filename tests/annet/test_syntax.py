@@ -1,4 +1,4 @@
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 
 import pytest
 
@@ -18,11 +18,11 @@ from annet.annlib.rbparser.syntax import parse_text
                             "children": OrderedDict(),
                             "context": {},
                             "params": {
-                                "a": "A", # no `a` present in rule, default value from schema
-                                "b": "bb", # value from rule as is, `%` is preserved
-                                "c": "2", # value from rule as is
-                                "d": "1", # no value for `d` provided, default to `1`
-                                "e": "1", # no value for `e` provided, default to `1`
+                                "a": "A",  # no `a` present in rule, default value from schema
+                                "b": "bb",  # value from rule as is, `%` is preserved
+                                "c": "2",  # value from rule as is
+                                "d": "1",  # no value for `d` provided, default to `1`
+                                "e": "1",  # no value for `e` provided, default to `1`
                             },
                             "raw_rule": "row%a %b=bb %c=2 %d %e=",
                             "row": "row%a",
@@ -44,7 +44,7 @@ from annet.annlib.rbparser.syntax import parse_text
                             "params": {
                                 "a": "x y z",
                                 "b": "1",
-                                "c": "C", # no `c` found, since `%c/42` is not recognized as param
+                                "c": "C",  # no `c` found, since `%c/42` is not recognized as param
                                 "d": "D",
                                 "e": "E",
                             },

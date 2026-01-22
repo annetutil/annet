@@ -72,9 +72,12 @@ retort = Retort(
         loader(PeerFamilyOption, ObjMapping, Chain.FIRST),
         as_is_loader(Redistribute),
         as_is_loader(BFDTimers),
-        name_mapping(PeerOptions, map={
-            "local_as": "asnum",
-        }),
+        name_mapping(
+            PeerOptions,
+            map={
+                "local_as": "asnum",
+            },
+        ),
         loader(list[PeerGroup], lambda x: list(x.values()), Chain.FIRST),
         loader(PeerGroup, ObjMapping, Chain.FIRST),
     ]

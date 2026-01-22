@@ -93,4 +93,4 @@ def test_juniper_both_rd_match_and_not_supported():
             rule.allow()
 
     with pytest.raises(NotImplementedError):
-      generate(routemaps=routemaps, rd_filters=rd_filters, dev=juniper())
+        generate(routemaps=routemaps, rd_filters=rd_filters, dev=juniper())

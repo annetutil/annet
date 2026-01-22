@@ -10,42 +10,42 @@ from annet.vendors import registry_connector
 # =====
 def default(rule, key, diff, **_):
     r"""
-        Функция default() обеспечивает базовую логику обработки всех правил. Ее можно заменить с помощью
-        параметра %logic в текстовом рулбуке. Она вызывается для каждой команды с уникальным ключом и
-        должна возвратить сгенерированный текст патча на основе предоставленного диффа, и, при необходимости,
-        вызвать обработку дочерних правил/данных.
+    Функция default() обеспечивает базовую логику обработки всех правил. Ее можно заменить с помощью
+    параметра %logic в текстовом рулбуке. Она вызывается для каждой команды с уникальным ключом и
+    должна возвратить сгенерированный текст патча на основе предоставленного диффа, и, при необходимости,
+    вызвать обработку дочерних правил/данных.
 
-        Первым аргументом (rule) она принимает словарь с правилом:
-            {
-                # Однострочная команда, не блок, не имеет чилдов
-                "logic": <function default at 0x7fe22ea83510>,  # Функция для обработки правила
-                "provides": [],  # Макросы, реализуемые этим правилом
-                "requires": [],  # Макросы, требуемые для правила
+    Первым аргументом (rule) она принимает словарь с правилом:
+        {
+            # Однострочная команда, не блок, не имеет чилдов
+            "logic": <function default at 0x7fe22ea83510>,  # Функция для обработки правила
+            "provides": [],  # Макросы, реализуемые этим правилом
+            "requires": [],  # Макросы, требуемые для правила
 
-                # Регулярка для разбора строки
-                "regexp": re.compile(r"^snmp-agent\s+sys-info\s+([^\s]+).*$"),
+            # Регулярка для разбора строки
+            "regexp": re.compile(r"^snmp-agent\s+sys-info\s+([^\s]+).*$"),
 
-                # Шаблон для отмены команды (в качестве аргументов следует использовать ключ)
-                "reverse": "undo snmp-agent sys-info {}",
-            }
+            # Шаблон для отмены команды (в качестве аргументов следует использовать ключ)
+            "reverse": "undo snmp-agent sys-info {}",
+        }
 
-        Вторым аргументом (key) идет tuple, состоящий из ключа, распаршенного из строчки с помощью regexp:
-            ("contact",)  # Пример для разбора строки "snmp-agent sys-info contact"
+    Вторым аргументом (key) идет tuple, состоящий из ключа, распаршенного из строчки с помощью regexp:
+        ("contact",)  # Пример для разбора строки "snmp-agent sys-info contact"
 
-        В третий аргумент передается словарь с диффом:
-            {
-                # Команды/блоки, добавленные в новой конфигурации
-                Op.ADDED: [{"children": None, "row": "undo snmp-agent sys-info version all"}],
+    В третий аргумент передается словарь с диффом:
+        {
+            # Команды/блоки, добавленные в новой конфигурации
+            Op.ADDED: [{"children": None, "row": "undo snmp-agent sys-info version all"}],
 
-                # Бывает только в блоках, содержит изменившихся чилдов внутри блоков
-                Op.AFFECTED: [],
+            # Бывает только в блоках, содержит изменившихся чилдов внутри блоков
+            Op.AFFECTED: [],
 
-                # Удаленные команды/блоки
-                Op.REMOVED: [{"children": None, "row": "undo snmp-agent sys-info version v3"}],
+            # Удаленные команды/блоки
+            Op.REMOVED: [{"children": None, "row": "undo snmp-agent sys-info version v3"}],
 
-                # Команды которые никак не изменились (но иногда нужны для других команд)
-                Op.UNCHANGED: [{"children": None, "row": "snmp all-interfaces"}]
-            }
+            # Команды которые никак не изменились (но иногда нужны для других команд)
+            Op.UNCHANGED: [{"children": None, "row": "snmp all-interfaces"}]
+        }
     """
     for op in [Op.ADDED, Op.REMOVED, Op.AFFECTED, Op.MOVED]:
         # Дефолтная функция генерации патчей считает, что не бывает команд с одинаковыми
@@ -164,7 +164,7 @@ def rewrite_diff(old: odict, new: odict, diff_pre: odict, _pops: tuple[Op, ...] 
     diff = base_diff(old, new, diff_pre, _pops, moved_to_affected=False)
     # если мы rewrite верхнего уровня, и в поддереве все Op.AFFECTED
     # то есть не было совершенно никаких изменений, удаляем его из дифа
-    if rewrite_marker not in _pops[:-len(rewrite_tail)]:
+    if rewrite_marker not in _pops[: -len(rewrite_tail)]:
         if all(its[i].op == Op.AFFECTED for i, its in iter_diff(diff)):
             diff.clear()
         else:
@@ -209,32 +209,42 @@ def base_diff(
     for index, row in enumerate(old):
         if row not in new:
             children = call_diff_logic(diff_pre[row]["subtree"], old[row], odict(), pops + (Op.REMOVED,))
-            diff_indexed.append((index, DiffItem(
-                op=Op.REMOVED,
-                row=row,
-                children=children,
-                diff_pre=diff_pre[row]["match"],
-            )))
+            diff_indexed.append(
+                (
+                    index,
+                    DiffItem(
+                        op=Op.REMOVED,
+                        row=row,
+                        children=children,
+                        diff_pre=diff_pre[row]["match"],
+                    ),
+                )
+            )
 
     old_indexes = {row: index for (index, row) in enumerate(old)}
     block_in_disorder = False
     parent_op = pops[-1]
-    for (index, row) in enumerate(new):
+    for index, row in enumerate(new):
         if row not in old:
             block_in_disorder = True
             op = Op.ADDED
         elif block_in_disorder or index != old_indexes[row]:
             block_in_disorder = True
-            op = (Op.MOVED if not moved_to_affected else parent_op)
+            op = Op.MOVED if not moved_to_affected else parent_op
         else:
             op = parent_op
         children = call_diff_logic(diff_pre[row]["subtree"], old.get(row, {}), new[row], pops + (op,))
-        diff_indexed.append((index, DiffItem(
-            op=op,
-            row=row,
-            children=children,
-            diff_pre=diff_pre[row]["match"],
-        )))
+        diff_indexed.append(
+            (
+                index,
+                DiffItem(
+                    op=op,
+                    row=row,
+                    children=children,
+                    diff_pre=diff_pre[row]["match"],
+                ),
+            )
+        )
     diff_indexed.sort()
     return [x[1] for x in diff_indexed]
 
@@ -281,6 +291,7 @@ def _ignore_case(diff_pre, cfg):
 
 
 # ====
+
 
 class ApplyItem(typing.NamedTuple):
     before: CommandList

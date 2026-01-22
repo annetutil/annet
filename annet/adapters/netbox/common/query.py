@@ -26,8 +26,9 @@ class NetboxQuery(Query):
 
     @classmethod
     def new(
-            cls, query: Union[str, Iterable[str]],
-            hosts_range: Optional[slice] = None,
+        cls,
+        query: Union[str, Iterable[str]],
+        hosts_range: Optional[slice] = None,
     ) -> "NetboxQuery":
         if hosts_range is not None:
             raise ValueError("host_range is not supported")

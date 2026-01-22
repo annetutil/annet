@@ -1,4 +1,3 @@
-from collections.abc import Sequence
 from unittest.mock import Mock
 
 from annet.rpl import R, Route, RouteMap
@@ -111,33 +110,33 @@ route-policy policy1
 
 def test_iosxr_then():
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy1(device: Mock, route: Route):
-        with route(R.as_path_length==1) as rule:
+        with route(R.as_path_length == 1) as rule:
             rule.set_metric(1)
-        with route(R.as_path_length==2) as rule:
+        with route(R.as_path_length == 2) as rule:
             rule.add_metric(2)
-        with route(R.as_path_length==3) as rule:
+        with route(R.as_path_length == 3) as rule:
             rule.set_tag(100)
-        with route(R.as_path_length==4) as rule:
+        with route(R.as_path_length == 4) as rule:
             rule.next_hop.discard()
-        with route(R.as_path_length==5) as rule:
+        with route(R.as_path_length == 5) as rule:
             rule.next_hop.self()
-        with route(R.as_path_length==6) as rule:
+        with route(R.as_path_length == 6) as rule:
             rule.next_hop.peer()
-        with route(R.as_path_length==7) as rule:
+        with route(R.as_path_length == 7) as rule:
             rule.next_hop.ipv4_addr("192.168.1.1")
-        with route(R.as_path_length==8) as rule:
+        with route(R.as_path_length == 8) as rule:
             rule.next_hop.ipv6_addr("FE80::1")
-        with route(R.as_path_length==9) as rule:
+        with route(R.as_path_length == 9) as rule:
             rule.next_hop.mapped_ipv4("192.168.1.1")
-        with route(R.as_path_length==10) as rule:
+        with route(R.as_path_length == 10) as rule:
             rule.set_metric_type("type-1")
-        with route(R.as_path_length==11) as rule:
+        with route(R.as_path_length == 11) as rule:
             rule.set_origin("egp")
-        with route(R.as_path_length==12) as rule:
+        with route(R.as_path_length == 12) as rule:
             rule.set_local_pref(42)
-
 
     result = generate(routemaps=routemaps, dev=iosxr())
     expected = scrub("""
@@ -181,7 +180,6 @@ route-policy policy1
     assert result == expected
 
 
-
 def test_juniper_inline():
     # juniper inlines "from" for *SOME* match fields or if there is only one
     # and "then" when there is no attribute modifications and only result:
@@ -198,12 +196,9 @@ def test_juniper_inline():
     community_lists = [
         CommunityList("CMNT_LIST01", ["65000:1234"]),
     ]
-    as_path_filters = [
-        AsPathFilter("AS_PATH_FILTER01", ["1299"])
-    ]
-    prefix_lists = [
-        ip_prefix_list("PFX_LIST01", ["10.0.0.0/8"])
-    ]
+    as_path_filters = [AsPathFilter("AS_PATH_FILTER01", ["1299"])]
+    prefix_lists = [ip_prefix_list("PFX_LIST01", ["10.0.0.0/8"])]
+
     @routemaps
     def policy01(device: Mock, route: Route):
         # then accept
@@ -272,6 +267,7 @@ policy-options {
 
 def test_juniper_term_numbers():
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         # term policy_10
@@ -314,6 +310,7 @@ policy-options {
 
 def test_juniper_term_number_and_name():
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         # term policy_0

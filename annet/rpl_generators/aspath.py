@@ -9,7 +9,8 @@ from .entities import AsPathFilter
 
 
 def get_used_as_path_filters(
-        as_path_filters: Sequence[AsPathFilter], policies: list[RoutingPolicy],
+    as_path_filters: Sequence[AsPathFilter],
+    policies: list[RoutingPolicy],
 ) -> Sequence[AsPathFilter]:
     filters = {c.name: c for c in as_path_filters}
 
@@ -90,7 +91,9 @@ class AsPathFilterGenerator(PartialGenerator, ABC):
             # But we need to provide as_path_filters to policy generator
             # To select between regular as-path and as-path-groups
             if len(as_path_filter.filters) > 1:
-                raise NotImplementedError(f"Multiple elements in as_path_filter {as_path_filter.name} is not supported for Juniper")
+                raise NotImplementedError(
+                    f"Multiple elements in as_path_filter {as_path_filter.name} is not supported for Juniper"
+                )
 
             with self.block("policy-options"):
                 yield from self._juniper_as_path(as_path_filter.name, as_path_filter.filters[0])

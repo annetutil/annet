@@ -22,52 +22,55 @@ MULTILINE_DIFF_LOGIC = "common.multiline_diff"
 @functools.lru_cache()
 def compile_patching_text(text, vendor):
     return _compile_patching(
-        tree=syntax.parse_text(text, params_scheme={
-            "global": {
-                "validator": valid_bool,
-                "default": False,
+        tree=syntax.parse_text(
+            text,
+            params_scheme={
+                "global": {
+                    "validator": valid_bool,
+                    "default": False,
+                },
+                "logic": {
+                    "validator": valid_object_path,
+                    "default": DEFAULT_PATCH_LOGIC,
+                },
+                "diff_logic": {
+                    "validator": valid_object_path,
+                    "default": registry_connector.get()[vendor].diff(False),
+                },
+                "comment": {
+                    "validator": valid_string_list,
+                    "default": [],
+                },
+                "multiline": {
+                    "validator": valid_bool,
+                    "default": False,
+                },
+                "ordered": {
+                    "validator": valid_bool,
+                    "default": False,
+                },
+                "context": {
+                    "validator": str,
+                    "default": None,
+                },
+                "rewrite": {
+                    "validator": valid_bool,
+                    "default": False,
+                },
+                "parent": {
+                    "validator": valid_bool,
+                    "default": False,
+                },
+                "force_commit": {
+                    "validator": valid_bool,
+                    "default": False,
+                },
+                "ignore_case": {
+                    "validator": valid_bool,
+                    "default": False,
+                },
             },
-            "logic": {
-                "validator": valid_object_path,
-                "default": DEFAULT_PATCH_LOGIC,
-            },
-            "diff_logic": {
-                "validator": valid_object_path,
-                "default": registry_connector.get()[vendor].diff(False),
-            },
-            "comment": {
-                "validator": valid_string_list,
-                "default": [],
-            },
-            "multiline": {
-                "validator": valid_bool,
-                "default": False,
-            },
-            "ordered": {
-                "validator": valid_bool,
-                "default": False,
-            },
-            "context": {
-                "validator": str,
-                "default": None,
-            },
-            "rewrite": {
-                "validator": valid_bool,
-                "default": False,
-            },
-            "parent": {
-                "validator": valid_bool,
-                "default": False,
-            },
-            "force_commit": {
-                "validator": valid_bool,
-                "default": False,
-            },
-            "ignore_case": {
-                "validator": valid_bool,
-                "default": False,
-            },
-        }),
+        ),
         reverse_prefix=registry_connector.get()[vendor].reverse,
         vendor=vendor,
     )
@@ -76,7 +79,7 @@ def compile_patching_text(text, vendor):
 # =====
 def _compile_patching(tree, reverse_prefix, vendor):
     rules = {"local": odict(), "global": odict()}
-    for (raw_rule, attrs) in tree.items():
+    for raw_rule, attrs in tree.items():
         regexp = _attrs_to_regexp(attrs)
         attrs = _regexp_to_attrs(regexp, attrs)
         if attrs["type"] == "ignore":
@@ -88,7 +91,7 @@ def _compile_patching(tree, reverse_prefix, vendor):
                     "parent": bool(attrs["children"]),
                     "context": attrs["context"],
                 },
-                "children": {"global": {}, "local": {}}
+                "children": {"global": {}, "local": {}},
             }
         else:
             if attrs["params"]["ordered"]:
@@ -124,7 +127,7 @@ def _compile_patching(tree, reverse_prefix, vendor):
 @functools.lru_cache()
 def _make_reverse(row, reverse_prefix, flags=0):
     if row.startswith(reverse_prefix + " "):
-        row = row[len(reverse_prefix + " "):]
+        row = row[len(reverse_prefix + " ") :]
     else:
         row = "%s %s" % (reverse_prefix, row)
 

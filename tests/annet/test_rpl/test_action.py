@@ -12,11 +12,13 @@ def test_action_list():
             field=FIELD1,
             type=ActionType.ADD,
             value=1,
-        ), SingleAction(
+        ),
+        SingleAction(
             field=FIELD2,
             type=ActionType.ADD,
             value=3,
-        ), SingleAction(
+        ),
+        SingleAction(
             field=FIELD1,
             type=ActionType.ADD,
             value=3,

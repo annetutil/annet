@@ -7,11 +7,7 @@ from annet.rpl import (
     RoutingPolicyStatement,
     SingleAction,
 )
-from annet.rpl.statement_builder import (
-    AsPathActionValue,
-    NextHopActionValue,
-    StatementBuilder,
-)
+from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, StatementBuilder
 
 
 def new_statement():

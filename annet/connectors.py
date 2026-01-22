@@ -39,8 +39,10 @@ class Connector(ABC, Generic[T]):
         if not self._classes:
             raise Exception(f"Not found registered class for group={self.ep_group}")
         if len(self._classes) > 1:
-            warnings.warn(f"Multiple classes are registered with the group={self.ep_group} but "
-                          f"{[cls for cls in self._classes]}", UserWarning)
+            warnings.warn(
+                f"Multiple classes are registered with the group={self.ep_group} but {[cls for cls in self._classes]}",
+                UserWarning,
+            )
         res = self._classes[0]
         return res(*args, **kwargs)
 
@@ -135,7 +137,9 @@ def get_connector_from_config(config_key: str, connectors: List[Type[Connector]]
                 raise Exception("unknown %s %s: seen %s" % (config_key, adapter_name, seen))
 
     if len(connectors) > 1:
-        warnings.warn(f"Please specify adapter for '{config_key}'. Found more than one classes {connectors}", UserWarning)
+        warnings.warn(
+            f"Please specify adapter for '{config_key}'. Found more than one classes {connectors}", UserWarning
+        )
     connector = connectors[0]
     if issubclass(connector, AdapterWithConfig):
         connector_ins = connector.with_config(**connector_params)

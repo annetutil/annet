@@ -186,7 +186,7 @@ def port_split(rule, key, diff, **_):
 def _expand_portsplit(row):
     expanded = []
     row_parts = row.split()
-    for (index, part) in enumerate(row_parts):
+    for index, part in enumerate(row_parts):
         if part == "to":
             iface_base = "/".join(row_parts[index - 1].split("/")[:-1])
             left = int(row_parts[index - 1].split("/")[-1])

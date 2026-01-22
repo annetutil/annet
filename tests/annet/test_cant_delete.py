@@ -22,7 +22,7 @@ def acl(device):
             stays %cant_delete=1
             removed
         """,
-        device.hw.vendor
+        device.hw.vendor,
     )
 
 
@@ -43,6 +43,4 @@ def test_cant_delete_subblock(config, acl, device):
     diff = patching.make_diff(current_tree, empty_tree, rb, [acl])
     patch = patching.make_patch(patching.make_pre(diff), rb, device.hw, add_comments=False)
     patch = patch.asdict()
-    assert patch == {
-        "interface ge1/1/1": OrderedDict([("undo removed", None)])
-    }
+    assert patch == {"interface ge1/1/1": OrderedDict([("undo removed", None)])}

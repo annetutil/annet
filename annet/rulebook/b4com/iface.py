@@ -10,7 +10,7 @@ def diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
 
     ret = common.default_diff(old, new, diff_pre, _pops)
     vpn_changed = False
-    for (op, cmd, _, _) in ret:
+    for op, cmd, _, _ in ret:
         if op in {Op.ADDED, Op.REMOVED}:
             vpn_changed |= is_vpn_cmd(cmd)
     if vpn_changed:
@@ -44,20 +44,22 @@ def is_in_channel(cmd_line):
 
 # Возможно тут есть еще какие-то команды
 def _is_allowed_on_channel(cmd_line):
-    return cmd_line.startswith((
-        "channel-group",
-        "cdp",
-        "description",
-        "inherit",
-        "ip port",
-        "ipv6 port",
-        "mac port",
-        "lacp",
-        "switchport host",
-        "shutdown",
-        "rate-limit cpu",
-        "snmp trap link-status",
-    ))
+    return cmd_line.startswith(
+        (
+            "channel-group",
+            "cdp",
+            "description",
+            "inherit",
+            "ip port",
+            "ipv6 port",
+            "mac port",
+            "lacp",
+            "switchport host",
+            "shutdown",
+            "rate-limit cpu",
+            "snmp trap link-status",
+        )
+    )
 
 
 def is_vpn_cmd(cmd):

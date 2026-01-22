@@ -8,7 +8,11 @@ from . import hostname, lldp
 
 
 def get_generators(store: Storage) -> List[BaseGenerator]:
-    return list(itertools.chain.from_iterable([
-        hostname.get_generators(store),
-        lldp.get_generators(store),
-    ]))
+    return list(
+        itertools.chain.from_iterable(
+            [
+                hostname.get_generators(store),
+                lldp.get_generators(store),
+            ]
+        )
+    )

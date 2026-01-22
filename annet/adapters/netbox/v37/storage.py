@@ -7,11 +7,7 @@ from annetbox.v37 import client_sync
 from annetbox.v37 import models as api_models
 from requests import Session
 
-from annet.adapters.netbox.common.adapter import (
-    NetboxAdapter,
-    get_device_breed,
-    get_device_hw,
-)
+from annet.adapters.netbox.common.adapter import NetboxAdapter, get_device_breed, get_device_hw
 from annet.adapters.netbox.common.storage_base import BaseNetboxStorage
 from annet.storage import Storage
 
@@ -25,19 +21,28 @@ from .models import (
 )
 
 
-class NetboxV37Adapter(NetboxAdapter[
-    NetboxDeviceV37, InterfaceV37, IpAddressV37, PrefixV37, FHRPGroupV37, FHRPGroupAssignmentV37,
-]):
+class NetboxV37Adapter(
+    NetboxAdapter[
+        NetboxDeviceV37,
+        InterfaceV37,
+        IpAddressV37,
+        PrefixV37,
+        FHRPGroupV37,
+        FHRPGroupAssignmentV37,
+    ]
+):
     def __init__(
-            self,
-            storage: Storage,
-            url: str,
-            token: str,
-            ssl_context: ssl.SSLContext | None,
-            threads: int,
-            session_factory: Callable[[Session], Session] | None,
+        self,
+        storage: Storage,
+        url: str,
+        token: str,
+        ssl_context: ssl.SSLContext | None,
+        threads: int,
+        session_factory: Callable[[Session], Session] | None,
     ):
-        self.netbox = client_sync.NetboxV37(url=url, token=token, ssl_context=ssl_context, threads=threads, session_factory=session_factory)
+        self.netbox = client_sync.NetboxV37(
+            url=url, token=token, ssl_context=ssl_context, threads=threads, session_factory=session_factory
+        )
         self.convert_device = get_converter(
             api_models.Device,
             NetboxDeviceV37,
@@ -48,7 +53,7 @@ class NetboxV37Adapter(NetboxAdapter[
                 link_constant(P[NetboxDeviceV37].storage, value=storage),
                 link(P[api_models.Device].name, P[NetboxDeviceV37].hostname),
                 link(P[api_models.Device].name, P[NetboxDeviceV37].fqdn),
-            ]
+            ],
         )
         self.convert_interfaces = get_converter(
             list[api_models.Interface],
@@ -57,14 +62,14 @@ class NetboxV37Adapter(NetboxAdapter[
                 link_constant(P[InterfaceV37].ip_addresses, factory=list),
                 link_constant(P[InterfaceV37].fhrp_groups, factory=list),
                 link_constant(P[InterfaceV37].lag_min_links, value=None),
-            ]
+            ],
         )
         self.convert_ip_addresses = get_converter(
             list[api_models.IpAddress],
             list[IpAddressV37],
             recipe=[
                 link_constant(P[IpAddressV37].prefix, value=None),
-            ]
+            ],
         )
         self.convert_ip_prefixes = get_converter(
             list[api_models.Prefix],
@@ -76,7 +81,7 @@ class NetboxV37Adapter(NetboxAdapter[
             recipe=[
                 link_constant(P[FHRPGroupAssignmentV37].group, value=None),
                 link_function(lambda model: model.group.id, P[FHRPGroupAssignmentV37].fhrp_group_id),
-            ]
+            ],
         )
         self.convert_fhrp_groups = get_converter(
             list[api_models.FHRPGroup],
@@ -85,16 +90,10 @@ class NetboxV37Adapter(NetboxAdapter[
 
     def list_fqdns(self, query: dict[str, list[str]] | None = None) -> list[str]:
         query = query or {}
-        return [
-            d.name
-            for d in self.netbox.dcim_all_devices_brief(**query).results
-        ]
+        return [d.name for d in self.netbox.dcim_all_devices_brief(**query).results]
 
     def list_devices(self, query: dict[str, list[str]]) -> list[NetboxDeviceV37]:
-        return [
-            self.convert_device(dev)
-            for dev in self.netbox.dcim_all_devices(**query).results
-        ]
+        return [self.convert_device(dev) for dev in self.netbox.dcim_all_devices(**query).results]
 
     def get_device(self, device_id: int) -> NetboxDeviceV37:
         return self.convert_device(self.netbox.dcim_device(device_id))
@@ -112,7 +111,8 @@ class NetboxV37Adapter(NetboxAdapter[
         return self.convert_ip_prefixes(self.netbox.ipam_all_prefixes(prefix=prefixes).results)
 
     def list_fhrp_group_assignments(
-            self, iface_ids: list[int],
+        self,
+        iface_ids: list[int],
     ) -> list[FHRPGroupAssignmentV37]:
         raw_assignments = self.netbox.ipam_all_fhrp_group_assignments_by_interface(
             interface_id=iface_ids,
@@ -124,15 +124,22 @@ class NetboxV37Adapter(NetboxAdapter[
         return self.convert_fhrp_groups(raw_groups.results)
 
 
-class NetboxStorageV37(BaseNetboxStorage[
-    NetboxDeviceV37, InterfaceV37, IpAddressV37, PrefixV37, FHRPGroupV37, FHRPGroupAssignmentV37,
-]):
+class NetboxStorageV37(
+    BaseNetboxStorage[
+        NetboxDeviceV37,
+        InterfaceV37,
+        IpAddressV37,
+        PrefixV37,
+        FHRPGroupV37,
+        FHRPGroupAssignmentV37,
+    ]
+):
     def _init_adapter(
-            self,
-            url: str,
-            token: str,
-            ssl_context: ssl.SSLContext | None,
-            threads: int,
-            session_factory: Callable[[Session], Session] | None = None,
+        self,
+        url: str,
+        token: str,
+        ssl_context: ssl.SSLContext | None,
+        threads: int,
+        session_factory: Callable[[Session], Session] | None = None,
     ) -> NetboxAdapter[NetboxDeviceV37, InterfaceV37, IpAddressV37, PrefixV37, FHRPGroupV37, FHRPGroupAssignmentV37]:
         return NetboxV37Adapter(self, url, token, ssl_context, threads, session_factory)

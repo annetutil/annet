@@ -15,7 +15,7 @@ def diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
         iface_new = new.get(iface_row, {})
         iface_pre = diff_pre[iface_row]["subtree"]
         vpn_changed = False
-        for (op, cmd, _, _) in common.default_diff(iface_old, iface_new, iface_pre, _pops):
+        for op, cmd, _, _ in common.default_diff(iface_old, iface_new, iface_pre, _pops):
             if op in {Op.ADDED, Op.REMOVED}:
                 vpn_changed |= is_vpn_cmd(cmd)
                 break
@@ -34,6 +34,7 @@ def diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
 
     return ret
 
+
 # ===
 
 # Вырезает все команды не разрешенные
@@ -49,23 +50,26 @@ def _filter_channel_members(tree):
 
 
 def _is_allowed_on_channel(cmd_line):
-    return cmd_line.startswith((
-        "channel-group",
-        "cdp",
-        "description",
-        "inherit",
-        "ip port",
-        "ipv6 port",
-        "mac port",
-        "lacp",
-        "switchport host",
-        "switchport",
-        "shutdown",
-        "rate-limit cpu",
-        "snmp trap link-status",
-        "mtu",
-        "macsec",  # NOCDEV-9008
-    ))
+    return cmd_line.startswith(
+        (
+            "channel-group",
+            "cdp",
+            "description",
+            "inherit",
+            "ip port",
+            "ipv6 port",
+            "mac port",
+            "lacp",
+            "switchport host",
+            "switchport",
+            "shutdown",
+            "rate-limit cpu",
+            "snmp trap link-status",
+            "mtu",
+            "macsec",  # NOCDEV-9008
+        )
+    )
+
 
 # ===
 
@@ -86,6 +90,4 @@ def _is_allowed_on_old_lag_memeber(cmd_line):
     """
     Эти команды принудительно добавим на интерфейс после удаления его из lag
     """
-    return cmd_line.startswith((
-        "mtu",
-    ))
+    return cmd_line.startswith(("mtu",))

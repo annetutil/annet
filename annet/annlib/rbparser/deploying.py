@@ -34,7 +34,7 @@ class MakeMessageMatcher:
             regexp = re.compile(text[1:-1].strip(), flags=re.I)
             self._fn = regexp.match
         else:
-            self._fn = (lambda arg: _simplify_text(text) in _simplify_text(arg))
+            self._fn = lambda arg: _simplify_text(text) in _simplify_text(arg)
 
     def __str__(self):
         return "%s(%r)" % (self.__class__.__name__, self._text)

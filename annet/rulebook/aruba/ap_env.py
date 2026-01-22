@@ -48,7 +48,12 @@ def mgmt(rule, key, diff, rule_pre, **_):
     empty = {k: v for k, v in params.items() if v is None}
     if empty:
         raise RuntimeError("Failed to determine params %s" % ",".join(empty.keys()))
-    yield True, f"ip-address {params['ipaddr']} {params['netmask']} {params['gatewayip']} {params['dnsip']} {params['domainname']}", None
+    yield (
+        True,
+        f"ip-address {params['ipaddr']} {params['netmask']} {params['gatewayip']} {params['dnsip']} "
+        f"{params['domainname']}",
+        None,
+    )
 
 
 def swarm_mode(rule, key, diff, **_):

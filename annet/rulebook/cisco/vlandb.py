@@ -34,7 +34,7 @@ def _process_vlandb(rule, key, diff, hw, explicit_changing, multi_chunk):
         # switchport trunk allowed vlan none
         yield (True, "%s none" % prefix, None)
         return
-    for vlan_id in ((set(old_blocks.keys()) - set(new_blocks)) & new):
+    for vlan_id in (set(old_blocks.keys()) - set(new_blocks)) & new:
         # Удалено содержимое блока vlan, но сам влан остался
         yield (True, "%s %s" % (prefix, vlan_id), old_blocks[vlan_id])
 
@@ -60,7 +60,7 @@ def _process_vlandb(rule, key, diff, hw, explicit_changing, multi_chunk):
 
 def _chunked(items, size):
     for offset in range(0, len(items), size):
-        yield items[offset:offset + size]
+        yield items[offset : offset + size]
 
 
 def _parse_vlancfg_actions(actions):
