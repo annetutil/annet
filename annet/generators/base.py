@@ -29,22 +29,23 @@ class GenStringable(abc.ABC):
         pass
 
 
-def _filter_str(value: Union[
-    str, int, float, tabparser.JuniperList, ParamsList, GenStringable]):
-    if isinstance(value, (
+def _filter_str(value: Union[str, int, float, tabparser.JuniperList, ParamsList, GenStringable]):
+    if isinstance(
+        value,
+        (
             str,
             int,
             float,
             tabparser.JuniperList,
             ParamsList,
-    )):
+        ),
+    ):
         return str(value)
 
     if hasattr(value, "gen_str") and callable(value.gen_str):
         return value.gen_str()
 
-    raise InvalidValueFromGenerator(
-        "Invalid yield type: %s(%s)" % (type(value).__name__, value))
+    raise InvalidValueFromGenerator("Invalid yield type: %s(%s)" % (type(value).__name__, value))
 
 
 def _split_and_strip(text):
@@ -94,7 +95,7 @@ class TreeGenerator(BaseGenerator):
     @contextlib.contextmanager
     def block_if(self, *tokens, condition=DefaultBlockIfCondition):
         if condition is DefaultBlockIfCondition:
-            condition = (None not in tokens and "" not in tokens)
+            condition = None not in tokens and "" not in tokens
         if condition:
             with self.block(*tokens):
                 yield
@@ -115,7 +116,7 @@ class TreeGenerator(BaseGenerator):
     @contextlib.contextmanager
     def multiblock_if(self, *blocks, condition=DefaultBlockIfCondition):
         if condition is DefaultBlockIfCondition:
-            condition = (None not in blocks)
+            condition = None not in blocks
             if condition:
                 if blocks:
                     blk = blocks[0]

@@ -148,6 +148,7 @@ def contextmanager(arg=None, /, **outer_kwargs):
         cache = None
 
         if inspect.isfunction(cls_or_func):
+
             @contextlib.contextmanager
             @wraps(cls_or_func)
             def wrapper(*args, **kwargs):
@@ -189,11 +190,9 @@ def class_methods(arg=None, /, **outer_kwargs):
     def decorator(cls):
         has_enter, has_exit = False, False
 
-        for name, attr in inspect.getmembers(cls, lambda x: (
-            inspect.isroutine(x)
-            and not inspect.ismethoddescriptor(x)
-            and not inspect.isbuiltin(x)
-        )):
+        for name, attr in inspect.getmembers(
+            cls, lambda x: (inspect.isroutine(x) and not inspect.ismethoddescriptor(x) and not inspect.isbuiltin(x))
+        ):
             if getattr(attr, "_disable_class_methods", False):
                 continue
             if name == "__enter__":

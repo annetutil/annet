@@ -12,30 +12,35 @@ def test_compile_deploying_text_cisco_2_dialogs(ann_connectors):
         dialog: How many bits in the modulus [512]: ::: 2048
     """
     res = compile_deploying_text(text, "cisco")
-    expected = OrderedDict([
-        (
-            "crypto key generate rsa",
-            {
-                "attrs": {
-                    "apply_logic": mock.ANY,
-                    "apply_logic_name": "common.apply",
-                    "timeout": 30,
-                    "dialogs": OrderedDict([
-                        (
-                            MakeMessageMatcher("Do you really want to replace them? [yes/no]:"),
-                            Answer(text="no", send_nl=True)
+    expected = OrderedDict(
+        [
+            (
+                "crypto key generate rsa",
+                {
+                    "attrs": {
+                        "apply_logic": mock.ANY,
+                        "apply_logic_name": "common.apply",
+                        "timeout": 30,
+                        "dialogs": OrderedDict(
+                            [
+                                (
+                                    MakeMessageMatcher("Do you really want to replace them? [yes/no]:"),
+                                    Answer(text="no", send_nl=True),
+                                ),
+                                (
+                                    MakeMessageMatcher("How many bits in the modulus [512]:"),
+                                    Answer(text="2048", send_nl=True),
+                                ),
+                            ]
                         ),
-                        (
-                            MakeMessageMatcher("How many bits in the modulus [512]:"),
-                            Answer(text="2048", send_nl=True))
-                    ]),
-                    'ifcontext': [],
-                    "ignore": [],
-                    "regexp": re.compile("^crypto\\s+key\\s+generate\\s+rsa(?:\\s|$)")
+                        "ifcontext": [],
+                        "ignore": [],
+                        "regexp": re.compile("^crypto\\s+key\\s+generate\\s+rsa(?:\\s|$)"),
+                    },
+                    "children": OrderedDict(),
                 },
-                "children": OrderedDict(),
-            },
-        ),
-    ])
+            ),
+        ]
+    )
 
     assert res == expected

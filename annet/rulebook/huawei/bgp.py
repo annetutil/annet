@@ -18,17 +18,17 @@ def undo_commit(rule, key, diff, **_):
 
 def peer(rule, key, diff, **_):  # pylint: disable=unused-argument
     """
-        Особенность peer-команд в том, что
-            peer IP as-number N
-        является основной командой, и отменить её можно только через
-            undo peer IP
-        , то есть полностью удалив все настройки пира.
+    Особенность peer-команд в том, что
+        peer IP as-number N
+    является основной командой, и отменить её можно только через
+        undo peer IP
+    , то есть полностью удалив все настройки пира.
 
-        При этом, as-number может выставляться и для группы:
-            group SPINES
-            peer SPINES as-number 13238
-        в таком случае игнорим, позволяем удалить эту настройку поскольку она не дефайнит группу
-            undo peer SPINES as-number
+    При этом, as-number может выставляться и для группы:
+        group SPINES
+        peer SPINES as-number 13238
+    в таком случае игнорим, позволяем удалить эту настройку поскольку она не дефайнит группу
+        undo peer SPINES as-number
     """
 
     assert not diff[Op.AFFECTED], "Peer commands could not contain subcommands"

@@ -16,37 +16,28 @@ def edgecore_json_config():
                 "IN_PORT": "Ethernet328",
                 "IP_TYPE": "IPV6ANY",
                 "PACKET_ACTION": "FORWARD",
-                "PRIORITY": "3281"
+                "PRIORITY": "3281",
             },
             "YATTL|RETRANSMIT_RX_klg-10d8-2_17": {
                 "DSCP": "17",
                 "IN_PORT": "Ethernet328",
                 "IP_TYPE": "IPV6ANY",
                 "PACKET_ACTION": "FORWARD",
-                "PRIORITY": "3283"
+                "PRIORITY": "3283",
             },
             "YATTL|RETRANSMIT_RX_klg-10d8-2_25": {
                 "DSCP": "25",
                 "IN_PORT": "Ethernet328",
                 "IP_TYPE": "IPV6ANY",
                 "PACKET_ACTION": "FORWARD",
-                "PRIORITY": "3284"
+                "PRIORITY": "3284",
             },
         },
         "ACL_TABLE_TYPE": {
             "DSCP": {
-                "actions": [
-                    "packet_action"
-                ],
-                "bind_points": [
-                    "PORT"
-                ],
-                "matches": [
-                    "src_ipv6",
-                    "dscp",
-                    "in_port",
-                    "ip_type"
-                ]
+                "actions": ["packet_action"],
+                "bind_points": ["PORT"],
+                "matches": ["src_ipv6", "dscp", "in_port", "ip_type"],
             }
         },
         "BGP_GLOBALS": {
@@ -60,9 +51,9 @@ def edgecore_json_config():
                 "local_asn": "4260167144",
                 "log_nbr_state_changes": "true",
                 "route_map_process_delay": "1",
-                "router_id": "1.102.6.8"
+                "router_id": "1.102.6.8",
             }
-        }
+        },
     }
 
 
@@ -74,26 +65,20 @@ def diff_old():
                 "IN_PORT": "Ethernet310",
                 "IP_TYPE": "IPV6ANY",
                 "PACKET_ACTION": "FORWARD",
-                "PRIORITY": "3281"
+                "PRIORITY": "3281",
             },
             "YATTL|RETRANSMIT_RX_klg-10d8-2_25": {
                 "DSCP": "25",
                 "IN_PORT": "Ethernet328",
                 "IP_TYPE": "IPV6ANY",
                 "PACKET_ACTION": "FORWARD",
-                "PRIORITY": "1"
+                "PRIORITY": "1",
             },
         },
         "ACL_TABLE_TYPE": {
             "DSCP": {
-                "bind_points": [
-                    "PORT"
-                ],
-                "matches": [
-                    "src_ipv6",
-                    "in_port",
-                    "ip_type"
-                ]
+                "bind_points": ["PORT"],
+                "matches": ["src_ipv6", "in_port", "ip_type"],
             }
         },
         "BGP_GLOBALS": {
@@ -107,9 +92,9 @@ def diff_old():
                 "local_asn": "4260167144",
                 "log_nbr_state_changes": "true",
                 "route_map_process_delay": "2",
-                "router_id": "1.102.6.8"
+                "router_id": "1.102.6.8",
             }
-        }
+        },
     }
 
 
@@ -278,19 +263,30 @@ def test_new_json_fragment_files():
 
     gen_res = RunGeneratorResult()
     gen_res.add_json_fragment(
-        make_interface_fragment({
-            "INTERFACE": {
-                "Ethernet0": {"admin_status": "up", "description": "Ether0"},  # unchanged
-                "Ethernet4": {"admin_status": "up", "description": "Ether4"},  # added
-                "Ethernet8": {"admin_status": "up", "description": "Ether8"},  # unchanged
-            },
-            "BREAKOUT_CFG": {
-                "Ethernet0": {"brkout_mode": "2x200G"},  # updated
-                "Ethernet4": {"brkout_mode": "1x10G"},  # added
-                "Ethernet8": {"brkout_mode": "1x400G"},  # unchanged
-            },
-            # no "VLAN_INTERFACE"
-        }),
+        make_interface_fragment(
+            {
+                "INTERFACE": {
+                    "Ethernet0": {
+                        "admin_status": "up",
+                        "description": "Ether0",
+                    },  # unchanged
+                    "Ethernet4": {
+                        "admin_status": "up",
+                        "description": "Ether4",
+                    },  # added
+                    "Ethernet8": {
+                        "admin_status": "up",
+                        "description": "Ether8",
+                    },  # unchanged
+                },
+                "BREAKOUT_CFG": {
+                    "Ethernet0": {"brkout_mode": "2x200G"},  # updated
+                    "Ethernet4": {"brkout_mode": "1x10G"},  # added
+                    "Ethernet8": {"brkout_mode": "1x400G"},  # unchanged
+                },
+                # no "VLAN_INTERFACE"
+            }
+        ),
     )
 
     # full unsafe diff
@@ -298,9 +294,18 @@ def test_new_json_fragment_files():
         "/etc/sonic/config_db.json": (
             {
                 "INTERFACE": {
-                    "Ethernet0": {"admin_status": "up", "description": "Ether0"},  # unchanged
-                    "Ethernet4": {"admin_status": "up", "description": "Ether4"},  # added
-                    "Ethernet8": {"admin_status": "up", "description": "Ether8"},  # unchanged
+                    "Ethernet0": {
+                        "admin_status": "up",
+                        "description": "Ether0",
+                    },  # unchanged
+                    "Ethernet4": {
+                        "admin_status": "up",
+                        "description": "Ether4",
+                    },  # added
+                    "Ethernet8": {
+                        "admin_status": "up",
+                        "description": "Ether8",
+                    },  # unchanged
                 },
                 "BREAKOUT_CFG": {
                     "Ethernet0": {"brkout_mode": "2x200G"},  # updated
@@ -317,9 +322,15 @@ def test_new_json_fragment_files():
         "/etc/sonic/config_db.json": (
             {
                 "INTERFACE": {
-                    "Ethernet0": {"admin_status": "up", "description": "Ether0"},  # unchanged
+                    "Ethernet0": {
+                        "admin_status": "up",
+                        "description": "Ether0",
+                    },  # unchanged
                     "Ethernet4": {"description": "Ether4"},  # added (only description)
-                    "Ethernet8": {"admin_status": "up", "description": "Ether8"},  # unchanged
+                    "Ethernet8": {
+                        "admin_status": "up",
+                        "description": "Ether8",
+                    },  # unchanged
                 },
                 "BREAKOUT_CFG": {
                     "Ethernet0": {"brkout_mode": "1x400G"},  # unchanged
@@ -341,9 +352,18 @@ def test_new_json_fragment_files():
         "/etc/sonic/config_db.json": (
             {
                 "INTERFACE": {
-                    "Ethernet0": {"admin_status": "up", "description": "Ether0"},  # unchanged (not in filters)
-                    "Ethernet4": {"admin_status": "up", "description": "Ether4"},  # added
-                    "Ethernet8": {"admin_status": "up", "description": "Ether8"},  # unchanged
+                    "Ethernet0": {
+                        "admin_status": "up",
+                        "description": "Ether0",
+                    },  # unchanged (not in filters)
+                    "Ethernet4": {
+                        "admin_status": "up",
+                        "description": "Ether4",
+                    },  # added
+                    "Ethernet8": {
+                        "admin_status": "up",
+                        "description": "Ether8",
+                    },  # unchanged
                 },
                 "BREAKOUT_CFG": {
                     "Ethernet0": {"brkout_mode": "1x400G"},  # unchanged (not in filters)
@@ -351,9 +371,12 @@ def test_new_json_fragment_files():
                     "Ethernet8": {"brkout_mode": "1x400G"},  # unchanged
                 },
                 "VLAN_INTERFACE": {
-                    "Ethernet0": {"vrf_name": "default", "description": "Ether0 VLAN"},  # unchanged (not in filters)
+                    "Ethernet0": {
+                        "vrf_name": "default",
+                        "description": "Ether0 VLAN",
+                    },  # unchanged (not in filters)
                     # no "Ethernet8" (deleted: present in filters)
-                }
+                },
             },
             "sonic-reload",
         ),
@@ -364,9 +387,15 @@ def test_new_json_fragment_files():
         "/etc/sonic/config_db.json": (
             {
                 "INTERFACE": {
-                    "Ethernet0": {"admin_status": "up", "description": "Ether0"},  # unchanged (not in filters)
+                    "Ethernet0": {
+                        "admin_status": "up",
+                        "description": "Ether0",
+                    },  # unchanged (not in filters)
                     "Ethernet4": {"description": "Ether4"},  # added (only description)
-                    "Ethernet8": {"admin_status": "up", "description": "Ether8"},  # unchanged
+                    "Ethernet8": {
+                        "admin_status": "up",
+                        "description": "Ether8",
+                    },  # unchanged
                 },
                 "BREAKOUT_CFG": {
                     "Ethernet0": {"brkout_mode": "1x400G"},  # unchanged (not in filters)
@@ -374,9 +403,12 @@ def test_new_json_fragment_files():
                     "Ethernet8": {"brkout_mode": "1x400G"},  # unchanged
                 },
                 "VLAN_INTERFACE": {
-                    "Ethernet0": {"vrf_name": "default", "description": "Ether0 VLAN"},  # unchanged (not in filters)
+                    "Ethernet0": {
+                        "vrf_name": "default",
+                        "description": "Ether0 VLAN",
+                    },  # unchanged (not in filters)
                     "Ethernet8": {"vrf_name": "default"},  # unchanged (not in ACL)
-                }
+                },
             },
             "sonic-reload",
         ),
@@ -415,19 +447,21 @@ def test_new_json_fragment_files_append_list():
 
     gen_res = RunGeneratorResult()
     gen_res.add_json_fragment(
-        make_interface_fragment({
-            "ACL_TABLE": {
-                "YATTL": {
-                    "ports": [
-                        "Ethernet432",
-                        "Ethernet496.201",
-                        "Ethernet496.202",  # added
-                        "Ethernet496.203",  # added
-                        "Ethernet496.204",  # added
-                    ],
+        make_interface_fragment(
+            {
+                "ACL_TABLE": {
+                    "YATTL": {
+                        "ports": [
+                            "Ethernet432",
+                            "Ethernet496.201",
+                            "Ethernet496.202",  # added
+                            "Ethernet496.203",  # added
+                            "Ethernet496.204",  # added
+                        ],
+                    },
                 },
-            },
-        }),
+            }
+        ),
     )
     assert gen_res.new_json_fragment_files(old_files, filters=["/ACL_TABLE/YATTL/ports/*"]) == {
         "/etc/sonic/config_db.json": (

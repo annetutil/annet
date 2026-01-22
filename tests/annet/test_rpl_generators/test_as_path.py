@@ -74,6 +74,7 @@ route-policy policy
 """)
     assert result == expected
 
+
 def test_iosxr_as_path_change():
     routemaps = RouteMap[Mock]()
 

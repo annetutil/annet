@@ -49,12 +49,14 @@ def cumulus():
         "pc",
     )
 
+
 def iosxr():
     return MockDevice(
         "Cisco 8712-MOD-M",
         "Cisco IOS XR Release 7.4.2",
         "iosxr",
     )
+
 
 def juniper():
     return MockDevice(

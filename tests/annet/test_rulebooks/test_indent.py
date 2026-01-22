@@ -20,7 +20,7 @@ def iterate_files(files_or_dirs: typing.List[str]) -> typing.Iterable[pathlib.Pa
                     yield pathlib.Path(os.path.join(dirpath, filename))
 
 
-def check_indent(file: pathlib.Path, indent_symbol: str, number: int) -> True:
+def check_indent(file: pathlib.Path, indent_symbol: str, number: int) -> None:
     lineno = 0
     errors = []
 
@@ -49,9 +49,10 @@ def check_indent(file: pathlib.Path, indent_symbol: str, number: int) -> True:
 
 def pytest_generate_tests(metafunc):
     if "file" in metafunc.fixturenames:
-        metafunc.parametrize("file", (
-            pytest.param(item, id=str(item)) for item in iterate_files(["annet/rulebook/texts"])
-        ))
+        metafunc.parametrize(
+            "file",
+            (pytest.param(item, id=str(item)) for item in iterate_files(["annet/rulebook/texts"])),
+        )
 
 
 def test_indent(file):

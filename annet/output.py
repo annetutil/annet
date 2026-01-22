@@ -109,7 +109,7 @@ class OutputDriverBasic(OutputDriver):
                     label = os.path.join(label, BLACKBOX_FILENAME)
 
                 if label.startswith(LABEL_NEW_PREFIX):
-                    label = label[len(LABEL_NEW_PREFIX):]
+                    label = label[len(LABEL_NEW_PREFIX) :]
                 if label.startswith(os.sep):
                     # just in case.
                     label = label.lstrip(os.sep)
@@ -144,7 +144,7 @@ class OutputDriverBasic(OutputDriver):
     def format_fails(self, fail, fqdns: Optional[Dict[int, str]] = None):
         ret = []
         fqdns = fqdns or {}
-        for (assignment, exc) in fail.items():
+        for assignment, exc in fail.items():
             label = assignment
             if assignment in fqdns:
                 label = fqdns[assignment]

@@ -17,10 +17,10 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'annet'
-copyright = '2024, annetutil'
-author = 'Tishka17'
-master_doc = 'index'
+project = "annet"
+copyright = "2024, annetutil"
+author = "Tishka17"
+master_doc = "index"
 
 # -- General configuration ---------------------------------------------------
 
@@ -28,27 +28,26 @@ master_doc = 'index'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
+    "sphinx.ext.autodoc",
     "sphinx_multiversion",
     "sphinx.ext.githubpages",
 ]
-autodoc_type_aliases: dict[str, str] = {
-}
-autodoc_typehints = 'description'
+autodoc_type_aliases: dict[str, str] = {}
+autodoc_typehints = "description"
 smv_tag_whitelist = "$^"
 smv_branch_whitelist = "main"
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 html_sidebars = {
-    '**': [
+    "**": [
         "sidebar/scroll-start.html",
         "sidebar/brand.html",
         "sidebar/search.html",
         "sidebar/navigation.html",
         "sidebar/ethical-ads.html",
         "sidebar/scroll-end.html",
-        'versioning.html',
+        "versioning.html",
     ],
 }
 # List of patterns, relative to source directory, that match files and
@@ -62,7 +61,7 @@ exclude_patterns: list[str] = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'furo'
+html_theme = "furo"
 html_favicon = "_static/favicon.ico"
 
 # Add any paths that contain custom static files (such as style sheets) here,

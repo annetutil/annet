@@ -23,10 +23,8 @@ class Status:
 
 class NetboxStatusClient(BaseNetboxClient):
     def _init_response_body_factory(self) -> FactoryProtocol:
-        return Retort(recipe=[
-            name_mapping(name_style=NameStyle.LOWER_KEBAB)
-        ])
+        return Retort(recipe=[name_mapping(name_style=NameStyle.LOWER_KEBAB)])
 
     @get("status/")
     def status(self) -> Status:
-        ...
+        pass

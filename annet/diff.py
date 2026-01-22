@@ -30,7 +30,7 @@ from .gen import Loader, old_new
 def _diff_files(hw, old_files, new_files):
     ret = {}
     differ = file_differ_connector.get()
-    for (path, (new_text, reload_data)) in new_files.items():
+    for path, (new_text, reload_data) in new_files.items():
         old_text = old_files.get(path)
         is_new = old_text is None
         diff_lines = differ.diff_file(hw, path, old_text, new_text)
@@ -38,10 +38,11 @@ def _diff_files(hw, old_files, new_files):
     return ret
 
 
-def pc_diff(hw, hostname: str, old_files: Dict[str, str], new_files: Dict[str, str]) -> Generator[
-    PCDiffFile, None, None]:
+def pc_diff(
+    hw, hostname: str, old_files: Dict[str, str], new_files: Dict[str, str]
+) -> Generator[PCDiffFile, None, None]:
     sorted_lines = sorted(_diff_files(hw, old_files, new_files).items())
-    for (path, (diff_lines, _reload_data, is_new)) in sorted_lines:
+    for path, (diff_lines, _reload_data, is_new) in sorted_lines:
         if not diff_lines:
             continue
         label = hostname + os.sep + path
@@ -57,10 +58,7 @@ def json_fragment_diff(
     new_files: Dict[str, Tuple[Any, Optional[str]]],
 ) -> Generator[PCDiffFile, None, None]:
     def jsonify_multi(files):
-        return {
-            path: jsontools.format_json(cfg)
-            for path, cfg in files.items()
-        }
+        return {path: jsontools.format_json(cfg) for path, cfg in files.items()}
 
     def jsonify_multi_with_cmd(files):
         ret = {}
@@ -101,8 +99,9 @@ def worker(
         if res.old_files or new_files:
             pc_diff_files.extend(pc_diff(res.device.hw, device.hostname, res.old_files, new_files))
         if res.old_json_fragment_files or new_json_fragment_files:
-            pc_diff_files.extend(json_fragment_diff(res.device.hw, device.hostname, res.old_json_fragment_files,
-                                                    new_json_fragment_files))
+            pc_diff_files.extend(
+                json_fragment_diff(res.device.hw, device.hostname, res.old_json_fragment_files, new_json_fragment_files)
+            )
 
         if pc_diff_files:
             pc_diff_files.sort(key=lambda f: f.label)
@@ -171,11 +170,13 @@ def collapse_diffs(diffs: Mapping[Device, Diff]) -> Dict[Tuple[Device, ...], Dif
     :return: дикт аналогичный типу Diff, но с несколькими dev в ключе.
         Нужно учесть что дифы сверяются в отформатированном виде
     """
-    diffs_with_test = {dev: [diff, _transform_text_diff_for_collapsing(_make_text_diff(dev, diff))] for dev, diff in
-                       diffs.items()}
+    diffs_with_test = {
+        dev: [diff, _transform_text_diff_for_collapsing(_make_text_diff(dev, diff))] for dev, diff in diffs.items()
+    }
     res = {}
-    for _, collapsed_diff_iter in groupby(sorted(diffs_with_test.items(), key=lambda x: (x[0].hw.vendor, x[1][1])),
-                                          key=lambda x: x[1][1]):
+    for _, collapsed_diff_iter in groupby(
+        sorted(diffs_with_test.items(), key=lambda x: (x[0].hw.vendor, x[1][1])), key=lambda x: x[1][1]
+    ):
         collapsed_diff = list(collapsed_diff_iter)
         res[tuple(x[0] for x in collapsed_diff)] = collapsed_diff[0][1][0]
 

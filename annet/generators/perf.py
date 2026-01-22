@@ -13,7 +13,7 @@ class GeneratorPerfMesurer:
         self,
         gen: BaseGenerator,
         run_args: Optional[GeneratorPartialRunArgs] = None,
-        trace_min_duration: tracing.MinDurationT = None
+        trace_min_duration: tracing.MinDurationT = None,
     ):
         self._gen = gen
         self._run_args = run_args
@@ -39,13 +39,13 @@ class GeneratorPerfMesurer:
             self._span.set_attributes({"generator.class": self._gen.__class__.__name__})
             if self._run_args:
                 tracing_connector.get().set_device_attributes(
-                    self._span, self._run_args.device,
+                    self._span,
+                    self._run_args.device,
                 )
 
         self._start_time = time.monotonic()
 
-    def finish(self, exc_type=None, exc_val=None,
-               exc_tb=None) -> GeneratorPerf:
+    def finish(self, exc_type=None, exc_val=None, exc_tb=None) -> GeneratorPerf:
         total = time.monotonic() - self._start_time
         self._span_ctx.__exit__(exc_type, exc_val, exc_tb)
         rt = self._gen.storage.flush_perf()

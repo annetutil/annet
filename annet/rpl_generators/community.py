@@ -4,13 +4,7 @@ from collections.abc import Collection, Iterator, Mapping, Sequence
 from typing import Any
 
 from annet.generators import PartialGenerator
-from annet.rpl import (
-    ConditionOperator,
-    MatchField,
-    RoutingPolicy,
-    SingleCondition,
-    ThenField,
-)
+from annet.rpl import ConditionOperator, MatchField, RoutingPolicy, SingleCondition, ThenField
 
 from .entities import (
     CommunityList,
@@ -22,7 +16,8 @@ from .entities import (
 
 
 def get_used_community_lists(
-        communities: Collection[CommunityList], policies: Collection[RoutingPolicy],
+    communities: Collection[CommunityList],
+    policies: Collection[RoutingPolicy],
 ) -> list[CommunityList]:
     assert_unique_names(communities)
     communities_dict = {c.name: c for c in communities}
@@ -31,28 +26,31 @@ def get_used_community_lists(
         for statement in policy.statements:
             condition: SingleCondition[Sequence[str]]
             for match_field in (
-                    MatchField.community, MatchField.large_community,
-                    MatchField.extcommunity_rt, MatchField.extcommunity_soo
+                MatchField.community,
+                MatchField.large_community,
+                MatchField.extcommunity_rt,
+                MatchField.extcommunity_soo,
             ):
                 for condition in statement.match.find_all(match_field):
                     used_communities.update(condition.value)
             for then_field in (
-                    ThenField.community, ThenField.large_community,
-                    ThenField.extcommunity_rt, ThenField.extcommunity_soo,
-                    ThenField.extcommunity,
+                ThenField.community,
+                ThenField.large_community,
+                ThenField.extcommunity_rt,
+                ThenField.extcommunity_soo,
+                ThenField.extcommunity,
             ):
                 for action in statement.then.find_all(then_field):
                     if action.value.replaced is not None:
                         used_communities.update(action.value.replaced)
                     used_communities.update(action.value.added)
                     used_communities.update(action.value.removed)
-    return [
-        communities_dict[name] for name in sorted(used_communities)
-    ]
+    return [communities_dict[name] for name in sorted(used_communities)]
 
 
 def get_used_united_community_lists(
-        communities: Collection[CommunityList], policies: Collection[RoutingPolicy],
+    communities: Collection[CommunityList],
+    policies: Collection[RoutingPolicy],
 ) -> list[list[CommunityList]]:
     """
     Return communities united into groups according to HAS_ANY policy
@@ -64,18 +62,15 @@ def get_used_united_community_lists(
         for statement in policy.statements:
             condition: SingleCondition[Sequence[str]]
             for match_field in (
-                    MatchField.community, MatchField.large_community,
-                    MatchField.extcommunity_rt, MatchField.extcommunity_soo
+                MatchField.community,
+                MatchField.large_community,
+                MatchField.extcommunity_rt,
+                MatchField.extcommunity_soo,
             ):
                 for condition in statement.match.find_all(match_field):
-                    if (
-                            condition.operator == ConditionOperator.HAS_ANY and
-                            len(condition.value) > 1
-                    ):
+                    if condition.operator == ConditionOperator.HAS_ANY and len(condition.value) > 1:
                         united_name = mangle_united_community_list_name(condition.value)
-                        united_communities: list[CommunityList] = [
-                            communities_dict[name] for name in condition.value
-                        ]
+                        united_communities: list[CommunityList] = [communities_dict[name] for name in condition.value]
                         if not all(united_communities[0].type == c.type for c in united_communities):
                             raise ValueError(
                                 f"Cannot apply HAS_ANY to communities of different types, "
@@ -91,8 +86,10 @@ def get_used_united_community_lists(
                         for name in condition.value:
                             used_communities[name] = [communities_dict[name]]
             for then_field in (
-                    ThenField.community, ThenField.large_community,
-                    ThenField.extcommunity_rt, ThenField.extcommunity_soo
+                ThenField.community,
+                ThenField.large_community,
+                ThenField.extcommunity_rt,
+                ThenField.extcommunity_soo,
             ):
                 for action in statement.then.find_all(then_field):
                     if action.value.replaced is not None:
@@ -102,9 +99,7 @@ def get_used_united_community_lists(
                         used_communities[name] = [communities_dict[name]]
                     for name in action.value.removed:
                         used_communities[name] = [communities_dict[name]]
-    return [
-        used_communities[name] for name in sorted(used_communities)
-    ]
+    return [used_communities[name] for name in sorted(used_communities)]
 
 
 def assert_unique_names(communities: Collection[CommunityList]) -> None:
@@ -202,7 +197,11 @@ class CommunityListGenerator(PartialGenerator, ABC):
         """
 
     def _arista_community_list(
-            self, name: str, use_regex: bool, comm_type: CommunityType, members: str,
+        self,
+        name: str,
+        use_regex: bool,
+        comm_type: CommunityType,
+        members: str,
     ) -> Sequence[str]:
         if use_regex:
             match_type = "regexp"
@@ -247,8 +246,7 @@ class CommunityListGenerator(PartialGenerator, ABC):
                 if community_list.logic == CommunityLogic.AND:
                     # to get AND logic the communities should be in one sting
                     member_str = " ".join(
-                        member_prefix + arista_well_known_community(m)
-                        for m in community_list.members
+                        member_prefix + arista_well_known_community(m) for m in community_list.members
                     )
                     yield self._arista_community_list(
                         name=name,
@@ -294,7 +292,7 @@ class CommunityListGenerator(PartialGenerator, ABC):
                 if community_list.use_regex:
                     yield "ios-regex", f"'{community}'"
                 else:
-                    yield f"{community}{comma}",
+                    yield (f"{community}{comma}",)
 
     def run_iosxr(self, device):
         for community_list in self.get_used_community_lists(device):
@@ -320,7 +318,9 @@ class CommunityListGenerator(PartialGenerator, ABC):
             elif community_list.type is CommunityType.LARGE:
                 prefix = "large:"
             else:
-                raise NotImplementedError(f"CommunityList {name}: type {community_list.type} not implemented for Juniper")
+                raise NotImplementedError(
+                    f"CommunityList {name}: type {community_list.type} not implemented for Juniper"
+                )
 
             logic.add(community_list.logic)
             for community in community_list.members:

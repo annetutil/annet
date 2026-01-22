@@ -12,7 +12,7 @@ def get_db(prepared):
 
 def find_true_sequences(hw_model, tree):
     sequences = set()
-    for (regexp, meta) in tree.items():
+    for regexp, meta in tree.items():
         if regexp.search(hw_model):
             sequences.update(meta["sequences"])
             sequences.update(find_true_sequences(hw_model, meta["children"]))
@@ -21,7 +21,7 @@ def find_true_sequences(hw_model, tree):
 
 def _build_tree(prepared, allowed_by_seq):
     tree = {}
-    for (seq, regexp) in prepared.items():
+    for seq, regexp in prepared.items():
         sub = tree
         for sub_seq in _seq_subs(seq):
             regexp = prepared[sub_seq]
@@ -55,8 +55,4 @@ def _make_allowed_by_seq(sequences):
 
 
 def _make_seq_variants(seq):
-    return set(
-        seq[left:-right] + (seq[-1],)
-        for left in range(len(seq))
-        for right in range(1, len(seq[left:]) + 1)
-    )
+    return set(seq[left:-right] + (seq[-1],) for left in range(len(seq)) for right in range(1, len(seq[left:]) + 1))

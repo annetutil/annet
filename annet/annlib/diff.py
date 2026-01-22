@@ -17,10 +17,7 @@ diff_ops = {
     ">": Op.MOVED,
 }
 
-ops_sign = {
-    v: k
-    for k, v in diff_ops.items()
-}
+ops_sign = {v: k for k, v in diff_ops.items()}
 
 ops_order = {
     Op.AFFECTED: 0,
@@ -55,7 +52,7 @@ def is_ip(ts):
 
 def diff_cmp(diff_l, diff_r):
     """
-Сборник костылей для сравнения двух строк диффа
+    Сборник костылей для сравнения двух строк диффа
     """
     (op_l, line_l, _, _) = diff_l
     (op_r, line_r, _, _) = diff_r
@@ -134,21 +131,17 @@ def colorize_line(line, no_color=False):
 
 
 def gen_pre_as_diff(
-    pre: Dict,
-    show_rules: bool,
-    indent: str,
-    no_color: bool,
-    _level: int = 0
+    pre: Dict, show_rules: bool, indent: str, no_color: bool, _level: int = 0
 ) -> Generator[str, None, None]:
     ops = [(order, op) for op, order in ops_order.items()]
     ops.sort()
-    for (raw_rule, content) in pre.items():
+    for raw_rule, content in pre.items():
         items = content["items"].items()
-        for (_, diff) in items:  # pylint: disable=redefined-outer-name
+        for _, diff in items:  # pylint: disable=redefined-outer-name
             if show_rules and not raw_rule == "__MULTILINE_BODY__":
                 line = "# %s%s\n" % (indent * _level, raw_rule)
                 yield colorize_line_with_color(line, colorama.Fore.BLACK, no_color)
-            for (op, rows) in [(op, diff[op]) for (_, op) in ops]:
+            for op, rows in [(op, diff[op]) for (_, op) in ops]:
                 for item in rows:
                     line = "%s%s %s\n" % (ops_sign[op], indent * _level, item["row"])
                     yield colorize_line_with_color(line, ops_color[op], no_color)

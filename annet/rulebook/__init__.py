@@ -36,8 +36,9 @@ class DefaultRulebookProvider(RulebookProvider):
     root_dir = (path.dirname(__file__),)
     root_modules = ("annet.rulebook",)
 
-    def __init__(self, root_dir: Union[str, Iterable[str], None] = None,
-                 root_modules: Union[str, Iterable[str], None] = None):
+    def __init__(
+        self, root_dir: Union[str, Iterable[str], None] = None, root_modules: Union[str, Iterable[str], None] = None
+    ):
         self._rulebook_cache = {}
         self._render_rul_cache = {}
         self._escaped_rul_cache = {}

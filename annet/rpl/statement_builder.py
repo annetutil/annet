@@ -69,9 +69,7 @@ class AsPathActionValue:
     delete: list[str] = field(default_factory=list)
 
     def __bool__(self) -> bool:  # check if any action required
-        return bool(
-            self.set is not None or self.prepend or self.expand or self.expand_last_as or self.delete
-        )
+        return bool(self.set is not None or self.prepend or self.expand or self.expand_last_as or self.delete)
 
 
 RawAsNum = Union[str, int]
@@ -187,11 +185,13 @@ class StatementBuilder:
             action[field].type = ActionType.SET
             action[field].value = value
         else:
-            action.append(SingleAction(
-                field=field,
-                type=ActionType.SET,
-                value=value,
-            ))
+            action.append(
+                SingleAction(
+                    field=field,
+                    type=ActionType.SET,
+                    value=value,
+                )
+            )
 
     def set_local_pref(self, value: int) -> None:
         self._set(ThenField.local_pref, value)
@@ -214,11 +214,13 @@ class StatementBuilder:
             else:
                 raise RuntimeError(f"Unknown action type {old_action.type} for metric")
         else:
-            action.append(SingleAction(
-                field=field,
-                type=ActionType.ADD,
-                value=value,
-            ))
+            action.append(
+                SingleAction(
+                    field=field,
+                    type=ActionType.ADD,
+                    value=value,
+                )
+            )
 
     def set_rpki_valid_state(self, value: str) -> None:
         self._set(ThenField.rpki_valid_state, value)
@@ -243,47 +245,61 @@ class StatementBuilder:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self._community:
-            self._statement.then.append(SingleAction(
-                field=ThenField.community,
-                type=ActionType.CUSTOM,
-                value=self._community,
-            ))
+            self._statement.then.append(
+                SingleAction(
+                    field=ThenField.community,
+                    type=ActionType.CUSTOM,
+                    value=self._community,
+                )
+            )
         if self._large_community:
-            self._statement.then.append(SingleAction(
-                field=ThenField.large_community,
-                type=ActionType.CUSTOM,
-                value=self._large_community,
-            ))
+            self._statement.then.append(
+                SingleAction(
+                    field=ThenField.large_community,
+                    type=ActionType.CUSTOM,
+                    value=self._large_community,
+                )
+            )
         if self._extcommunity:
-            self._statement.then.append(SingleAction(
-                field=ThenField.extcommunity,
-                type=ActionType.CUSTOM,
-                value=self._extcommunity,
-            ))
+            self._statement.then.append(
+                SingleAction(
+                    field=ThenField.extcommunity,
+                    type=ActionType.CUSTOM,
+                    value=self._extcommunity,
+                )
+            )
         if self._extcommunity_rt:
-            self._statement.then.append(SingleAction(
-                field=ThenField.extcommunity_rt,
-                type=ActionType.CUSTOM,
-                value=self._extcommunity_rt,
-            ))
+            self._statement.then.append(
+                SingleAction(
+                    field=ThenField.extcommunity_rt,
+                    type=ActionType.CUSTOM,
+                    value=self._extcommunity_rt,
+                )
+            )
         if self._extcommunity_soo:
-            self._statement.then.append(SingleAction(
-                field=ThenField.extcommunity_soo,
-                type=ActionType.CUSTOM,
-                value=self._extcommunity_soo,
-            ))
+            self._statement.then.append(
+                SingleAction(
+                    field=ThenField.extcommunity_soo,
+                    type=ActionType.CUSTOM,
+                    value=self._extcommunity_soo,
+                )
+            )
         if self._as_path:
-            self._statement.then.append(SingleAction(
-                field=ThenField.as_path,
-                type=ActionType.CUSTOM,
-                value=self._as_path,
-            ))
+            self._statement.then.append(
+                SingleAction(
+                    field=ThenField.as_path,
+                    type=ActionType.CUSTOM,
+                    value=self._as_path,
+                )
+            )
         if self._next_hop:
-            self._statement.then.append(SingleAction(
-                field=ThenField.next_hop,
-                type=ActionType.CUSTOM,
-                value=self._next_hop,
-            ))
+            self._statement.then.append(
+                SingleAction(
+                    field=ThenField.next_hop,
+                    type=ActionType.CUSTOM,
+                    value=self._next_hop,
+                )
+            )
         return None
 
     def allow(self) -> None:

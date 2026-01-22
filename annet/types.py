@@ -25,10 +25,7 @@ class GeneratorPerf:
     """
 
     def __init__(
-        self,
-        total: float,
-        rt: Optional[Dict[str, List[Dict[str, Any]]]],
-        meta: Optional[Dict[str, Any]] = None
+        self, total: float, rt: Optional[Dict[str, List[Dict[str, Any]]]], meta: Optional[Dict[str, Any]] = None
     ):
         self.total = total
         self.rt = rt
@@ -149,8 +146,7 @@ GeneratorResult = Union[GeneratorEntireResult, GeneratorPartialResult, Generator
 
 
 class OldNewResult:
-    """Результат запуска old_new
-    """
+    """Результат запуска old_new"""
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -174,7 +170,7 @@ class OldNewResult:
         safe_new=None,
         safe_new_files=None,
         safe_new_json_fragment_files=None,
-        filter_acl_rules=None
+        filter_acl_rules=None,
     ):
         self.device: Device = device
         self.old: MutableMapping = old if old else OrderedDict()

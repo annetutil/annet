@@ -20,6 +20,7 @@ class FamilyOptions(BaseMeshModel):
     def __init__(self, **kwargs):
         kwargs.setdefault("aggregate", _Aggregate())
         super().__init__(**kwargs)
+
     family: Family
     vrf_name: str
     multipath: int
@@ -51,6 +52,7 @@ class _FamiliesMixin:
         kwargs.setdefault("ipv6_labeled_unicast", FamilyOptions(family="ipv6_labeled_unicast"))
         kwargs.setdefault("l2vpn_evpn", FamilyOptions(family="l2vpn_evpn"))
         super().__init__(**kwargs)
+
     ipv4_unicast: Annotated[FamilyOptions, Merge()]
     ipv6_unicast: Annotated[FamilyOptions, Merge()]
     ipv4_vpn_unicast: Annotated[FamilyOptions, Merge()]

@@ -46,31 +46,27 @@ def valid_bool_list(
 _PARAMS_SCHEME = {
     "global": {
         "validator": valid_bool,
-        "default":   False,
-        "uniter":    (lambda a, b: a or b),
+        "default": False,
+        "uniter": (lambda a, b: a or b),
     },
     "cant_delete": {
         "validator": valid_bool_list,
-        "default":   (lambda raw_rule: [raw_rule.startswith("interface")]),  # FIXME: ужас какой
-        "uniter": (lambda a, b: a + b)
+        "default": (lambda raw_rule: [raw_rule.startswith("interface")]),  # FIXME: ужас какой
+        "uniter": (lambda a, b: a + b),
     },
     "prio": {
         "validator": (lambda s: valid_number(s, min=0, type=int)),
-        "default":   0,
-        "uniter":    max,
+        "default": 0,
+        "uniter": max,
     },
-    "generator_names": {
-        "validator": valid_string_list,
-        "default": [],
-        "uniter": (lambda a, b: a + b)
-    }
+    "generator_names": {"validator": valid_string_list, "default": [], "uniter": (lambda a, b: a + b)},
 }
 
 
 # =====
 def _compile_acl(trees, reverse_prefix, allow_ignore=False, vendor=""):
     rules = {"local": odict(), "global": odict()}
-    for (rule_id, attrs) in _merge_toplevel(trees).items():
+    for rule_id, attrs in _merge_toplevel(trees).items():
         if attrs["type"] == "ignore" and not allow_ignore:
             raise NotImplementedError("ACL does not support ignore-rules")
         rule = {
@@ -102,7 +98,7 @@ def _merge_toplevel(trees):
                 merged[rule_id]["children"] = [attrs["children"]] if attrs["children"] else []
                 continue
 
-            for (key, value) in attrs["params"].items():
+            for key, value in attrs["params"].items():
                 if key in merged[rule_id]["params"]:
                     uniter = _PARAMS_SCHEME[key]["uniter"]
                     merged[rule_id]["params"][key] = uniter(merged[rule_id]["params"][key], value)
@@ -117,6 +113,6 @@ def _merge_toplevel(trees):
 @functools.lru_cache()
 def _make_reverse(row, reverse_prefix):
     if row.startswith(reverse_prefix + " "):
-        return row[len(reverse_prefix + " "):]
+        return row[len(reverse_prefix + " ") :]
     else:
         return "%s %s" % (reverse_prefix, row)
