@@ -3,7 +3,7 @@ import functools
 import re
 from collections import OrderedDict as odict
 from collections.abc import Iterator
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from annet.annlib import lib
 from annet.vendors import tabparser
@@ -93,6 +93,7 @@ def _parse_tree_with_params(raw_tree: tabparser.SimpleTree, scheme, context: dic
     tree: ParsedTree = []
     if context is None:
         context = {}
+
     for (raw_rule, children) in raw_tree:
         (row, params) = _parse_raw_rule(raw_rule, scheme)
         row_type = "normal"
@@ -109,9 +110,9 @@ def _parse_tree_with_params(raw_tree: tabparser.SimpleTree, scheme, context: dic
             "row": row,
             "type": row_type,
             "params": params,
-            "children": _parse_tree_with_params(children, scheme, context.copy()),
+            "children": _parse_tree_with_params(children, scheme, cast(dict, context).copy()),
             "raw_rule": raw_rule,
-            "context": context.copy(),
+            "context": cast(dict, context).copy(),
         }))
     return tree
 

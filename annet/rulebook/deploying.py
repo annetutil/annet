@@ -5,8 +5,7 @@ from collections import namedtuple
 from annet.annlib.rbparser import syntax
 from annet.annlib.rbparser.deploying import compile_messages
 from annet.vendors import registry_connector
-from valkit.common import valid_bool, valid_number, valid_string_list
-from valkit.python import valid_object_path
+from annet.lib.valkit import valid_bool, valid_number, valid_string_list, valid_object_path
 
 from .common import import_rulebook_function
 

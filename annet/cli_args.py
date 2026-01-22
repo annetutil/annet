@@ -3,10 +3,9 @@
 import abc
 import argparse
 import enum
-import logging
 import os
 
-from valkit.common import valid_string_list
+from annet.lib.valkit import valid_string_list
 
 import annet.lib
 from annet.argparse import Arg, ArgGroup, DefaultFromEnv

@@ -5,7 +5,7 @@ import sys
 import threading
 from functools import lru_cache
 from pathlib import Path
-from typing import Awaitable, Optional, TypeVar
+from typing import Awaitable, Optional, TypeVar, Coroutine
 
 import yaml
 from annet.annlib.lib import (  # pylint: disable=unused-import
@@ -45,6 +45,7 @@ _DEFAULT_CONTEXT_PATH: Optional[str] = None   # defaults to ~/.annet/context.yml
 def get_homedir_path() -> str:
     if _HOMEDIR_PATH is None:
         set_homedir_path(os.path.expanduser("~/.annet/"))
+    assert _HOMEDIR_PATH is not None
     return _HOMEDIR_PATH
 
 
@@ -55,7 +56,10 @@ def set_homedir_path(path: str) -> None:
 
 def get_template_context_path() -> str:
     if _TEMPLATE_CONTEXT_PATH is None:
-        set_template_context_path(str(Path(sys.modules["annet"].__file__).parent / "configs/context.yml"))
+        set_template_context_path(
+            str(Path(sys.modules["annet"].__file__).parent / "configs/context.yml")  # type: ignore
+        )
+    assert _TEMPLATE_CONTEXT_PATH is not None
     return _TEMPLATE_CONTEXT_PATH
 
 
@@ -67,6 +71,7 @@ def set_template_context_path(path: str) -> None:
 def get_default_context_path() -> str:
     if _DEFAULT_CONTEXT_PATH is None:
         set_default_context_path("~/.annet/context.yml")
+    assert _DEFAULT_CONTEXT_PATH is not None
     return _DEFAULT_CONTEXT_PATH
 
 
@@ -143,13 +148,14 @@ def repair_context_file() -> None:
 ReturnType = TypeVar("ReturnType")
 
 
-def do_async(coro: Awaitable[ReturnType], new_thread=False) -> ReturnType:
+def do_async(coro: Coroutine[None, None, ReturnType], new_thread=False) -> ReturnType:
     if new_thread:
         # start the new thread with the new event loop
-        res: ReturnType = None
+        res: ReturnType
 
         def wrapper(main):
             nonlocal res
+
             try:
                 res = asyncio.run(main)
             except BaseException as e:
@@ -157,6 +163,7 @@ def do_async(coro: Awaitable[ReturnType], new_thread=False) -> ReturnType:
         thread = threading.Thread(target=wrapper, args=(coro,))
         thread.start()
         thread.join()
+
         if isinstance(res, BaseException):
             raise res
         return res

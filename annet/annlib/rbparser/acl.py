@@ -1,9 +1,7 @@
 import functools
 from collections import OrderedDict as odict
-from typing import Any, Callable, List, Optional
 
-from valkit import add_validator_magic
-from valkit.common import valid_bool, valid_number, valid_string_list
+from annet.lib.valkit import valid_bool_list, valid_bool, valid_number, valid_string_list
 
 from annet.vendors import registry_connector
 from . import syntax
@@ -29,34 +27,22 @@ def compile_ref_acl_text(text):
     )
 
 
-@add_validator_magic
-def valid_bool_list(
-    arg: Any,
-    delim: str = r"[,\t ]+",
-    subval: Optional[Callable[[Any], Any]] = None,
-    strip: bool = False,
-) -> List[bool]:
-    arg = valid_string_list(arg, delim, subval, strip)
-    arg = [valid_bool(x, strip) for x in arg]
-    return arg
-
-
 # =====
 _PARAMS_SCHEME = {
     "global": {
         "validator": valid_bool,
-        "default":   False,
-        "uniter":    (lambda a, b: a or b),
+        "default": False,
+        "uniter": (lambda a, b: a or b),
     },
     "cant_delete": {
         "validator": valid_bool_list,
-        "default":   (lambda raw_rule: [raw_rule.startswith("interface")]),  # FIXME: ужас какой
+        "default": (lambda raw_rule: [raw_rule.startswith("interface")]),  # FIXME: ужас какой
         "uniter": (lambda a, b: a + b)
     },
     "prio": {
         "validator": (lambda s: valid_number(s, min=0, type=int)),
-        "default":   0,
-        "uniter":    max,
+        "default": 0,
+        "uniter": max,
     },
     "generator_names": {
         "validator": valid_string_list,

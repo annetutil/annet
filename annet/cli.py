@@ -13,7 +13,7 @@ from typing import Optional, Tuple, Iterable
 import tabulate
 import yaml
 from contextlog import get_logger
-from valkit.python import valid_logging_level
+from annet.lib.valkit import valid_logging_level
 
 from annet.deploy import get_fetcher, get_deployer
 from annet import api, cli_args, filtering, generators

@@ -7,7 +7,6 @@ Pygments>=2.14.0
 Mako>=1.2.4
 packaging>=23.2
 contextlog>=1.1
-valkit>=0.1.4
 yarl>=1.8.2
 adaptix==3.0.0b7
 dataclass-rest==0.4

@@ -3,7 +3,7 @@ from collections.abc import Iterator
 import functools
 import re
 
-from valkit.common import valid_bool, valid_string_list
+from annet.lib.valkit import valid_bool, valid_string_list
 
 from annet.vendors import registry_connector
 from . import syntax
@@ -38,7 +38,7 @@ def compile_ordering_text(text: str, vendor: str):
         tree=syntax.parse_text_multi(text, params_scheme={
             "order_reverse": {
                 "validator": valid_bool,
-                "default":   False,
+                "default": False,
             },
             "global": {
                 "validator": valid_bool,
@@ -63,6 +63,7 @@ def decompile_ordering_rulebook(rb: CompiledTree) -> str:
         for _, attrs in rb:
             yield indent * level + attrs["attrs"]["raw_rule"]
             yield from _decompile_ordering_text(attrs["children"], level + 1)
+
     return "\n".join(_decompile_ordering_text(rb, 0))
 
 

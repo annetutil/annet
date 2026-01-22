@@ -8,7 +8,7 @@ from argparse import SUPPRESS, Namespace
 import colorama
 import yaml
 from contextlog import patch_logging, patch_threading
-from valkit.python import valid_logging_level
+from annet.lib.valkit import valid_logging_level
 
 import annet.argparse
 from annet.vendors import tabparser  # pylint: disable=unused-import
