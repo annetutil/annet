@@ -2,19 +2,15 @@ import os
 from unittest import mock
 
 import pytest
-from annet import rulebook
 
-from annet import deploy, implicit, lib, patching
+from annet import deploy, implicit, lib, patching, rulebook
 from annet.vendors import registry_connector
 
 from .. import make_hw_stub
 from . import patch_data
 
 
-@pytest.mark.parametrize(
-    "name, sample",
-    patch_data.get_samples(dirname="annet/test_patch")
-)
+@pytest.mark.parametrize("name, sample", patch_data.get_samples(dirname="annet/test_patch"))
 def test_patch(name, sample, ann_connectors):
     vendor = sample.get("vendor", "huawei").lower()
 
@@ -49,4 +45,4 @@ def test_patch(name, sample, ann_connectors):
     for cmd in cmds:
         generated.append("%s%s\n" % ("  " * cmd.level, str(cmd)))
 
-    assert expected_patch == "".join(generated), ("Wrong patch in %s" % name)
+    assert expected_patch == "".join(generated), "Wrong patch in %s" % name

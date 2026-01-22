@@ -58,20 +58,20 @@ def get_list(args: ShowGeneratorsOptions):
 
 
 def get_description(gen_cls) -> str:
-    return textwrap.dedent(" ".join([
-        (gen_cls.__doc__ or ""),
-        ("Disabled. Use '-g %s' to enable" % gen_cls.__name__ if DISABLED_TAG in gen_cls.TAGS else "")
-    ])).strip()
+    return textwrap.dedent(
+        " ".join(
+            [
+                (gen_cls.__doc__ or ""),
+                ("Disabled. Use '-g %s' to enable" % gen_cls.__name__ if DISABLED_TAG in gen_cls.TAGS else ""),
+            ]
+        )
+    ).strip()
 
 
 def validate_genselect(gens: GenSelectOptions, all_classes):
     logger = get_logger()
     unknown_err = "Unknown generator alias %s"
-    all_aliases = {
-        alias
-        for cls in all_classes
-        for alias in cls.get_aliases()
-    }
+    all_aliases = {alias for cls in all_classes for alias in cls.get_aliases()}
     for gen_set in (gens.allowed_gens, gens.force_enabled):
         for alias in set(gen_set or ()) - all_aliases:
             logger.error(unknown_err, alias)
@@ -172,11 +172,13 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
     if span := tracing_connector.get().get_current_span():
         tracing_connector.get().set_device_attributes(span, run_args.device)
         tracing_connector.get().set_dimensions_attributes(span, gen, run_args.device)
-        span.set_attributes({
-            "use_acl": run_args.use_acl,
-            "use_acl_safe": run_args.use_acl_safe,
-            "generators_context": str(run_args.generators_context),
-        })
+        span.set_attributes(
+            {
+                "use_acl": run_args.use_acl,
+                "use_acl_safe": run_args.use_acl_safe,
+                "generators_context": str(run_args.generators_context),
+            }
+        )
 
     with GeneratorPerfMesurer(gen, run_args=run_args) as pm:
         if not run_args.no_new:
@@ -218,9 +220,7 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
                 )
             if run_args.use_acl_safe:
                 with tracing_connector.get().start_as_current_span(
-                    "apply_acl_safe",
-                    tracer_name=__name__,
-                    min_duration="0.01"
+                    "apply_acl_safe", tracer_name=__name__, min_duration="0.01"
                 ) as acl_safe_span:
                     tracing_connector.get().set_device_attributes(acl_safe_span, run_args.device)
                     safe_config = patching.apply_acl(
@@ -415,8 +415,9 @@ def _load_gen_module(module_path: str):
     except ModuleNotFoundError as e:
         try:  # maybe it's a path to module
             module_abs_path = os.path.abspath(module_path)
-            module = importlib.machinery.SourceFileLoader(re.sub(r"[./]", "_", module_abs_path).strip("_"),
-                                                          module_abs_path).load_module()
+            module = importlib.machinery.SourceFileLoader(
+                re.sub(r"[./]", "_", module_abs_path).strip("_"), module_abs_path
+            ).load_module()
         except ModuleNotFoundError:
             raise e
     return module

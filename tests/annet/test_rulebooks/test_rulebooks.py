@@ -1,8 +1,8 @@
 import pytest as pytest
-from annet import rulebook
 
-from tests import make_hw_stub
+from annet import rulebook
 from annet.vendors import registry
+from tests import make_hw_stub
 
 
 @pytest.fixture(params=list(registry))

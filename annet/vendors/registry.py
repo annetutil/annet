@@ -57,9 +57,7 @@ class Registry:
         raise RuntimeError(f"Unknown vendor {item}")
 
     def match(
-        self,
-        hw: HardwareView | str,
-        default: _SENTINEL | AbstractVendor | None = sentinel
+        self, hw: HardwareView | str, default: _SENTINEL | AbstractVendor | None = sentinel
     ) -> AbstractVendor | None:
         if isinstance(hw, str):
             hw = HardwareView(hw, "")

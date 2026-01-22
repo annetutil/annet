@@ -1,11 +1,11 @@
-from ipaddress import IPv4Network, IPv6Network, ip_network
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, List, Literal
+from ipaddress import IPv4Network, IPv6Network, ip_network
+from typing import List, Literal, Optional
 
-from annet.rpl import RoutingPolicy, PrefixMatchValue, OrLonger
+from annet.rpl import OrLonger, PrefixMatchValue, RoutingPolicy
 
 
 class CommunityLogic(Enum):
@@ -58,15 +58,15 @@ class IpPrefixList:
     members: list[IpPrefixListMember]
 
     def __post_init__(self):
-        for (i, m) in enumerate(self.members):
+        for i, m in enumerate(self.members):
             if isinstance(m, str):
                 self.members[i] = IpPrefixListMember(m)
 
 
 def ip_prefix_list(
-        name: str,
-        members_or_str: Sequence[IpPrefixListMember | str],
-        or_longer: OrLonger = (None, None),
+    name: str,
+    members_or_str: Sequence[IpPrefixListMember | str],
+    or_longer: OrLonger = (None, None),
 ) -> IpPrefixList:
     members: List[IpPrefixListMember] = []
     for m in members_or_str:
@@ -128,7 +128,8 @@ class PrefixListNameGenerator:
 
 
 def group_community_members(
-    all_communities: dict[str, CommunityList], communities: list[str],
+    all_communities: dict[str, CommunityList],
+    communities: list[str],
 ) -> dict[CommunityType, list[str]]:
     members: dict[CommunityType, list[str]] = defaultdict(list)
     for community_name in communities:

@@ -2,7 +2,8 @@ from dataclasses import dataclass
 
 import pytest
 
-from annet.rpl import Route, RouteMap, R, SingleAction, ActionType, SingleCondition, ConditionOperator
+from annet.rpl import ActionType, ConditionOperator, R, Route, RouteMap, SingleAction, SingleCondition
+
 
 DEVICE_NAME = "dev1"
 
@@ -70,11 +71,14 @@ def test_routemap():
     )
 
 
-@pytest.mark.parametrize(["allowed_rules", "expected_rules"], [
-    (["example_rule1"], ["example_rule1"]),
-    (["invalid"], []),
-    (["invalid", "example_rule1"], ["example_rule1"]),
-])
+@pytest.mark.parametrize(
+    ["allowed_rules", "expected_rules"],
+    [
+        (["example_rule1"], ["example_rule1"]),
+        (["invalid"], []),
+        (["invalid", "example_rule1"], ["example_rule1"]),
+    ],
+)
 def test_routemap_filter(allowed_rules, expected_rules):
     subroutemap = RouteMap[Device]()
     subroutemap(example_rule1)

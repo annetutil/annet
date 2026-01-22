@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Awaitable, Optional, TypeVar
 
 import yaml
+from contextlog import get_logger
+
 from annet.annlib.lib import (  # pylint: disable=unused-import
     ContextOrderedDict,
     HuaweiNumBlock,
@@ -34,12 +36,11 @@ from annet.annlib.lib import (  # pylint: disable=unused-import
     percentile,
     uniq,
 )
-from contextlog import get_logger
 
 
-_HOMEDIR_PATH: Optional[str] = None           # defaults to ~/.annet
+_HOMEDIR_PATH: Optional[str] = None  # defaults to ~/.annet
 _TEMPLATE_CONTEXT_PATH: Optional[str] = None  # defaults to annet/configs/context.yml
-_DEFAULT_CONTEXT_PATH: Optional[str] = None   # defaults to ~/.annet/context.yml
+_DEFAULT_CONTEXT_PATH: Optional[str] = None  # defaults to ~/.annet/context.yml
 
 
 def get_homedir_path() -> str:
@@ -154,6 +155,7 @@ def do_async(coro: Awaitable[ReturnType], new_thread=False) -> ReturnType:
                 res = asyncio.run(main)
             except BaseException as e:
                 res = e
+
         thread = threading.Thread(target=wrapper, args=(coro,))
         thread.start()
         thread.join()

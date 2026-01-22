@@ -2,8 +2,8 @@ import abc
 from typing import Any
 
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.vendors import registry_connector
 from annet.connectors import Connector
+from annet.vendors import registry_connector
 
 
 class _HardwareConnector(Connector["HardwareProvider"]):

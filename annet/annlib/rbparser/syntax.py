@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 import functools
 import re
 from collections import OrderedDict as odict
 from collections.abc import Iterator
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from annet.annlib import lib
 from annet.vendors import tabparser
@@ -63,7 +64,7 @@ def compile_row_regexp(row, flags=0):
 
     if "*" in row:
         row = re.sub(r"\(([^\?])", r"(?:\1", row)  # Все дефолтные группы превратить в non-captured
-        row = re.sub(r"\*/(\S+)/", r"(\1)", row)   # */{regex_one_word}/ -> ({regex_one_word})
+        row = re.sub(r"\*/(\S+)/", r"(\1)", row)  # */{regex_one_word}/ -> ({regex_one_word})
         row = re.sub(r"(^|\s)\*", r"\1([^\\s]+)", row)
 
     # Заменяем <someting> на named-группы
@@ -93,7 +94,7 @@ def _parse_tree_with_params(raw_tree: tabparser.SimpleTree, scheme, context: dic
     tree: ParsedTree = []
     if context is None:
         context = {}
-    for (raw_rule, children) in raw_tree:
+    for raw_rule, children in raw_tree:
         (row, params) = _parse_raw_rule(raw_rule, scheme)
         row_type = "normal"
 
@@ -105,14 +106,19 @@ def _parse_tree_with_params(raw_tree: tabparser.SimpleTree, scheme, context: dic
         elif context_raw := params.get("context"):
             context = _parse_context(context, context_raw)
             continue
-        tree.append((raw_rule, {
-            "row": row,
-            "type": row_type,
-            "params": params,
-            "children": _parse_tree_with_params(children, scheme, context.copy()),
-            "raw_rule": raw_rule,
-            "context": context.copy(),
-        }))
+        tree.append(
+            (
+                raw_rule,
+                {
+                    "row": row,
+                    "type": row_type,
+                    "params": params,
+                    "children": _parse_tree_with_params(children, scheme, cast(dict, context).copy()),
+                    "raw_rule": raw_rule,
+                    "context": cast(dict, context).copy(),
+                },
+            )
+        )
     return tree
 
 
@@ -131,9 +137,11 @@ def _parse_raw_rule(raw_rule: str, scheme) -> tuple[str, dict[str, str]]:
 
 def _fill_and_validate(params, scheme, raw_rule):
     return {
-        key: (attrs["validator"](params[key]) if key in params else (
-            attrs["default"](raw_rule) if callable(attrs["default"]) else attrs["default"]
-        ))
+        key: (
+            attrs["validator"](params[key])
+            if key in params
+            else (attrs["default"](raw_rule) if callable(attrs["default"]) else attrs["default"])
+        )
         for (key, attrs) in scheme.items()
     }
 

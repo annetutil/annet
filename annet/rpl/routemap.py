@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional, Callable, Generic, TypeVar, Union
+from typing import Callable, Generic, Optional, TypeVar, Union
 
 from .action import Action
 from .condition import AndCondition, Condition
@@ -16,10 +16,10 @@ class Route:
         self.statements: list[RoutingPolicyStatement] = []
 
     def __call__(
-            self,
-            *conditions: Condition,
-            name: Optional[str] = None,
-            number: Optional[int] = None,
+        self,
+        *conditions: Condition,
+        name: Optional[str] = None,
+        number: Optional[int] = None,
     ) -> "StatementBuilder":
         statement = RoutingPolicyStatement(
             name=name,
@@ -49,7 +49,10 @@ class RouteMap(Generic[DeviceT]):
         self.submaps: list[RouteMap[DeviceT]] = []
 
     def __call__(
-            self, func: Optional[RouteHandlerFunc[DeviceT]] = None, *, name: str = "",
+        self,
+        func: Optional[RouteHandlerFunc[DeviceT]] = None,
+        *,
+        name: str = "",
     ) -> Union[RouteHandlerFunc[DeviceT], Decorator[DeviceT]]:
         def decorator(func: RouteHandlerFunc[DeviceT]) -> RouteHandlerFunc[DeviceT]:
             nonlocal name

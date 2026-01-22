@@ -1,8 +1,8 @@
+import re
 from dataclasses import dataclass
 from typing import Dict
-import re
 
-from adaptix import Retort, name_mapping, NameStyle
+from adaptix import NameStyle, Retort, name_mapping
 from dataclass_rest import get
 from dataclass_rest.client_protocol import FactoryProtocol
 
@@ -23,10 +23,8 @@ class Status:
 
 class NetboxStatusClient(BaseNetboxClient):
     def _init_response_body_factory(self) -> FactoryProtocol:
-        return Retort(recipe=[
-            name_mapping(name_style=NameStyle.LOWER_KEBAB)
-        ])
+        return Retort(recipe=[name_mapping(name_style=NameStyle.LOWER_KEBAB)])
 
     @get("status/")
     def status(self) -> Status:
-        ...
+        pass
