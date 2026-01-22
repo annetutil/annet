@@ -11,11 +11,11 @@ from contextlog import patch_logging, patch_threading
 from valkit.python import valid_logging_level
 
 import annet.argparse
-from annet.vendors import tabparser  # pylint: disable=unused-import
 from annet.annlib.errors import (  # pylint: disable=wrong-import-position
     DeployCancelled,
     ExecError,
 )
+from annet.vendors import tabparser  # pylint: disable=unused-import
 
 
 __all__ = ("DeployCancelled", "ExecError")

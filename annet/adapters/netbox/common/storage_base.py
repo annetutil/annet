@@ -1,21 +1,26 @@
 import ssl
 from ipaddress import ip_interface
 from logging import getLogger
-from typing import Any, Callable, Optional, List, Union, Dict, cast, Generic, TypeVar
-
-from requests import Session
-
-from requests_cache import CachedSession, SQLiteCache
+from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union, cast
 
 from annetbox.v37 import models as api_models
+from requests import Session
+from requests_cache import CachedSession, SQLiteCache
 
-from annet.adapters.netbox.common.query import NetboxQuery, FIELD_VALUE_SEPARATOR
+from annet.adapters.netbox.common.query import FIELD_VALUE_SEPARATOR, NetboxQuery
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
 from annet.storage import Storage
+
 from .adapter import NetboxAdapter
 from .models import (
-    IpAddress, Interface, NetboxDevice, Prefix, FHRPGroup, FHRPGroupAssignment,
+    FHRPGroup,
+    FHRPGroupAssignment,
+    Interface,
+    IpAddress,
+    NetboxDevice,
+    Prefix,
 )
+
 
 logger = getLogger(__name__)
 NetboxDeviceT = TypeVar("NetboxDeviceT", bound=NetboxDevice)

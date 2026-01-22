@@ -1,3 +1,4 @@
+from annet import rulebook
 from annet.annlib.patching import (  # pylint: disable=unused-import
     AclError,
     AclNotExclusiveError,
@@ -12,8 +13,6 @@ from annet.annlib.patching import (  # pylint: disable=unused-import
     make_pre,
     strip_unchanged,
 )
-
-from annet import rulebook
 
 
 class Orderer(BaseOrderer):

@@ -1,12 +1,15 @@
 import functools
 import re
 from collections import OrderedDict as odict
-from annet.annlib.rbparser import platform, syntax
-from annet.vendors import registry_connector
+
 from valkit.common import valid_bool, valid_string_list
 from valkit.python import valid_object_path
 
+from annet.annlib.rbparser import platform, syntax
+from annet.vendors import registry_connector
+
 from .common import import_rulebook_function
+
 
 DEFAULT_PATCH_LOGIC = "common.default"
 ORDERED_PATCH_LOGIC = "common.ordered"

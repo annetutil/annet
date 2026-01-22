@@ -1,19 +1,38 @@
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Sequence
 from ipaddress import ip_interface
-from typing import Any, Literal, Iterable, Iterator, Optional, cast
+from typing import Any, Iterable, Iterator, Literal, Optional, cast
 
 from annet.rpl import (
-    RoutingPolicy, PrefixMatchValue, SingleCondition, MatchField, RoutingPolicyStatement, ResultType,
-    SingleAction, ConditionOperator, ThenField, ActionType,
+    ActionType,
+    ConditionOperator,
+    MatchField,
+    PrefixMatchValue,
+    ResultType,
+    RoutingPolicy,
+    RoutingPolicyStatement,
+    SingleAction,
+    SingleCondition,
+    ThenField,
 )
-from annet.rpl.statement_builder import NextHopActionValue, AsPathActionValue, CommunityActionValue
+from annet.rpl.statement_builder import (
+    AsPathActionValue,
+    CommunityActionValue,
+    NextHopActionValue,
+)
+
 from .aspath import get_used_as_path_filters
 from .community import get_used_united_community_lists
 from .entities import (
-    AsPathFilter, IpPrefixList, CommunityList, CommunityLogic, CommunityType,
-    mangle_united_community_list_name, PrefixListNameGenerator, group_community_members,
+    AsPathFilter,
+    CommunityList,
+    CommunityLogic,
+    CommunityType,
+    IpPrefixList,
+    PrefixListNameGenerator,
+    group_community_members,
+    mangle_united_community_list_name,
 )
 
 

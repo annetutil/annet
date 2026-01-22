@@ -1,7 +1,7 @@
 from typing import Any, Optional, Sequence
 
 from annet.mesh.executor import Device
-from annet.storage import Storage, Interface
+from annet.storage import Interface, Storage
 
 
 class FakeInterface(Interface):

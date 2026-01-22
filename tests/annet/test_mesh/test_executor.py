@@ -1,26 +1,21 @@
 import pytest
 
-from annet.bgp_models import (
-    Aggregate,
-    BFDTimers,
-    Redistribute,
-    VidCollection,
-    VidRange,
-)
-
+from annet.bgp_models import Aggregate, BFDTimers, Redistribute, VidCollection, VidRange
 from annet.mesh import (
+    DirectPeer,
+    GlobalOptions,
+    IndirectPeer,
     MeshExecutor,
     MeshRulesRegistry,
-    GlobalOptions,
-    DirectPeer,
     MeshSession,
-    IndirectPeer,
     VirtualLocal,
     VirtualPeer,
     separate_ports,
     united_ports,
 )
-from .fakes import FakeStorage, FakeDevice, FakeInterface
+
+from .fakes import FakeDevice, FakeInterface, FakeStorage
+
 
 VRF = "testvrf"
 GROUP = "test_group"

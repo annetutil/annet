@@ -1,4 +1,5 @@
-from annet.rpl import Action, SingleAction, ActionType
+from annet.rpl import Action, ActionType, SingleAction
+
 
 FIELD1 = "field1"
 FIELD2 = "field2"

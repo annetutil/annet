@@ -2,9 +2,8 @@ import os
 from unittest import mock
 
 import pytest
-from annet import rulebook
 
-from annet import deploy, implicit, lib, patching
+from annet import deploy, implicit, lib, patching, rulebook
 from annet.vendors import registry_connector
 
 from .. import make_hw_stub

@@ -2,10 +2,12 @@ import collections
 import re
 import typing
 
-from . import patching
 from annet.vendors import tabparser
+
+from . import patching
 from .diff import diff_ops, ops_sign
 from .rbparser import acl
+
 
 UnifiedInputConfig = str  # Конфиг классических сетевых устройств
 FileInputConfig = typing.Dict[str, typing.Any]  # Конфиг вайтбоксов и серверов

@@ -1,7 +1,15 @@
 from ipaddress import IPv6Network
 
-from annet.rpl_generators import AsPathFilter, CommunityList, CommunityType, RDFilter, ip_prefix_list, CommunityLogic, \
-    IpPrefixListMember
+from annet.rpl_generators import (
+    AsPathFilter,
+    CommunityList,
+    CommunityLogic,
+    CommunityType,
+    IpPrefixListMember,
+    RDFilter,
+    ip_prefix_list,
+)
+
 
 AS_PATH_FILTERS = [
     AsPathFilter("ASP_EXAMPLE", [".*123456.*", ".*22.*"]),

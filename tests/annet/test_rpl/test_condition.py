@@ -1,5 +1,7 @@
 import pytest
-from annet.rpl import SingleCondition, ConditionOperator
+
+from annet.rpl import ConditionOperator, SingleCondition
+
 
 FIELD1 = "field1"
 FIELD2 = "field2"

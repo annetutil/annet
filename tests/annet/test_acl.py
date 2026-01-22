@@ -3,10 +3,9 @@ import textwrap
 from collections import OrderedDict
 
 import pytest
-from annet import rulebook
-from annet.annlib.rbparser.acl import compile_acl_text
 
-from annet import patching
+from annet import patching, rulebook
+from annet.annlib.rbparser.acl import compile_acl_text
 from annet.vendors import registry_connector, tabparser
 
 from .. import make_hw_stub

@@ -2,14 +2,22 @@ from collections.abc import Iterator
 from typing import Any, Sequence
 from unittest.mock import Mock
 
-from annet.vendors.tabparser import parse_to_tree
 from annet.rpl import RouteMap, RoutingPolicy
 from annet.rpl_generators import (
-    IpPrefixList, CumulusPolicyGenerator, RoutingPolicyGenerator, RDFilter, CommunityList, AsPathFilterGenerator,
-    AsPathFilter,  RDFilterFilterGenerator, PrefixListFilterGenerator, CommunityListGenerator
+    AsPathFilter,
+    AsPathFilterGenerator,
+    CommunityList,
+    CommunityListGenerator,
+    CumulusPolicyGenerator,
+    IpPrefixList,
+    PrefixListFilterGenerator,
+    RDFilter,
+    RDFilterFilterGenerator,
+    RoutingPolicyGenerator,
 )
-
 from annet.vendors import registry_connector
+from annet.vendors.tabparser import parse_to_tree
+
 from .. import MockDevice
 
 

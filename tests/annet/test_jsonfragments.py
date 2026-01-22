@@ -1,5 +1,6 @@
-import pytest
 from typing import Any
+
+import pytest
 
 import annet.diff
 from annet.annlib.netdev.views.hardware import HardwareView

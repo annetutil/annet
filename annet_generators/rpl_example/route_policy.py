@@ -1,7 +1,8 @@
 from typing import Optional
 
 from annet.adapters.netbox.common.models import NetboxDevice
-from annet.rpl import R, RouteMap, Route
+from annet.rpl import R, Route, RouteMap
+
 
 routemap = RouteMap[NetboxDevice]()
 

@@ -1,8 +1,8 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from ipaddress import ip_interface, IPv6Interface
-from typing import List, Optional, Any, Dict, Sequence, TypeVar, Generic
+from ipaddress import IPv6Interface, ip_interface
+from typing import Any, Dict, Generic, List, Optional, Sequence, TypeVar
 
 from annet.annlib.netdev.views.dump import DumpableView
 from annet.annlib.netdev.views.hardware import HardwareView, lag_name

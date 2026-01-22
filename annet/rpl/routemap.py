@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional, Callable, Generic, TypeVar, Union
+from typing import Callable, Generic, Optional, TypeVar, Union
 
 from .action import Action
 from .condition import AndCondition, Condition

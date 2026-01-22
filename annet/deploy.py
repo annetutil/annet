@@ -2,16 +2,16 @@
 import abc
 import itertools
 from collections import namedtuple
-from typing import Dict, List, Optional, Any, OrderedDict, Tuple, Type
+from typing import Any, Dict, List, Optional, OrderedDict, Tuple, Type
 
 from contextlog import get_logger
 
-from annet.annlib.command import Command, Question, CommandList
+from annet.annlib.command import Command, CommandList, Question
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.annlib.rbparser.deploying import MakeMessageMatcher, Answer
+from annet.annlib.rbparser.deploying import Answer, MakeMessageMatcher
 from annet.cli_args import DeployOptions
 from annet.connectors import Connector, get_connector_from_config
-from annet.rulebook import get_rulebook, deploying
+from annet.rulebook import deploying, get_rulebook
 from annet.storage import Device
 
 

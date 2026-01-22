@@ -1,7 +1,16 @@
 from typing import Any, Optional
 
-from annet.mesh.match_args import MatchExpr, match_safe, PeerNameTemplate, SingleMatcher, Left, Match, Right, \
-    PairMatcher
+from annet.mesh.match_args import (
+    Left,
+    Match,
+    MatchExpr,
+    PairMatcher,
+    PeerNameTemplate,
+    Right,
+    SingleMatcher,
+    match_safe,
+)
+
 
 F = MatchExpr()
 

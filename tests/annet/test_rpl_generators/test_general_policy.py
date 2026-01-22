@@ -1,9 +1,10 @@
 from collections.abc import Sequence
 from unittest.mock import Mock
 
-from annet.rpl import RouteMap, Route, R
-from annet.rpl_generators.entities import CommunityList, AsPathFilter, ip_prefix_list
-from .helpers import scrub, iosxr, generate, juniper
+from annet.rpl import R, Route, RouteMap
+from annet.rpl_generators.entities import AsPathFilter, CommunityList, ip_prefix_list
+
+from .helpers import generate, iosxr, juniper, scrub
 
 
 def test_iosxr_action():

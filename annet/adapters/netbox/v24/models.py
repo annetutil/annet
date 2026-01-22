@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from ipaddress import ip_interface, IPv6Interface
-from typing import List, Optional, Any, Dict, Sequence
+from ipaddress import IPv6Interface, ip_interface
+from typing import Any, Dict, List, Optional, Sequence
 
 from annet.annlib.netdev.views.dump import DumpableView
 from annet.annlib.netdev.views.hardware import HardwareView, lag_name

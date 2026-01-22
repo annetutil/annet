@@ -1,10 +1,22 @@
-from dataclasses import dataclass
-from typing import Optional
 import warnings
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from annet.adapters.netbox.common.models import Entity, Interface, \
-    InterfaceType, IpAddress, Label, NetboxDevice, DeviceIp, IpFamily, Prefix, \
-    FHRPGroupAssignment, FHRPGroup, EntityWithSlug
+from typing import Optional
+
+from annet.adapters.netbox.common.models import (
+    DeviceIp,
+    Entity,
+    EntityWithSlug,
+    FHRPGroup,
+    FHRPGroupAssignment,
+    Interface,
+    InterfaceType,
+    IpAddress,
+    IpFamily,
+    Label,
+    NetboxDevice,
+    Prefix,
+)
 
 
 @dataclass

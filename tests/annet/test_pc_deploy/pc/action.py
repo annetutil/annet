@@ -1,7 +1,7 @@
 from typing import Optional
 
 from annet.api import HardwareView
-from annet.deploy import CommandList, Command
+from annet.deploy import Command, CommandList
 
 
 def apply(hw: HardwareView, do_commit: bool, do_finalize: bool, path: Optional[str] = None, **_):

@@ -2,11 +2,11 @@ from collections import OrderedDict as odict
 from textwrap import dedent
 
 import pytest
-from annet.rulebook.common import default, default_diff, ordered_diff
 
 from annet.patching import PatchTree, make_diff
-from annet.vendors.tabparser import CommonFormatter
+from annet.rulebook.common import default, default_diff, ordered_diff
 from annet.types import Op
+from annet.vendors.tabparser import CommonFormatter
 
 
 @pytest.fixture

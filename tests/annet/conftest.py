@@ -1,9 +1,7 @@
 import pytest
-from annet.hardware import hardware_connector
-from annet.rulebook import rulebook_provider_connector
 
-from annet.hardware import AnnetHardwareProvider
-from annet.rulebook import DefaultRulebookProvider
+from annet.hardware import AnnetHardwareProvider, hardware_connector
+from annet.rulebook import DefaultRulebookProvider, rulebook_provider_connector
 
 
 @pytest.fixture(scope="session", autouse=True)

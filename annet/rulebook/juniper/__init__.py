@@ -3,9 +3,9 @@ import re
 from collections import OrderedDict as odict
 
 from annet.annlib.lib import jun_activate, jun_is_inactive, merge_dicts
-from annet.vendors.tabparser import JuniperFormatter
 from annet.annlib.types import Op
 from annet.rulebook import common
+from annet.vendors.tabparser import JuniperFormatter
 
 
 def comment_processor(item: common.DiffItem):

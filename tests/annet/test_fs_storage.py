@@ -1,9 +1,11 @@
-from annet.adapters.file.provider import FS, Query, StorageOpts, Device
-from annet.storage import StorageProvider, Storage
-import typing
-import tempfile
 import platform
 import sys
+import tempfile
+import typing
+
+from annet.adapters.file.provider import FS, Device, Query, StorageOpts
+from annet.storage import Storage, StorageProvider
+
 
 kwargs = dict()
 if platform.system() == "Windows":

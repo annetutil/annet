@@ -3,8 +3,17 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from annet.adapters.netbox.common.models import (
-    IpAddress, NetboxDevice, Entity, Prefix, InterfaceType, Interface,
-    IpFamily, Label, FHRPGroupAssignment, DeviceIp, FHRPGroup,
+    DeviceIp,
+    Entity,
+    FHRPGroup,
+    FHRPGroupAssignment,
+    Interface,
+    InterfaceType,
+    IpAddress,
+    IpFamily,
+    Label,
+    NetboxDevice,
+    Prefix,
 )
 
 

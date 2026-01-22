@@ -2,7 +2,8 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, Sequence, Optional
+from typing import Any, Optional, Sequence
+
 
 MatchedArgs = SimpleNamespace
 

@@ -16,6 +16,7 @@ import pygments.formatters
 import pygments.lexers.data
 import yaml
 
+
 LABEL_NEW_PREFIX = "new: "
 
 

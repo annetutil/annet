@@ -1,30 +1,28 @@
 from __future__ import annotations
-from collections.abc import Iterable
+
 import copy
 import operator
 import re
 import sys
 import textwrap
 from collections import OrderedDict as odict
-from typing import (
-    Any,
-    Callable,
-    Iterator,
-    TypeAlias,
-    TypedDict,
-)
+from collections.abc import Iterable
+from typing import Any, Callable, Iterator, TypeAlias, TypedDict
+
+
 if sys.version_info >= (3, 11):
     from typing import NotRequired as NotRequired
 else:
     from typing import Union as NotRequired
 
+from annet.vendors.tabparser import CommonFormatter
+
+from ..vendors import registry_connector
 from .lib import jun_activate, merge_dicts, strip_annotation, uniq
 from .rbparser.ordering import CompiledTree, compile_ordering_text
 from .rulebook.common import call_diff_logic
 from .rulebook.common import default as common_default
-from annet.vendors.tabparser import CommonFormatter
 from .types import Diff, Op
-from ..vendors import registry_connector
 
 
 # =====

@@ -1,7 +1,6 @@
 from annet.annlib.lib import huawei_collapse_vlandb as collapse_vlandb
 from annet.annlib.lib import huawei_expand_vlandb as expand_vlandb
 from annet.annlib.types import Op
-
 from annet.rulebook import common
 from annet.rulebook.common import DiffItem
 

@@ -4,8 +4,7 @@ from typing import List
 from annet.generators import BaseGenerator
 from annet.storage import Storage
 
-from . import lldp
-from . import hostname
+from . import hostname, lldp
 
 
 def get_generators(store: Storage) -> List[BaseGenerator]:

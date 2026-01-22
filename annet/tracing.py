@@ -6,6 +6,7 @@ from typing import Optional, Type, Union
 
 from annet.connectors import CachedConnector
 
+
 MinDurationT = Optional[Union[str, int]]
 
 

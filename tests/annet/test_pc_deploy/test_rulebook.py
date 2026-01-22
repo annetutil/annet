@@ -1,15 +1,15 @@
-import pytest
-import annet
-
 from os import path
 from unittest import mock
 
+import pytest
+
+import annet
 from annet.api import DeployerJob, Device
-from annet.gen import OldNewResult
 from annet.deploy import CommandList, DeployDriver, Fetcher
+from annet.diff import UnifiedFileDiffer
+from annet.gen import OldNewResult
 from annet.output import OutputDriver
 from annet.rulebook import DefaultRulebookProvider
-from annet.diff import UnifiedFileDiffer
 from annet.storage import StorageProvider
 
 from .. import MockDevice

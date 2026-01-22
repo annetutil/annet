@@ -1,10 +1,9 @@
-import textwrap
 import re
+import textwrap
 
-from annet.annlib import lib
-from annet.vendors import tabparser
 import annet.annlib.filter_acl
-from annet.vendors import registry_connector
+from annet.annlib import lib
+from annet.vendors import registry_connector, tabparser
 
 
 def test_filter_diff():

@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Generic, Sequence, Callable, Optional, TypeVar, Any
+from typing import Any, Callable, Generic, Optional, Sequence, TypeVar
 
-from .condition import SingleCondition, ConditionOperator, AndCondition
+from .condition import AndCondition, ConditionOperator, SingleCondition
 
 
 class MatchField(str, Enum):

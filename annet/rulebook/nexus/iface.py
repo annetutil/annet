@@ -1,7 +1,6 @@
 from annet.annlib.lib import uniq
 from annet.annlib.rulebook import common
 from annet.annlib.types import Op
-
 from annet.rulebook.cisco.iface import is_in_channel, is_ip_cmd, is_vpn_cmd
 
 

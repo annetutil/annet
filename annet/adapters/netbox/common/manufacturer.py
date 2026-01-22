@@ -2,6 +2,7 @@ from logging import getLogger
 
 from annet.annlib.netdev.views.hardware import HardwareView
 
+
 logger = getLogger(__name__)
 
 

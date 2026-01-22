@@ -26,7 +26,6 @@ import tabulate
 from contextlog import get_logger
 
 from annet import generators, implicit, patching, tracing
-from annet.vendors import tabparser
 from annet.annlib import jsontools
 from annet.annlib.rbparser.acl import compile_acl_text
 from annet.cli_args import DeployOptions, GenOptions, ShowGenOptions
@@ -46,7 +45,7 @@ from annet.output import output_driver_connector
 from annet.storage import Device, Storage
 from annet.tracing import tracing_connector
 from annet.types import OldNewResult
-from annet.vendors import registry_connector
+from annet.vendors import registry_connector, tabparser
 
 
 # Вывод всех генераторов вместе.

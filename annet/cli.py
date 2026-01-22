@@ -4,26 +4,26 @@ import json
 import operator
 import os
 import platform
-import subprocess
 import shutil
+import subprocess
 import sys
 from contextlib import ExitStack, contextmanager
-from typing import Optional, Tuple, Iterable
+from typing import Iterable, Optional, Tuple
 
 import tabulate
 import yaml
 from contextlog import get_logger
 from valkit.python import valid_logging_level
 
-from annet.deploy import get_fetcher, get_deployer
 from annet import api, cli_args, filtering, generators
-from annet.api import collapse_texts, Deployer
+from annet.api import Deployer, collapse_texts
 from annet.argparse import ArgParser, subcommand
+from annet.deploy import get_deployer, get_fetcher
 from annet.diff import gen_sort_diff
 from annet.gen import Loader, old_raw
 from annet.lib import get_context_path, repair_context_file
-from annet.output import output_driver_connector, OutputDriver
-from annet.storage import get_storage, Device
+from annet.output import OutputDriver, output_driver_connector
+from annet.storage import Device, get_storage
 
 
 def fill_base_args(parser: ArgParser, pkg_name: str, logging_config: str):

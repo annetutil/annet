@@ -1,9 +1,16 @@
 from ipaddress import IPv4Network
 from unittest.mock import Mock
-from annet.rpl_generators import ip_prefix_list, IpPrefixList, IpPrefixListMember, CommunityList, CommunityType
-from annet.rpl import R, RouteMap, Route
 
-from .helpers import scrub, huawei, arista, cumulus, generate, iosxr, juniper
+from annet.rpl import R, Route, RouteMap
+from annet.rpl_generators import (
+    CommunityList,
+    CommunityType,
+    IpPrefixList,
+    IpPrefixListMember,
+    ip_prefix_list,
+)
+
+from .helpers import arista, cumulus, generate, huawei, iosxr, juniper, scrub
 
 
 def test_ip_prefix_list():

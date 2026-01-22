@@ -3,6 +3,7 @@ import re
 from collections import OrderedDict as odict
 from collections import namedtuple
 
+
 Answer = namedtuple("Answer", ("text", "send_nl"))
 
 

@@ -32,7 +32,6 @@ from annet import diff as ann_diff
 from annet import filtering
 from annet import gen as ann_gen
 from annet import patching, rulebook, tracing
-from annet.vendors import tabparser
 from annet.annlib import jsontools
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.types import GeneratorType
@@ -46,7 +45,7 @@ from annet.reference import RefTracker
 from annet.rulebook import deploying
 from annet.storage import Device, get_storage
 from annet.types import Diff, ExitCode, OldNewResult, Op, PCDiff
-from annet.vendors import registry_connector
+from annet.vendors import registry_connector, tabparser
 
 
 DEFAULT_INDENT = "  "

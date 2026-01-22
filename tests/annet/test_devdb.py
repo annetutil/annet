@@ -1,4 +1,5 @@
 import pytest
+
 from annet.annlib.netdev.views.hardware import HardwareView
 
 

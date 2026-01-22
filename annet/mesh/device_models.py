@@ -1,7 +1,8 @@
 from typing import Annotated, Optional, Union
 
-from annet.bgp_models import Family, Redistribute, Aggregate
-from .basemodel import BaseMeshModel, Concat, DictMerge, Merge, KeyDefaultDict
+from annet.bgp_models import Aggregate, Family, Redistribute
+
+from .basemodel import BaseMeshModel, Concat, DictMerge, KeyDefaultDict, Merge
 from .peer_models import MeshPeerGroup
 
 

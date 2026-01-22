@@ -6,6 +6,7 @@ import colorama
 
 from .types import Diff, Op
 
+
 # NOCDEV-1720
 
 

@@ -1,18 +1,17 @@
 from logging import getLogger
-from typing import Optional, List, Union
+from typing import List, Optional, Union
 
 from annetbox.v24 import models as api_models
 from annetbox.v24.client_sync import NetboxV24
 
+from annet.adapters.netbox.common.manufacturer import get_breed, get_hw
 from annet.adapters.netbox.common.models import InterfaceType
-from annet.adapters.netbox.v24 import models
-from annet.adapters.netbox.common.manufacturer import (
-   get_hw, get_breed,
-)
 from annet.adapters.netbox.common.query import NetboxQuery
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
+from annet.adapters.netbox.v24 import models
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.storage import Storage
+
 
 logger = getLogger(__name__)
 

@@ -1,6 +1,7 @@
+import pytest
+
 from annet.adapters.netbox.common.query import NetboxQuery
 from annet.adapters.netbox.common.storage_base import parse_glob
-import pytest
 
 
 def test_parse_glob():

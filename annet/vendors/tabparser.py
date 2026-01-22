@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import dataclasses
 import itertools
 import json
@@ -6,9 +7,20 @@ import re
 import textwrap
 from collections import OrderedDict as odict
 from collections.abc import Callable, Iterator
-from typing import TYPE_CHECKING, Any, Dict, Generic, Iterable, Optional, Tuple, List, TypeAlias
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    TypeAlias,
+)
 
 from annet.annlib.types import Op
+
 
 if TYPE_CHECKING:
     from annet.annlib.patching import PatchTree
