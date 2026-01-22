@@ -1,19 +1,36 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterator, Sequence, Iterable
-from typing import Any, cast, Literal
+from collections.abc import Iterable, Iterator, Sequence
+from typing import Any, Literal, cast
 
 from annet.generators import PartialGenerator
 from annet.rpl import (
+    Action,
+    ActionType,
+    AndCondition,
     CommunityActionValue,
-    ResultType, RoutingPolicyStatement, RoutingPolicy, ConditionOperator, SingleCondition, SingleAction, ActionType,
-    MatchField, PrefixMatchValue, AndCondition, Action,
+    ConditionOperator,
+    MatchField,
+    PrefixMatchValue,
+    ResultType,
+    RoutingPolicy,
+    RoutingPolicyStatement,
+    SingleAction,
+    SingleCondition,
 )
 from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, ThenField
 from annet.rpl_generators.entities import (
+    CommunityList,
+    CommunityLogic,
+    CommunityType,
+    IpPrefixList,
+    JuniperPrefixListNameGenerator,
+    PrefixListNameGenerator,
+    RDFilter,
     arista_well_known_community,
-    CommunityList, RDFilter, PrefixListNameGenerator, CommunityLogic, mangle_united_community_list_name,
-    IpPrefixList, group_community_members, CommunityType, JuniperPrefixListNameGenerator
+    group_community_members,
+    mangle_united_community_list_name,
 )
+
 
 HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.as_path_filter: "as-path-filter {option_value}",

@@ -1,10 +1,9 @@
 from unittest.mock import Mock
 
-from annet.rpl import R, RouteMap, Route
-from annet.rpl_generators import (
-    AsPathFilter
-)
-from .helpers import scrub, cumulus, iosxr, arista, generate
+from annet.rpl import R, Route, RouteMap
+from annet.rpl_generators import AsPathFilter
+
+from .helpers import arista, cumulus, generate, iosxr, scrub
 
 
 def test_cumulus_as_path_set():

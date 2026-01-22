@@ -2,9 +2,9 @@ import copy
 import re
 from collections import namedtuple
 
-from annet.annlib.types import Op
 from contextlog import get_logger
 
+from annet.annlib.types import Op
 from annet.rulebook import common
 
 

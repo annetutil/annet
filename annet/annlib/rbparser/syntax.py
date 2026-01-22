@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import functools
 import re
 from collections import OrderedDict as odict

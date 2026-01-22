@@ -1,5 +1,6 @@
 import copy
 import re
+
 from annet.annlib.types import Op
 from annet.rulebook import common
 

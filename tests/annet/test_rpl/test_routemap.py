@@ -2,7 +2,16 @@ from dataclasses import dataclass
 
 import pytest
 
-from annet.rpl import Route, RouteMap, R, SingleAction, ActionType, SingleCondition, ConditionOperator
+from annet.rpl import (
+    ActionType,
+    ConditionOperator,
+    R,
+    Route,
+    RouteMap,
+    SingleAction,
+    SingleCondition,
+)
+
 
 DEVICE_NAME = "dev1"
 

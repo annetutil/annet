@@ -1,10 +1,18 @@
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
 from annet.annlib.netdev.views.hardware import HardwareView
+
 from .manufacturer import get_breed, get_hw
-from .models import NetboxDevice, Interface, IpAddress, Prefix, \
-    FHRPGroupAssignment, FHRPGroup
+from .models import (
+    FHRPGroup,
+    FHRPGroupAssignment,
+    Interface,
+    IpAddress,
+    NetboxDevice,
+    Prefix,
+)
+
 
 NetboxDeviceT = TypeVar("NetboxDeviceT", bound=NetboxDevice)
 InterfaceT = TypeVar("InterfaceT", bound=Interface)

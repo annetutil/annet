@@ -1,10 +1,10 @@
 import io
 import re
+from typing import Dict, List, Tuple
 
 from annet import patching
 from annet.diff import diff_cmp, diff_ops, gen_pre_as_diff, resort_diff
 from annet.types import Diff
-from typing import Tuple, List, Dict
 
 
 before = """

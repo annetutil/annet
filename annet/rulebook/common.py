@@ -1,7 +1,9 @@
 import functools
 import importlib
 
-from annet.annlib.rulebook import common  # pylint: disable=unused-import # noqa: F401,F403
+from annet.annlib.rulebook import (  # pylint: disable=unused-import # noqa: F401,F403
+    common,
+)
 from annet.annlib.rulebook.common import *  # pylint: disable=wildcard-import,unused-wildcard-import # noqa: F401,F403
 
 

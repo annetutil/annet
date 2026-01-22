@@ -2,15 +2,21 @@ from dataclasses import dataclass
 from logging import getLogger
 from typing import Annotated, Callable, Optional, Union
 
-from annet.bgp_models import Peer, GlobalOptions, BgpConfig
+from annet.bgp_models import BgpConfig, GlobalOptions, Peer
 from annet.storage import Device, Storage
-from .basemodel import merge, BaseMeshModel, Merge, UseLast, MergeForbiddenError
+
+from .basemodel import BaseMeshModel, Merge, MergeForbiddenError, UseLast, merge
 from .device_models import GlobalOptionsDTO
-from .models_converter import to_bgp_global_options, to_bgp_peer, InterfaceChanges, to_interface_changes
+from .models_converter import (
+    InterfaceChanges,
+    to_bgp_global_options,
+    to_bgp_peer,
+    to_interface_changes,
+)
 from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualLocalDTO, VirtualPeerDTO
+from .registry import DirectPeer
+from .registry import GlobalOptions as MeshGlobalOptions
 from .registry import (
-    DirectPeer,
-    GlobalOptions as MeshGlobalOptions,
     IndirectPeer,
     MatchedDirectPair,
     MeshRulesRegistry,
@@ -18,6 +24,7 @@ from .registry import (
     VirtualLocal,
     VirtualPeer,
 )
+
 
 logger = getLogger(__name__)
 

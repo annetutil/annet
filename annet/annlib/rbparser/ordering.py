@@ -1,14 +1,16 @@
 from __future__ import annotations
-from collections.abc import Iterator
+
 import functools
 import re
+from collections.abc import Iterator
+from typing import Any, TypedDict
 
 from valkit.common import valid_bool, valid_string_list
 
 from annet.vendors import registry_connector
+
 from . import syntax
 
-from typing import TypedDict, Any
 
 # =====
 # 'global' is a keyword, so we cant use normal TypedDict declaration

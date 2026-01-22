@@ -1,10 +1,12 @@
 from unittest.mock import Mock
-from annet.rpl_generators import CommunityList, CommunityType, CommunityLogic
-from annet.rpl import R, RouteMap, Route
 
 import pytest
 
-from .helpers import scrub, huawei, arista, cumulus, generate, iosxr, juniper
+from annet.rpl import R, Route, RouteMap
+from annet.rpl_generators import CommunityList, CommunityLogic, CommunityType
+
+from .helpers import arista, cumulus, generate, huawei, iosxr, juniper, scrub
+
 
 BASIC_CLIST = "CL1"
 BASIC2_CLIST = "CL2"

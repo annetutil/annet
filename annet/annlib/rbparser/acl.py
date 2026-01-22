@@ -6,6 +6,7 @@ from valkit import add_validator_magic
 from valkit.common import valid_bool, valid_number, valid_string_list
 
 from annet.vendors import registry_connector
+
 from . import syntax
 
 

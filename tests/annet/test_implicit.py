@@ -4,7 +4,7 @@ import pytest
 
 from annet import implicit, patching
 from annet.annlib import lib
-from annet.vendors import tabparser, registry_connector
+from annet.vendors import registry_connector, tabparser
 
 from .. import make_hw_stub
 

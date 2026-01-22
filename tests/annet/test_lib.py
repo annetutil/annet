@@ -1,6 +1,7 @@
 import ipaddress
 
 import pytest
+
 from annet.annlib.lib import LMSegment, LMSegmentList, LMSMatcher
 
 

@@ -1,11 +1,11 @@
-from ipaddress import IPv4Network, IPv6Network, ip_network
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, List, Literal
+from ipaddress import IPv4Network, IPv6Network, ip_network
+from typing import List, Literal, Optional
 
-from annet.rpl import RoutingPolicy, PrefixMatchValue, OrLonger
+from annet.rpl import OrLonger, PrefixMatchValue, RoutingPolicy
 
 
 class CommunityLogic(Enum):

@@ -15,7 +15,7 @@ import tempfile
 import time
 import traceback
 import warnings
-from typing import Any, List, Optional, Type, Callable
+from typing import Any, Callable, List, Optional, Type
 from uuid import uuid4
 
 from contextlog import get_logger

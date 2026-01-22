@@ -4,12 +4,21 @@ from annet.generators import BaseGenerator, Entire
 from annet.mesh import MeshExecutor
 from annet.rpl import RouteMap, RoutingPolicy
 from annet.rpl_generators import (
-    CommunityListGenerator, RoutingPolicyGenerator, AsPathFilterGenerator, CommunityList, AsPathFilter,
-    RDFilterFilterGenerator, RDFilter, PrefixListFilterGenerator, IpPrefixList, CumulusPolicyGenerator,
+    AsPathFilter,
+    AsPathFilterGenerator,
+    CommunityList,
+    CommunityListGenerator,
+    CumulusPolicyGenerator,
+    IpPrefixList,
+    PrefixListFilterGenerator,
+    RDFilter,
+    RDFilterFilterGenerator,
+    RoutingPolicyGenerator,
     get_policies,
 )
 from annet.storage import Storage
-from .items import COMMUNITIES, AS_PATH_FILTERS, RD_FILTERS, PREFIX_LISTS
+
+from .items import AS_PATH_FILTERS, COMMUNITIES, PREFIX_LISTS, RD_FILTERS
 from .mesh import registry
 from .route_policy import routemap
 

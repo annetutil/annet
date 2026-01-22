@@ -1,7 +1,8 @@
-from typing import Literal, Annotated, Union, Optional
+from typing import Annotated, Literal, Optional, Union
 
-from .basemodel import BaseMeshModel, Concat, Unite
 from ..bgp_models import BFDTimers, PeerFamilyOptions
+from .basemodel import BaseMeshModel, Concat, Unite
+
 
 FamilyName = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled_unicast", "ipv6_labeled_unicast", "l2vpn_evpn"]
 

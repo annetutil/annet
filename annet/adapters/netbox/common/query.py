@@ -1,8 +1,9 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import cast, List, Union, Iterable, Optional, TypedDict
+from typing import Iterable, List, Optional, TypedDict, Union, cast
 
 from annet.storage import Query
+
 
 FIELD_VALUE_SEPARATOR = ":"
 ALLOWED_GLOB_GROUPS = ["site", "tag", "role", "device_type", "status", "tenant", "asset_tag"]

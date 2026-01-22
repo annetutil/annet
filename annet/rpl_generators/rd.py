@@ -1,9 +1,10 @@
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from typing import Any
 
 from annet.generators import PartialGenerator
-from annet.rpl import RouteMap, MatchField, RoutingPolicy
+from annet.rpl import MatchField, RouteMap, RoutingPolicy
+
 from .entities import RDFilter
 
 

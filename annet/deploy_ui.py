@@ -1,24 +1,26 @@
 
-import re
-import tempfile
-import os
-import sys
-import math
 import asyncio
+import math
+import os
 import platform
+import re
+import sys
+import tempfile
 import textwrap
 import time
 import traceback
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 from contextlog import get_logger
 
 from annet import text_term_format
 from annet.deploy import ProgressBar
 from annet.output import TextArgs
+
+
 try:
     import curses
 except ImportError:

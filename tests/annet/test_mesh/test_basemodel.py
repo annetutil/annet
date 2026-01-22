@@ -1,11 +1,21 @@
-from typing import Annotated
 from dataclasses import dataclass, field
+from typing import Annotated
 
 import pytest
 
 from annet.mesh.basemodel import (
-    UseFirst, UseLast, Special, Forbid, ForbidChange, Concat, DictMerge, BaseMeshModel, MergeForbiddenError, merge,
-    Merge, merge_dataclass, MergeForbiddenError
+    BaseMeshModel,
+    Concat,
+    DictMerge,
+    Forbid,
+    ForbidChange,
+    Merge,
+    MergeForbiddenError,
+    Special,
+    UseFirst,
+    UseLast,
+    merge,
+    merge_dataclass,
 )
 
 

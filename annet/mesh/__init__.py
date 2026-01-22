@@ -16,8 +16,14 @@ __all__ = [
 ]
 
 from .executor import MeshExecutor
-from .match_args import Left, Right, Match
+from .match_args import Left, Match, Right
+from .port_processor import PortProcessor, separate_ports, united_ports
 from .registry import (
-    DirectPeer, IndirectPeer, MeshSession, GlobalOptions, MeshRulesRegistry, VirtualLocal, VirtualPeer,
+    DirectPeer,
+    GlobalOptions,
+    IndirectPeer,
+    MeshRulesRegistry,
+    MeshSession,
+    VirtualLocal,
+    VirtualPeer,
 )
-from .port_processor import PortProcessor, united_ports, separate_ports

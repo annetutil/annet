@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Awaitable, Optional, TypeVar
 
 import yaml
+from contextlog import get_logger
+
 from annet.annlib.lib import (  # pylint: disable=unused-import
     ContextOrderedDict,
     HuaweiNumBlock,
@@ -34,7 +36,6 @@ from annet.annlib.lib import (  # pylint: disable=unused-import
     percentile,
     uniq,
 )
-from contextlog import get_logger
 
 
 _HOMEDIR_PATH: Optional[str] = None           # defaults to ~/.annet

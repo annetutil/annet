@@ -2,11 +2,12 @@ import functools
 from collections import OrderedDict as odict
 from collections import namedtuple
 
+from valkit.common import valid_bool, valid_number, valid_string_list
+from valkit.python import valid_object_path
+
 from annet.annlib.rbparser import syntax
 from annet.annlib.rbparser.deploying import compile_messages
 from annet.vendors import registry_connector
-from valkit.common import valid_bool, valid_number, valid_string_list
-from valkit.python import valid_object_path
 
 from .common import import_rulebook_function
 

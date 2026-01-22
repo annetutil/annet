@@ -1,18 +1,28 @@
 import ssl
 from typing import Callable, Optional
 
-from requests import Session
-
 from adaptix import P
 from adaptix.conversion import get_converter, link, link_constant, link_function
 from annetbox.v42 import client_sync
 from annetbox.v42 import models as api_models
+from requests import Session
 
-from annet.adapters.netbox.common.adapter import NetboxAdapter, get_device_breed, get_device_hw
+from annet.adapters.netbox.common.adapter import (
+    NetboxAdapter,
+    get_device_breed,
+    get_device_hw,
+)
 from annet.adapters.netbox.common.storage_base import BaseNetboxStorage
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
 from annet.adapters.netbox.v41.models import FHRPGroupAssignmentV41, FHRPGroupV41
-from annet.adapters.netbox.v42.models import InterfaceV42, NetboxDeviceV42, PrefixV42, IpAddressV42, Vlan, Vrf
+from annet.adapters.netbox.v42.models import (
+    InterfaceV42,
+    IpAddressV42,
+    NetboxDeviceV42,
+    PrefixV42,
+    Vlan,
+    Vrf,
+)
 from annet.storage import Storage
 
 

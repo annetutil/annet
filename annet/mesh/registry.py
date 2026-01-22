@@ -1,12 +1,17 @@
 from dataclasses import dataclass
-from typing import Callable, Any, Sequence
+from typing import Any, Callable, Sequence
 
-from .match_args import MatchExpr, PairMatcher, SingleMatcher
-from .match_args import MatchedArgs
-from .device_models import GlobalOptionsDTO
-from .peer_models import MeshSession, IndirectPeerDTO, VirtualLocalDTO, VirtualPeerDTO, DirectPeerDTO
-from .port_processor import PortProcessor, united_ports
 from .basemodel import is_dataclass_empty
+from .device_models import GlobalOptionsDTO
+from .match_args import MatchedArgs, MatchExpr, PairMatcher, SingleMatcher
+from .peer_models import (
+    DirectPeerDTO,
+    IndirectPeerDTO,
+    MeshSession,
+    VirtualLocalDTO,
+    VirtualPeerDTO,
+)
+from .port_processor import PortProcessor, united_ports
 
 
 class DirectPeer(DirectPeerDTO):

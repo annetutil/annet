@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from functools import wraps
-from typing import Generic, Optional, List, TypeVar, Callable
+from typing import Callable, Generic, List, Optional, TypeVar
 
 from dataclass_rest.http.requests import RequestsClient
 from requests import Session
+
 
 Model = TypeVar("Model")
 

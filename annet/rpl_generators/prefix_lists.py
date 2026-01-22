@@ -1,11 +1,16 @@
 from abc import ABC, abstractmethod
-from collections.abc import Sequence, Iterable
-from typing import Any, Literal
+from collections.abc import Iterable, Sequence
 from itertools import chain
+from typing import Any, Literal
 
 from annet.generators import PartialGenerator
-from annet.rpl import PrefixMatchValue, MatchField, SingleCondition, RoutingPolicy
-from .entities import IpPrefixList, PrefixListNameGenerator, JuniperPrefixListNameGenerator
+from annet.rpl import MatchField, PrefixMatchValue, RoutingPolicy, SingleCondition
+
+from .entities import (
+    IpPrefixList,
+    JuniperPrefixListNameGenerator,
+    PrefixListNameGenerator,
+)
 
 
 class PrefixListFilterGenerator(PartialGenerator, ABC):

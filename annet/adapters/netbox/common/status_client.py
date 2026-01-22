@@ -1,8 +1,8 @@
+import re
 from dataclasses import dataclass
 from typing import Dict
-import re
 
-from adaptix import Retort, name_mapping, NameStyle
+from adaptix import NameStyle, Retort, name_mapping
 from dataclass_rest import get
 from dataclass_rest.client_protocol import FactoryProtocol
 

@@ -1,7 +1,9 @@
 import os
-from typing import Any, Optional
 from datetime import timedelta
+from typing import Any, Optional
+
 from .query import parse_query
+
 
 DEFAULT_URL = "http://localhost"
 

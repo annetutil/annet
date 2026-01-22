@@ -1,12 +1,23 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from collections.abc import Sequence, Collection, Iterator, Mapping
+from collections.abc import Collection, Iterator, Mapping, Sequence
 from typing import Any
 
 from annet.generators import PartialGenerator
-from annet.rpl import SingleCondition, MatchField, ThenField, RoutingPolicy, ConditionOperator
+from annet.rpl import (
+    ConditionOperator,
+    MatchField,
+    RoutingPolicy,
+    SingleCondition,
+    ThenField,
+)
+
 from .entities import (
-    CommunityList, CommunityLogic, CommunityType, arista_well_known_community, mangle_united_community_list_name,
+    CommunityList,
+    CommunityLogic,
+    CommunityType,
+    arista_well_known_community,
+    mangle_united_community_list_name,
 )
 
 

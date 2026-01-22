@@ -4,7 +4,11 @@ import pytest
 
 from annet.mesh import united_ports
 from annet.mesh.match_args import Left, Right
-from annet.mesh.registry import MeshRulesRegistry, MatchedIndirectPair, MatchedDirectPair
+from annet.mesh.registry import (
+    MatchedDirectPair,
+    MatchedIndirectPair,
+    MeshRulesRegistry,
+)
 
 
 def foo(*args, **kwargs) -> None:

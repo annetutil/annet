@@ -1,5 +1,5 @@
-from annet.deploy import DeployDriver, DeployOptions, DeployResult, ProgressBar
 from annet.annlib.netdev.views.hardware import HardwareView
+from annet.deploy import DeployDriver, DeployOptions, DeployResult, ProgressBar
 
 
 class StubDeployDriver(DeployDriver):

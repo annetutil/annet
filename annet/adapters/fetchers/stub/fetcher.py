@@ -1,6 +1,7 @@
-from annet.deploy import Fetcher
+from typing import Any, Dict, List
+
 from annet.connectors import AdapterWithConfig
-from typing import Dict, List, Any
+from annet.deploy import Fetcher
 from annet.storage import Device
 
 

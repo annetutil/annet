@@ -1,5 +1,14 @@
-from annet.bgp_models import Redistribute, BFDTimers
-from annet.mesh import Right, MeshRulesRegistry, GlobalOptions, MeshSession, DirectPeer, VirtualLocal, VirtualPeer
+from annet.bgp_models import BFDTimers, Redistribute
+from annet.mesh import (
+    DirectPeer,
+    GlobalOptions,
+    MeshRulesRegistry,
+    MeshSession,
+    Right,
+    VirtualLocal,
+    VirtualPeer,
+)
+
 
 registry = MeshRulesRegistry()
 

@@ -2,13 +2,25 @@ from dataclasses import dataclass
 from ipaddress import ip_interface
 from typing import Optional, Union
 
-from adaptix import Retort, loader, Chain, name_mapping, as_is_loader
+from adaptix import Chain, Retort, as_is_loader, loader, name_mapping
 
-from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO, VirtualLocalDTO
 from ..bgp_models import (
-    Aggregate, GlobalOptions, VrfOptions, FamilyOptions, Peer, PeerGroup, ASN, PeerOptions,
-    Redistribute, BFDTimers, L2VpnOptions, VidCollection, PeerFamilyOptions, PeerFamilyOption
+    ASN,
+    Aggregate,
+    BFDTimers,
+    FamilyOptions,
+    GlobalOptions,
+    L2VpnOptions,
+    Peer,
+    PeerFamilyOption,
+    PeerFamilyOptions,
+    PeerGroup,
+    PeerOptions,
+    Redistribute,
+    VidCollection,
+    VrfOptions,
 )
+from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualLocalDTO, VirtualPeerDTO
 
 
 PeerDTO = Union[DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO]

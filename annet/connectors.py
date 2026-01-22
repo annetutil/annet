@@ -1,10 +1,12 @@
 import sys
+import warnings
 from abc import ABC, abstractmethod
 from functools import cached_property
 from importlib.metadata import entry_points
-from typing import Generic, Optional, Type, TypeVar, List, Dict, Any, Tuple
-import warnings
+from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar
+
 from annet.lib import get_context
+
 
 T = TypeVar("T")
 

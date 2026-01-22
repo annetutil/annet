@@ -1,4 +1,4 @@
-from annet.rpl import R, ConditionOperator, PrefixMatchValue
+from annet.rpl import ConditionOperator, PrefixMatchValue, R
 
 
 def test_community():

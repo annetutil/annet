@@ -1,7 +1,6 @@
 from collections import defaultdict
 
 from annet.annlib.types import Op
-
 from annet.rulebook.common import default, default_diff
 
 
