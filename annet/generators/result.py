@@ -15,15 +15,14 @@ from annet.types import (
 
 
 def _combine_acl_text(
-        partial_results: dict[str, GeneratorPartialResult],
-        acl_getter: Callable[[GeneratorPartialResult], str]
+    partial_results: dict[str, GeneratorPartialResult], acl_getter: Callable[[GeneratorPartialResult], str]
 ) -> str:
     acl_text = ""
     for gr in partial_results.values():
         for line in textwrap.dedent(acl_getter(gr)).split("\n"):
             if line and not line.isspace():
                 acl_text += line.rstrip()
-                acl_text += fr"  %generator_names={gr.name}"
+                acl_text += rf"  %generator_names={gr.name}"
                 acl_text += "\n"
     return acl_text
 
@@ -46,8 +45,7 @@ class RunGeneratorResult:
     def add_entire(self, result: GeneratorEntireResult) -> None:
         # Если есть несколько генераторов на один файл, выбрать тот, что с большим приоритетом
         if result.path:
-            if result.path not in self.entire_results or \
-                    result.prio > self.entire_results[result.path].prio:
+            if result.path not in self.entire_results or result.prio > self.entire_results[result.path].prio:
                 self.entire_results[result.path] = result
 
     def add_json_fragment(self, result: GeneratorJSONFragmentResult) -> None:
@@ -74,11 +72,11 @@ class RunGeneratorResult:
         return _combine_acl_text(self.partial_results, lambda gr: gr.acl_safe)
 
     def new_json_fragment_files(
-            self,
-            old_files: dict[str, Optional[str]],
-            use_acl: bool = True,
-            safe: bool = False,
-            filters: Sequence[str] | None = None,
+        self,
+        old_files: dict[str, Optional[str]],
+        use_acl: bool = True,
+        safe: bool = False,
+        filters: Sequence[str] | None = None,
     ) -> dict[str, tuple[Any, Optional[str]]]:
         # TODO: safe
         files: dict[str, tuple[Any, Optional[str]]] = {}
@@ -99,7 +97,8 @@ class RunGeneratorResult:
             previous_config: dict[str, Any] = files[filepath][0]
             new_fragment = generator_result.config
             new_config = jsontools.apply_json_fragment(
-                previous_config, new_fragment,
+                previous_config,
+                new_fragment,
                 acl=result_acl,
                 filters=filters,
             )
@@ -120,11 +119,7 @@ class RunGeneratorResult:
     def perf_mesures(self) -> dict[str, dict[str, int]]:
         mesures = {}
         for gr in self.partial_results.values():
-            mesures[gr.name] = {"total": gr.perf.total,
-                                "rt": gr.perf.rt,
-                                "meta": gr.perf.meta}
+            mesures[gr.name] = {"total": gr.perf.total, "rt": gr.perf.rt, "meta": gr.perf.meta}
         for gr in self.entire_results.values():
-            mesures[gr.name] = {"total": gr.perf.total,
-                                "rt": gr.perf.rt,
-                                "meta": gr.perf.meta}
+            mesures[gr.name] = {"total": gr.perf.total, "rt": gr.perf.rt, "meta": gr.perf.meta}
         return mesures

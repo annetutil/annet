@@ -40,13 +40,19 @@ class FuncMeta:
         self.sub = None
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(" + ", ".join((
-            f"cmd_name={self.cmd_name}",
-            f"opt={self.opts}",
-            f"parent={self.parent}",
-            f"parser={self.parser}",
-            f"sub={self.sub}",
-        )) + ")"
+        return (
+            f"{self.__class__.__name__}("
+            + ", ".join(
+                (
+                    f"cmd_name={self.cmd_name}",
+                    f"opt={self.opts}",
+                    f"parent={self.parent}",
+                    f"parser={self.parser}",
+                    f"sub={self.sub}",
+                )
+            )
+            + ")"
+        )
 
 
 def _get_meta(func: Callable) -> FuncMeta:
@@ -137,6 +143,7 @@ class ArgGroup:
     values = Group1(in="/dev/null", out="/dev/null")
     open(values.in)
     """
+
     def __init__(self, *args, **kwargs):
         """
         В kwargs - пары ключ-значение. Соотвествующие опции должны быть объявлены в классе
@@ -190,10 +197,7 @@ class ArgGroup:
     def __repr__(self):
         return "%(classname)s(%(params)s)" % dict(
             classname=type(self).__qualname__,
-            params=", ".join(
-                "%s=%r" % (key, getattr(self, key))
-                for key in sorted(self._enum_args())
-            )
+            params=", ".join("%s=%r" % (key, getattr(self, key)) for key in sorted(self._enum_args())),
         )
 
     def stdin(self, **kwargs):
@@ -397,22 +401,26 @@ def subcommand(*arg_list: Union[Arg, Type[ArgGroup]], parent: Callable = None, i
     def some_thing():
         pass
     """
+
     def _amend_func(func):
         meta = _get_meta(func)
         if is_group:
+
             @functools.wraps(func)
             def func():
                 meta.parser.print_help()
+
         cmd_name = func.__name__
         if parent:
             parentprefix = parent.__name__ + "_"
             if cmd_name.startswith(parentprefix):
-                cmd_name = cmd_name[len(parentprefix):]
+                cmd_name = cmd_name[len(parentprefix) :]
             meta.parent = parent
 
         meta.cmd_name = cmd_name.replace("_", "-").lower()
         meta.opts.extend(arg_list)
         return func
+
     return _amend_func
 
 

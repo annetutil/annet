@@ -1,9 +1,19 @@
 from abc import ABC
 from copy import copy
+from dataclasses import MISSING, fields, is_dataclass, replace
 from enum import Enum
-from dataclasses import is_dataclass, replace, fields, MISSING
 from typing import (
-    TypeVar, Any, Annotated, get_origin, get_type_hints, get_args, Callable, Union, ClassVar, overload, cast,
+    Annotated,
+    Any,
+    Callable,
+    ClassVar,
+    TypeVar,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+    get_type_hints,
+    overload,
 )
 
 
@@ -49,11 +59,7 @@ class ForbidChange(Merger):
     def _merge(self, name: str, x: T, y: T) -> T:
         if x == y:
             return x
-        raise MergeForbiddenError(
-            f"Override with different value is forbidden for field {name}:\n"
-            f"Old: {x}\n"
-            f"New: {y}"
-        )
+        raise MergeForbiddenError(f"Override with different value is forbidden for field {name}:\nOld: {x}\nNew: {y}")
 
 
 class Concat(Merger):
@@ -118,9 +124,7 @@ class BaseMeshModel:
         return type(self)._field_mergers.keys() - vars(self).keys()
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(" + ", ".join(
-            f"{key}={value}" for key, value in vars(self).items()
-        ) + ")"
+        return f"{self.__class__.__name__}(" + ", ".join(f"{key}={value}" for key, value in vars(self).items()) + ")"
 
     def __init_subclass__(cls, **kwargs):
         cls._field_mergers = {
@@ -158,17 +162,17 @@ def _merge(a: ModelT, b: BaseMeshModel) -> ModelT:
 
 @overload
 def merge(first: Special, second: ModelT, /, *others: BaseMeshModel) -> ModelT:
-    ...
+    pass
 
 
 @overload
 def merge(first: ModelT, /, *others: BaseMeshModel) -> ModelT:
-    ...
+    pass
 
 
 @overload
 def merge(first: Special, /) -> Special:
-    ...
+    pass
 
 
 def merge(first: Any, /, *others: Any) -> Any:
@@ -183,11 +187,7 @@ def merge(first: Any, /, *others: Any) -> Any:
 
 def merge_dataclass(a: Any, b: Any) -> Any:
     if a.__class__ != b.__class__:
-        raise MergeForbiddenError(
-            f"Dataclasses belonging to different instaces can't be merged:\n"
-            f"Old: {a}\n"
-            f"New: {b}"
-        )
+        raise MergeForbiddenError(f"Dataclasses belonging to different instaces can't be merged:\nOld: {a}\nNew: {b}")
 
     if a == b:
         return replace(a)
@@ -208,9 +208,7 @@ def merge_dataclass(a: Any, b: Any) -> Any:
             merged[f.name] = merge_dataclass(aval, bval)
         else:
             raise MergeForbiddenError(
-                f"Dataclasses with non-equal field {f.name} can't be merged:\n"
-                f"Old: {aval}\n"
-                f"New: {bval}"
+                f"Dataclasses with non-equal field {f.name} can't be merged:\nOld: {aval}\nNew: {bval}"
             )
 
     return replace(empty, **merged)

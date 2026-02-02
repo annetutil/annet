@@ -1,6 +1,13 @@
-from annet.rpl import RoutingPolicyStatement, Action, AndCondition, ResultType, SingleAction, ActionType, \
-    CommunityActionValue
-from annet.rpl.statement_builder import StatementBuilder, AsPathActionValue, NextHopActionValue
+from annet.rpl import (
+    Action,
+    ActionType,
+    AndCondition,
+    CommunityActionValue,
+    ResultType,
+    RoutingPolicyStatement,
+    SingleAction,
+)
+from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, StatementBuilder
 
 
 def new_statement():

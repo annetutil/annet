@@ -8,7 +8,6 @@ def undo_peer_group(rule, key, diff, **_):
         yield (True, action["row"], None)
 
     if diff[Op.REMOVED]:
-
         is_group = any(action["row"].endswith(" peer-group") for action in diff[Op.REMOVED])
 
         group_name = ""

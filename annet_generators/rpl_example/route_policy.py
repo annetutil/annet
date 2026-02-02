@@ -1,7 +1,8 @@
 from typing import Optional
 
 from annet.adapters.netbox.common.models import NetboxDevice
-from annet.rpl import R, RouteMap, Route
+from annet.rpl import R, Route, RouteMap
+
 
 routemap = RouteMap[NetboxDevice]()
 
@@ -30,9 +31,10 @@ def example1(device: NetboxDevice, route: Route):
     loopback = find_loopback(device)
     if loopback:  # rules can be generated dynamically
         with route(
-                R.community.has("COMMUNITY_EXAMPLE_REMOVE"),
-                R.interface == loopback,  # conditions can reference calculated values
-                number=2, name="n2",
+            R.community.has("COMMUNITY_EXAMPLE_REMOVE"),
+            R.interface == loopback,  # conditions can reference calculated values
+            number=2,
+            name="n2",
         ) as rule:
             rule.set_local_pref(100)
             rule.add_metric(200)

@@ -1,5 +1,4 @@
 from annet.annlib.types import Op
-
 from annet.rulebook import common
 
 
@@ -7,7 +6,7 @@ from annet.rulebook import common
 def binding_change(old, new, diff_pre, _pops=(Op.AFFECTED,)):
     ret = common.default_diff(old, new, diff_pre, _pops)
     vpn_changed = False
-    for (op, cmd, _, _) in ret:
+    for op, cmd, _, _ in ret:
         if op in {Op.ADDED, Op.REMOVED}:
             vpn_changed |= _is_vpn_cmd(cmd)
     if vpn_changed:

@@ -2,10 +2,12 @@ import collections
 import re
 import typing
 
-from . import patching
 from annet.vendors import tabparser
+
+from . import patching
 from .diff import diff_ops, ops_sign
 from .rbparser import acl
+
 
 UnifiedInputConfig = str  # Конфиг классических сетевых устройств
 FileInputConfig = typing.Dict[str, typing.Any]  # Конфиг вайтбоксов и серверов
@@ -94,7 +96,7 @@ def filter_patch_jun_nokia(diff_filtered: InputConfig, fmtr: tabparser.CommonFor
 
 def apply_acl_fileconfig(config, rules):
     passed = {}
-    for (filename, filecontent) in config.items():
+    for filename, filecontent in config.items():
         (match, _) = patching.match_row_to_acl(filename, rules)
         if match:
             if not (match["is_reverse"] and match["attrs"]["cant_delete"]):
@@ -120,7 +122,7 @@ def get_op(line: str) -> typing.Tuple[str, str, str]:
 
     if opidx >= 0:
         op = line[opidx]
-        indent = line[:opidx] + line[opidx + 1:rowstart]
+        indent = line[:opidx] + line[opidx + 1 : rowstart]
     if op != " ":
         indent = indent + " "
 

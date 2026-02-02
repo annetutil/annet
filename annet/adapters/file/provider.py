@@ -4,13 +4,13 @@ from typing import Any, Iterable, List, Optional, Sequence
 
 import yaml
 
+from annet.adapters.netbox.common.manufacturer import get_breed
 from annet.annlib.netdev.views.dump import DumpableView
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.connectors import AdapterWithName
 from annet.hardware import hardware_connector
 from annet.storage import Device as DeviceProtocol
 from annet.storage import Query, Storage, StorageProvider
-from annet.adapters.netbox.common.manufacturer import get_breed
 
 
 @dataclass

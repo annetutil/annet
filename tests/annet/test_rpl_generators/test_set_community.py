@@ -1,10 +1,12 @@
 from unittest.mock import Mock
-from annet.rpl_generators import CommunityList, CommunityType, CommunityLogic
-from annet.rpl import R, RouteMap, Route
 
 import pytest
 
-from .helpers import scrub, huawei, arista, cumulus, generate, iosxr, juniper
+from annet.rpl import R, Route, RouteMap
+from annet.rpl_generators import CommunityList, CommunityLogic, CommunityType
+
+from .helpers import arista, cumulus, generate, huawei, iosxr, juniper, scrub
+
 
 BASIC_CLIST = "CL1"
 BASIC2_CLIST = "CL2"
@@ -138,6 +140,7 @@ route-policy policy
 """)
     assert result == expected
 
+
 def test_iosxr_set_comm():
     routemaps = RouteMap[Mock]()
 
@@ -249,6 +252,7 @@ def test_juniper_community_empty_set():
 
     with pytest.raises(NotImplementedError):
         generate(routemaps=routemaps, community_lists=CLISTS, dev=juniper())
+
 
 def test_juniper_communities_remove_all():
     routemaps = RouteMap[Mock]()

@@ -13,9 +13,7 @@ class AbstractVendor(abc.ABC):
     def match(self) -> list[str]:
         raise NotImplementedError
 
-    def apply(
-        self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str
-    ) -> tuple[CommandList, CommandList]:
+    def apply(self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str) -> tuple[CommandList, CommandList]:
         return CommandList(), CommandList()
 
     @property

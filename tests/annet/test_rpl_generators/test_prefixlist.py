@@ -1,9 +1,10 @@
 from ipaddress import IPv4Network
 from unittest.mock import Mock
-from annet.rpl_generators import ip_prefix_list, IpPrefixList, IpPrefixListMember, CommunityList, CommunityType
-from annet.rpl import R, RouteMap, Route
 
-from .helpers import scrub, huawei, arista, cumulus, generate, iosxr, juniper
+from annet.rpl import R, Route, RouteMap
+from annet.rpl_generators import CommunityList, CommunityType, IpPrefixList, IpPrefixListMember, ip_prefix_list
+
+from .helpers import arista, cumulus, generate, huawei, iosxr, juniper, scrub
 
 
 def test_ip_prefix_list():
@@ -14,7 +15,8 @@ def test_ip_prefix_list():
                 prefix=IPv4Network("10.0.0.0/8"),
                 or_longer=(None, None),
             ),
-        ])
+        ],
+    )
 
     assert ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"], (None, 32)) == IpPrefixList(
         name="IPV4_LIST",
@@ -23,9 +25,14 @@ def test_ip_prefix_list():
                 prefix=IPv4Network("10.0.0.0/8"),
                 or_longer=(None, 32),
             ),
-        ])
+        ],
+    )
 
-    assert ip_prefix_list("IPV4_LIST", [IpPrefixListMember(IPv4Network("10.0.0.0/8"), (8, 32)), "11.0.0.0/8"], (None, 32)) == IpPrefixList(
+    assert ip_prefix_list(
+        "IPV4_LIST",
+        [IpPrefixListMember(IPv4Network("10.0.0.0/8"), (8, 32)), "11.0.0.0/8"],
+        (None, 32),
+    ) == IpPrefixList(
         name="IPV4_LIST",
         members=[
             IpPrefixListMember(
@@ -36,7 +43,9 @@ def test_ip_prefix_list():
                 prefix=IPv4Network("11.0.0.0/8"),
                 or_longer=(None, 32),
             ),
-        ])
+        ],
+    )
+
 
 def test_huawei_prefixlist_basic():
     plists = [
@@ -44,6 +53,7 @@ def test_huawei_prefixlist_basic():
         ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
     ]
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4("IPV4_LIST"), number=1) as rule:
@@ -70,6 +80,7 @@ def test_arista_prefixlist_basic():
         ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
     ]
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4("IPV4_LIST"), number=1) as rule:
@@ -77,7 +88,7 @@ def test_arista_prefixlist_basic():
         with route(R.match_v6("IPV6_LIST"), number=2) as rule:
             rule.allow()
 
-    result = generate(routemaps=routemaps, prefix_lists=plists,  dev=arista())
+    result = generate(routemaps=routemaps, prefix_lists=plists, dev=arista())
     expected = scrub("""
 ip prefix-list IPV4_LIST
   seq 10 permit 10.0.0.0/8
@@ -97,6 +108,7 @@ def test_cumulus_prefixlist_basic():
         ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
     ]
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4("IPV4_LIST"), name="n10", number=10) as rule:
@@ -125,6 +137,7 @@ def test_huawei_prefixlist_with_match_orlonger():
         ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
     ]
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4("IPV4_LIST", or_longer=(8, 32)), number=1) as rule:
@@ -150,6 +163,7 @@ def test_arista_prefixlist_match_orlonger():
         ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
     ]
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4("IPV4_LIST", or_longer=(8, 32)), number=1) as rule:
@@ -177,6 +191,7 @@ def test_cumulus_prefixlist_match_orlonger():
         ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
     ]
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4("IPV4_LIST", or_longer=(8, 32)), name="n10", number=10) as rule:
@@ -205,6 +220,7 @@ def test_huawei_prefixlist_with_match_both():
         ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
     ]
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4("IPV4_LIST"), number=1) as rule:
@@ -240,13 +256,13 @@ def test_huawei_prefixlist_embedded_orlonger():
         ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"], (64, 128)),
     ]
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4("IPV4_LIST"), number=1) as rule:
             rule.allow()
         with route(R.match_v6("IPV6_LIST"), number=2) as rule:
             rule.allow()
-
 
     result = generate(routemaps=routemaps, prefix_lists=plists, dev=huawei())
     expected = scrub("""
@@ -266,6 +282,7 @@ def test_iosxr_prefixlist_with_match_both():
         ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"]),
     ]
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4("IPV4_LIST"), number=1) as rule:
@@ -300,20 +317,19 @@ route-policy policy
     assert result == expected
 
 
-
 def test_iosxr_prefixlist_embedded_orlonger():
     plists = [
         ip_prefix_list("IPV4_LIST", ["10.0.0.0/8"], (8, 32)),
         ip_prefix_list("IPV6_LIST", ["2001:db8:1234::/64"], (64, 128)),
     ]
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4("IPV4_LIST"), number=1) as rule:
             rule.allow()
         with route(R.match_v6("IPV6_LIST"), number=2) as rule:
             rule.allow()
-
 
     result = generate(routemaps=routemaps, prefix_lists=plists, dev=iosxr())
     expected = scrub("""
@@ -334,46 +350,41 @@ def test_arista_tutorial():
     plists = [
         ip_prefix_list("LOCAL_NETS", ["192.168.0.0/16"], (16, 32)),
     ]
-    communities = [
-        CommunityList("ADVERTISE", type=CommunityType.BASIC, members=["65001:0"])
-    ]
+    communities = [CommunityList("ADVERTISE", type=CommunityType.BASIC, members=["65001:0"])]
     routemap = RouteMap[Mock]()
+
     @routemap
     def IMPORT_CONNECTED(_: Mock, route: Route):
-        with route(
-                R.protocol == "connected",
-                R.match_v4("LOCAL_NETS"),
-                number=10
-        ) as rule:
+        with route(R.protocol == "connected", R.match_v4("LOCAL_NETS"), number=10) as rule:
             rule.community.set("ADVERTISE")
             rule.allow()
         with route(number=20) as rule:
             rule.deny()
 
-
     @routemap
     def ROUTERS_IMPORT(_: Mock, route: Route):
         with route(
-                R.match_v4("LOCAL_NETS", or_longer=(16, 24)),  # custom ge/le
-                R.community.has("ADVERTISE"),
-                number=10
+            R.match_v4("LOCAL_NETS", or_longer=(16, 24)),  # custom ge/le
+            R.community.has("ADVERTISE"),
+            number=10,
         ) as rule:
             rule.allow()
         with route(number=20) as rule:
             rule.deny()
-
 
     @routemap
     def ROUTERS_EXPORT(_: Mock, route: Route):
-        with route(
-                R.community.has("ADVERTISE"),
-                number=10
-        ) as rule:
+        with route(R.community.has("ADVERTISE"), number=10) as rule:
             rule.allow()
         with route(number=20) as rule:
             rule.deny()
 
-    result = generate(routemaps=routemap, prefix_lists=plists, community_lists=communities, dev=arista())
+    result = generate(
+        routemaps=routemap,
+        prefix_lists=plists,
+        community_lists=communities,
+        dev=arista(),
+    )
     expected = scrub("""
 ip prefix-list LOCAL_NETS
   seq 10 permit 192.168.0.0/16 ge 16 le 32
@@ -404,6 +415,7 @@ def test_juniper_prefixlist01():
         ip_prefix_list("IPV6_LIST_2", ["2001:db8:21::/64", "2001:db8:22::/64"]),
     ]
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4("IPV4_LIST_1", "IPV4_LIST_2")) as rule:
@@ -451,15 +463,19 @@ policy-options {
     assert result == expected
 
 
-
 def test_juniper_prefixlist02():
     plists = [
         ip_prefix_list("IPV4_LIST_1", ["10.11.0.0/16", "10.12.0.0/16"]),
         ip_prefix_list("IPV6_LIST_1", ["2001:db8:11::/64", "2001:db8:12::/64"]),
         ip_prefix_list("IPV4_LIST_2", ["10.11.0.0/16", "10.12.0.0/24"], or_longer=(None, 32)),
-        ip_prefix_list("IPV6_LIST_2", ["2001:db8:11::/64", "2001:db8:12::/96"], or_longer=(None, 128)),
+        ip_prefix_list(
+            "IPV6_LIST_2",
+            ["2001:db8:11::/64", "2001:db8:12::/96"],
+            or_longer=(None, 128),
+        ),
     ]
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4("IPV4_LIST_1", "IPV4_LIST_2")) as rule:
@@ -507,7 +523,6 @@ policy-options {
     assert result == expected
 
 
-
 def test_juniper_prefixlist03():
     plists = [
         ip_prefix_list("IPV4_LIST_1", ["10.11.0.0/16", "10.12.0.0/16"]),
@@ -516,6 +531,7 @@ def test_juniper_prefixlist03():
         ip_prefix_list("IPV6_LIST_2", ["2001:db8:11::/64", "2001:db8:12::/64"], or_longer=(96, 128)),
     ]
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4("IPV4_LIST_1", "IPV4_LIST_2")) as rule:
@@ -572,6 +588,7 @@ def test_juniper_prefixlist04():
     plist_names = [x.name for x in plists]
 
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4(*plist_names)) as rule:
@@ -618,6 +635,7 @@ def test_juniper_prefixlist05():
     plist_names = [x.name for x in plists]
 
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4(*plist_names)) as rule:
@@ -665,6 +683,7 @@ def test_juniper_prefixlist06():
     plist_names = [x.name for x in plists]
 
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4(*plist_names)) as rule:
@@ -709,6 +728,7 @@ def test_juniper_prefixlist07():
     plist_names = [x.name for x in plists]
 
     routemaps = RouteMap[Mock]()
+
     @routemaps
     def policy(device: Mock, route: Route):
         with route(R.match_v4(*plist_names)) as rule:

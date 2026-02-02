@@ -39,7 +39,7 @@ class RefMatch:
     @classmethod
     def _match(cls, config, acl, _path=tuple()):
         ret = []
-        for (row, children) in config.items():
+        for row, children in config.items():
             (rule, children_rules) = match_row_to_acl(row, acl)
             if rule and rule["attrs"]["match"]:
                 ret.append(rule["attrs"]["match"])

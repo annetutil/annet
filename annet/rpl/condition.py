@@ -1,7 +1,7 @@
-from collections.abc import Iterator, Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from enum import Enum
-from typing import Generic, TypeVar, Sequence, Union, Any
+from typing import Any, Generic, Sequence, TypeVar, Union
 
 
 class ConditionOperator(Enum):

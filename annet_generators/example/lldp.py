@@ -1,4 +1,3 @@
-
 from typing import List
 
 from annet.generators import BaseGenerator, PartialGenerator

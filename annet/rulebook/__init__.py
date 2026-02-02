@@ -6,7 +6,6 @@ from typing import Any, Dict, Iterable, List, OrderedDict, TypedDict, Union
 from annet.annlib.lib import mako_render
 from annet.annlib.rbparser.ordering import CompiledTree, compile_ordering_text
 from annet.annlib.rbparser.platform import VENDOR_ALIASES
-
 from annet.connectors import CachedConnector
 from annet.rulebook.deploying import compile_deploying_text
 from annet.rulebook.patching import compile_patching_text
@@ -50,8 +49,9 @@ class DefaultRulebookProvider(RulebookProvider):
     root_dir = (path.dirname(__file__),)
     root_modules = ("annet.rulebook",)
 
-    def __init__(self, root_dir: Union[str, Iterable[str], None] = None,
-                 root_modules: Union[str, Iterable[str], None] = None):
+    def __init__(
+        self, root_dir: Union[str, Iterable[str], None] = None, root_modules: Union[str, Iterable[str], None] = None
+    ):
         self._rulebook_cache = {}
         self._render_rul_cache = {}
         self._escaped_rul_cache = {}
@@ -104,7 +104,7 @@ class DefaultRulebookProvider(RulebookProvider):
                 "patching": patching_text,
                 "ordering": ordering_text,
                 "deploying": deploying_text,
-            }
+            },
         }
         return self._rulebook_cache[hw]
 

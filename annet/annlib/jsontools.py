@@ -22,10 +22,11 @@ def format_json(data: Any, stable: bool = False) -> str:
 
 
 def apply_json_fragment(
-        old: Dict[str, Any],
-        new_fragment: Dict[str, Any], *,
-        acl: Sequence[str] | None = None,
-        filters: Sequence[str] | None = None,
+    old: Dict[str, Any],
+    new_fragment: Dict[str, Any],
+    *,
+    acl: Sequence[str] | None = None,
+    filters: Sequence[str] | None = None,
 ) -> Dict[str, Any]:
     """
     Replace parts of the old document with 'new_fragment'.
@@ -40,12 +41,8 @@ def apply_json_fragment(
         new_pointers = _resolve_json_pointers(acl_item, new_fragment)
         old_pointers = _resolve_json_pointers(acl_item, full_new_config)
         if filters is not None:
-            new_pointers = _apply_filters_to_json_pointers(
-                new_pointers, filters, content=new_fragment
-            )
-            old_pointers = _apply_filters_to_json_pointers(
-                old_pointers, filters, content=full_new_config
-            )
+            new_pointers = _apply_filters_to_json_pointers(new_pointers, filters, content=new_fragment)
+            old_pointers = _apply_filters_to_json_pointers(old_pointers, filters, content=full_new_config)
 
         for pointer in new_pointers:
             new_value = pointer.get(new_fragment)
@@ -180,15 +177,9 @@ def _resolve_json_pointers(pattern: str, content: dict[str, Any]) -> list[jsonpo
         for matched_parts, doc in matched:
             keys_and_docs = []
             if isinstance(doc, Mapping):
-                keys_and_docs = [
-                    (key, doc[key]) for key in doc.keys()
-                    if fnmatch.fnmatchcase(key, part)
-                ]
+                keys_and_docs = [(key, doc[key]) for key in doc.keys() if fnmatch.fnmatchcase(key, part)]
             elif isinstance(doc, Sequence):
-                keys_and_docs = [
-                    (str(i), doc[i]) for i in range(len(doc))
-                    if fnmatch.fnmatchcase(str(i), part)
-                ]
+                keys_and_docs = [(str(i), doc[i]) for i in range(len(doc)) if fnmatch.fnmatchcase(str(i), part)]
             for key, sub_doc in keys_and_docs:
                 new_matched.append((matched_parts + (key,), sub_doc))
         matched = new_matched
@@ -200,11 +191,11 @@ def _resolve_json_pointers(pattern: str, content: dict[str, Any]) -> list[jsonpo
 
 
 def _apply_filters_to_json_pointers(
-        pointers: Iterable[jsonpointer.JsonPointer],
-        filters: Sequence[str], *,
-        content: Any,
+    pointers: Iterable[jsonpointer.JsonPointer],
+    filters: Sequence[str],
+    *,
+    content: Any,
 ) -> Sequence[jsonpointer.JsonPointer]:
-
     """
     Takes a list of pointers, a list of filters and a document, and returns
     a list of pointers that match at least one of the filters, preserving order.
@@ -242,10 +233,9 @@ def _apply_filters_to_json_pointers(
             if len(filter_parts) > len(pointer_parts):
                 # filter is deeper than data pointer
                 deeper_doc = pointer.resolve(content)
-                deeper_pattern = "".join((
-                    f"/{jsonpointer.escape(part)}"
-                    for part in filter_parts[len(pointer_parts):]
-                ))
+                deeper_pattern = "".join(
+                    (f"/{jsonpointer.escape(part)}" for part in filter_parts[len(pointer_parts) :])
+                )
                 ret.update(map(pointer.join, _resolve_json_pointers(deeper_pattern, deeper_doc)))
             else:
                 ret.add(pointer)

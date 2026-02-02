@@ -1,23 +1,25 @@
 import os
-from typing import Any, Optional
 from datetime import timedelta
+from typing import Any, Optional
+
 from .query import parse_query
+
 
 DEFAULT_URL = "http://localhost"
 
 
 class NetboxStorageOpts:
     def __init__(
-            self,
-            url: str,
-            token: str,
-            insecure: bool = False,
-            exact_host_filter: bool = False,
-            threads: int = 1,
-            all_hosts_filter: dict[str, list[str]] | None = None,
-            cache_path: str = "",
-            cache_ttl: timedelta = timedelta(0),
-            recache: bool = False,
+        self,
+        url: str,
+        token: str,
+        insecure: bool = False,
+        exact_host_filter: bool = False,
+        threads: int = 1,
+        all_hosts_filter: dict[str, list[str]] | None = None,
+        cache_path: str = "",
+        cache_ttl: timedelta = timedelta(0),
+        recache: bool = False,
     ):
         self.url = url
         self.token = token
