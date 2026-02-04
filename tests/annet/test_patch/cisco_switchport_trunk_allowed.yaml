@@ -1,0 +1,199 @@
+- vendor: cisco
+  diff: |
+    interface FastEthernet0/30
+      +   switchport access vlan 2612
+      +   switchport mode access
+
+  patch: |
+    conf t
+    interface FastEthernet0/30
+      switchport access vlan 2612
+      switchport mode access
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    interface FastEthernet0/30
+      -   switchport access vlan 2612
+      -   switchport mode access
+
+  patch: |
+    conf t
+    interface FastEthernet0/30
+      no switchport access vlan
+      no switchport mode
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    interface FastEthernet0/30
+      +   switchport trunk native vlan 2612
+      +   switchport trunk allowed vlan 2600-2602,2612,2670
+      +   switchport mode trunk
+
+  patch: |
+    conf t
+    interface FastEthernet0/30
+      switchport mode trunk
+      switchport trunk allowed vlan add 2600-2602,2612,2670
+      switchport trunk native vlan 2612
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    interface FastEthernet0/30
+      -   switchport trunk native vlan 2612
+      -   switchport trunk allowed vlan 2600-2602,2612,2670
+      -   switchport mode trunk
+
+  patch: |
+    conf t
+    interface FastEthernet0/30
+      no switchport mode
+      no switchport trunk allowed vlan remove 2600-2602,2612,2670
+      no switchport trunk native vlan
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    interface GigabitEthernet1/0/38
+      -   switchport access vlan 462
+      -   switchport mode access
+      +   switchport trunk native vlan 410
+      +   switchport mode trunk
+      +   switchport trunk allowed vlan 410,2423,2433,2443
+
+  patch: |
+    conf t
+    interface GigabitEthernet1/0/38
+      no switchport access vlan
+      switchport mode trunk
+      switchport trunk allowed vlan add 410,2423,2433,2443
+      switchport trunk native vlan 410
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    interface GigabitEthernet1/0/38
+      -   switchport trunk native vlan 410
+      -   switchport trunk allowed vlan 410,2423,2433,2443
+      -   switchport mode trunk
+      +   switchport access vlan 462
+      +   switchport mode access
+
+  patch: |
+    conf t
+    interface GigabitEthernet1/0/38
+      switchport access vlan 462
+      switchport mode access
+      no switchport trunk allowed vlan remove 410,2423,2433,2443
+      no switchport trunk native vlan
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    interface GigabitEthernet1/0/38
+      -   switchport trunk native vlan 410
+      -   switchport trunk allowed vlan 410,2423,2433,2443
+      +   switchport trunk native vlan 400
+      +   switchport trunk allowed vlan 400,2423,2433,2443
+
+  patch: |
+    conf t
+    interface GigabitEthernet1/0/38
+      no switchport trunk allowed vlan remove 410
+      switchport trunk allowed vlan add 400
+      switchport trunk native vlan 400
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    interface GigabitEthernet1/0/38
+      +  switchport mode trunk
+      +  switchport trunk allowed vlan 10,20,30,40,50,60,70,80,90,100,110,120,130,140
+      +  switchport trunk allowed vlan add 150,160,170
+
+  patch: |
+    conf t
+    interface GigabitEthernet1/0/38
+      switchport mode trunk
+      switchport trunk allowed vlan add 10,20,30,40,50
+      switchport trunk allowed vlan add 60,70,80,90,100
+      switchport trunk allowed vlan add 110,120,130,140,150
+      switchport trunk allowed vlan add 160,170
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    interface GigabitEthernet1/0/38
+      -  switchport mode trunk
+      -  switchport trunk allowed vlan 10,20,30,40,50,60,70,80,90,100,110,120,130,140
+      -  switchport trunk allowed vlan add 150,160,170
+
+  patch: |
+    conf t
+    interface GigabitEthernet1/0/38
+      no switchport mode
+      no switchport trunk allowed vlan remove 10,20,30,40,50
+      no switchport trunk allowed vlan remove 60,70,80,90,100
+      no switchport trunk allowed vlan remove 110,120,130,140,150
+      no switchport trunk allowed vlan remove 160,170
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    interface GigabitEthernet1/0/38
+      switchport mode trunk
+      switchport trunk allowed vlan 10,20,30,40,50,60,70,80,90,100,110,120,130,140
+      -  switchport trunk allowed vlan add 150,160,170
+
+  patch: |
+    conf t
+    interface GigabitEthernet1/0/38
+      no switchport trunk allowed vlan remove 150,160,170
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    interface GigabitEthernet1/0/38
+      +  switchport trunk allowed vlan none
+
+  patch: |
+    conf t
+    interface GigabitEthernet1/0/38
+      switchport trunk allowed vlan none
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    interface GigabitEthernet1/0/38
+      -  switchport trunk allowed vlan none
+
+  patch: |
+    conf t
+    interface GigabitEthernet1/0/38
+      exit
+    exit
+    copy running-config startup-config
