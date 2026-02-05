@@ -59,7 +59,7 @@ interface */\w*Ethernet[0-9\/]+$/        %logic=common.permanent %diff_logic=cis
     switchport mode
     switchport trunk native vlan
     switchport access vlan
-    switchport trunk allowed vlan
+    switchport trunk allowed vlan %logic=cisco.vlandb.swtrunk
     ip vrf forwarding        %diff_logic=cisco.iface.diff
     vrf forwarding        %diff_logic=cisco.iface.diff
     ip address ~        %diff_logic=cisco.iface.diff
