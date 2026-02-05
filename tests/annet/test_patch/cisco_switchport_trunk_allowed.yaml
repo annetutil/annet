@@ -39,6 +39,7 @@
     conf t
     interface FastEthernet0/30
       switchport mode trunk
+      switchport trunk allowed vlan none
       switchport trunk allowed vlan add 2600-2602,2612,2670
       switchport trunk native vlan 2612
       exit
@@ -56,7 +57,7 @@
     conf t
     interface FastEthernet0/30
       no switchport mode
-      no switchport trunk allowed vlan remove 2600-2602,2612,2670
+      no switchport trunk allowed vlan
       no switchport trunk native vlan
       exit
     exit
@@ -76,6 +77,7 @@
     interface GigabitEthernet1/0/38
       no switchport access vlan
       switchport mode trunk
+      switchport trunk allowed vlan none
       switchport trunk allowed vlan add 410,2423,2433,2443
       switchport trunk native vlan 410
       exit
@@ -96,7 +98,7 @@
     interface GigabitEthernet1/0/38
       switchport access vlan 462
       switchport mode access
-      no switchport trunk allowed vlan remove 410,2423,2433,2443
+      no switchport trunk allowed vlan
       no switchport trunk native vlan
       exit
     exit
@@ -113,7 +115,7 @@
   patch: |
     conf t
     interface GigabitEthernet1/0/38
-      no switchport trunk allowed vlan remove 410
+      switchport trunk allowed vlan remove 410
       switchport trunk allowed vlan add 400
       switchport trunk native vlan 400
       exit
@@ -131,6 +133,7 @@
     conf t
     interface GigabitEthernet1/0/38
       switchport mode trunk
+      switchport trunk allowed vlan none
       switchport trunk allowed vlan add 10,20,30,40,50
       switchport trunk allowed vlan add 60,70,80,90,100
       switchport trunk allowed vlan add 110,120,130,140,150
@@ -150,10 +153,7 @@
     conf t
     interface GigabitEthernet1/0/38
       no switchport mode
-      no switchport trunk allowed vlan remove 10,20,30,40,50
-      no switchport trunk allowed vlan remove 60,70,80,90,100
-      no switchport trunk allowed vlan remove 110,120,130,140,150
-      no switchport trunk allowed vlan remove 160,170
+      no switchport trunk allowed vlan
       exit
     exit
     copy running-config startup-config
@@ -168,7 +168,7 @@
   patch: |
     conf t
     interface GigabitEthernet1/0/38
-      no switchport trunk allowed vlan remove 150,160,170
+      switchport trunk allowed vlan remove 150,160,170
       exit
     exit
     copy running-config startup-config
@@ -194,6 +194,7 @@
   patch: |
     conf t
     interface GigabitEthernet1/0/38
+      no switchport trunk allowed vlan
       exit
     exit
     copy running-config startup-config
