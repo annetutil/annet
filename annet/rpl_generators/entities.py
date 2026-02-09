@@ -1,11 +1,11 @@
-from ipaddress import IPv4Network, IPv6Network, ip_network
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, List
+from ipaddress import IPv4Network, IPv6Network, ip_network
+from typing import List, Literal, Optional
 
-from annet.rpl import RoutingPolicy, PrefixMatchValue, OrLonger
+from annet.rpl import OrLonger, PrefixMatchValue, RoutingPolicy
 
 
 class CommunityLogic(Enum):
@@ -58,15 +58,15 @@ class IpPrefixList:
     members: list[IpPrefixListMember]
 
     def __post_init__(self):
-        for (i, m) in enumerate(self.members):
+        for i, m in enumerate(self.members):
             if isinstance(m, str):
                 self.members[i] = IpPrefixListMember(m)
 
 
 def ip_prefix_list(
-        name: str,
-        members_or_str: Sequence[IpPrefixListMember | str],
-        or_longer: OrLonger = (None, None),
+    name: str,
+    members_or_str: Sequence[IpPrefixListMember | str],
+    or_longer: OrLonger = (None, None),
 ) -> IpPrefixList:
     members: List[IpPrefixListMember] = []
     for m in members_or_str:
@@ -103,12 +103,12 @@ class PrefixListNameGenerator:
         self._prefix_lists = {x.name: x for x in prefix_lists}
         self._policies = {x.name: x for x in policies}  # this is here for a later use ~azryve@
 
-    def get_prefix(self, name: str, match: PrefixMatchValue) -> IpPrefixList:
+    def get_prefix(self, name: str, match: PrefixMatchValue | None) -> IpPrefixList:
         orig_prefix = self._prefix_lists[name]
         override_name: Optional[str] = None
         override_orlonger: Optional[OrLonger] = None
 
-        if any(match.or_longer):
+        if match and match.or_longer != (None, None):
             ge, le = match.or_longer
             ge_str = "unset" if ge is None else str(ge)
             le_str = "unset" if le is None else str(le)
@@ -128,10 +128,58 @@ class PrefixListNameGenerator:
 
 
 def group_community_members(
-    all_communities: dict[str, CommunityList], communities: list[str],
+    all_communities: dict[str, CommunityList],
+    communities: list[str],
 ) -> dict[CommunityType, list[str]]:
     members: dict[CommunityType, list[str]] = defaultdict(list)
     for community_name in communities:
         community = all_communities[community_name]
         members[community.type].extend(community.members)
     return members
+
+
+class JuniperPrefixListNameGenerator(PrefixListNameGenerator):
+    def get_prefix(self, name: str, match: PrefixMatchValue | None) -> IpPrefixList:
+        plist = super().get_prefix(name, match)
+        flavour = self.get_plist_flavour(plist)
+        # keep the orginal name for an orlonger match
+        if flavour != "custom":
+            plist.name = name
+        return plist
+
+    def get_type(self, name: str, match: PrefixMatchValue | None) -> Literal["prefix-list", "route-filter"]:
+        orig_plist = self.get_prefix(name, None)
+        plist = self.get_prefix(name, match)
+        orig_flavour = self.get_plist_flavour(orig_plist)
+        flavour = self.get_plist_flavour(plist)
+        if orig_flavour == "custom" or flavour == "custom":
+            return "route-filter"
+        else:
+            return "prefix-list"
+
+    def get_plist_flavour(self, plist: IpPrefixList) -> Literal["simple", "orlonger", "custom"]:
+        is_orlonger: bool = False
+        is_custom: bool = False
+        for m in plist.members:
+            ge, le = m.or_longer
+
+            # or_longer != (None, None)
+            if ge is not None or le is not None:
+                is_orlonger = True
+
+            # orlonger != (n, None), where n is .../n
+            if ge is not None and ge != m.prefix.prefixlen:
+                is_custom = True
+                break
+
+            # orlonger != (None, n), where n is 32 or 128 (ipv4/ipv6)
+            if le is not None and le != m.prefix.max_prefixlen:
+                is_custom = True
+                break
+
+        if is_custom:
+            return "custom"
+        elif is_orlonger:
+            return "orlonger"
+        else:
+            return "simple"

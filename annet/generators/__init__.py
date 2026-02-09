@@ -7,24 +7,15 @@ import os
 import re
 import textwrap
 from collections import OrderedDict as odict
-from typing import (
-    FrozenSet,
-    Iterable,
-    List,
-    Optional,
-    Union,
-)
+from typing import FrozenSet, Iterable, List, Optional, Union
 
-from annet.annlib.rbparser.acl import compile_acl_text
 from contextlog import get_logger
 
-from annet.storage import Device
-
-from annet import patching, tabparser, tracing
+from annet import patching, tracing
+from annet.annlib.rbparser.acl import compile_acl_text
 from annet.cli_args import GenSelectOptions, ShowGeneratorsOptions
-from annet.lib import (
-    get_context,
-)
+from annet.lib import get_context
+from annet.storage import Device
 from annet.tracing import tracing_connector
 from annet.types import (
     GeneratorEntireResult,
@@ -33,18 +24,20 @@ from annet.types import (
     GeneratorPartialRunArgs,
     GeneratorResult,
 )
-from .base import (
-    BaseGenerator,
-    TextGenerator as TextGenerator,
-    ParamsList as ParamsList,
-)
-from .exceptions import NotSupportedDevice, GeneratorError
+from annet.vendors import registry_connector, tabparser
+
+from .annotate import AbstractAnnotateFormatter, annotate_formatter_connector
+from .base import BaseGenerator
+from .base import ParamsList as ParamsList
+from .base import TextGenerator as TextGenerator
+from .entire import Entire
+from .exceptions import GeneratorError, InvalidValueFromGenerator, NotSupportedDevice
 from .jsonfragment import JSONFragment
 from .partial import PartialGenerator
-from .entire import Entire
-from .ref import RefGenerator
 from .perf import GeneratorPerfMesurer
+from .ref import RefGenerator
 from .result import RunGeneratorResult
+
 
 # =====
 DISABLED_TAG = "disable"
@@ -65,20 +58,20 @@ def get_list(args: ShowGeneratorsOptions):
 
 
 def get_description(gen_cls) -> str:
-    return textwrap.dedent(" ".join([
-        (gen_cls.__doc__ or ""),
-        ("Disabled. Use '-g %s' to enable" % gen_cls.__name__ if DISABLED_TAG in gen_cls.TAGS else "")
-    ])).strip()
+    return textwrap.dedent(
+        " ".join(
+            [
+                (gen_cls.__doc__ or ""),
+                ("Disabled. Use '-g %s' to enable" % gen_cls.__name__ if DISABLED_TAG in gen_cls.TAGS else ""),
+            ]
+        )
+    ).strip()
 
 
 def validate_genselect(gens: GenSelectOptions, all_classes):
     logger = get_logger()
     unknown_err = "Unknown generator alias %s"
-    all_aliases = {
-        alias
-        for cls in all_classes
-        for alias in cls.get_aliases()
-    }
+    all_aliases = {alias for cls in all_classes for alias in cls.get_aliases()}
     for gen_set in (gens.allowed_gens, gens.force_enabled):
         for alias in set(gen_set or ()) - all_aliases:
             logger.error(unknown_err, alias)
@@ -165,7 +158,7 @@ def run_partial_generators(
 
 
 @tracing.function(name="run_partial_generator")
-def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRunArgs) -> Optional[GeneratorPartialResult]:
+def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRunArgs) -> GeneratorPartialResult | None:
     logger = get_logger(generator=_make_generator_ctx(gen))
     device = run_args.device
     output = ""
@@ -173,18 +166,19 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
     safe_config = odict()
 
     if not gen.supports_device(device):
-        logger.info("generator %s is not supported for device %s", gen, device.hostname)
+        logger.debug("generator %s is not supported for device %s", gen, device.hostname)
         return None
 
-    span = tracing_connector.get().get_current_span()
-    if span:
+    if span := tracing_connector.get().get_current_span():
         tracing_connector.get().set_device_attributes(span, run_args.device)
         tracing_connector.get().set_dimensions_attributes(span, gen, run_args.device)
-        span.set_attributes({
-            "use_acl": run_args.use_acl,
-            "use_acl_safe": run_args.use_acl_safe,
-            "generators_context": str(run_args.generators_context),
-        })
+        span.set_attributes(
+            {
+                "use_acl": run_args.use_acl,
+                "use_acl_safe": run_args.use_acl_safe,
+                "generators_context": str(run_args.generators_context),
+            }
+        )
 
     with GeneratorPerfMesurer(gen, run_args=run_args) as pm:
         if not run_args.no_new:
@@ -192,15 +186,15 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
                 logger.info("Generating PARTIAL ...")
             try:
                 output = gen(device, run_args.annotate)
-            except NotSupportedDevice:
-                # это исключение нужно передать выше в оригинальном виде
+            except NotSupportedDevice:  # это исключение нужно передать выше в оригинальном виде
                 raise
             except Exception as err:
                 filename, lineno = gen.get_running_line()
-                logger.exception("Generator error in file '%s:%i'", filename, lineno)
+                logger.error("Generator error in file '%s:%i'", filename, lineno)
                 raise GeneratorError(f"{gen} on {device}") from err
 
-            fmtr = tabparser.make_formatter(device.hw)
+            fmtr = registry_connector.get().match(device.hw).make_formatter()
+
             try:
                 config = tabparser.parse_to_tree(text=output, splitter=fmtr.split)
             except tabparser.ParserError as err:
@@ -214,7 +208,9 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
 
     if run_args.use_acl:
         try:
-            with tracing_connector.get().start_as_current_span("apply_acl", tracer_name=__name__, min_duration="0.01") as acl_span:
+            with tracing_connector.get().start_as_current_span(
+                "apply_acl", tracer_name=__name__, min_duration="0.01"
+            ) as acl_span:
                 tracing_connector.get().set_device_attributes(acl_span, run_args.device)
                 config = patching.apply_acl(
                     config=config,
@@ -224,9 +220,7 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
                 )
             if run_args.use_acl_safe:
                 with tracing_connector.get().start_as_current_span(
-                    "apply_acl_safe",
-                    tracer_name=__name__,
-                    min_duration="0.01"
+                    "apply_acl_safe", tracer_name=__name__, min_duration="0.01"
                 ) as acl_safe_span:
                     tracing_connector.get().set_device_attributes(acl_safe_span, run_args.device)
                     safe_config = patching.apply_acl(
@@ -272,8 +266,8 @@ def check_entire_generators_required_packages(gens, device_packages: FrozenSet[s
 
 @tracing.function
 def run_file_generators(
-        gens: Iterable[Union["JSONFragment", "Entire"]],
-        device: "Device",
+    gens: Iterable[Union["JSONFragment", "Entire"]],
+    device: "Device",
 ) -> RunGeneratorResult:
     """Run generators that generate files or file parts."""
     ret = RunGeneratorResult()
@@ -302,32 +296,36 @@ def run_file_generators(
 @tracing.function(min_duration="0.5")
 def _run_entire_generator(gen: "Entire", device: "Device") -> Optional[GeneratorResult]:
     logger = get_logger(generator=_make_generator_ctx(gen))
-    if not gen.supports_device(device):
-        logger.info("generator %s is not supported for device %s", gen, device.hostname)
-        return
-
     span = tracing_connector.get().get_current_span()
     if span:
         tracing_connector.get().set_device_attributes(span, device)
         tracing_connector.get().set_dimensions_attributes(span, gen, device)
 
-    path = gen.path(device)
-    if not path:
-        raise RuntimeError("entire generator should return non-empty path")
-
-    logger.info("Generating ENTIRE ...")
     with GeneratorPerfMesurer(gen, trace_min_duration="0.5") as pm:
-        output = gen(device)
+        if not gen.supports_device(device):
+            logger.debug("generator %s is not supported for device %s", gen, device.hostname)
+            return
+
+        path = gen.path(device)
+        if not path:
+            raise RuntimeError("entire generator should return non-empty path")
+
+        logger.info("Generating ENTIRE ...")
+
+        gen_output = gen(device)
+        gen_reload = gen.get_reload_cmds(device)
+        gen_is_safe = gen.is_safe(device)
+        gen_prio = gen.prio
 
     return GeneratorEntireResult(
         name=gen.__class__.__name__,
         tags=gen.TAGS,
         path=path,
-        output=output,
-        reload=gen.get_reload_cmds(device),
-        prio=gen.prio,
+        output=gen_output,
+        reload=gen_reload,
+        prio=gen_prio,
         perf=pm.last_result,
-        is_safe=gen.is_safe(device),
+        is_safe=gen_is_safe,
     )
 
 
@@ -336,35 +334,38 @@ def _make_generator_ctx(gen):
 
 
 def _run_json_fragment_generator(
-        gen: "JSONFragment",
-        device: "Device",
+    gen: "JSONFragment",
+    device: "Device",
 ) -> Optional[GeneratorResult]:
     logger = get_logger(generator=_make_generator_ctx(gen))
-    if not gen.supports_device(device):
-        logger.info("generator %s is not supported for device %s", gen, device.hostname)
-        return
 
-    path = gen.path(device)
-    if not path:
-        raise RuntimeError("json fragment generator should return non-empty path")
-
-    acl_item_or_list_of_items = gen.acl(device)
-    safe_acl_item_or_list_of_items = gen.acl_safe(device)
-    if not acl_item_or_list_of_items:
-        raise RuntimeError("json fragment generator should return non-empty acl")
-    if isinstance(acl_item_or_list_of_items, list):
-        acl = acl_item_or_list_of_items
-    else:
-        acl = [acl_item_or_list_of_items]
-    if isinstance(safe_acl_item_or_list_of_items, list):
-        acl_safe = safe_acl_item_or_list_of_items
-    else:
-        acl_safe = [safe_acl_item_or_list_of_items]
-
-    logger.info("Generating JSON_FRAGMENT ...")
     with GeneratorPerfMesurer(gen) as pm:
+        if not gen.supports_device(device):
+            logger.info("generator %s is not supported for device %s", gen, device.hostname)
+            return
+
+        path = gen.path(device)
+        if not path:
+            raise RuntimeError("json fragment generator should return non-empty path")
+
+        acl_item_or_list_of_items = gen.acl(device)
+        safe_acl_item_or_list_of_items = gen.acl_safe(device)
+        if not acl_item_or_list_of_items:
+            raise RuntimeError("json fragment generator should return non-empty acl")
+        if isinstance(acl_item_or_list_of_items, list):
+            acl = acl_item_or_list_of_items
+        else:
+            acl = [acl_item_or_list_of_items]
+        if isinstance(safe_acl_item_or_list_of_items, list):
+            acl_safe = safe_acl_item_or_list_of_items
+        else:
+            acl_safe = [safe_acl_item_or_list_of_items]
+
+        logger.info("Generating JSON_FRAGMENT ...")
+
         config = gen(device)
-    reload_cmds = gen.get_reload_cmds(device)
+        reload_cmds = gen.get_reload_cmds(device)
+
     return GeneratorJSONFragmentResult(
         name=gen.__class__.__name__,
         tags=gen.TAGS,
@@ -414,7 +415,9 @@ def _load_gen_module(module_path: str):
     except ModuleNotFoundError as e:
         try:  # maybe it's a path to module
             module_abs_path = os.path.abspath(module_path)
-            module = importlib.machinery.SourceFileLoader(re.sub(r"[./]", "_", module_abs_path).strip("_"), module_abs_path).load_module()
+            module = importlib.machinery.SourceFileLoader(
+                re.sub(r"[./]", "_", module_abs_path).strip("_"), module_abs_path
+            ).load_module()
         except ModuleNotFoundError:
             raise e
     return module

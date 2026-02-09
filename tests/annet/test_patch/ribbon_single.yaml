@@ -1,0 +1,9 @@
+- vendor: Ribbon
+  before: ""
+  after: |
+    hostname "test"
+  patch: |
+    configure exclusive
+    set hostname "test"
+    commit
+    exit

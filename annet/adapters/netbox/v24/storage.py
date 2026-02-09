@@ -1,23 +1,26 @@
 from logging import getLogger
-from typing import Optional, List, Union
+from typing import List, Optional, Union
 
 from annetbox.v24 import models as api_models
 from annetbox.v24.client_sync import NetboxV24
 
-from annet.adapters.netbox.common import models
 from annet.adapters.netbox.common.manufacturer import (
-   get_hw, get_breed,
+    get_breed,
+    get_hw,
 )
+from annet.adapters.netbox.common.models import InterfaceType
 from annet.adapters.netbox.common.query import NetboxQuery
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
+from annet.adapters.netbox.v24 import models
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.storage import Storage
+
 
 logger = getLogger(__name__)
 
 
 def extend_device_ip(
-        ip: Optional[api_models.DeviceIp],
+    ip: Optional[api_models.DeviceIp],
 ) -> Optional[models.DeviceIp]:
     if not ip:
         return None
@@ -30,7 +33,7 @@ def extend_device_ip(
 
 
 def extend_label(
-        label: Optional[api_models.Label],
+    label: Optional[api_models.Label],
 ) -> Optional[models.Label]:
     if not label:
         return None
@@ -41,7 +44,8 @@ def extend_label(
 
 
 def extend_device(
-        device: api_models.Device, storage: Storage,
+    device: api_models.Device,
+    storage: Storage,
 ) -> models.NetboxDevice:
     manufacturer = device.device_type.manufacturer.name
     model = device.device_type.model
@@ -72,13 +76,11 @@ def extend_device(
         custom_fields=device.custom_fields,  # ???
         created=device.created,
         last_updated=device.last_updated,
-
         fqdn=device.name,
         hostname=device.name,
         hw=get_hw(manufacturer, model, platform_name),
         breed=get_breed(manufacturer, model),
         interfaces=[],
-        neighbours_ids=[],
         storage=storage,
     )
 
@@ -87,9 +89,15 @@ def extend_interface(interface: api_models.Interface) -> models.Interface:
     return models.Interface(
         id=interface.id,
         name=interface.name,
+        description="",
         device=interface.device,
         enabled=interface.enabled,
         display=interface.name,
+        type=InterfaceType("Unknown", "unknown"),
+        connected_endpoints=None,
+        mode=None,
+        untagged_vlan=None,
+        tagged_vlans=None,
         ip_addresses=[],
     )
 
@@ -125,29 +133,22 @@ class NetboxStorageV24(Storage):
         pass
 
     def resolve_object_ids_by_query(self, query: NetboxQuery):
-        return [
-            d.id for d in self._load_devices(query)
-        ]
+        return [d.id for d in self._load_devices(query)]
 
     def resolve_fdnds_by_query(self, query: NetboxQuery):
-        return [
-            d.name for d in self._load_devices(query)
-        ]
+        return [d.name for d in self._load_devices(query)]
 
     def make_devices(
-            self,
-            query: Union[NetboxQuery, list],
-            preload_neighbors=False,
-            use_mesh=None,
-            preload_extra_fields=False,
-            **kwargs,
+        self,
+        query: Union[NetboxQuery, list],
+        preload_neighbors=False,
+        use_mesh=None,
+        preload_extra_fields=False,
+        **kwargs,
     ) -> List[models.NetboxDevice]:
         if isinstance(query, list):
             query = NetboxQuery.new(query)
-        device_ids = {
-            device.id: extend_device(device=device, storage=self)
-            for device in self._load_devices(query)
-        }
+        device_ids = {device.id: extend_device(device=device, storage=self) for device in self._load_devices(query)}
         if not device_ids:
             return []
 
@@ -159,19 +160,11 @@ class NetboxStorageV24(Storage):
     def _load_devices(self, query: NetboxQuery) -> List[api_models.Device]:
         if not query.globs:
             return []
-        return [
-            device
-            for device in self.netbox.dcim_all_devices().results
-            if _match_query(query, device)
-        ]
+        return [device for device in self.netbox.dcim_all_devices().results if _match_query(query, device)]
 
-    def _load_interfaces(self, device_ids: List[int]) -> List[
-        models.Interface]:
+    def _load_interfaces(self, device_ids: List[int]) -> List[models.Interface]:
         interfaces = self.netbox.dcim_all_interfaces(device_id=device_ids)
-        extended_ifaces = {
-            interface.id: extend_interface(interface)
-            for interface in interfaces.results
-        }
+        extended_ifaces = {interface.id: extend_interface(interface) for interface in interfaces.results}
 
         ips = self.netbox.ipam_all_ip_addresses(interface_id=list(extended_ifaces))
         for ip in ips.results:
@@ -181,8 +174,11 @@ class NetboxStorageV24(Storage):
         return list(extended_ifaces.values())
 
     def get_device(
-            self, obj_id, preload_neighbors=False, use_mesh=None,
-            **kwargs,
+        self,
+        obj_id,
+        preload_neighbors=False,
+        use_mesh=None,
+        **kwargs,
     ) -> models.NetboxDevice:
         device = self.netbox.dcim_device(obj_id)
         res = extend_device(device=device, storage=self)

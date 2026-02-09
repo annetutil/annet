@@ -1,3 +1,4 @@
+import functools
 from typing import Optional
 
 from annet.annlib.netdev.devdb import parse_hw_model
@@ -35,9 +36,12 @@ class HardwareLeaf(DumpableView):
             raise AttributeError("HW: " + ".".join(path))
 
     def __str__(self):
-        return str(" | ".join(".".join(x) for x in self.__true_sequences))
+        for seq in sorted(self.__true_sequences, key=len, reverse=True):
+            return ".".join(seq)
+        return ""
 
-    __repr__ = __str__
+    def __repr__(self):
+        return str(" | ".join(".".join(x) for x in self.__true_sequences))
 
     def dump(self, prefix, **kwargs):  # pylint: disable=arguments-differ
         ret = super().dump(prefix, **kwargs)
@@ -51,78 +55,37 @@ class HardwareLeaf(DumpableView):
 
 
 class HardwareView(HardwareLeaf):
-    def __init__(self, hw_model, sw_version):
-        (true_sequences, false_sequences) = parse_hw_model(hw_model or "")
+    def __init__(self, hw_model, sw_version: Optional[str] = None):
+        true_sequences, false_sequences = parse_hw_model(hw_model or "")
         super().__init__((), true_sequences, false_sequences)
         self.model = hw_model or ""
         self._soft = sw_version or ""
 
     @property
     def vendor(self) -> Optional[str]:
-        return hw_to_vendor(self)
+        from annet.hardware import hardware_connector
+
+        return hardware_connector.get().hw_to_vendor(self)
 
     @property
     def soft(self) -> str:
         return self._soft
+
+    @soft.setter
+    def soft(self, value: str) -> None:
+        self._soft = value
+
+    def match(self, expr: str) -> bool:
+        dev_path = expr.split(".")
+        if dev_path and dev_path[0] == "hw":
+            dev_path = dev_path[1:]
+        return bool(functools.reduce(getattr, dev_path, self))
 
     def __hash__(self):
         return hash(self.model)
 
     def __eq__(self, other):
         return self.model == other.model
-
-
-def hw_to_vendor(hw: HardwareView) -> Optional[str]:
-    if hw.Nexus:
-        return "nexus"
-    elif hw.Cisco:
-        return "cisco"
-    elif hw.OptiXtrans:
-        return "optixtrans"
-    elif hw.Huawei:
-        return "huawei"
-    elif hw.Juniper:
-        return "juniper"
-    elif hw.Arista:
-        return "arista"
-    elif hw.PC:
-        return "pc"
-    elif hw.Nokia:
-        return "nokia"
-    elif hw.RouterOS:
-        return "routeros"
-    elif hw.Aruba:
-        return "aruba"
-    elif hw.Ribbon:
-        return "ribbon"
-    elif hw.H3C:
-        return "h3c"
-    elif hw.B4com:
-        return "b4com"
-    return None
-
-
-def vendor_to_hw(vendor):
-    hw = HardwareView(
-        {
-            "cisco": "Cisco",
-            "catalyst": "Cisco Catalyst",
-            "nexus": "Cisco Nexus",
-            "huawei": "Huawei",
-            "optixtrans": "Huawei OptiXtrans",
-            "juniper": "Juniper",
-            "arista": "Arista",
-            "pc": "PC",
-            "nokia": "Nokia",
-            "aruba": "Aruba",
-            "routeros": "RouterOS",
-            "ribbon": "Ribbon",
-            "h3c": "H3C",
-            "b4com": "B4com",
-        }.get(vendor.lower(), vendor),
-        None,
-    )
-    return hw
 
 
 def lag_name(hw: HardwareView, nlagg: int) -> str:
@@ -144,13 +107,6 @@ def lag_name(hw: HardwareView, nlagg: int) -> str:
         return f"lagg{nlagg}"
     if hw.Nokia:
         return f"lagg-{nlagg}"
+    if hw.H3C:
+        return f"Bridge-Aggregation{nlagg}"
     raise NotImplementedError(hw)
-
-
-def svi_name(hw: HardwareView, num: int) -> str:
-    if hw.Juniper:
-        return f"irb.{num}"
-    elif hw.Huawei:
-        return f"Vlanif{num}"
-    else:
-        return f"vlan{num}"

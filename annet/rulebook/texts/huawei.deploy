@@ -39,6 +39,7 @@ save
     dialog: Please input the file name(*.cfg, *.zip, *.dat): ::: vrpcfg.zip
 undo rsa peer-public-key
     dialog: /Do you want to remove the public key named .*\? \[Y/N\]:/ ::: Y
+    dialog: /% Do you really want to remove the public key named .*\? \[y/n\]:/ ::: y
 undo stelnet server enable
     dialog: Warning: The operation will stop the STelnet server. Do you want to continue? [Y/N]: ::: Y
 undo telnet * server enable
@@ -105,6 +106,8 @@ system tcam acl
 local-user * privilege level
     dialog: Warning: This operation may affect online users, are you sure to change the user privilege level ?[Y/N] ::: Y
     dialog: Warning: This operation may affect online users and will change the user privilege level, Continue? [Y/N]: ::: Y
+local-user * password
+    dialog: Warning: The user using this account will be logged out, and needs to log in again. Do you want to continue? [Y/N] ::: Y
 
 stp *
     dialog: Warning: The global STP state will be changed. Continue? [Y/N] ::: Y
@@ -175,6 +178,7 @@ info-center max-logfile-number *
 
 rsa peer-public-key * 
     dialog: Do you really want to replace it? [Y/N]: ::: Y
+    dialog: /% You already have RSA public key named .*.\r\n% Do you really want to replace it\? \[y/n\]:/ ::: y
 
 ip binding vpn-instance
     dialog: Warning: This operation will modify the router ID to 0.0.0.0, which may affect the establishment of BGP peer relationships. Continue? [Y/N]: ::: Y
@@ -184,5 +188,14 @@ force transceiver *
 
 undo force transceiver *
     dialog: /.*Continue\?/ ::: Y
+
+undo local-aaa-user change-password verify
+    dialog: Warning: This command will disable the function of verifying the old password when administrators changes their own passwords. Continue?[Y/N] ::: Y
+
+undo local-user ~
+    dialog: Warning: This operation may affect online users, are you sure to change the user privilege level ?[Y/N] ::: Y
+
+hwtacacs-server shared-key cipher *
+    dialog: Warning: The shared-key complexity is low. It is recommended that the password contain at least sixteen characters and be a combination of at least two of the following categories: Uppercase letters <A-Z>; Lowercase letters <a-z>; Numerals <0-9>; Symbols (all characters not defined as letters or numerals), such as !,$,#, and %. Continue? [Y/N]: ::: Y
 
 # vim: set syntax=annrulebook:

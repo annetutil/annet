@@ -1,12 +1,16 @@
-from annet.annlib.netdev.views.dump import DumpableView
-from annet.storage import Query
+import dataclasses
 from dataclasses import dataclass, fields
-from typing import List, Iterable, Optional, Any, Sequence
-from annet.storage import StorageProvider, Storage
-from annet.connectors import AdapterWithName
-from annet.storage import Device as DeviceCls
-from annet.annlib.netdev.views.hardware import vendor_to_hw, HardwareView
+from typing import Any, Iterable, List, Optional, Sequence
+
 import yaml
+
+from annet.adapters.netbox.common.manufacturer import get_breed
+from annet.annlib.netdev.views.dump import DumpableView
+from annet.annlib.netdev.views.hardware import HardwareView
+from annet.connectors import AdapterWithName
+from annet.hardware import hardware_connector
+from annet.storage import Device as DeviceProtocol
+from annet.storage import Query, Storage, StorageProvider
 
 
 @dataclass
@@ -23,29 +27,55 @@ class Interface(DumpableView):
 @dataclass
 class DeviceStorage:
     fqdn: str
-    vendor: str
+
+    vendor: Optional[str] = None
+    hw_model: Optional[str] = None
+    sw_version: Optional[str] = None
+    breed: Optional[str] = None
+
     hostname: Optional[str] = None
     serial: Optional[str] = None
     id: Optional[str] = None
     interfaces: Optional[list[Interface]] = None
     storage: Optional[Storage] = None
 
+    hw: HardwareView = dataclasses.field(init=False)
+
     def __post_init__(self):
         if not self.id:
             self.id = self.fqdn
         if not self.hostname:
             self.hostname = self.fqdn.split(".")[0]
-        hw = vendor_to_hw(self.vendor)
-        if not hw:
-            raise Exception("unknown vendor")
+
+        if self.hw_model:
+            hw = HardwareView(self.hw_model, self.sw_version)
+            if self.vendor and self.vendor != hw.vendor:
+                raise Exception(f"Vendor {self.vendor} is not vendor from hw model ({hw.vendor})")
+            else:
+                self.vendor = hw.vendor
+        else:
+            hw_provider = hardware_connector.get()
+            hw: HardwareView = hw_provider.vendor_to_hw(self.vendor)
+            if not hw:
+                raise Exception("unknown vendor")
+            self.hw_model = hw.model
         self.hw = hw
+
+        if not self.breed:
+            if self.hw.model:
+                parts = self.hw.model.split(maxsplit=1)
+                if len(parts) >= 2:
+                    self.breed = get_breed(parts[0], parts[1])
+            if not self.breed:
+                self.breed = self.hw.vendor
+
         if isinstance(self.interfaces, list):
             interfaces = []
             for iface in self.interfaces:
                 try:
                     interfaces.append(Interface(**iface))
                 except Exception as e:
-                    raise Exception("unable to parse %s as Interface %s" % (iface, e))
+                    raise Exception("unable to parse %s as Interface: %s" % (iface, e))
             self.interfaces = interfaces
 
     def set_storage(self, storage: Storage):
@@ -53,7 +83,7 @@ class DeviceStorage:
 
 
 @dataclass
-class Device(DeviceCls, DumpableView):
+class Device(DeviceProtocol, DumpableView):
     dev: DeviceStorage
 
     def __hash__(self):
@@ -79,7 +109,7 @@ class Device(DeviceCls, DumpableView):
 
     @property
     def storage(self) -> Storage:
-        return self
+        return self.dev.storage
 
     @property
     def hw(self) -> HardwareView:
@@ -87,11 +117,15 @@ class Device(DeviceCls, DumpableView):
 
     @property
     def breed(self) -> str:
-        return self.dev.hw.vendor
+        return self.dev.breed
 
     @property
     def neighbours_ids(self):
-        pass
+        return []
+
+    @property
+    def neighbours_fqdns(self) -> list[str]:
+        return []
 
     def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: Optional[int]) -> Interface:
         raise NotImplementedError
@@ -105,8 +139,8 @@ class Device(DeviceCls, DumpableView):
     def find_interface(self, name: str) -> Optional[Interface]:
         raise NotImplementedError
 
-    def neighbours_fqdns(self) -> list[str]:
-        return []
+    def flush_perf(self):
+        pass
 
 
 @dataclass
@@ -120,7 +154,7 @@ class Devices:
                 try:
                     devices.append(Device(dev=DeviceStorage(**dev)))
                 except Exception as e:
-                    raise Exception("unable to parse %s as Device %s" % (dev, e))
+                    raise Exception("unable to parse %s as Device: %s" % (dev, e))
             self.devices = devices
 
 
@@ -193,12 +227,12 @@ class FS(Storage):
         return [dev.fqdn for dev in result]
 
     def make_devices(
-            self,
-            query: Query | list,
-            preload_neighbors=False,
-            use_mesh=None,
-            preload_extra_fields=False,
-            **kwargs,
+        self,
+        query: Query | list,
+        preload_neighbors=False,
+        use_mesh=None,
+        preload_extra_fields=False,
+        **kwargs,
     ) -> list[Device]:
         if isinstance(query, list):
             query = Query.new(query)
@@ -231,8 +265,7 @@ def filter_query(devices: list[Device], query: Query) -> list[Device]:
 
 def read_inventory(path: str, storage: Storage) -> Devices:
     with open(path, "r") as f:
-        data = f.read()
-    file_data = yaml.load(data, Loader=yaml.BaseLoader)
+        file_data = yaml.load(f, Loader=yaml.SafeLoader)
     res = dataclass_from_dict(Devices, file_data)
     for dev in res.devices:
         dev.dev.set_storage(storage)

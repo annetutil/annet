@@ -2,7 +2,6 @@ from annet.generators import PartialGenerator
 
 
 class InitialConfig(PartialGenerator):
-
     """
     Конфиги у свежих (еще ни разу не настраиваемых устройств)
     на самом деле НЕ пустые. В данном генераторе отображен
@@ -12,6 +11,7 @@ class InitialConfig(PartialGenerator):
     Acl для данного генератора не нужен, он будет генерировать
     конфиг целиком.
     """
+
     def __init__(self, storage, do_run: bool = False):
         super().__init__(storage=storage)
         self._do_run = do_run

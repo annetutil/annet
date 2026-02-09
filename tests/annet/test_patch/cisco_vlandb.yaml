@@ -1,0 +1,257 @@
+- vendor: cisco
+  diff: |
+    + vlan 10
+  patch: |
+    conf t
+    vlan 10
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    vlan 10
+      + name USERS
+  patch: |
+    conf t
+    vlan 10
+      name USERS
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    - vlan 20
+  patch: |
+    conf t
+    no vlan 20
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    vlan 30
+      - name OLD_NAME
+      + name NEW_NAME
+  patch: |
+    conf t
+    vlan 30
+      name NEW_NAME
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    vlan 40
+      - shutdown
+      + no shutdown
+  patch: |
+    conf t
+    vlan 40
+      no shutdown
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    + vlan 100-103
+  patch: |
+    conf t
+    vlan 100-103
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    + vlan 200,205,210
+  patch: |
+    conf t
+    vlan 200,205,210
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    - vlan 300-302
+  patch: |
+    conf t
+    no vlan 300-302
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    - vlan 12,15-16,18
+  patch: |
+    conf t
+    no vlan 12,15,16,18
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    + vlan 110
+    vlan 110
+      + name VOICE
+  patch: |
+    conf t
+    vlan 110
+      name VOICE
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    + vlan 120
+    + vlan 121
+    + vlan 122
+  patch: |
+    conf t
+    vlan 120-122
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    + vlan 130-132
+    vlan 131
+      + name PRINTERS
+  patch: |
+    conf t
+    vlan 131
+      name PRINTERS
+      exit
+    vlan 130-132
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    - vlan 140
+    vlan 141
+      - name LEGACY
+      + name CORE
+  patch: |
+    conf t
+    no vlan 140
+    vlan 141
+      name CORE
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    - vlan 150-152
+    + vlan 160-161
+  patch: |
+    conf t
+    no vlan 150-152
+    vlan 160-161
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    + vlan 170,175-176
+    - vlan 180,185-186
+  patch: |
+    conf t
+    no vlan 180,185-186
+    vlan 170,175-176
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    vlan 190
+      - name DEV_OLD
+      + name DEV
+    vlan 191
+      - shutdown
+      + no shutdown
+  patch: |
+    conf t
+    vlan 191
+      no shutdown
+      exit
+    vlan 190
+      name DEV
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    - vlan 210-212
+    vlan 213
+      - name TEMP
+      + name PROD
+    + vlan 220
+  patch: |
+    conf t
+    no vlan 210-212
+    vlan 213
+      name PROD
+      exit
+    vlan 220
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    + vlan 250-255
+    - vlan 240,245-247
+    vlan 252
+      + name AP_MGMT
+    vlan 253
+      - name WIFI_OLD
+      + name WIFI
+  patch: |
+    conf t
+    no vlan 240,245-247
+    vlan 252
+      name AP_MGMT
+      exit
+    vlan 253
+      name WIFI
+      exit
+    vlan 250-255
+      exit
+    exit
+    copy running-config startup-config
+
+- vendor: cisco
+  diff: |
+    - vlan 300-305
+    - vlan 310
+    + vlan 320-321
+    vlan 321
+      + name TRANSIT
+    vlan 299
+      - shutdown
+      + no shutdown
+  patch: |
+    conf t
+    no vlan 300-305,310
+    vlan 299
+      no shutdown
+      exit
+    vlan 321
+      name TRANSIT
+      exit
+    vlan 320-321
+      exit
+    exit
+    copy running-config startup-config

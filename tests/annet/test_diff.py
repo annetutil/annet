@@ -1,10 +1,10 @@
 import io
 import re
+from typing import Dict, List, Tuple
 
 from annet import patching
 from annet.diff import diff_cmp, diff_ops, gen_pre_as_diff, resort_diff
 from annet.types import Diff
-from typing import Tuple, List, Dict
 
 
 before = """
@@ -222,11 +222,21 @@ def str2diff(raw_diff: str) -> Diff:
 
 
 def test_sort():
-    l1 = (diff_ops["-"], "peer FE80::11:11 bfd min-tx-interval 250 min-rx-interval 250", [], {})
+    l1 = (
+        diff_ops["-"],
+        "peer FE80::11:11 bfd min-tx-interval 250 min-rx-interval 250",
+        [],
+        {},
+    )
     l2 = (diff_ops["+"], "peer RR_11 advertise-community", [], {})
     assert diff_cmp(l1, l2) == 0
     l1 = (diff_ops["-"], "peer FE80::11:12 advertise-community", [], {})
-    l2 = (diff_ops["-"], "peer FE80::11:11 bfd min-tx-interval 250 min-rx-interval 250", [], {})
+    l2 = (
+        diff_ops["-"],
+        "peer FE80::11:11 bfd min-tx-interval 250 min-rx-interval 250",
+        [],
+        {},
+    )
     assert diff_cmp(l1, l2) == 0
     l1 = (diff_ops["+"], "maximum load-balancing 16", [], {})
     l2 = (diff_ops["-"], "maximum load-balancing eibgp 16", [], {})

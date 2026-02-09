@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-
 from typing import List, Optional
 
 
@@ -12,18 +11,22 @@ class Question:
     question: str  # frame it using / if it is a regular expression
     answer: str
     is_regexp: Optional[bool] = False
+    not_send_nl: bool = False
 
 
 @dataclass
 class Command:
-    cmd: str
+    cmd: str | bytes
     questions: Optional[List[Question]] = None
     exc_handler: Optional[List[Question]] = None
-    timeout: Optional[int] = None
+    timeout: Optional[int] = None  # total timeout
+    read_timeout: Optional[int] = None  # timeout between consecutive reads
     suppress_nonzero: bool = False
     suppress_eof: bool = False
 
     def __str__(self) -> str:
+        if isinstance(self.cmd, bytes):
+            return self.cmd.decode("utf-8")
         return self.cmd
 
 

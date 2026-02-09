@@ -2,7 +2,8 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, Sequence, Optional
+from typing import Any, Optional, Sequence
+
 
 MatchedArgs = SimpleNamespace
 
@@ -93,23 +94,16 @@ class PeerNameTemplate:
         regex_string = re.sub(r"{(?P<group_name>\w+)}", r"(?P<\g<group_name>>\\d+)", value)
         # '{name:regex}' -> (?P<name>regex)
         regex_string = re.sub(
-            r"{(?P<group_name>\w+):(?P<custom_regex>.*?)}", r"(?P<\g<group_name>>\g<custom_regex>)",
-            regex_string
+            r"{(?P<group_name>\w+):(?P<custom_regex>.*?)}", r"(?P<\g<group_name>>\g<custom_regex>)", regex_string
         )
         pattern = re.compile(regex_string)
-        types: dict[str, type] = {
-            name: (int if name in int_groups else str)
-            for name in pattern.groupindex
-        }
+        types: dict[str, type] = {name: (int if name in int_groups else str) for name in pattern.groupindex}
         return pattern, types
 
     def match(self, hostname: str) -> Optional[dict[str, str]]:
         reg_match = self._regex.fullmatch(hostname)
         if reg_match:
-            return {
-                key: self._types[key](value)
-                for key, value in reg_match.groupdict().items()
-            }
+            return {key: self._types[key](value) for key, value in reg_match.groupdict().items()}
         return None
 
 

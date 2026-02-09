@@ -6,9 +6,10 @@ import sys
 import time
 import warnings
 from collections import OrderedDict as odict
-from itertools import groupby, chain
+from itertools import chain, groupby
 from operator import itemgetter
 from typing import (
+    Any,
     Dict,
     Generator,
     Iterable,
@@ -16,38 +17,34 @@ from typing import (
     Mapping,
     Set,
     Tuple,
-    Union, cast, Any,
+    Union,
+    cast,
 )
 
 import colorama
+from contextlog import get_logger
+
 import annet.deploy
 import annet.deploy_ui
 import annet.lib
+from annet import cli_args, filtering, patching, rulebook, tracing
+from annet import diff as ann_diff
+from annet import gen as ann_gen
 from annet.annlib import jsontools
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.annlib.rbparser.platform import VENDOR_REVERSES
 from annet.annlib.types import GeneratorType
-from contextlog import get_logger
-
-from annet.deploy import Fetcher, DeployDriver
-from annet import cli_args
-from annet import diff as ann_diff
-from annet import filtering
-from annet import gen as ann_gen
-from annet import patching, rulebook, tabparser, tracing
+from annet.deploy import DeployDriver, Fetcher
 from annet.diff import file_differ_connector
-from annet.rulebook import deploying
 from annet.filtering import Filterer
 from annet.hardware import hardware_connector
-from annet.output import (
-    format_file_diff,
-    output_driver_connector,
-    print_err_label,
-)
+from annet.output import format_file_diff, output_driver_connector, print_err_label
 from annet.parallel import Parallel, TaskResult
 from annet.reference import RefTracker
+from annet.rulebook import deploying
 from annet.storage import Device, get_storage
-from annet.types import Diff, ExitCode, OldNewResult, Op, PCDiff, PCDiffFile
+from annet.types import Diff, ExitCode, OldNewResult, Op, PCDiff
+from annet.vendors import registry_connector, tabparser
+
 
 DEFAULT_INDENT = "  "
 
@@ -68,8 +65,7 @@ def patch_from_pre(pre, hw, rb, add_comments, ref_track=None, do_commit=True):
 
 
 def _diff_and_patch(
-    device, old, new, acl_rules, filter_acl_rules,
-    add_comments, ref_track=None, do_commit=True, rb=None
+    device, old, new, acl_rules, filter_acl_rules, add_comments, ref_track=None, do_commit=True, rb=None
 ) -> Tuple[Diff, Dict]:
     if rb is None:
         rb = rulebook.get_rulebook(device.hw)
@@ -96,21 +92,49 @@ def _read_old_new_diff_patch(old: Dict[str, Dict], new: Dict[str, Dict], hw: Har
     return rb, diff_obj, pre, patchtree
 
 
-def _read_old_new_hw(old_path: str, new_path: str, args: cli_args.FileInputOptions):
+def _read_old_new_configs(old_path: str, new_path: str, empty_missing: bool = False) -> tuple[str, str]:
     _logger = get_logger()
+    ret = []
+    for path in (old_path, new_path):
+        _logger.debug("Reading %r ...", path)
+        if not os.path.exists(path):
+            if empty_missing:
+                ret.append("")
+                continue
+            else:
+                raise FileNotFoundError(f"File {path} not found")
+        with open(path) as f:
+            ret.append(f.read())
+
+    return tuple(ret)
+
+
+def _read_old_new_hw(old_path: str, old_config: str, new_path: str, new_config: str, args: cli_args.FileInputOptions):
+    _logger = get_logger()
+
     hw = args.hw
     if isinstance(args.hw, str):
         hw = HardwareView(args.hw, "")
 
-    old, old_hw, old_score = _read_device_config(old_path, hw)
-    new, new_hw, new_score = _read_device_config(new_path, hw)
+    try:
+        old, old_hw, old_score = _parse_device_config(old_config, hw)
+    except tabparser.ParserError:
+        _logger.exception("Parser error: %r", old_path)
+        raise
+
+    try:
+        new, new_hw, new_score = _parse_device_config(new_config, hw)
+    except tabparser.ParserError:
+        _logger.exception("Parser error: %r", new_path)
+        raise
+
     hw = new_hw
     if old_score > new_score:
         hw = old_hw
     if old_hw != new_hw:
-        _logger.debug("Old and new detected hw differs, assume %r", hw)
-    dest_name = os.path.basename(new_path)
-    return dest_name, old, new, hw
+        _logger.warning("Old and new detected hw differs, assume %r", hw)
+
+    return old, new, hw
 
 
 @tracing.function
@@ -125,61 +149,75 @@ def _read_old_new_cfgdumps(args: cli_args.FileInputOptions):
     if os.path.isdir(old_path) and os.path.isdir(new_path):
         if cfgdump_reg.match(os.path.basename(old_path)) and cfgdump_reg.match(os.path.basename(new_path)):
             yield (old_path, new_path)
-    for name in os.listdir(old_path):
+    names = sorted(set(os.listdir(old_path)) | set(os.listdir(new_path)))
+    for name in names:
         old_path_name = os.path.join(old_path, name)
         new_path_name = os.path.join(new_path, name)
-        if not os.path.exists(new_path_name):
-            _logger.debug("Ignoring file %s: not exist %s", name, new_path_name)
-            continue
+
+        if not args.include_missing:
+            skipped = False
+            for path in (old_path_name, new_path_name):
+                if not os.path.exists(path):
+                    _logger.debug("Ignoring file %s: not exist %s", name, path)
+                    skipped = True
+                    break
+            if skipped:
+                continue
+
         yield (old_path_name, new_path_name)
 
 
-def _read_device_config(path, hw):
-    _logger = get_logger()
-    _logger.debug("Reading %r ...", path)
+def _parse_device_config(text, hw):
     score = 1
+    vendor_registry = registry_connector.get()
 
-    with open(path) as cfgdump_file:
-        text = cfgdump_file.read()
-    try:
-        if not hw:
-            hw, score = guess_hw(text)
-        config = tabparser.parse_to_tree(
-            text=text,
-            splitter=tabparser.make_formatter(hw).split,
-        )
-        return config, hw, score
-    except tabparser.ParserError:
-        _logger.exception("Parser error: %r", path)
-        raise
+    if not hw:
+        hw, score = guess_hw(text)
+
+    config = tabparser.parse_to_tree(
+        text=text,
+        splitter=vendor_registry.match(hw).make_formatter().split,
+    )
+
+    return config, hw, score
 
 
 # =====
 def _format_patch_blocks(patch_tree, hw, indent):
-    formatter = tabparser.make_formatter(hw, indent=indent)
+    formatter = registry_connector.get().match(hw).make_formatter(indent=indent)
     return formatter.patch(patch_tree)
 
 
 # =====
 def _print_pre_as_diff(pre, show_rules, indent, file=None, _level=0):
-    for (raw_rule, content) in sorted(pre.items(), key=itemgetter(0)):
+    for raw_rule, content in sorted(pre.items(), key=itemgetter(0)):
         rule_printed = False
-        for (op, sign) in [  # FIXME: Not very effective
+        for op, sign in [  # FIXME: Not very effective
             (Op.REMOVED, colorama.Fore.RED + "-"),
             (Op.ADDED, colorama.Fore.GREEN + "+"),
             (Op.AFFECTED, colorama.Fore.CYAN + " "),
         ]:
             items = content["items"].items()
-            if not content["attrs"]["multiline"]:
-                items = sorted(items, key=itemgetter(0))
-            for (_, diff) in items:  # pylint: disable=redefined-outer-name
+            for _, diff in items:  # pylint: disable=redefined-outer-name
                 if show_rules and not rule_printed and not raw_rule == "__MULTILINE_BODY__":
-                    print("%s%s# %s%s%s" % (colorama.Style.BRIGHT, colorama.Fore.BLACK, (indent * _level),
-                                            raw_rule, colorama.Style.RESET_ALL), file=file)
+                    print(
+                        "%s%s# %s%s%s"
+                        % (
+                            colorama.Style.BRIGHT,
+                            colorama.Fore.BLACK,
+                            (indent * _level),
+                            raw_rule,
+                            colorama.Style.RESET_ALL,
+                        ),
+                        file=file,
+                    )
                     rule_printed = True
                 for item in sorted(diff[op], key=itemgetter("row")):
-                    print("%s%s%s %s%s" % (colorama.Style.BRIGHT, sign, (indent * _level),
-                                           item["row"], colorama.Style.RESET_ALL), file=file)
+                    print(
+                        "%s%s%s %s%s"
+                        % (colorama.Style.BRIGHT, sign, (indent * _level), item["row"], colorama.Style.RESET_ALL),
+                        file=file,
+                    )
                     if len(item["children"]) != 0:
                         _print_pre_as_diff(item["children"], show_rules, indent, file, _level + 1)
                         rule_printed = False
@@ -203,9 +241,15 @@ class PoolProgressLogger:
             status = "OK" if task_result.exc is None else "FAIL"
             status_color = colorama.Fore.GREEN if status == "OK" else colorama.Fore.RED
             message = "" if status == "OK" else str(task_result.exc)
-        progress_logger.info(message,
-                             perc=perc, fqdn=fqdn, status=status, status_color=status_color,
-                             worker=task_result.worker_name, task_time=elapsed_time)
+        progress_logger.info(
+            message,
+            perc=perc,
+            fqdn=fqdn,
+            status=status,
+            status_color=status_color,
+            worker=task_result.worker_name,
+            task_time=elapsed_time,
+        )
         return task_result
 
 
@@ -225,7 +269,7 @@ def log_host_progress_cb(pool: Parallel, task_result: TaskResult):
 
 # =====
 def gen(args: cli_args.ShowGenOptions, loader: ann_gen.Loader):
-    """ Сгенерировать конфиг для устройств """
+    """Сгенерировать конфиг для устройств"""
     stdin = args.stdin(filter_acl=args.filter_acl, config=None)
 
     filterer = filtering.filterer_connector.get()
@@ -240,7 +284,7 @@ def gen(args: cli_args.ShowGenOptions, loader: ann_gen.Loader):
 
 
 def patch(args: cli_args.ShowPatchOptions, loader: ann_gen.Loader):
-    """ Сгенерировать патч для устройств """
+    """Сгенерировать патч для устройств"""
     if args.config == "running":
         fetcher = annet.deploy.get_fetcher()
         ann_gen.live_configs = annet.lib.do_async(fetcher.fetch(loader.devices, processes=args.parallel))
@@ -253,7 +297,9 @@ def patch(args: cli_args.ShowPatchOptions, loader: ann_gen.Loader):
     return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
 
 
-def _patch_worker(device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann_gen.Loader, filterer: filtering.Filterer):
+def _patch_worker(
+    device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann_gen.Loader, filterer: filtering.Filterer
+):
     for res, _, patch_tree in res_diff_patch(device_id, args, stdin, loader, filterer):
         old_files = res.old_files
         new_files = res.get_new_files(args.acl_safe)
@@ -283,7 +329,11 @@ def _patch_worker(device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann
 
 # =====
 def res_diff_patch(
-        device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann_gen.Loader, filterer: filtering.Filterer,
+    device_id,
+    args: cli_args.ShowPatchOptions,
+    stdin,
+    loader: ann_gen.Loader,
+    filterer: filtering.Filterer,
 ) -> Iterable[Tuple[OldNewResult, Dict, Dict]]:
     for res in ann_gen.old_new(
         args,
@@ -304,17 +354,22 @@ def res_diff_patch(
         if res.old_json_fragment_files or new_json_fragment_files:
             yield res, None, None
         elif old is not None:
-            (diff_tree, patch_tree) = _diff_and_patch(device, old, new, acl_rules, res.filter_acl_rules,
-                                                      args.add_comments)
+            (diff_tree, patch_tree) = _diff_and_patch(
+                device, old, new, acl_rules, res.filter_acl_rules, args.add_comments
+            )
             yield res, diff_tree, patch_tree
 
 
 def diff(
-    args: cli_args.DiffOptions,
-    loader: ann_gen.Loader,
-    device_ids: List[Any]
+    args: cli_args.DiffOptions, loader: ann_gen.Loader, device_ids: List[Any]
 ) -> tuple[Mapping[Device, Union[Diff, PCDiff]], Mapping[Device, Exception]]:
-    """ Сгенерировать конфиг для устройств """
+    """Сгенерировать дифф для устройств"""
+    if args.config == "running":
+        fetcher = annet.deploy.get_fetcher()
+        ann_gen.live_configs = annet.lib.do_async(
+            fetcher.fetch([device for device in loader.devices if device.id in device_ids], processes=args.parallel),
+            new_thread=True,
+        )
     stdin = args.stdin(filter_acl=args.filter_acl, config=None)
 
     filterer = filtering.filterer_connector.get()
@@ -342,8 +397,7 @@ def collapse_texts(texts: Mapping[str, str | Generator[str, None, None]]) -> Map
 
     res = {}
     for _, collapsed_diff_iter in groupby(
-        sorted(diffs_with_orig.items(), key=lambda x: (x[0], x[1][1])),
-        key=lambda x: x[1][1]
+        sorted(diffs_with_orig.items(), key=lambda x: (x[0], x[1][1])), key=lambda x: x[1][1]
     ):
         collapsed_diff = list(collapsed_diff_iter)
         res[tuple(x[0] for x in collapsed_diff)] = collapsed_diff[0][1][0]
@@ -392,12 +446,15 @@ class CliDeployerJob(DeployerJob):
             self.failed_configs[device.fqdn] = err
             return
 
-        (diff_obj, patch_tree) = _diff_and_patch(device, old, new, acl_rules,
-                                                 res.filter_acl_rules, self.add_comments,
-                                                 do_commit=not self.args.dont_commit)
-        cmds = tabparser.make_formatter(device.hw, indent="").cmd_paths(patch_tree)
+        (diff_obj, patch_tree) = _diff_and_patch(
+            device, old, new, acl_rules, res.filter_acl_rules, self.add_comments, do_commit=not self.args.dont_commit
+        )
+
+        formatter = registry_connector.get().match(device.hw).make_formatter(indent="")
+        cmds = formatter.cmd_paths(patch_tree)
         if not cmds:
             return
+
         self._has_diff = True
         self.diffs[device] = diff_obj
         self.cmd_lines.extend(["= %s " % device.hostname, ""])
@@ -405,8 +462,7 @@ class CliDeployerJob(DeployerJob):
         self.cmd_lines.append("")
         deployer_driver = annet.deploy.get_deployer()
         self.deploy_cmds[device] = deployer_driver.apply_deploy_rulebook(
-            device.hw, cmds,
-            do_commit=not self.args.dont_commit
+            device.hw, cmds, do_commit=not self.args.dont_commit
         )
         for cmd in deployer_driver.build_exit_cmdlist(device.hw):
             self.deploy_cmds[device].add_cmd(cmd)
@@ -437,7 +493,10 @@ class PCDeployerJob(DeployerJob):
         reload_cmds: Dict[str, bytes] = {}
         generator_types: Dict[str, GeneratorType] = {}
         differ = file_differ_connector.get()
-        for generator_type, pc_files in [(GeneratorType.ENTIRE, new_files), (GeneratorType.JSON_FRAGMENT, new_json_fragment_files)]:
+        for generator_type, pc_files in [
+            (GeneratorType.ENTIRE, new_files),
+            (GeneratorType.JSON_FRAGMENT, new_json_fragment_files),
+        ]:
             for file, (file_content_or_json_cfg, cmds) in pc_files.items():
                 if generator_type == GeneratorType.ENTIRE:
                     file_content: str = file_content_or_json_cfg
@@ -480,7 +539,9 @@ class PCDeployerJob(DeployerJob):
             rules = rulebook.get_rulebook(device.hw)["deploying"]
             for file, content in self.deploy_cmds[device]["files"].items():
                 rule = deploying.match_deploy_rule(rules, [file], content)
-                before_more, after_more = annet.deploy.make_apply_commands(rule, res.device.hw, do_commit=True, do_finalize=True, path=file)
+                before_more, after_more = annet.deploy.make_apply_commands(
+                    rule, res.device.hw, do_commit=True, do_finalize=True, path=file
+                )
 
                 cmds_pre_files[file] = "\n".join(map(str, chain(before, before_more))).encode(encoding="utf-8")
                 after_cmds = "\n".join(map(str, chain(after, after_more))).encode(encoding="utf-8")
@@ -533,7 +594,7 @@ class Deployer:
                     _, term_columns_str = os.popen("stty size", "r").read().split()
                     term_columns = int(term_columns_str)
                 except Exception:
-                    term_columns = 2 ** 32
+                    term_columns = 2**32
                 fqdns = [dev.hostname for dev in devices]
                 while fqdns:
                     fqdn = fqdns.pop()
@@ -550,22 +611,28 @@ class Deployer:
                 dest_name = "= %s" % ", ".join([dev.hostname for dev in devices])
                 diff_lines.extend([dest_name, ""])
 
-            for line in tabparser.make_formatter(devices[0].hw).diff(diff_obj):
+            for line in registry_connector.get().match(devices[0].hw).make_formatter().diff(diff_obj):
                 diff_lines.append(line)
             diff_lines.append("")
         return diff_lines
 
     def ask_deploy(self) -> str:
-        return self._ask("y", annet.deploy_ui.AskConfirm(
-            text="\n".join(self.diff_lines()),
-            alternative_text="\n".join(self.cmd_lines),
-        ))
+        return self._ask(
+            "y",
+            annet.deploy_ui.AskConfirm(
+                text="\n".join(self.diff_lines()),
+                alternative_text="\n".join(self.cmd_lines),
+            ),
+        )
 
     def ask_rollback(self) -> str:
-        return self._ask("n", annet.deploy_ui.AskConfirm(
-            text="Execute rollback?\n",
-            alternative_text="",
-        ))
+        return self._ask(
+            "n",
+            annet.deploy_ui.AskConfirm(
+                text="Execute rollback?\n",
+                alternative_text="",
+            ),
+        )
 
     def _ask(self, default_ans: str, ask: annet.deploy_ui.AskConfirm) -> str:
         # если filter_acl из stdin то с ним уже не получится работать как с терминалом
@@ -582,43 +649,45 @@ class Deployer:
         return ans
 
     def check_diff(self, result: annet.deploy.DeployResult, loader: ann_gen.Loader):
-        success_device_ids = []
-        for host, hres in result.results.items():
-            device = self.fqdn_to_device[host]
-            if (
-                not isinstance(hres, Exception) and
-                host not in self.empty_diff_hostnames and
-                device.is_pc()
-            ):
-                success_device_ids.append(device.id)
         diff_args = self.args.copy_from(
             self.args,
             config="running",
         )
+        if not diff_args.query:
+            return
 
-        if diff_args.query:
-            ann_gen.live_configs = None
+        # clear cache
+        ann_gen.live_configs = None
 
-            diffs, failed = diff(diff_args, loader, success_device_ids)
-            for device_id, exc in failed.items():
-                self.failed_configs[loader.get_device(device_id).fqdn] = exc
+        # collect new diffs for devices on which we had successfully uploaded something
+        success_device_ids = []
+        for host, hres in result.results.items():
+            if not isinstance(hres, Exception) and host not in self.empty_diff_hostnames:
+                device = self.fqdn_to_device[host]
+                success_device_ids.append(device.id)
+        diffs, failed = diff(diff_args, loader, success_device_ids)
+        for device_id, exc in failed.items():
+            self.failed_configs[loader.get_device(device_id).fqdn] = exc
 
-            non_pc_diffs = {
+        # "collapse" non-PC diffs
+        diffs_by_device_id = ann_diff.collapse_diffs(
+            {
                 loader.get_device(device_id): diff
                 for device_id, diff in diffs.items()
-                if not isinstance(diff, PCDiff)
+                if diff and not isinstance(diff, PCDiff)
             }
-            devices_to_diff = ann_diff.collapse_diffs(non_pc_diffs)
-            devices_to_diff.update({
+        )
+        # add PC diffs as is
+        diffs_by_device_id.update(
+            {
                 (loader.get_device(device_id),): diff
                 for device_id, diff in diffs.items()
-                if isinstance(diff, PCDiff)}
-            )
-        else:
-            devices_to_diff = {}
-
-        for devices, diff_obj in devices_to_diff.items():
-            if diff_obj:
+                if diff and isinstance(diff, PCDiff)
+            }
+        )
+        if diffs_by_device_id:
+            print("The diff is still present:")
+            for devices, diff_obj in diffs_by_device_id.items():
                 for dev in devices:
                     self.failed_configs[dev.fqdn] = Warning("Deploy OK, but diff still exists")
                 if isinstance(diff_obj, PCDiff):
@@ -651,9 +720,11 @@ async def adeploy(
     fetcher: Fetcher,
     deploy_driver: DeployDriver,
 ) -> ExitCode:
-    """ Сгенерировать конфиг для устройств и задеплоить его """
+    """Сгенерировать конфиг для устройств и задеплоить его"""
     ret: ExitCode = 0
-    ann_gen.live_configs = await fetcher.fetch(devices=loader.devices, processes=args.parallel)
+    ann_gen.live_configs = await fetcher.fetch(
+        devices=loader.devices, processes=args.parallel, max_slots=args.max_slots
+    )
 
     device_ids = [d.id for d in loader.devices]
     for res in ann_gen.old_new(
@@ -671,7 +742,7 @@ async def adeploy(
             if not args.tolerate_fails:
                 raise res.err
             get_logger(res.device.hostname).error("error generating configs", exc_info=res.err)
-            ret |= 2 ** 3
+            ret |= 2**3
         job = DeployerJob.from_device(res.device, args)
         deployer.parse_result(job, res)
 
@@ -680,7 +751,7 @@ async def adeploy(
     if deploy_cmds:
         ans = deployer.ask_deploy()
         if ans != "y":
-            return 2 ** 2
+            return 2**2
 
         if sys.stdout.isatty() and not args.no_progress:
             progress_bar = annet.deploy_ui.ProgressBars(odict([(device.fqdn, {}) for device in deploy_cmds]))
@@ -707,26 +778,25 @@ async def adeploy(
 
     if deployer.failed_configs:
         result.add_results(deployer.failed_configs)
-        ret |= 2 ** 1
+        ret |= 2**1
 
     annet.deploy.show_bulk_report(result.hostnames, result.results, result.durations, log_dir=None)
     for host_result in result.results.values():
         if isinstance(host_result, Exception):
-            ret |= 2 ** 0
+            ret |= 2**0
             break
     return ret
 
 
 def file_diff(args: cli_args.FileDiffOptions):
-    """ Создать дифф по рулбуку между файлами или каталогами """
+    """Создать дифф по рулбуку между файлами или каталогами"""
     old_new = list(_read_old_new_cfgdumps(args))
     pool = Parallel(file_diff_worker, args).tune_args(args)
     return pool.run(old_new, tolerate_fails=True)
 
 
 def file_diff_worker(
-    old_new: Tuple[str, str],
-    args: cli_args.FileDiffOptions
+    old_new: Tuple[str, str], args: cli_args.FileDiffOptions
 ) -> Generator[Tuple[str, str, bool], None, None]:
     old_path, new_path = old_new
     hw = args.hw
@@ -742,68 +812,75 @@ def file_diff_worker(
         old_files = ann_gen.load_pc_config(old_path)
         for diff_file in ann_diff.pc_diff(hw, hostname, old_files, new_files):
             diff_text = (
-                "\n".join(diff_file.diff_lines)
-                if args.no_color
-                else "\n".join(format_file_diff(diff_file.diff_lines))
+                "\n".join(diff_file.diff_lines) if args.no_color else "\n".join(format_file_diff(diff_file.diff_lines))
             )
             if diff_text:
                 yield diff_file.label, diff_text, False
     else:
-        dest_name, old, new, hw = _read_old_new_hw(old_path, new_path, args)
+        old_config, new_config = _read_old_new_configs(old_path, new_path, args.include_missing)
+        if old_config == new_config:
+            return
+
+        old, new, hw = _read_old_new_hw(old_path, old_config, new_path, new_config, args)
         _, __, pre, ___ = _read_old_new_diff_patch(old, new, hw, add_comments=False)
-        diff_lines = ann_diff.gen_pre_as_diff(pre, args.show_rules, args.indent, args.no_color)
-        diff_text = "".join(diff_lines)
-        if diff_text:
-            yield dest_name, diff_text, False
+
+        if diff_lines := ann_diff.gen_pre_as_diff(pre, args.show_rules, args.indent, args.no_color):
+            yield os.path.basename(new_path), "".join(diff_lines), False
 
 
 @tracing.function
 def file_patch(args: cli_args.FilePatchOptions):
-    """ Создать патч между файлами или каталогами """
+    """Создать патч между файлами или каталогами"""
     old_new = list(_read_old_new_cfgdumps(args))
     pool = Parallel(file_patch_worker, args).tune_args(args)
     return pool.run(old_new, tolerate_fails=True)
 
 
-def file_patch_worker(old_new: Tuple[str, str], args: cli_args.FileDiffOptions) -> Generator[
-    Tuple[str, str, bool], None, None]:
+def file_patch_worker(
+    old_new: Tuple[str, str], args: cli_args.FileDiffOptions
+) -> Generator[Tuple[str, str, bool], None, None]:
     old_path, new_path = old_new
     if os.path.isdir(old_path) and os.path.isdir(new_path):
         for relative_cfg_path, cfg_text in ann_gen.load_pc_config(new_path).items():
             label = os.path.join(os.path.basename(new_path), relative_cfg_path)
             yield label, cfg_text, False
     else:
-        dest_name, old, new, hw = _read_old_new_hw(old_path, new_path, args)
+        old_config, new_config = _read_old_new_configs(old_path, new_path, args.include_missing)
+        if old_config == new_config:
+            return
+
+        old, new, hw = _read_old_new_hw(old_path, old_config, new_path, new_config, args)
         _, __, ___, patch_tree = _read_old_new_diff_patch(old, new, hw, args.add_comments)
         patch_text = _format_patch_blocks(patch_tree, hw, args.indent)
         if patch_text:
-            yield dest_name, patch_text, False
+            yield os.path.basename(new_path), patch_text, False
 
 
 def guess_hw(config_text: str):
     """Пытаемся угадать вендора и hw на основе
     текста конфига и annet/rulebook/texts/*.rul"""
-    scores = {}
+    scores = []
     hw_provider = hardware_connector.get()
-    for vendor in VENDOR_REVERSES:
+    vendor_registry = registry_connector.get()
+    for vendor in vendor_registry:
         hw = hw_provider.vendor_to_hw(vendor)
-        fmtr = tabparser.make_formatter(hw)
         rb = rulebook.get_rulebook(hw)
+        fmtr = vendor_registry[vendor].make_formatter()
+
         try:
             config = tabparser.parse_to_tree(config_text, fmtr.split)
         except Exception:
             continue
+
         pre = patching.make_pre(patching.make_diff({}, config, rb, []))
         metric = _count_pre_score(pre)
-        scores[metric] = hw
+        scores.append((hw, metric))
 
     if not scores:
         raise RuntimeError("No formatter was guessed")
 
-    max_score = max(scores.keys())
-    hw = scores[max_score]
-
-    return hw, max_score
+    scores.sort(key=lambda x: (x[1], x[0].vendor), reverse=True)
+    return scores[0]
 
 
 def _count_pre_score(top_pre) -> float:

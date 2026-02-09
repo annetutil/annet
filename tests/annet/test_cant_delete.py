@@ -1,10 +1,10 @@
 from collections import OrderedDict
 
 import pytest
-from annet import rulebook
-from annet.annlib.rbparser.acl import compile_acl_text
 
-from annet import patching, tabparser
+from annet import patching, rulebook
+from annet.annlib.rbparser.acl import compile_acl_text
+from annet.vendors import registry_connector, tabparser
 
 from . import MockDevice
 
@@ -22,7 +22,7 @@ def acl(device):
             stays %cant_delete=1
             removed
         """,
-        device.hw.vendor
+        device.hw.vendor,
     )
 
 
@@ -36,13 +36,11 @@ def config(device):
 
 
 def test_cant_delete_subblock(config, acl, device):
-    parser = tabparser.make_formatter(device.hw)
-    empty_tree = tabparser.parse_to_tree("", parser.split)
-    current_tree = tabparser.parse_to_tree(config, parser.split)
+    formatter = registry_connector.get().match(device.hw).make_formatter()
+    empty_tree = tabparser.parse_to_tree("", formatter.split)
+    current_tree = tabparser.parse_to_tree(config, formatter.split)
     rb = rulebook.get_rulebook(device.hw)
     diff = patching.make_diff(current_tree, empty_tree, rb, [acl])
     patch = patching.make_patch(patching.make_pre(diff), rb, device.hw, add_comments=False)
     patch = patch.asdict()
-    assert patch == {
-        "interface ge1/1/1": OrderedDict([("undo removed", None)])
-    }
+    assert patch == {"interface ge1/1/1": OrderedDict([("undo removed", None)])}

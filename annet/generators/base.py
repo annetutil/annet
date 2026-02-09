@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import abc
 import contextlib
+import re
 import textwrap
-from typing import Union, List
+from typing import List, Union
 
-from annet import tabparser, tracing
+from annet import tracing
 from annet.tracing import tracing_connector
+from annet.vendors import tabparser
+
 from .exceptions import InvalidValueFromGenerator
+
+
+NONE_SEARCHER = re.compile(r"\bNone\b")
 
 
 class DefaultBlockIfCondition:
@@ -23,22 +29,23 @@ class GenStringable(abc.ABC):
         pass
 
 
-def _filter_str(value: Union[
-    str, int, float, tabparser.JuniperList, ParamsList, GenStringable]):
-    if isinstance(value, (
+def _filter_str(value: Union[str, int, float, tabparser.JuniperList, ParamsList, GenStringable]):
+    if isinstance(
+        value,
+        (
             str,
             int,
             float,
             tabparser.JuniperList,
             ParamsList,
-    )):
+        ),
+    ):
         return str(value)
 
     if hasattr(value, "gen_str") and callable(value.gen_str):
         return value.gen_str()
 
-    raise InvalidValueFromGenerator(
-        "Invalid yield type: %s(%s)" % (type(value).__name__, value))
+    raise InvalidValueFromGenerator("Invalid yield type: %s(%s)" % (type(value).__name__, value))
 
 
 def _split_and_strip(text):
@@ -52,10 +59,14 @@ def _split_and_strip(text):
 # =====
 class BaseGenerator:
     TYPE: str
-    TAGS: List[str]
+    TAGS: List[str] = []
 
     def supports_device(self, device) -> bool:  # pylint: disable=unused-argument
         return True
+
+    @classmethod
+    def get_aliases(cls) -> set[str]:
+        return {cls.__name__, *cls.TAGS}
 
 
 class TreeGenerator(BaseGenerator):
@@ -84,7 +95,7 @@ class TreeGenerator(BaseGenerator):
     @contextlib.contextmanager
     def block_if(self, *tokens, condition=DefaultBlockIfCondition):
         if condition is DefaultBlockIfCondition:
-            condition = (None not in tokens and "" not in tokens)
+            condition = None not in tokens and "" not in tokens
         if condition:
             with self.block(*tokens):
                 yield
@@ -105,7 +116,7 @@ class TreeGenerator(BaseGenerator):
     @contextlib.contextmanager
     def multiblock_if(self, *blocks, condition=DefaultBlockIfCondition):
         if condition is DefaultBlockIfCondition:
-            condition = (None not in blocks)
+            condition = None not in blocks
             if condition:
                 if blocks:
                     blk = blocks[0]

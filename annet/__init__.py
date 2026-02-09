@@ -7,14 +7,15 @@ from argparse import SUPPRESS, Namespace
 
 import colorama
 import yaml
-from annet.annlib.errors import (  # pylint: disable=wrong-import-position
-    DeployCancelled,
-    ExecError,
-)
 from contextlog import patch_logging, patch_threading
 from valkit.python import valid_logging_level
 
 import annet.argparse
+from annet.annlib.errors import (  # pylint: disable=wrong-import-position
+    DeployCancelled,
+    ExecError,
+)
+from annet.vendors import tabparser  # pylint: disable=unused-import
 
 
 __all__ = ("DeployCancelled", "ExecError")
@@ -23,8 +24,12 @@ DEBUG2_LEVELV_NUM = 9
 
 
 def fill_base_args(parser: annet.argparse.ArgParser, pkg_name: str, logging_config: str):
-    parser.add_argument("--log-level", default="WARN", type=valid_logging_level,
-                        help="Уровень детализации логов (DEBUG, DEBUG2 (with comocutor debug), INFO, WARN, CRITICAL)")
+    parser.add_argument(
+        "--log-level",
+        default="WARN",
+        type=valid_logging_level,
+        help="Уровень детализации логов (DEBUG, DEBUG2 (with comocutor debug), INFO, WARN, CRITICAL)",
+    )
     parser.add_argument("--pkg_name", default=pkg_name, help=SUPPRESS)
     parser.add_argument("--logging_config", default=logging_config, help=SUPPRESS)
 

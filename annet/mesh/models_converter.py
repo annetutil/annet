@@ -2,13 +2,25 @@ from dataclasses import dataclass
 from ipaddress import ip_interface
 from typing import Optional, Union
 
-from adaptix import Retort, loader, Chain, name_mapping, as_is_loader
+from adaptix import Chain, Retort, as_is_loader, loader, name_mapping
 
-from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO, VirtualLocalDTO
 from ..bgp_models import (
-    Aggregate, GlobalOptions, VrfOptions, FamilyOptions, Peer, PeerGroup, ASN, PeerOptions,
-    Redistribute, BFDTimers, L2VpnOptions, VidCollection,
+    ASN,
+    Aggregate,
+    BFDTimers,
+    FamilyOptions,
+    GlobalOptions,
+    L2VpnOptions,
+    Peer,
+    PeerFamilyOption,
+    PeerFamilyOptions,
+    PeerGroup,
+    PeerOptions,
+    Redistribute,
+    VidCollection,
+    VrfOptions,
 )
+from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualLocalDTO, VirtualPeerDTO
 
 
 PeerDTO = Union[DirectPeerDTO, IndirectPeerDTO, VirtualPeerDTO]
@@ -17,7 +29,7 @@ LocalDTO = Union[DirectPeerDTO, IndirectPeerDTO, VirtualLocalDTO]
 
 @dataclass
 class InterfaceChanges:
-    addr: str
+    addr: Optional[str] = None
     lag: Optional[int] = None
     lag_links_min: Optional[int] = None
     svi: Optional[int] = None
@@ -56,18 +68,33 @@ retort = Retort(
         loader(FamilyOptions, ObjMapping, Chain.FIRST),
         loader(Aggregate, ObjMapping, Chain.FIRST),
         loader(PeerOptions, ObjMapping, Chain.FIRST),
+        loader(PeerFamilyOptions, ObjMapping, Chain.FIRST),
+        loader(PeerFamilyOption, ObjMapping, Chain.FIRST),
         as_is_loader(Redistribute),
         as_is_loader(BFDTimers),
-        name_mapping(PeerOptions, map={
-            "local_as": "asnum",
-        }),
+        name_mapping(
+            PeerOptions,
+            map={
+                "local_as": "asnum",
+            },
+        ),
         loader(list[PeerGroup], lambda x: list(x.values()), Chain.FIRST),
         loader(PeerGroup, ObjMapping, Chain.FIRST),
     ]
 )
 
 to_bgp_global_options = retort.get_loader(GlobalOptions)
-to_interface_changes = retort.get_loader(InterfaceChanges)
+
+
+def to_interface_changes(local: LocalDTO, peer: PeerDTO) -> InterfaceChanges:
+    return InterfaceChanges(
+        addr=getattr(local, "addr", None),
+        lag_links_min=getattr(local, "lag_links_min", None),
+        svi=getattr(local, "svi", None),
+        subif=getattr(local, "subif", None),
+        vrf=getattr(peer, "vrf", None),
+        lag=getattr(local, "lag", None),
+    )
 
 
 def to_bgp_peer(local: LocalDTO, connected: PeerDTO, connected_hostname: str, interface: Optional[str]) -> Peer:
@@ -88,4 +115,5 @@ def to_bgp_peer(local: LocalDTO, connected: PeerDTO, connected_hostname: str, in
     result.import_policy = getattr(local, "import_policy", result.import_policy)
     result.export_policy = getattr(local, "export_policy", result.export_policy)
     result.update_source = getattr(local, "update_source", result.update_source)
+    result.family_options = getattr(local, "family_options", result.family_options)
     return result

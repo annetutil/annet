@@ -43,6 +43,7 @@ patch: |
   interface Ethernet1/2
     no channel-group
     switchport mode trunk
+    switchport trunk allowed vlan none
     switchport trunk allowed vlan add 2
     switchport
     mtu 1500

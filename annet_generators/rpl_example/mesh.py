@@ -1,4 +1,5 @@
-from annet.mesh import MeshRulesRegistry, GlobalOptions
+from annet.mesh import GlobalOptions, MeshRulesRegistry
+
 
 registry = MeshRulesRegistry()
 

@@ -18,9 +18,18 @@ system
     ntp
         server *
         source-address *
+    syslog
+        host *
+            match
+        file messages
+            match
 
 routing-options
     autonomous-system *
+    rib *
+        */(aggregate|static)/
+            route *                    %logic=common.undo_redo
+                ~
     ~
 
 services
@@ -56,6 +65,10 @@ routing-instances
     ~
         routing-options
             autonomous-system *
+            rib *
+                */(aggregate|static)/
+                    route *            %logic=common.undo_redo
+                        ~
         protocols
             bgp
                 group *
@@ -67,6 +80,8 @@ interfaces
             description ~
             mtu *
             vlan-tags
+            family inet6
+                address * %diff_logic=juniper.iface.ipv6_addr
         description ~
         mtu *
         hold-time
@@ -102,15 +117,25 @@ policy-options
     community ~
     prefix-list ~
     policy-statement *
-        ~                 %ordered
-            ~             %global
+        term *               %ordered
+            from             %logic=common.undo_redo
+                ~
+            then             %logic=common.undo_redo
+                community ~  %ordered
+                ~
+            ~                %global
+        ~                    %global
 
 
 firewall
     family *
         filter *
-            ~       %ordered
-                ~   %global
+            term *     %ordered
+                from   %logic=common.undo_redo
+                    ~
+                then   %logic=common.undo_redo
+                    ~
+                ~      %global
 
 
 forwarding-options

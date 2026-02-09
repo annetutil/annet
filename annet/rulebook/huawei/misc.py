@@ -2,9 +2,9 @@ import copy
 import re
 from collections import namedtuple
 
-from annet.annlib.types import Op
 from contextlog import get_logger
 
+from annet.annlib.types import Op
 from annet.rulebook import common
 
 
@@ -188,7 +188,9 @@ def stelnet(rule, key, diff, **_):
     if diff[Op.REMOVED] and diff[Op.ADDED]:
         removed = {x["row"] for x in diff[Op.REMOVED]}
         added = {x["row"] for x in diff[Op.ADDED]}
-        if removed == {"stelnet ipv4 server enable", "stelnet ipv6 server enable"} and added == {"stelnet server enable"}:
+        if removed == {"stelnet ipv4 server enable", "stelnet ipv6 server enable"} and added == {
+            "stelnet server enable"
+        }:
             return
     yield from common.default(rule, key, diff)
 
@@ -278,7 +280,7 @@ def port_split(rule, key, diff, **_):
 def _expand_portsplit(row):
     expanded = []
     row_parts = row.split()
-    for (index, part) in enumerate(row_parts):
+    for index, part in enumerate(row_parts):
         if part == "to":
             iface_base = "/".join(row_parts[index - 1].split("/")[:-1])
             left = int(row_parts[index - 1].split("/")[-1])

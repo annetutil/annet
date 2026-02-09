@@ -2,15 +2,15 @@ from dataclasses import dataclass
 from logging import getLogger
 from typing import Annotated, Callable, Optional, Union
 
-from annet.bgp_models import Peer, GlobalOptions, BgpConfig
+from annet.bgp_models import BgpConfig, GlobalOptions, Peer
 from annet.storage import Device, Storage
-from .basemodel import merge, BaseMeshModel, Merge, UseLast, MergeForbiddenError
+
+from .basemodel import BaseMeshModel, Merge, MergeForbiddenError, UseLast, merge
 from .device_models import GlobalOptionsDTO
-from .models_converter import to_bgp_global_options, to_bgp_peer, InterfaceChanges, to_interface_changes
+from .models_converter import InterfaceChanges, to_bgp_global_options, to_bgp_peer, to_interface_changes
 from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualLocalDTO, VirtualPeerDTO
 from .registry import (
     DirectPeer,
-    GlobalOptions as MeshGlobalOptions,
     IndirectPeer,
     MatchedDirectPair,
     MeshRulesRegistry,
@@ -18,8 +18,20 @@ from .registry import (
     VirtualLocal,
     VirtualPeer,
 )
+from .registry import (
+    GlobalOptions as MeshGlobalOptions,
+)
+
 
 logger = getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class TargetInterface:
+    subif: int | None = None
+    svi: int | None = None
+    lag: int | None = None
+    port: str | None = None
 
 
 @dataclass(frozen=True)
@@ -27,6 +39,21 @@ class PeerKey:
     fqdn: str
     addr: str
     vrf: str
+    interface: TargetInterface
+
+
+def target_interface(
+    peer: DirectPeerDTO | IndirectPeerDTO | VirtualLocalDTO,
+    ports: list[str],
+) -> TargetInterface:
+    subif = getattr(peer, "subif", None)
+    svi = getattr(peer, "svi", None)
+    lag = getattr(peer, "lag", None)
+    port = None
+    if not (svi or lag):
+        if len(ports) == 1:
+            port = ports[0]
+    return TargetInterface(subif, svi, lag, port)
 
 
 class Pair(BaseMeshModel):
@@ -43,9 +70,9 @@ class VirtualPair(BaseMeshModel):
 
 class MeshExecutor:
     def __init__(
-            self,
-            registry: MeshRulesRegistry,
-            storage: Storage,
+        self,
+        registry: MeshRulesRegistry,
+        storage: Storage,
     ):
         self._registry = registry
         self._storage = storage
@@ -78,12 +105,12 @@ class MeshExecutor:
             return str(handler)
 
     def _execute_direct_pair(
-            self,
-            device: Device,
-            neighbor_device: Device,
-            rule: MatchedDirectPair,
-            ports: list[tuple[str, str]],
-            all_connected_ports: list[tuple[str, str]],
+        self,
+        device: Device,
+        neighbor_device: Device,
+        rule: MatchedDirectPair,
+        ports: list[tuple[str, str]],
+        all_connected_ports: list[tuple[str, str]],
     ) -> Optional[Pair]:
         session = MeshSession()
         handler_name = self._handler_name(rule.handler)
@@ -133,14 +160,9 @@ class MeshExecutor:
         # we merge them according to remote fqdn
         neighbor_peers: dict[PeerKey, Pair] = {}
         rules = self._registry.lookup_direct(device.fqdn, device.neighbours_fqdns)
-        fqdns = {
-            rule.name_right if rule.direct_order else rule.name_left
-            for rule in rules
-        }
+        fqdns = {rule.name_right if rule.direct_order else rule.name_left for rule in rules}
         logger.debug("Loading neighbor devices: %s", fqdns)
-        neighbors = {
-            d.fqdn: d for d in self._storage.make_devices(list(fqdns))
-        }
+        neighbors = {d.fqdn: d for d in self._storage.make_devices(list(fqdns))}
         for rule in rules:
             handler_name = self._handler_name(rule.handler)
             if rule.direct_order:
@@ -157,8 +179,7 @@ class MeshExecutor:
                     )
                 neighbor_device = neighbors[rule.name_left]
             all_connected_ports = [
-                (p1.name, p2.name)
-                for p1, p2 in self._storage.search_connections(device, neighbor_device)
+                (p1.name, p2.name) for p1, p2 in self._storage.search_connections(device, neighbor_device)
             ]
             for ports in rule.port_processor(all_connected_ports):
                 pair = self._execute_direct_pair(device, neighbor_device, rule, ports, all_connected_ports)
@@ -171,7 +192,8 @@ class MeshExecutor:
                 peer_key = PeerKey(
                     fqdn=pair.device.fqdn,
                     addr=addr,
-                    vrf=getattr(pair.connected, "vrf", "")
+                    vrf=getattr(pair.connected, "vrf", ""),
+                    interface=target_interface(pair.local, [p[0] for p in ports]),
                 )
                 try:
                     if peer_key in neighbor_peers:
@@ -194,7 +216,7 @@ class MeshExecutor:
         for rule in self._registry.lookup_virtual(device.fqdn):
             for order_number in rule.num:
                 handler_name = self._handler_name(rule.handler)
-                logger.debug("Running direct handler: %s", handler_name)
+                logger.debug("Running virtual handler: %s", handler_name)
                 session = MeshSession()
                 peer_device = VirtualLocal(rule.match, device)
                 peer_virtual = VirtualPeer(num=order_number)
@@ -219,11 +241,6 @@ class MeshExecutor:
                         f"peer data for device `{device.fqdn}`:\n" + str(e)
                     ) from e
 
-                if not hasattr(device_dto, "svi"):
-                    raise ValueError(
-                        f"Handler `{handler_name}` did not provide `svi` number. "
-                        "Virtual peer must be connected to SVI interface."
-                    )
                 pair = VirtualPair(local=device_dto, connected=virtual_dto)
                 virtual_peers.append(pair)
         return virtual_peers
@@ -234,14 +251,9 @@ class MeshExecutor:
         connected_peers: dict[PeerKey, Pair] = {}
 
         rules = self._registry.lookup_indirect(device.fqdn, all_fqdns)
-        fqdns = {
-            rule.name_right if rule.direct_order else rule.name_left
-            for rule in rules
-        }
+        fqdns = {rule.name_right if rule.direct_order else rule.name_left for rule in rules}
         logger.debug("Loading indirect connected devices: %s", fqdns)
-        connected_devices = {
-            d.fqdn: d for d in self._storage.make_devices(list(fqdns))
-        }
+        connected_devices = {d.fqdn: d for d in self._storage.make_devices(list(fqdns))}
         for rule in rules:
             session = MeshSession()
             handler_name = self._handler_name(rule.handler)
@@ -283,7 +295,8 @@ class MeshExecutor:
             peer_key = PeerKey(
                 fqdn=connected_device.fqdn,
                 addr=addr,
-                vrf=getattr(connected_dto, "vrf", "")
+                vrf=getattr(connected_dto, "vrf", ""),
+                interface=target_interface(pair.local, []),
             )
             try:
                 if peer_key in connected_peers:
@@ -312,19 +325,18 @@ class MeshExecutor:
         return to_bgp_global_options(global_options)
 
     def _apply_direct_interface_changes(
-            self, device: Device, neighbor: Device, ports: list[str], changes: InterfaceChanges,
+        self,
+        device: Device,
+        neighbor: Device,
+        ports: list[str],
+        changes: InterfaceChanges,
     ) -> str:
         # filter ports according to processed in pair
-        port_pairs = [
-            p
-            for p in self._storage.search_connections(device, neighbor)
-            if p[0].name in ports
-        ]
+        port_pairs = [p for p in self._storage.search_connections(device, neighbor) if p[0].name in ports]
         if len(port_pairs) > 1:
             if changes.lag is changes.svi is None:
                 raise ValueError(
-                    f"Multiple connections found between {device.fqdn} and {neighbor.fqdn}."
-                    "Specify LAG or SVI"
+                    f"Multiple connections found between {device.fqdn} and {neighbor.fqdn}.Specify LAG or SVI"
                 )
         if changes.lag is not None:
             target_interface = device.make_lag(
@@ -345,11 +357,14 @@ class MeshExecutor:
         target_interface.add_addr(changes.addr, changes.vrf)
         return target_interface.name
 
-    def _apply_indirect_interface_changes(
-            self, device: Device, neighbor: Device, ifname: Optional[str], changes: InterfaceChanges,
+    def _apply_nondirect_interface_changes(
+        self,
+        device: Device,
+        ifname: Optional[str],
+        changes: InterfaceChanges,
     ) -> Optional[str]:
         if changes.lag is not None:
-            raise ValueError("LAG creation unsupported for indirect peers")
+            raise ValueError("LAG creation unsupported for indirect and virtual peers")
         elif changes.subif is not None:
             target_interface = device.add_subif(ifname, changes.subif)
         elif changes.svi is not None:
@@ -363,9 +378,6 @@ class MeshExecutor:
         target_interface.add_addr(changes.addr, changes.vrf)
         return target_interface.name
 
-    def _apply_virtual_interface_changes(self, device: Device, local: VirtualLocalDTO) -> str:
-        return device.add_svi(local.svi).name  # we check if SVI configured in execute method
-
     def execute_for(self, device: Device) -> BgpConfig:
         all_fqdns = self._storage.resolve_all_fdnds()
 
@@ -378,23 +390,23 @@ class MeshExecutor:
                 device,
                 direct_pair.device,
                 direct_pair.ports,
-                to_interface_changes(direct_pair.local),
+                to_interface_changes(direct_pair.local, direct_pair.connected),
             )
             peers.append(self._to_bgp_peer(direct_pair, target_interface))
 
         for virtual_pair in self._execute_virtual(device):
-            target_interface = self._apply_virtual_interface_changes(
+            target_interface = self._apply_nondirect_interface_changes(
                 device,
-                virtual_pair.local,
+                getattr(virtual_pair.local, "ifname", None),
+                to_interface_changes(virtual_pair.local, virtual_pair.connected),
             )
             peers.append(self._virtual_to_bgp_peer(virtual_pair, target_interface))
 
         for connected_pair in self._execute_indirect(device, all_fqdns):
-            target_interface = self._apply_indirect_interface_changes(
+            target_interface = self._apply_nondirect_interface_changes(
                 device,
-                connected_pair.device,
                 getattr(connected_pair.local, "ifname", None),
-                to_interface_changes(connected_pair.local),
+                to_interface_changes(connected_pair.local, connected_pair.connected),
             )
             peers.append(self._to_bgp_peer(connected_pair, target_interface))
 

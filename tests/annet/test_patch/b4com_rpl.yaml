@@ -1,0 +1,41 @@
+vendor: b4com
+before: |
+  ip prefix-list RFC1918
+    seq 5 deny 10.0.0.0/8
+    seq 10 permit 192.168.0.0/16
+    exit
+after: |
+  ip prefix-list RFC1918
+    seq 5 deny 10.0.0.0/8
+    seq 10 permit 192.168.0.0/16
+    seq 15 permit 172.16.0.0/12
+    exit
+  route-map RM_FROM_PEER_IN permit 5
+    match ip address prefix-list RFC1918
+    exit
+  route-map RM_FROM_PEER_IN permit 10
+    match community CL_FROM_PEER_IN
+    exit
+  route-map RM_FROM_PEER_OUT permit 5
+    match ip address prefix-list RFC1918
+    exit
+  ip community-list standard CL_FROM_PEER_IN permit 12345:4321
+
+patch: |
+  conf t
+  ip prefix-list RFC1918
+    seq 15 permit 172.16.0.0/12
+    exit
+  route-map RM_FROM_PEER_IN permit 5
+    match ip address prefix-list RFC1918
+    exit
+  route-map RM_FROM_PEER_IN permit 10
+    match community CL_FROM_PEER_IN
+    exit
+  route-map RM_FROM_PEER_OUT permit 5
+    match ip address prefix-list RFC1918
+    exit
+  ip community-list standard CL_FROM_PEER_IN permit 12345:4321
+  commit
+  end
+  write

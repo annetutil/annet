@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 import os
+
 import setuptools
+
 
 here = os.path.abspath(os.path.dirname(__file__))
 
 
 def requirements() -> str:
     with open(os.path.join(here, "requirements.txt")) as file:
-        return "".join(
-            line
-            for line in file.readlines()
-            if not line.startswith("-")
-        )
+        return "".join(line for line in file.readlines() if not line.startswith("-"))
 
 
 if __name__ == "__main__":
@@ -21,30 +19,35 @@ if __name__ == "__main__":
         description="annet",
         license="MIT",
         url="https://github.com/annetutil/annet",
-        packages=setuptools.find_packages(include=[
-            "annet",
-            "annet.*",
-            "annet_generators",
-            "annet_generators.*",
-        ]),
+        packages=setuptools.find_packages(
+            include=[
+                "annet",
+                "annet.*",
+                "annet_generators",
+                "annet_generators.*",
+            ]
+        ),
         package_data={
             "annet": ["configs/*"],
             "annet.rulebook": ["texts/*.rul", "texts/*.order", "texts/*.deploy"],
             "annet.annlib.netdev.devdb": ["data/*.json"],
         },
         entry_points={
-          "console_scripts": [
-              "annet = annet.annet:main",
-          ],
-          "annet.connectors": [
-            "storage = annet.adapters.netbox.provider:NetboxProvider",
-          ],
-          "annet.connectors.storage": [
-            "file = annet.adapters.file.provider:Provider",
-          ],
+            "console_scripts": [
+                "annet = annet.annet:main",
+            ],
+            "annet.connectors": [
+                "storage = annet.adapters.netbox.provider:NetboxProvider",
+            ],
+            "annet.connectors.storage": [
+                "file = annet.adapters.file.provider:Provider",
+            ],
         },
         extras_require={
-            "netbox": ["annetbox[sync]>=0.2.1"],
+            "netbox": [
+                "annetbox[sync]>=0.9.0",
+                "requests-cache>=1.2.1",
+            ],
         },
         python_requires=">=3.10",
         install_requires=requirements(),

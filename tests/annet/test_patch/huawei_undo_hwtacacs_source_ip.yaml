@@ -1,0 +1,57 @@
+- vendor: huawei
+  before: |
+    hwtacacs-server template tac
+      hwtacacs-server source-ip source-vlanif 10
+  after: |
+    hwtacacs-server template tac
+  patch: |
+    system-view
+    hwtacacs-server template tac
+      undo hwtacacs-server source-ip
+      quit
+    q
+    save
+
+- vendor: huawei
+  before: |
+    hwtacacs-server template tac
+      hwtacacs-server source-ip source-vlanif 10
+  after: |
+    hwtacacs-server template tac
+      hwtacacs-server source-ip 20.20.20.20
+  patch: |
+    system-view
+    hwtacacs-server template tac
+      hwtacacs-server source-ip 20.20.20.20
+      quit
+    q
+    save
+
+- vendor: huawei
+  before: |
+    hwtacacs-server template tac
+      hwtacacs-server source-ip source-vlanif 10
+  after: |
+    hwtacacs-server template tac
+  patch: |
+    system-view
+    hwtacacs-server template tac
+      undo hwtacacs-server source-ip
+      quit
+    q
+    save
+
+- vendor: huawei
+  before: |
+    hwtacacs server template tac
+      hwtacacs server source-ip source-vlanif 10
+  after: |
+    hwtacacs server template tac
+      hwtacacs server source-ip 20.20.20.20
+  patch: |
+    system-view
+    hwtacacs server template tac
+      hwtacacs server source-ip 20.20.20.20
+      quit
+    q
+    save

@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 import yaml
 
-from annet import tabparser
+from annet.vendors import registry_connector, tabparser
 
 from .. import get_test_data, get_test_data_list
 
@@ -12,7 +12,9 @@ def get_configs(hw, data):
     assert "patch" in data
     assert ("before" in data and "after" in data) ^ ("diff" in data)
 
-    splitter = tabparser.make_formatter(hw).split
+    formatter = registry_connector.get().match(hw).make_formatter()
+    splitter = formatter.split
+
     if "diff" in data:
         before, after = expand_diff(data["diff"], splitter)
     else:
@@ -34,7 +36,7 @@ def expand_diff(diff, splitter):
                 line = line[1:].strip()
             assert sign == 0 or line_sign == sign
 
-            (sub1, sub2) = _process_node(children, deep + 1, line_sign)
+            sub1, sub2 = _process_node(children, deep + 1, line_sign)
             if line_sign != 1:
                 ret1[line] = sub1
             if line_sign != -1:
@@ -64,4 +66,3 @@ def get_samples(dirname):
                 if "name" in file_data:
                     key += " (%s)" % file_data["name"]
                 yield (key, file_data)
-

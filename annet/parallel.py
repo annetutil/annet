@@ -15,13 +15,14 @@ import tempfile
 import time
 import traceback
 import warnings
-from typing import Any, List, Optional, Type
+from typing import Any, Callable, List, Optional, Type
 from uuid import uuid4
 
 from contextlog import get_logger
 
 import annet
 from annet import tracing
+from annet.connectors import Connector
 from annet.lib import catch_ctrl_c, find_exc_in_stack
 from annet.output import capture_output
 from annet.tracing import tracing_connector
@@ -36,6 +37,20 @@ class PoolWorkerTaskType(enum.Enum):
 class PoolWorkerTask:
     type: PoolWorkerTaskType
     payload: Optional[Any] = None
+
+
+class _PickleSafeTracebackFormatterConnector(Connector[Callable[[BaseException], str]]):
+    name = "PickleSafeTraceBackFormatter"
+    ep_name = "pickle_safe_traceback_formatter"
+
+    def _get_default(self) -> Callable[[], Callable[[BaseException], str]]:
+        def wrapper():
+            return lambda x: "".join(traceback.format_exception(x))
+
+        return wrapper
+
+
+pickle_safe_traceback_formatter_connector = _PickleSafeTracebackFormatterConnector()
 
 
 class PickleSafeException(Exception):
@@ -59,9 +74,11 @@ class PickleSafeException(Exception):
         pretty_lines.append(self.formatted_output)
         return "\n".join(pretty_lines)
 
-    @staticmethod
-    def from_exc(orig_exc: Exception, device_id: str, formatted_output: str) -> "PickleSafeException":
-        return PickleSafeException(orig_exc.__class__, str(orig_exc), device_id, formatted_output)
+    @classmethod
+    def from_exc(cls, orig_exc: Exception, device_id: str) -> "PickleSafeException":
+        return PickleSafeException(
+            orig_exc.__class__, str(orig_exc), device_id, pickle_safe_traceback_formatter_connector.get()(orig_exc)
+        )
 
 
 @catch_ctrl_c
@@ -136,12 +153,6 @@ def _pool_worker(pool, index, task_queue, done_queue):
                 capture_output_ctx = capture_output(cap_stdout, cap_stderr)
 
                 with invoke_span_ctx as invoke_span, capture_output_ctx as _:
-                    invoke_trace_id = invoke_span.get_span_context().trace_id
-                    if invoke_trace_id:
-                        span.set_attribute(
-                            "link",
-                            f"https://t.yandex-team.ru/trace/{invoke_trace_id:x}"
-                        )
                     invoke_span.set_attribute("func", pool.func.__name__)
                     invoke_span.set_attribute("worker.id", worker_id)
                     if device_id:
@@ -149,11 +160,7 @@ def _pool_worker(pool, index, task_queue, done_queue):
 
                     _logger.warning("Worker-%d start invoke %s", index, device_id)
                     task_result.result = invoke_retry(
-                        pool.func,
-                        pool.net_retry,
-                        task.payload,
-                        *pool.args,
-                        **pool.kwargs
+                        pool.func, pool.net_retry, task.payload, *pool.args, **pool.kwargs
                     )
                     _logger.warning("Worker-%d finish invoke %s", index, device_id)
 
@@ -164,7 +171,7 @@ def _pool_worker(pool, index, task_queue, done_queue):
         except KeyboardInterrupt:  # pylint: disable=try-except-raise
             raise
         except Exception as exc:
-            safe_exc = PickleSafeException.from_exc(exc, task.payload, traceback.format_exc())
+            safe_exc = PickleSafeException.from_exc(exc, task.payload)
             ret_exc = safe_exc
             task_result.exc = safe_exc
             task_result.result = None
@@ -192,7 +199,12 @@ class TaskResult:
 
     def __repr__(self):
         return "TaskResult(worker_name=%s, device_id=%s, result=%s, exc=%s, extra=%s)" % (
-            self.worker_name, self.device_id, self.result, self.exc, self.extra)
+            self.worker_name,
+            self.device_id,
+            self.result,
+            self.exc,
+            self.extra,
+        )
 
 
 class Parallel:
@@ -210,7 +222,7 @@ class Parallel:
         self.capture_output = False
 
     def tune(self, **kwargs):
-        for (kw, arg) in kwargs.items():
+        for kw, arg in kwargs.items():
             if not hasattr(self, kw):
                 raise ValueError("Can not tune Parallel.%s: attribute doesn't exist" % kw)
             setattr(self, kw, arg)
@@ -294,18 +306,13 @@ class Parallel:
                 try:
                     with capture_output(cap_stdout, cap_stderr):
                         task_result.result = invoke_retry(
-                            self.func,
-                            self.net_retry,
-                            device_id,
-                            *self.args,
-                            **self.kwargs
+                            self.func, self.net_retry, device_id, *self.args, **self.kwargs
                         )
                 except Exception as exc:
+                    safe_exc = PickleSafeException.from_exc(exc, device_id)
                     if not tolerate_fails:
-                        raise
-                    exc.device_id = device_id
-                    exc.formatted_output = traceback.format_exc()
-                    task_result.exc = exc
+                        raise safe_exc
+                    task_result.exc = safe_exc
                 if self.capture_output:
                     task_result.extra["cap_stdout"] = cap_stdout.read()
                     task_result.extra["cap_stderr"] = cap_stderr.read()
@@ -333,11 +340,7 @@ class Parallel:
                 worker_name = "Worker-%d" % index
                 worker_args = (self, index, task_queue, done_queue, context_carrier)
 
-                worker = mp.Process(
-                    name=worker_name,
-                    target=pool_worker,
-                    args=worker_args
-                )
+                worker = mp.Process(name=worker_name, target=pool_worker, args=worker_args)
                 pool[worker_name] = worker
                 worker.start()
                 _logger.debug("Worker '%s' has been created with PID %d", worker_name, worker.pid)
@@ -374,7 +377,7 @@ class Parallel:
                         terminate_exc = annet.ExecError(f"Workers {failed_workers} exited with error")
 
                 if terminate_exc is not None:
-                    for (name, worker) in pool.items():
+                    for name, worker in pool.items():
                         if worker.exitcode is None:
                             if terminate_by_timeout:
                                 os.kill(worker.pid, signal.SIGUSR1)  # force dump stacktrace
@@ -421,8 +424,9 @@ class Parallel:
             if exitcode == 9:
                 retired_workers.append(name)
             elif exitcode != 0:
-                _logger.error("Worker '%s' (PID: %d) has exited with non-zero exit code %d", name, pool[name].pid,
-                              exitcode)
+                _logger.error(
+                    "Worker '%s' (PID: %d) has exited with non-zero exit code %d", name, pool[name].pid, exitcode
+                )
                 failed_workers.append(name)
             else:
                 _logger.debug("Worker '%s' (PID: %d) has been reaped with exitcode %d", name, pool[name].pid, exitcode)

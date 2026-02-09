@@ -28,7 +28,7 @@ _data_formats = {
         "writer": pickle.dumps,
         "read_mode": "rb",
         "write_mode": "wb",
-    }
+    },
 }
 _data_formats["yaml"] = _data_formats["yml"]
 if jsonpickle:
@@ -40,23 +40,27 @@ if jsonpickle:
 
 # ======
 def make_hw_stub(vendor):
-    return HardwareView({
-        "cisco": "Cisco Catalyst",
-        "nexus": "Cisco Nexus",
-        "asr": "Cisco ASR",
-        "huawei": "Huawei",
-        "huawei ce": "Huawei CE0000",
-        "juniper": "Juniper",
-        "routeros": "RouterOS",
-        "aruba": "Aruba",
-        "arista": "Arista",
-        "nokia": "Nokia",
-        "pc": "PC",
-        "ribbon": "Ribbon",
-        "optixtrans": "Huawei DC",
-        "b4com": "B4com",
-        "h3c": "H3C",
-    }[vendor], None)
+    return HardwareView(
+        {
+            "cisco": "Cisco Catalyst",
+            "nexus": "Cisco Nexus",
+            "asr": "Cisco ASR",
+            "iosxr": "Cisco XR",
+            "huawei": "Huawei",
+            "huawei ce": "Huawei CE0000",
+            "juniper": "Juniper",
+            "routeros": "RouterOS",
+            "aruba": "Aruba",
+            "arista": "Arista",
+            "nokia": "Nokia",
+            "pc": "PC",
+            "ribbon": "Ribbon",
+            "optixtrans": "Huawei DC",
+            "b4com": "B4com",
+            "h3c": "H3C",
+        }[vendor],
+        None,
+    )
 
 
 def get_test_data_path(path):
@@ -64,12 +68,12 @@ def get_test_data_path(path):
 
 
 def get_test_data(path, mode="r"):
-    with open(get_test_data_path(path), mode) as data_file:
+    with open(get_test_data_path(path), mode, encoding="utf-8") as data_file:
         return data_file.read()
 
 
 def save_test_data(path, data, mode="w"):
-    with open(get_test_data_path(path), mode) as data_file:
+    with open(get_test_data_path(path), mode, encoding="utf-8") as data_file:
         data_file.write(data)
 
 
@@ -81,8 +85,10 @@ def get_test_data_list(path):
 def get_file_format(path):
     data_format = path.split(".")[-1]
     if data_format not in _data_formats:
-        raise Exception("file %s has unknown extension %s. Should be one of these: %s" % (
-            path, data_format, ", ".join(_data_formats.keys())))
+        raise Exception(
+            "file %s has unknown extension %s. Should be one of these: %s"
+            % (path, data_format, ", ".join(_data_formats.keys()))
+        )
     return data_format
 
 
@@ -97,7 +103,7 @@ def save_formatted_test_data(path, data):
     save_test_data(
         path,
         _data_formats[data_format]["writer"](data),
-        _data_formats[data_format].get("write_mode", "w")
+        _data_formats[data_format].get("write_mode", "w"),
     )
 
 
@@ -116,20 +122,27 @@ def cached_test_data(path, key):
 
             if recache:
                 retval = func(*args, **kwargs)
-                save_formatted_test_data(path, {
-                    "key": key,
-                    "retval": retval,
-                })
+                save_formatted_test_data(
+                    path,
+                    {
+                        "key": key,
+                        "retval": retval,
+                    },
+                )
             return retval
+
         return wrap
+
     return decorator
 
 
 def ann_py(args, force_color=True):
-    path = os.path.normpath(os.path.join(
-        os.path.dirname(inspect.getfile(sys.modules[__name__])),
-        "../ann.py",
-    ))
+    path = os.path.normpath(
+        os.path.join(
+            os.path.dirname(inspect.getfile(sys.modules[__name__])),
+            "../ann.py",
+        )
+    )
     kwargs = {}
     if force_color:
         kwargs["env"] = os.environ.copy()

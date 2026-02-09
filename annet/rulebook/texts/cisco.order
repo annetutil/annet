@@ -62,7 +62,8 @@ interface */Vlan\d+/
 interface *
     no switchport
     encapsulation
-    vrf member
+    ip vrf forwarding
+    vrf forwarding
     ip
     ipv6
     no ipv6 nd %order_reverse

@@ -2,55 +2,55 @@ import os
 import typing
 from collections import OrderedDict as odict
 
-from annet.annlib.command import CommandList, Command
-
+from annet.annlib.command import Command, CommandList
 from annet.types import Op
+from annet.vendors import registry_connector
 
 
 # =====
 def default(rule, key, diff, **_):
     r"""
-        Функция default() обеспичвает базовую логику обработки всех правил. Ее можно заменить с помощью
-        параметра %logic в текстовом рулбуке. Она вызывается для каждой команды с уникальным ключом и
-        должна возвратить сгенерированный текст патча на основе предоставленного диффа, и, при необходимости,
-        вызвать обработку дочерних правил/данных.
+    Функция default() обеспечивает базовую логику обработки всех правил. Ее можно заменить с помощью
+    параметра %logic в текстовом рулбуке. Она вызывается для каждой команды с уникальным ключом и
+    должна возвратить сгенерированный текст патча на основе предоставленного диффа, и, при необходимости,
+    вызвать обработку дочерних правил/данных.
 
-        Первым аргументом (rule) она принимает словарь с правилом:
-            {
-                # Однострочная команда, не блок, не имеет чилдов
-                "logic": <function default at 0x7fe22ea83510>,  # Функция для обработки правила
-                "provides": [],  # Макросы, реализуемые этим правилом
-                "requires": [],  # Макросы, требуемые для правила
+    Первым аргументом (rule) она принимает словарь с правилом:
+        {
+            # Однострочная команда, не блок, не имеет чилдов
+            "logic": <function default at 0x7fe22ea83510>,  # Функция для обработки правила
+            "provides": [],  # Макросы, реализуемые этим правилом
+            "requires": [],  # Макросы, требуемые для правила
 
-                # Регулярка для разбора строки
-                "regexp": re.compile(r"^snmp-agent\s+sys-info\s+([^\s]+).*$"),
+            # Регулярка для разбора строки
+            "regexp": re.compile(r"^snmp-agent\s+sys-info\s+([^\s]+).*$"),
 
-                # Шаблон для отмены команды (в качестве аргументов следует использовать ключ)
-                "reverse": "undo snmp-agent sys-info {}",
-            }
+            # Шаблон для отмены команды (в качестве аргументов следует использовать ключ)
+            "reverse": "undo snmp-agent sys-info {}",
+        }
 
-        Вторым аргументом (key) идет tuple, состоящий из ключа, распаршенного из строчки с помощью regexp:
-            ("contact",)  # Пример для разбора строки "snmp-agent sys-info contact"
+    Вторым аргументом (key) идет tuple, состоящий из ключа, распаршенного из строчки с помощью regexp:
+        ("contact",)  # Пример для разбора строки "snmp-agent sys-info contact"
 
-        В третий аргумент передается словарь с диффом:
-            {
-                # Команды/блоки, добавленные в новой конфигурации
-                Op.ADDED: [{"children": None, "row": "undo snmp-agent sys-info version all"}],
+    В третий аргумент передается словарь с диффом:
+        {
+            # Команды/блоки, добавленные в новой конфигурации
+            Op.ADDED: [{"children": None, "row": "undo snmp-agent sys-info version all"}],
 
-                # Бывает только в блоках, содержит изменившихся чилдов внутри блоков
-                Op.AFFECTED: [],
+            # Бывает только в блоках, содержит изменившихся чилдов внутри блоков
+            Op.AFFECTED: [],
 
-                # Удаленные команды/блоки
-                Op.REMOVED: [{"children": None, "row": "undo snmp-agent sys-info version v3"}],
+            # Удаленные команды/блоки
+            Op.REMOVED: [{"children": None, "row": "undo snmp-agent sys-info version v3"}],
 
-                # Команды которые никак не изменились (но иногда нужны для других команд)
-                Op.UNCHANGED: [{"children": None, "row": "snmp all-interfaces"}]
-            }
+            # Команды которые никак не изменились (но иногда нужны для других команд)
+            Op.UNCHANGED: [{"children": None, "row": "snmp all-interfaces"}]
+        }
     """
     for op in [Op.ADDED, Op.REMOVED, Op.AFFECTED, Op.MOVED]:
         # Дефолтная функция генерации патчей считает, что не бывает команд с одинаковыми
-        # ключами и разным значением. при этом unchanged мы так не проверяем поскольку
-        # такие случаи возможны когда у нас подмешиваются implicit команды
+        # ключами и разным значением. При этом unchanged мы так не проверяем, поскольку
+        # такие случаи возможны, когда у нас подмешиваются implicit команды
         assert 0 <= len(diff[op]) <= 1, "Too many %s actions for rows %r" % (op, [x["row"] for x in diff[op]])
     if diff[Op.AFFECTED]:
         # При изменении блока нужно вызвать обработку чилдов
@@ -60,7 +60,7 @@ def default(rule, key, diff, **_):
         # При модификации строки удаление нас не интересует, добавление проходит как affected
         yield (True, diff[key][0]["row"], diff[key][0]["children"])
     elif diff[Op.REMOVED]:
-        # При удалении или перемещеннии блока просто снести строку
+        # При удалении или перемещении блока просто снести строку
         yield (False, rule["reverse"].format(*key), None)
 
 
@@ -135,20 +135,21 @@ class DiffItem(typing.NamedTuple):
     diff_pre: typing.Dict[str, typing.Any]
 
 
-def default_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
+Differ = typing.Callable[[odict, odict, odict, tuple[Op, ...]], list[DiffItem]]
+
+
+def default_diff(old: odict, new: odict, diff_pre: odict, _pops: tuple[Op, ...] = (Op.AFFECTED,)) -> list[DiffItem]:
     diff = base_diff(old, new, diff_pre, _pops, moved_to_affected=True)
     return diff
 
 
-def ordered_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
+def ordered_diff(old: odict, new: odict, diff_pre: odict, _pops: tuple[Op, ...] = (Op.AFFECTED,)) -> list[DiffItem]:
     diff = base_diff(old, new, diff_pre, _pops, moved_to_affected=False)
     return diff
 
 
-def rewrite_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
-    def iter_diff(
-        diff: typing.List[DiffItem],
-    ) -> typing.Iterable[typing.Tuple[int, typing.List[DiffItem]]]:
+def rewrite_diff(old: odict, new: odict, diff_pre: odict, _pops: tuple[Op, ...] = (Op.AFFECTED,)) -> list[DiffItem]:
+    def iter_diff(diff: list[DiffItem]) -> typing.Iterable[tuple[int, list[DiffItem]]]:
         queue = [diff]
         while queue:
             items, queue = queue[0], queue[1:]
@@ -163,7 +164,7 @@ def rewrite_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
     diff = base_diff(old, new, diff_pre, _pops, moved_to_affected=False)
     # если мы rewrite верхнего уровня, и в поддереве все Op.AFFECTED
     # то есть не было совершенно никаких изменений, удаляем его из дифа
-    if rewrite_marker not in _pops[:-len(rewrite_tail)]:
+    if rewrite_marker not in _pops[: -len(rewrite_tail)]:
         if all(its[i].op == Op.AFFECTED for i, its in iter_diff(diff)):
             diff.clear()
         else:
@@ -173,16 +174,18 @@ def rewrite_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
     return diff
 
 
-def multiline_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
+def multiline_diff(old: odict, new: odict, diff_pre: odict, _pops: tuple[Op, ...] = (Op.AFFECTED,)) -> list[DiffItem]:
     """
     Особая логика diff'a для хуавейных мультилайнов.
     Она трактует все дочерние элементы %multiline-команды как
     одну общую команду, покидывая внутрь тот Op который был
-    определен на вернем уровне
+    определен на верхнем уровне
     """
+
     def process_multiline(op, tree):
-        for (row, children) in tree.items():
-            yield (op, row, list(process_multiline(op, children)), None)
+        for row, children in tree.items():
+            yield op, row, list(process_multiline(op, children)), None
+
     ret = []
     for item in default_diff(old, new, diff_pre, _pops):
         if old.get(item.row, {}) == new.get(item.row, {}):
@@ -192,53 +195,67 @@ def multiline_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
             op, tree = Op.REMOVED, old
         children = list(process_multiline(op, tree[item.row]))
         ret.append(DiffItem(item.op, item.row, children, item.diff_pre))
+
     return ret
 
 
-def base_diff(old, new, diff_pre, pops, moved_to_affected=False) -> typing.List[DiffItem]:
+def base_diff(
+    old: odict, new: odict, diff_pre: odict, pops: tuple[Op, ...], moved_to_affected: bool = False
+) -> list[DiffItem]:
     diff_indexed: typing.List[typing.Tuple[int, DiffItem]] = []
     old = _ignore_case(diff_pre, old)
     new = _ignore_case(diff_pre, new)
 
-    for (index, row) in enumerate(old):
+    for index, row in enumerate(old):
         if row not in new:
-            children = call_diff_logic(diff_pre[row]["subtree"], old[row], {}, pops + (Op.REMOVED,))
-            diff_indexed.append((index, DiffItem(
-                op=Op.REMOVED,
-                row=row,
-                children=children,
-                diff_pre=diff_pre[row]["match"],
-            )))
+            children = call_diff_logic(diff_pre[row]["subtree"], old[row], odict(), pops + (Op.REMOVED,))
+            diff_indexed.append(
+                (
+                    index,
+                    DiffItem(
+                        op=Op.REMOVED,
+                        row=row,
+                        children=children,
+                        diff_pre=diff_pre[row]["match"],
+                    ),
+                )
+            )
+
     old_indexes = {row: index for (index, row) in enumerate(old)}
     block_in_disorder = False
     parent_op = pops[-1]
-    for (index, row) in enumerate(new):
+    for index, row in enumerate(new):
         if row not in old:
             block_in_disorder = True
             op = Op.ADDED
         elif block_in_disorder or index != old_indexes[row]:
             block_in_disorder = True
-            op = (Op.MOVED if not moved_to_affected else parent_op)
+            op = Op.MOVED if not moved_to_affected else parent_op
         else:
             op = parent_op
         children = call_diff_logic(diff_pre[row]["subtree"], old.get(row, {}), new[row], pops + (op,))
-        diff_indexed.append((index, DiffItem(
-            op=op,
-            row=row,
-            children=children,
-            diff_pre=diff_pre[row]["match"],
-        )))
+        diff_indexed.append(
+            (
+                index,
+                DiffItem(
+                    op=op,
+                    row=row,
+                    children=children,
+                    diff_pre=diff_pre[row]["match"],
+                ),
+            )
+        )
     diff_indexed.sort()
     return [x[1] for x in diff_indexed]
 
 
-def call_diff_logic(diff_pre, old, new, pops=(Op.AFFECTED,)):
+def call_diff_logic(diff_pre: odict, old: odict, new: odict, pops: tuple[Op, ...] = (Op.AFFECTED,)):
     """
     Группируем команды в старом и новом конфиге согласно выставленным
     в рулбуке атрибутам %diff_logic и вызывает их поочереди согласно
     порядку команд в old и new, предпочитая old (т.е. сначала удаления)
     """
-    diff_logics = odict()
+    diff_logics: odict = odict()
     for row in old:
         logic = diff_pre[row]["match"]["attrs"]["diff_logic"]
         if logic not in diff_logics:
@@ -275,92 +292,11 @@ def _ignore_case(diff_pre, cfg):
 
 # ====
 
+
 class ApplyItem(typing.NamedTuple):
     before: CommandList
     after: CommandList
 
 
-def apply(hw, do_commit, do_finalize, **_):
-    before, after = CommandList(), CommandList()
-    if hw.Huawei:
-        before.add_cmd(Command("system-view"))
-        if do_commit and (hw.Huawei.CE or hw.Huawei.NE):
-            after.add_cmd(Command("commit"))
-        after.add_cmd(Command("q"))
-        if do_finalize:
-            after.add_cmd(Command("save", timeout=20))
-    elif hw.Arista:
-        before.add_cmd(Command("conf s"))
-        if do_commit:
-            after.add_cmd(Command("commit"))
-        else:
-            after.add_cmd(Command("abort"))  # просто exit оставит висеть configure session
-        if do_finalize:
-            after.add_cmd(Command("write memory"))
-    elif hw.ASR or hw.XRV:
-        # коммит сам сохраняет изменения в стартап do_finalize не применим
-        before.add_cmd(Command("configure exclusive"))
-        if do_commit:
-            after.add_cmd(Command("commit"))
-        after.add_cmd(Command("exit"))
-    elif hw.Cisco or hw.Nexus:
-        # классический ios и nxos не умеет коммиты
-        before.add_cmd(Command("conf t"))
-        after.add_cmd(Command("exit"))
-        if do_finalize:
-            after.add_cmd(Command("copy running-config startup-config", timeout=40))
-    elif hw.Juniper:
-        # коммит сам сохраняет изменения в стартап do_finalize не применим
-        before.add_cmd(Command("configure exclusive"))
-        if do_commit:
-            after.add_cmd(Command("commit", timeout=30))
-        after.add_cmd(Command("exit"))
-    elif hw.PC:
-        if hw.soft.startswith(("Cumulus", "SwitchDev")):
-            if os.environ.get("ETCKEEPER_CHECK", False):
-                before.add_cmd(Command("etckeeper check"))
-    elif hw.Nokia:
-        # коммит сам сохраняет изменения в стартап do_finalize не применим
-        before.add_cmd(Command("configure private"))
-        if do_commit:
-            after.add_cmd(Command("commit"))
-    elif hw.RouterOS:
-        # FIXME: пока не удалось победить \x1b[c после включения safe mode
-        # if len(cmds) > 99:
-        #     raise Exception("RouterOS does not support more 100 actions in safe mode")
-        # before.add_cmd(RosDevice.SAFE_MODE)
-        pass
-        # after.add_cmd(RosDevice.SAFE_MODE)
-    elif hw.Aruba:
-        before.add_cmd(Command("conf t"))
-        after.add_cmd(Command("end"))
-        if do_commit:
-            after.add_cmd(Command("commit apply"))
-        if do_finalize:
-            after.add_cmd(Command("write memory"))
-    elif hw.Ribbon:
-        # коммит сам сохраняет изменения в стартап do_finalize не применим
-        before.add_cmd(Command("configure exclusive"))
-        if do_commit:
-            after.add_cmd(Command("commit", timeout=30))
-        after.add_cmd(Command("exit"))
-    elif hw.B4com.CS2148P:
-        before.add_cmd(Command("conf t"))
-        after.add_cmd(Command("end"))
-        if do_finalize:
-            after.add_cmd(Command("write", timeout=40))
-    elif hw.B4com:
-        before.add_cmd(Command("conf t"))
-        if do_commit:
-            after.add_cmd(Command("commit"))
-            after.add_cmd(Command("end"))
-        if do_finalize:
-            after.add_cmd(Command("write", timeout=40))
-    elif hw.H3C:
-        before.add_cmd(Command("system-view"))
-        if do_finalize:
-            after.add_cmd(Command("save force", timeout=20))
-    else:
-        raise Exception("unknown hw %s" % hw)
-
-    return before, after
+def apply(hw, do_commit, do_finalize, path):
+    return registry_connector.get().match(hw).apply(hw, do_commit, do_finalize, path)
