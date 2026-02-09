@@ -75,7 +75,7 @@ MODELS = [
     ("Aruba AP-515 (US)", "Aruba.AP.AP500.AP515"),
     ("Aruba AP-565", "Aruba.AP.AP500.AP565"),
     ("Aruba AP-655", "Aruba.AP.AP600.AP655"),
-    ("Asterfusion CX532P-N-AC", "PC.Whitebox.Asterfusion.CX.CX500.CX532P-N"),
+    ("Asterfusion CX532P-N-AC", "PC.Whitebox.Asterfusion.CX.CX500.CX532PN"),
     ("Asterfusion CX732Q-N-AC", "PC.Whitebox.Asterfusion.CX"),
     ("B4com AS9726-32DB-O-AC-F", "B4com"),
     ("B4com CS4148Q08U", "B4com"),
