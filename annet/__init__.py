@@ -11,6 +11,7 @@ from contextlog import patch_logging, patch_threading
 from valkit.python import valid_logging_level
 
 import annet.argparse
+from annet.annet import _get_installed_packages_list
 from annet.annlib.errors import (  # pylint: disable=wrong-import-position
     DeployCancelled,
     ExecError,
@@ -49,6 +50,9 @@ def init_logging(options: Namespace):
 def init(options: Namespace):
     init_logging(options)
 
+    if logging.getLogger().getEffectiveLevel() <= logging.DEBUG:
+        installed_packages = _get_installed_packages_list()
+        logging.debug("installed_packages %s", installed_packages)
     # Отключить colorama.init, если стоит env-переменная. Нужно в тестах
     if os.environ.get("ANN_FORCE_COLOR", None) not in [None, "", "0", "no"]:
         colorama.init = lambda *_, **__: None
