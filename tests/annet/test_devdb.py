@@ -1,5 +1,8 @@
+import keyword
+
 import pytest
 
+from annet.annlib.netdev.devdb import _prepare_db
 from annet.annlib.netdev.views.hardware import HardwareView
 
 
@@ -716,3 +719,16 @@ MODELS = [
 def test_devdb(model, expected):
     hwview = HardwareView(model)
     assert str(hwview) == expected
+
+
+def test_devdb_valid_identifiers():
+    invalid_keys = []
+    for key in _prepare_db().keys():
+        for part in key:
+            if not part.isidentifier() or keyword.iskeyword(part):
+                invalid_keys.append(f"{'.'.join(key)} (offending part: {part!r})")  # fmt: skip
+    if invalid_keys:
+        pytest.fail(
+            "Every part in `devdb.json` key must be a valid Python identifier. "
+            "Found invalid keys:\n" + "\n".join((f' * {key}' for key in invalid_keys))
+        )  # fmt: skip
