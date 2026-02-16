@@ -2,7 +2,7 @@ import functools
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from annet.annlib.netdev.db import find_true_sequences, get_db
 from annet.lib import get_context
@@ -19,7 +19,7 @@ def parse_hw_model(hw_model):
     )
 
 
-def _prepare_db() -> Dict[str, Any]:
+def _prepare_db() -> dict[tuple[str, ...], Any]:
     try:
         from library.python import resource
 

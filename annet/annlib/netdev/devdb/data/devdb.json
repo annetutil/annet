@@ -131,7 +131,7 @@
     "PC.Whitebox.NVIDIA.SN.SN5600": " SN5600",
     "PC.Moxa": "[Mm]oxa",
     "PC.Moxa.NPort": " [Nn][Pp]ort",
-    "PC.Moxa.NPort.6610": "6610",
+    "PC.Moxa.NPort._6610": "6610",
     "PC.Whitebox.Asterfusion": "[Aa]sterfusion",
     "PC.Whitebox.Asterfusion.CX": " CX",
     "PC.Whitebox.Asterfusion.CX.CX500": " CX5\\d\\d",
