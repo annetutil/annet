@@ -20,7 +20,7 @@ class CiscoVendor(AbstractVendor):
         return before, after
 
     def match(self) -> list[str]:
-        return ["Cisco", "Cisco.ASR.ASR1000"]
+        return ["Cisco"]
 
     @property
     def reverse(self) -> str:
