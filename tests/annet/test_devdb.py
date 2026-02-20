@@ -503,6 +503,7 @@ MODELS = [
     ("Huawei LS-S5352C-SI", "Huawei.Quidway.S5300.S5352"),
     ("Huawei NE40E-F1A-14H24Q", "Huawei.NE.NE40E"),
     ("Huawei NE8000-F2A", "Huawei.NE.NE8000"),
+    ("Huawei XH9230-128DQ", "Huawei.CE.XH9000.XH9200"),
     ("Huawei S2309TP-EI", "Huawei.Quidway.S2x.S2300"),
     ("Huawei S2309TP-PWR-EI", "Huawei.Quidway.S2x.S2300"),
     ("Huawei S2309TP-SI", "Huawei.Quidway.S2x.S2300"),

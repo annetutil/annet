@@ -40,7 +40,7 @@
     "Cisco.Nexus.N9x.N9364": "9364",
 
     "Huawei": "^[Hh]uawei",
-    "Huawei.CE": " CE\\d+",
+    "Huawei.CE": " (CE|XH)\\d+",
     "Huawei.CE.CE12800": " CE128\\d{2}",
     "Huawei.CE.CE5800": " CE58\\d\\d",
     "Huawei.CE.CE6800": " CE68\\d\\d",
@@ -59,6 +59,8 @@
     "Huawei.CE.CE9800": " CE98\\d\\d",
     "Huawei.CE.CE9800.CE9855": " CE9855",
     "Huawei.CE.CE9800.CE9860": " CE9860",
+    "Huawei.CE.XH9000": " XH9\\d\\d\\d",
+    "Huawei.CE.XH9000.XH9200": " XH92\\d\\d",
     "Huawei.Quidway": " (LS-)?S",
     "Huawei.Quidway.S2x": "2\\d{3}",
     "Huawei.Quidway.S2x.S2300": "23\\d\\d",
