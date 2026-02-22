@@ -20,7 +20,7 @@ class IosXrVendor(AbstractVendor):
         return before, after
 
     def match(self) -> list[str]:
-        return ["Cisco.ASR", "Cisco.XR", "Cisco.XRV"]
+        return ["Cisco.ASR", "Cisco.XR", "Cisco.XRV", "Cisco.NCS"]
 
     @property
     def reverse(self) -> str:

@@ -361,6 +361,7 @@ MODELS = [
     ("Cisco Nexus N9K-C93180YC-EX", "Cisco.Nexus.N9x"),
     ("Cisco Nexus N9K-C93240YC-FX2", "Cisco.Nexus.N9x"),
     ("Cisco Nexus N9K-C9364C", "Cisco.Nexus.N9x.N9364"),
+    ("Cisco NCS-55A2-MODS-SYS", "Cisco.NCS"),
     ("Cisco SF200-24", "Cisco"),
     ("Cisco SF200-24FP", "Cisco"),
     ("Cisco SF200-24P", "Cisco"),
