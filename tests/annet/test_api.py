@@ -5,10 +5,12 @@ import pytest
 from annet import api
 
 
-@pytest.mark.parametrize("vendors, config_text", (
-    pytest.param(
-        {"juniper", "ribbon"},
-        """
+@pytest.mark.parametrize(
+    "vendors, config_text",
+    (
+        pytest.param(
+            {"juniper", "ribbon"},
+            """
         management-instance;
         time-zone Europe/Moscow;
         ntp {
@@ -28,11 +30,11 @@ from annet import api
             }
         }
         """,
-        id="juniper-ribbon"
-    ),
-    pytest.param(
-        {"huawei", "h3c"},
-        """
+            id="juniper-ribbon",
+        ),
+        pytest.param(
+            {"huawei", "h3c"},
+            """
         port split mode mode1 slot 1
         ip vpn-instance MEth0/0/0
         ipv6-family
@@ -47,23 +49,23 @@ from annet import api
         ntp unicast-server ipv6 2001:db8:0:1a01::100 vpn-instance MEth0/0/0
         ntp unicast-server ipv6 2001:db8:0:1a01::101 vpn-instance MEth0/0/0
         """,
-        id="huawei"
-    ),
-    pytest.param(
-        {"arista"},
-        """
+            id="huawei",
+        ),
+        pytest.param(
+            {"arista"},
+            """
         interface Ethernet2/1/1
             description region1-1d3 100ge12/0/18
             channel-group 1 mode active
             lacp rate fast
             service-profile example
         """,
-        id="arista"
-    ),
-    pytest.param(
-        # конфиги схожи
-        {"cisco", "nexus", "b4com"},
-        """
+            id="arista",
+        ),
+        pytest.param(
+            # конфиги схожи
+            {"cisco", "nexus", "b4com"},
+            """
         interface port-channel2.3000
             encapsulation dot1q 3000
             vrf member Vpn1
@@ -74,11 +76,11 @@ from annet import api
             mtu 9000
             no shutdown
         """,
-        id="cisco-nexus"
-    ),
-    pytest.param(
-        {"routeros"},
-        """
+            id="cisco-nexus",
+        ),
+        pytest.param(
+            {"routeros"},
+            """
         /interface vlan
         add arp=enabled arp-timeout=auto disabled=no interface=ether2 loop-protect=default loop-protect-disable-time=5m loop-protect-send-interval=5s mtu=1500 name=vlan4 use-service-tag=no vlan-id=4
         /user
@@ -86,9 +88,10 @@ from annet import api
         /user group
         add name=nocmon
         """,
-        id="routeros"
-    )
-))
+            id="routeros",
+        ),
+    ),
+)
 def test_guess_hw(ann_connectors, vendors, config_text):
     config_text = dedent(config_text)
     hw, _ = api.guess_hw(config_text)

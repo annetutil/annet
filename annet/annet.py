@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 import logging
 import sys
+from importlib.metadata import distributions
 
 import annet
-from annet import argparse, cli, generators, hardware, lib, rulebook, diff
+from annet import argparse, cli, diff, generators, hardware, lib, rulebook
+
+
+def _get_installed_packages_list():
+    return sorted([(d.metadata["Name"], d.version) for d in distributions()], key=lambda x: x[0].lower())
 
 
 # =====

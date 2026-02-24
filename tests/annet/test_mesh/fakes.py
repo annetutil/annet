@@ -1,7 +1,7 @@
 from typing import Any, Optional, Sequence
 
 from annet.mesh.executor import Device
-from annet.storage import Storage, Interface
+from annet.storage import Interface, Storage
 
 
 class FakeInterface(Interface):
@@ -20,6 +20,7 @@ class FakeInterface(Interface):
 
     def __repr__(self):
         return f"FakeInterface(name={self.name!r}, addrs={self.addrs!r})"
+
 
 class FakeDevice(Device):
     def __init__(self, name: str, interfaces: list[FakeInterface]) -> None:
@@ -70,27 +71,33 @@ class FakeDevice(Device):
         pass
 
     def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: Optional[int]) -> Interface:
-        self.interfaces.append(FakeInterface(
-            name=f"Trunk{lag}",
-            neighbor_port=None,
-            neighbor_fqdn=None,
-        ))
+        self.interfaces.append(
+            FakeInterface(
+                name=f"Trunk{lag}",
+                neighbor_port=None,
+                neighbor_fqdn=None,
+            )
+        )
         return self.interfaces[-1]
 
     def add_svi(self, svi: int) -> Interface:
-        self.interfaces.append(FakeInterface(
-            name=f"Vlan{svi}",
-            neighbor_port=None,
-            neighbor_fqdn=None,
-        ))
+        self.interfaces.append(
+            FakeInterface(
+                name=f"Vlan{svi}",
+                neighbor_port=None,
+                neighbor_fqdn=None,
+            )
+        )
         return self.interfaces[-1]
 
     def add_subif(self, interface: str, subif: int) -> Interface:
-        self.interfaces.append(FakeInterface(
-            name=f"{interface}.{subif}",
-            neighbor_port=None,
-            neighbor_fqdn=None,
-        ))
+        self.interfaces.append(
+            FakeInterface(
+                name=f"{interface}.{subif}",
+                neighbor_port=None,
+                neighbor_fqdn=None,
+            )
+        )
         return self.interfaces[-1]
 
     def find_interface(self, name: str) -> Optional[Interface]:
@@ -114,26 +121,23 @@ class FakeStorage(Storage):
         pass
 
     def resolve_object_ids_by_query(self, query: Any):
-        return [
-            d.id for d in self.devices
-            if d.fqdn in query
-        ]
+        return [d.id for d in self.devices if d.fqdn in query]
 
     def resolve_all_fdnds(self) -> list[str]:
         return [d.fqdn for d in self.devices]
 
     def resolve_fdnds_by_query(self, query: Any):
-        return [
-            d.fqdn for d in self.devices
-            if d.fqdn in query
-        ]
+        return [d.fqdn for d in self.devices if d.fqdn in query]
 
-    def make_devices(self, query: Any, preload_neighbors: bool = False, use_mesh: Optional[bool] = None,
-                     preload_extra_fields=False, **kwargs):
-        return [
-            d for d in self.devices
-            if d.fqdn in query
-        ]
+    def make_devices(
+        self,
+        query: Any,
+        preload_neighbors: bool = False,
+        use_mesh: Optional[bool] = None,
+        preload_extra_fields=False,
+        **kwargs,
+    ):
+        return [d for d in self.devices if d.fqdn in query]
 
     def get_device(self, obj_id, preload_neighbors=False, use_mesh=None, **kwargs) -> "Device":
         return next(d for d in self.devices if d.id == obj_id)
@@ -142,7 +146,9 @@ class FakeStorage(Storage):
         pass
 
     def search_connections(
-        self, device: "FakeDevice", neighbor: "FakeDevice",
+        self,
+        device: "FakeDevice",
+        neighbor: "FakeDevice",
     ) -> list[tuple["FakeInterface", "FakeInterface"]]:
         res = []
         for local_port in device.interfaces:

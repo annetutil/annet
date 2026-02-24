@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from typing import Protocol, Sequence
 
+
 PortPair = tuple[str, str]
 
 

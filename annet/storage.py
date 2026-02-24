@@ -1,8 +1,9 @@
 import abc
 from collections.abc import Sequence
-from typing import Any, Iterable, Optional, Type, Union, Protocol, Dict
-from annet.connectors import Connector, get_connector_from_config
+from typing import Any, Dict, Iterable, Optional, Protocol, Type, Union
+
 from annet.annlib.netdev.views.hardware import HardwareView
+from annet.connectors import Connector, get_connector_from_config
 
 
 class _StorageConnector(Connector["StorageProvider"]):

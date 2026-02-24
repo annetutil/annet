@@ -194,3 +194,123 @@
       end-filter
     q
     save
+- vendor: Huawei
+  diff: |+
+    + xpl route-filter PRGS_foo4
+      + if ip route-destination in PFXS-foo then
+        + refuse
+      + if ip route-destination in PFXS-BAR then
+        + refuse
+      + if ip route-destination in PFXS-BAR-SATELLITES then
+        + refuse
+      + if ip route-destination in {0.0.0.0 0 ge 25 le 32} then
+        + refuse
+      + if as-path length ge 100 then
+        + refuse
+  patch: |+
+    system-view
+    xpl route-filter PRGS_foo4
+      if ip route-destination in PFXS-foo then
+        refuse
+      endif
+      if ip route-destination in PFXS-BAR then
+        refuse
+      endif
+      if ip route-destination in PFXS-BAR-SATELLITES then
+        refuse
+      endif
+      if ip route-destination in {0.0.0.0 0 ge 25 le 32} then
+        refuse
+      endif
+      if as-path length ge 100 then
+        refuse
+      endif
+      end-filter
+    q
+    save
+- vendor: Huawei
+  before: |
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 10
+    xpl as-path-list XXX_AS_FILTERS
+      origin '123'
+  after: |
+    xpl route-filter XXX
+  patch: |+
+    system-view
+    undo xpl as-path-list XXX_AS_FILTERS
+    xpl route-filter XXX
+      end-filter
+    q
+    save
+- vendor: Huawei
+  before: |
+    xpl route-filter XXX
+  after: |
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 10
+    xpl as-path-list XXX_AS_FILTERS
+      origin '123'
+  patch: |+
+    system-view
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 10
+      endif
+      end-filter
+    xpl as-path-list XXX_AS_FILTERS
+      origin '123'
+      end-list
+    q
+    save
+- vendor: Huawei
+  before: |
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 10
+    xpl as-path-list XXX_AS_FILTERS
+      origin '123'
+  after: |
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 100
+    xpl as-path-list XXX_AS_FILTERS
+      origin '123'
+  patch: |+
+    system-view
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 100
+      endif
+      end-filter
+    q
+    save
+- vendor: Huawei
+  before: |
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 10
+    xpl as-path-list XXX_AS_FILTERS
+      origin '123'
+  after: |
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 10
+      if as-path in YYY_AS_FILTERS then
+        apply local-preference 20
+    xpl as-path-list XXX_AS_FILTERS
+      origin '123'
+  patch: |+
+    system-view
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 10
+      endif
+      if as-path in YYY_AS_FILTERS then
+        apply local-preference 20
+      endif
+      end-filter
+    q
+    save

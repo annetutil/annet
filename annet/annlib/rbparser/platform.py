@@ -1,3 +1,1 @@
-VENDOR_ALIASES = {
-    "h3c": "huawei",
-}
+VENDOR_ALIASES: dict[str, str] = {}

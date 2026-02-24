@@ -3,12 +3,14 @@ from collections.abc import Sequence
 from typing import Any
 
 from annet.generators import PartialGenerator
-from annet.rpl import RouteMap, MatchField, RoutingPolicy
+from annet.rpl import MatchField, RouteMap, RoutingPolicy
+
 from .entities import AsPathFilter
 
 
 def get_used_as_path_filters(
-        as_path_filters: Sequence[AsPathFilter], policies: list[RoutingPolicy],
+    as_path_filters: Sequence[AsPathFilter],
+    policies: list[RoutingPolicy],
 ) -> Sequence[AsPathFilter]:
     filters = {c.name: c for c in as_path_filters}
 
@@ -71,3 +73,27 @@ class AsPathFilterGenerator(PartialGenerator, ABC):
                     else:
                         comma = ""
                     yield "ios-regex", f"'{filter_item}'{comma}"
+
+    def acl_juniper(self, _):
+        return r"""
+        policy-options  %cant_delete
+            as-path ~
+        """
+
+    def _juniper_as_path(self, name: str, as_path_member: str):
+        if not as_path_member.isnumeric():
+            as_path_member = f'"{as_path_member}"'
+        yield "as-path", name, as_path_member
+
+    def run_juniper(self, device: Any):
+        for as_path_filter in self.get_used_as_path_filters(device):
+            # TODO could be implemented via as-path-groups
+            # But we need to provide as_path_filters to policy generator
+            # To select between regular as-path and as-path-groups
+            if len(as_path_filter.filters) > 1:
+                raise NotImplementedError(
+                    f"Multiple elements in as_path_filter {as_path_filter.name} is not supported for Juniper"
+                )
+
+            with self.block("policy-options"):
+                yield from self._juniper_as_path(as_path_filter.name, as_path_filter.filters[0])

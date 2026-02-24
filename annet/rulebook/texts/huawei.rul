@@ -72,6 +72,11 @@ bfd
 
 observe-port *
 
+drop-profile *
+    color *
+    ecn weight
+    ecn
+
 qos local-precedence-queue-map *
 
 qos group %logic=huawei.misc.undo_children
@@ -139,6 +144,7 @@ ssh server key-exchange
 ssh server dh-exchange
 ssh server cipher
 ssh server hmac
+ssh server publickey
 
 ftp client source %logic=huawei.misc.undo_redo
 
@@ -199,9 +205,11 @@ aaa
 
 hwtacacs-server template *
     hwtacacs-server shared-key
+    hwtacacs-server source-ip
 
 hwtacacs server template *
     hwtacacs server shared-key
+    hwtacacs server source-ip
 
 !radius-server template default
 
@@ -272,7 +280,7 @@ interface */Tunnel.+/
     mpls te path
     mpls te tunnel-id
 
-interface *                             %logic=huawei.iface.permanent 
+interface *                             %logic=huawei.iface.permanent
     %if hw.Quidway:
     mac-address trap notification
     %else:
@@ -369,7 +377,7 @@ xpl ~
     ~              %rewrite %global
 
 bgp path-attribute attr-set *
-bgp path-attribute * 
+bgp path-attribute *
 
 bgp %logic=huawei.bgp.undo_commit
     private-4-byte-as
@@ -427,6 +435,12 @@ isis *
 
 error-down auto-recovery cause link-flap
 
+configuration file auto-save backup-to-server server
+configuration file auto-save
+
+
+set save-configuration backup-to-server *
+set save-configuration *
 
 ip route-static default-bfd
 ipv6 route-static default-bfd
@@ -477,6 +491,9 @@ cpu-defend-policy * global
 cpu-defend-policy
 slot *
     cpu-defend-policy
+
+user-interface con 0
+    set authentication password cipher
 
 description %global
 

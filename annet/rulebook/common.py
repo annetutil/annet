@@ -13,7 +13,7 @@ def import_rulebook_function(name):
     for root in rulebook_provider_connector.get().get_root_modules():
         try:
             module = importlib.import_module(f"{root}.{name[:index]}", package=__name__.rsplit(".", 1)[0])
-            return getattr(module, name[index + 1:])
+            return getattr(module, name[index + 1 :])
         except ImportError:
             pass
     raise ImportError(f"Could not import {name}")

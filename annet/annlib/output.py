@@ -16,6 +16,7 @@ import pygments.formatters
 import pygments.lexers.data
 import yaml
 
+
 LABEL_NEW_PREFIX = "new: "
 
 
@@ -54,9 +55,7 @@ def dir_or_file_output(dest, items_count, create_dir=True, suggest_dir=False):
     if os.path.exists(dest):
         is_dir = os.path.isdir(dest)
         if dir_mode and not is_dir:
-            raise EnvironmentError(
-                f"Output set to dir {dest}, but file with the same name is on the way"
-            )
+            raise EnvironmentError(f"Output set to dir {dest}, but file with the same name is on the way")
         dir_mode = dir_mode or is_dir
     elif create_dir and dest not in ("-", ""):
         pdir = dest if dir_mode else os.path.dirname(dest)
@@ -70,11 +69,19 @@ def print_label(label, back_color=colorama.Back.GREEN, file=None):
     if file is None:
         file = sys.stdout
     tty = bool(os.isatty(file.fileno()))
-    print("%s%s# %s %s %s%s%s" % (
-        colorama.Style.BRIGHT * tty, back_color * tty,
-        "-" * 20, label, "-" * 20,
-        colorama.Back.RESET * tty, colorama.Style.RESET_ALL * tty,
-    ), file=file)
+    print(
+        "%s%s# %s %s %s%s%s"
+        % (
+            colorama.Style.BRIGHT * tty,
+            back_color * tty,
+            "-" * 20,
+            label,
+            "-" * 20,
+            colorama.Back.RESET * tty,
+            colorama.Style.RESET_ALL * tty,
+        ),
+        file=file,
+    )
 
 
 def print_err_label(label):
@@ -114,7 +121,7 @@ class Dumpable(abc.ABC):
         pass
 
 
-def print_as_json(data, fh=sys.stdout):
+def print_as_json(data, fh=sys.stdout, highlight=True):
     """
     В выводе dict ключи отсортированы по имени, кроме ключей в OrderedDict,
     которые сохраняют свой оригинальный порядок
@@ -142,8 +149,7 @@ def print_as_json(data, fh=sys.stdout):
         """
 
         def __init__(self, orig):
-            super().__init__((ODictKey(key, index), value)
-                             for (index, (key, value)) in enumerate(orig.items()))
+            super().__init__((ODictKey(key, index), value) for (index, (key, value)) in enumerate(orig.items()))
 
         @staticmethod
         def convert_odicts(data):
@@ -176,17 +182,19 @@ def print_as_json(data, fh=sys.stdout):
             except TypeError:
                 raise TypeError("can't serialize %r to json" % o)
 
-    dump = json.dumps(UnsortableOdict.convert_odicts(data), cls=JsonEncoder,
-                      ensure_ascii=False, indent=4, sort_keys=True) + "\n"
-    if fh.isatty():
+    dump_data = UnsortableOdict.convert_odicts(data)
+    dump_kwargs = dict(cls=JsonEncoder, ensure_ascii=False)
+
+    if fh.isatty() and highlight:
         pygments.highlight(
-            code=dump,
+            code=json.dumps(dump_data, indent=4, sort_keys=True, **dump_kwargs) + "\n",
             lexer=pygments.lexers.data.JsonLexer(),
             formatter=pygments.formatters.TerminalFormatter(bg="dark"),
             outfile=fh,
         )
     else:
-        fh.write(dump)
+        json.dump(dump_data, fh, **dump_kwargs)
+        fh.write("\n")
 
 
 class TextArgs:
@@ -209,7 +217,7 @@ def capture_output(new_stdout: io.BufferedRandom = None, new_stderr: io.Buffered
         (sys.stderr, new_stderr),
     )
     backup = []
-    for (std_stream, new_stream) in streams:
+    for std_stream, new_stream in streams:
         if new_stream is not None:
             new_stream.seek(0)
             new_stream.truncate(0)
@@ -220,7 +228,7 @@ def capture_output(new_stdout: io.BufferedRandom = None, new_stderr: io.Buffered
     try:
         yield
     finally:
-        for (std_fd, backup_stream, stream) in backup:
+        for std_fd, backup_stream, stream in backup:
             backup_stream.flush()
             os.dup2(backup_stream.fileno(), std_fd)
             backup_stream.close()
@@ -237,7 +245,7 @@ def format_file_diff(diff_lines: List[str]) -> List[str]:
     )
     ret = []
     for line in diff_lines:
-        for (check, color) in colors:
+        for check, color in colors:
             if line.startswith(check):
                 ret.append(color + line + colorama.Fore.RESET)
                 break

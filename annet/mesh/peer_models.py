@@ -1,7 +1,8 @@
-from typing import Literal, Annotated, Union, Optional
+from typing import Annotated, Literal, Optional, Union
 
+from ..bgp_models import BFDTimers, PeerFamilyOptions
 from .basemodel import BaseMeshModel, Concat, Unite
-from ..bgp_models import BFDTimers
+
 
 FamilyName = Literal["ipv4_unicast", "ipv6_unicast", "ipv4_labeled_unicast", "ipv6_labeled_unicast", "l2vpn_evpn"]
 
@@ -10,6 +11,7 @@ class _SharedOptionsDTO(BaseMeshModel):
     """
     Options which can be set on connected pair or group of peers
     """
+
     add_path: bool
     multipath: bool
     advertise_irb: bool
@@ -24,6 +26,7 @@ class MeshSession(_SharedOptionsDTO):
     """
     Options which are set on connected pair
     """
+
     asnum: Union[int, str]
     vrf: str
     families: Annotated[set[FamilyName], Unite()]
@@ -39,13 +42,19 @@ class _OptionsDTO(_SharedOptionsDTO):
     """
     Options which can be set on group of peers or peer itself
     """
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("family_options", PeerFamilyOptions())
+        super().__init__(**kwargs)
+
     unnumbered: bool
     rr_client: bool
     next_hop_self: bool
     extended_next_hop: bool
     send_lcommunity: bool
     send_extcommunity: bool
-    import_limit: bool
+    import_limit: Optional[int]
+    import_limit_action: Optional[str]
     teardown_timeout: bool
     redistribute: bool
     passive: bool
@@ -76,6 +85,8 @@ class _OptionsDTO(_SharedOptionsDTO):
     soft_reconfiguration_inbound: bool
     not_active: bool
     mtu: int
+    family_options: PeerFamilyOptions
+    cluster_id: Optional[str]
 
 
 class DirectPeerDTO(MeshSession, _OptionsDTO):

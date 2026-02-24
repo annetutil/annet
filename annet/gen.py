@@ -26,7 +26,6 @@ import tabulate
 from contextlog import get_logger
 
 from annet import generators, implicit, patching, tracing
-from annet.vendors import tabparser
 from annet.annlib import jsontools
 from annet.annlib.rbparser.acl import compile_acl_text
 from annet.cli_args import DeployOptions, GenOptions, ShowGenOptions
@@ -46,7 +45,7 @@ from annet.output import output_driver_connector
 from annet.storage import Device, Storage
 from annet.tracing import tracing_connector
 from annet.types import OldNewResult
-from annet.vendors import registry_connector
+from annet.vendors import registry_connector, tabparser
 
 
 # Вывод всех генераторов вместе.
@@ -207,7 +206,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
 
         if not ctx.args.no_acl:
             acl_rules = generators.compile_acl_text(res.acl_text(), device.hw.vendor)
-            old = (old and patching.apply_acl(old, acl_rules))
+            old = old and patching.apply_acl(old, acl_rules)
 
             new = patching.apply_acl(
                 new,
@@ -217,7 +216,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
             )
             if ctx.args.acl_safe:
                 acl_safe_rules = generators.compile_acl_text(res.acl_safe_text(), device.hw.vendor)
-                safe_old = (old and patching.apply_acl(old, acl_safe_rules))
+                safe_old = old and patching.apply_acl(old, acl_safe_rules)
                 safe_new = patching.apply_acl(
                     safe_new,
                     acl_safe_rules,
@@ -227,7 +226,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
 
         filter_acl_rules = build_filter_acl(filterer, device, ctx.stdin, ctx.args, ctx.config)
         if filter_acl_rules is not None:
-            old = (old and patching.apply_acl(old, filter_acl_rules, fatal_acl=False))
+            old = old and patching.apply_acl(old, filter_acl_rules, fatal_acl=False)
             new = patching.apply_acl(
                 new,
                 filter_acl_rules,
@@ -246,8 +245,9 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
     if not ctx.no_new:
         if device in ctx.fetched_packages:
             if ctx.args.required_packages_check:
-                errors = generators.check_entire_generators_required_packages(ctx.gens.entire[device.fqdn],
-                                                                              ctx.fetched_packages[device])
+                errors = generators.check_entire_generators_required_packages(
+                    ctx.gens.entire[device.fqdn], ctx.fetched_packages[device]
+                )
                 if errors:
                     error_msg = "; ".join(errors)
                     get_logger(host=device.hostname).error(error_msg)
@@ -259,38 +259,28 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
 
         entire_results = res.entire_results
         json_fragment_results = res.json_fragment_results
-        old_json_fragment_files = old_files.json_fragment_files
 
         new_files = res.new_files()
-        new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files)
 
-        filters: List[str] = []
-        filters_text = build_filter_text(filterer, device, ctx.stdin, ctx.args, ctx.config)
-        if filters_text:
-            filters = filters_text.split("\n")
+        filters = None
+        if filters_text := build_filter_text(filterer, device, ctx.stdin, ctx.args, ctx.config):
+            filters = filters_text.removesuffix("\n").split("\n")
 
-            for file_name in new_json_fragment_files:
-                if new_json_fragment_files.get(file_name) is not None:
-                    new_json_fragment_files = _update_json_config(
-                        new_json_fragment_files,
-                        file_name,
-                        jsontools.apply_acl_filters(new_json_fragment_files[file_name][0], filters)
-                    )
-            for file_name in old_json_fragment_files:
-                if old_json_fragment_files.get(file_name) is not None:
-                    old_json_fragment_files[file_name] = jsontools.apply_acl_filters(old_json_fragment_files[file_name], filters)
+        old_json_fragment_files = old_files.json_fragment_files.copy()
+        new_json_fragment_files = res.new_json_fragment_files(
+            old_json_fragment_files,
+            use_acl=not ctx.args.no_acl,
+            filters=filters,
+        )
 
         if ctx.args.acl_safe:
             safe_new_files = res.new_files(safe=True)
-            safe_new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files, safe=True)
-            if filters:
-                for file_name in safe_new_json_fragment_files:
-                    if safe_new_json_fragment_files.get(file_name):
-                        safe_new_json_fragment_files = _update_json_config(
-                            safe_new_json_fragment_files,
-                            file_name,
-                            jsontools.apply_acl_filters(safe_new_json_fragment_files[file_name][0], filters)
-                        )
+            safe_new_json_fragment_files = res.new_json_fragment_files(
+                old_json_fragment_files,
+                use_acl=not ctx.args.no_acl,
+                safe=True,
+                filters=filters,
+            )
 
     if ctx.args.profile:
         perf = res.perf_mesures()
@@ -322,13 +312,6 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
     )
 
 
-def _update_json_config(json_files, file_name, new_config):
-    file = list(json_files[file_name])
-    file[0] = new_config
-    json_files[file_name] = tuple(file)
-    return json_files
-
-
 @dataclasses.dataclass
 class DeviceDownloadedFiles:
     # map file path to file content for entire generators
@@ -342,9 +325,9 @@ class DeviceDownloadedFiles:
 
 
 def split_downloaded_files(
-        device_flat_files: Dict[str, Optional[str]],
-        gens: DeviceGenerators,
-        device: Device,
+    device_flat_files: Dict[str, Optional[str]],
+    gens: DeviceGenerators,
+    device: Device,
 ) -> DeviceDownloadedFiles:
     """Split downloaded files per generator type: entire/json_fragment."""
     ret = DeviceDownloadedFiles()
@@ -364,9 +347,9 @@ def split_downloaded_files(
 
 
 def split_downloaded_files_multi_device(
-        flat_downloaded_files: Dict[Device, Dict[str, Optional[str]]],
-        gens: DeviceGenerators,
-        devices: List[Device],
+    flat_downloaded_files: Dict[Device, Dict[str, Optional[str]]],
+    gens: DeviceGenerators,
+    devices: List[Device],
 ) -> Dict[str, DeviceDownloadedFiles]:
     """Split downloaded files per generator type: entire/json_fragment."""
     return {
@@ -441,8 +424,12 @@ def old_new(
 
 @tracing.function
 def old_raw(
-        args: GenOptions, loader: Loader, config, stdin=None,
-        do_files_download=False, use_mesh=True,
+    args: GenOptions,
+    loader: Loader,
+    config,
+    stdin=None,
+    do_files_download=False,
+    use_mesh=True,
 ) -> Iterable[Tuple[Device, Union[str, Dict[str, str]]]]:
     device_gens = loader.resolve_gens(loader.devices)
     running, failed_running = _old_resolve_running(config, loader.devices)
@@ -477,14 +464,13 @@ def old_raw(
             if files.entire_files:
                 yield device, files.entire_files
             if files.json_fragment_files:
-                yield device, {
-                    path: jsontools.format_json(data)
-                    for path, data in files.json_fragment_files.items()
-                }
+                yield device, {path: jsontools.format_json(data) for path, data in files.json_fragment_files.items()}
 
 
 @tracing.function
-def worker(device_id, args: ShowGenOptions, stdin, loader: "Loader", filterer: Filterer) -> Generator[Tuple[str, str, bool], None, None]:
+def worker(
+    device_id, args: ShowGenOptions, stdin, loader: "Loader", filterer: Filterer
+) -> Generator[Tuple[str, str, bool], None, None]:
     span = tracing_connector.get().get_current_span()
     if span:
         span.set_attribute("device.id", device_id)
@@ -506,25 +492,22 @@ def worker(device_id, args: ShowGenOptions, stdin, loader: "Loader", filterer: F
         device = res.device
         if new is None:
             continue
-        for (entire_path, (entire_data, _)) in sorted(new_files.items(), key=itemgetter(0)):
+        for entire_path, (entire_data, _) in sorted(new_files.items(), key=itemgetter(0)):
             yield (output_driver.entire_config_dest_path(device, entire_path), entire_data, False)
 
-        for (path, (data, _)) in sorted(new_file_fragments.items(), key=itemgetter(0)):
+        for path, (data, _) in sorted(new_file_fragments.items(), key=itemgetter(0)):
             dumped_data = json.dumps(data, indent=4, sort_keys=True, ensure_ascii=False)
             yield (output_driver.entire_config_dest_path(device, path), dumped_data, False)
         # Consider result of partial run empty and create an empty dest file
         # only if there are some acl rules that has been matched.
         # Otherwise treat it as if no supported generators have been found.
-        acl_rules = res.get_acl_rules(args.acl_safe)
-        if acl_rules:
+        if args.no_acl or res.get_acl_rules(args.acl_safe):
             orderer = patching.Orderer.from_hw(device.hw)
-            yield (output_driver.cfg_file_names(device)[0],
-                   format_config_blocks(
-                       orderer.order_config(new),
-                       device.hw,
-                       args.indent
-                   ),
-                   False)
+            yield (
+                output_driver.cfg_file_names(device)[0],
+                format_config_blocks(orderer.order_config(new), device.hw, args.indent),
+                False,
+            )
 
 
 @dataclasses.dataclass
@@ -557,7 +540,8 @@ def _get_files_to_download(devices: List[Device], gens: DeviceGenerators) -> Dic
 def _print_perf(gen_type, perf):
     print(file=sys.stderr)
     print(
-        tabulate.tabulate([
+        tabulate.tabulate(
+            [
                 (
                     (gen if not method else None),
                     (method or "." * 30),
@@ -566,17 +550,17 @@ def _print_perf(gen_type, perf):
                     (percentile(stat, 0.95, itemgetter("time")) if stat else None),
                     (max(map(itemgetter("time"), stat)) if stat else None),
                     (len(stat) if stat else None),
-                    (len(list(filter(
-                                     lambda item: item in ["call", "disk_write"],
-                                     map(itemgetter("op"), stat)))) if stat else None),
+                    (
+                        len(list(filter(lambda item: item in ["call", "disk_write"], map(itemgetter("op"), stat))))
+                        if stat
+                        else None
+                    ),
                 )
-
                 for (gen, gen_perf) in sorted(
                     perf.items(),
                     key=(lambda item: item[1]["total"]),
                     reverse=True,
                 )
-
                 for (method, stat) in sorted(
                     [(None, [{"time": gen_perf["total"], "op": None}])] + list(gen_perf["rt"].items()),
                     key=(lambda item: sum(map(itemgetter("time"), item[1]))),
@@ -584,7 +568,8 @@ def _print_perf(gen_type, perf):
                 )
             ],
             [gen_type + "-Generator", "RT", "Total", "Min", "95%", "Max", "Calls", "Direct"],
-            tablefmt="orgtbl", floatfmt=".4f",
+            tablefmt="orgtbl",
+            floatfmt=".4f",
         ),
         file=sys.stderr,
     )
@@ -646,10 +631,12 @@ def format_config_blocks(config, hw, indent, _level=0):
 def format_files(files):
     lines = []
     for path in sorted(files):
-        lines.extend((
-            "# %s" % path,
-            files[path],
-        ))
+        lines.extend(
+            (
+                "# %s" % path,
+                files[path],
+            )
+        )
     return "\n".join(lines)
 
 
@@ -681,8 +668,7 @@ def _old_new_get_config_cli(ctx: OldNewDeviceContext, device: Device) -> str:
     elif ctx.config == "running":
         text = ctx.running.get(device)
         if text is None:
-            exc = (ctx.failed_running.get(device) or
-                   Exception("I can't get device config and I don't know why"))
+            exc = ctx.failed_running.get(device) or Exception("I can't get device config and I don't know why")
             get_logger(host=device.hostname).error("config error %r", exc)
             raise exc
     elif ctx.config == "-":
@@ -714,7 +700,7 @@ def _old_new_get_config_files(ctx: OldNewDeviceContext, device: Device) -> Devic
     for attr in ("failed_files", "failed_running", "failed_packages"):
         if device in getattr(ctx, attr):
             exc = getattr(ctx, attr).get(device)
-            exc = exc or Exception(f"I can't get device {attr[len('failed_'):]} and I don't know why")
+            exc = exc or Exception(f"I can't get device {attr[len('failed_') :]} and I don't know why")
             get_logger(host=device.hostname).error(str(exc))
             raise exc
 
@@ -769,11 +755,12 @@ def _old_resolve_running(config: str, devices: List[Device]) -> Tuple[Dict[Devic
 
 
 @tracing.function
-def _old_resolve_files(config: str,
-                       devices: List[Device],
-                       gens: DeviceGenerators,
-                       do_files_download: bool,
-                       ) -> Tuple[Dict[Device, Dict[str, Optional[str]]], Dict[Device, Exception]]:
+def _old_resolve_files(
+    config: str,
+    devices: List[Device],
+    gens: DeviceGenerators,
+    do_files_download: bool,
+) -> Tuple[Dict[Device, Dict[str, Optional[str]]], Dict[Device, Exception]]:
     downloaded_files, failed_files = {}, {}
     if do_files_download and config == "running":
         files_to_download = _get_files_to_download(devices, gens)
@@ -787,9 +774,10 @@ def _old_resolve_files(config: str,
 
 class Loader:
     def __init__(
-            self, *storages: Storage,
-            args: GenOptions,
-            no_empty_warning: bool = False,
+        self,
+        *storages: Storage,
+        args: GenOptions,
+        no_empty_warning: bool = False,
     ) -> None:
         self._args = args
         self._storages = storages
@@ -819,10 +807,7 @@ class Loader:
 
     @property
     def device_fqdns(self) -> Dict[Any, str]:
-        return {
-            device_id: d.fqdn
-            for device_id, d in self._devices_map.items()
-        }
+        return {device_id: d.fqdn for device_id, d in self._devices_map.items()}
 
     def get_device(self, device_id: Any) -> Device:
         if device_id not in self._devices_map:

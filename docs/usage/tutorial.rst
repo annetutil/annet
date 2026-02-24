@@ -61,13 +61,13 @@ Out-of-band management IP addresses are:
 Netbox
 ^^^^^^
 
-.. note:: Currently, version 4.2 is supported (2025q2)
+.. note:: Currently, version 4.3 is supported (2025q3)
 
 If you prefer to use your own Netbox installation, you can skip this section. However, make sure to read the notes at the beginning of the next section.
 
 The easiest way to install Netbox is to use the dockerized version.
 
-.. note:: Netbox-docker version 3.2.0 are used in the tutorial.
+.. note:: Netbox-docker version 3.3.0 are used in the tutorial.
 
 Clone repo with dockerized version of netbox. If you run netbox on weak hardware you can change timeouts in ``docker-compose.yml``, e.g. multiply all the timeouts by 10.
 
@@ -75,7 +75,7 @@ Clone repo with dockerized version of netbox. If you run netbox on weak hardware
 
   git clone https://github.com/netbox-community/netbox-docker.git
   cd netbox-docker
-  git fetch --tags && git checkout tags/3.2.0
+  git fetch --tags && git checkout tags/3.3.0
   sed -i.bak 's/0s/00s/g' docker-compose.yml
 
 Docker Compose Override File
@@ -89,8 +89,8 @@ Docker Compose Override File
   4. The docker-compose file specifies the cEOS version. If you use a different version, update the file accordingly.
   5. If you use your own Netbox, you need to:
 
-     - Create a directory ``netbox-docker``;
-     - Change ``docker-compose.override.yml`` to ``docker-compose.yml``;
+     - Clone Netbox-docker repository into directory ``netbox-docker``;
+     - Change name ``docker-compose.override.yml`` file to ``docker-compose.yml``;
      - Remove the ``services/netbox`` section from the docker-compose file;
      - Remove the ``depends_on`` section from the cEOS services.
 
@@ -194,7 +194,7 @@ Go to to root of your folder and create folders for cEOS configuration files and
   end
   EOF
 
-Crete docker-compose override file.
+Create docker-compose override file.
 
 .. code:: bash
 
@@ -330,7 +330,7 @@ Create a superuser using the script:
 
 .. code:: none
 
-  docker-compose run netbox python manage.py createsuperuser
+  docker compose run netbox python manage.py createsuperuser
 
 For consistency, use ``annet`` for both the login and password. You can change these later if needed.
 
@@ -918,6 +918,7 @@ Look at the list of generators:
 Look at the diff:
 
 .. code:: bash
+
   annet diff r1.lab r1.lab r2.lab r3.lab
 
 .. code:: diff
@@ -1054,7 +1055,7 @@ Create an init file ``generators/mesh_views/__init__.py``:
   registry = MeshRulesRegistry(match_short_name=True)
   registry.include(routers.registry)
 
-Now, we should use mesh data in generators. First, update the L3Addresses generator ``generators/l3_addresses.py``:
+Now, we should use mesh data in generators. First, update the IpAddress generator ``generators/ip_address.py``:
 
 .. code:: python
 
@@ -1369,7 +1370,7 @@ To do this, update the file ``generators/mesh_views/routers.py``:
       router2.export_policy = "ROUTERS_EXPORT"
       router2.send_community = True
 
-You'll notice that the redistribution has a link to the policy ``IMPORT_CONNECTED``. This can be defined by a new generator as plain config, but Annet has a special tool for working with policies. Currently, only Huawei VRP, Arista EOS, and FRR (2025q2) are supported, but we expect this to be updated soon.
+You'll notice that the redistribution has a link to the policy ``IMPORT_CONNECTED``. This can be defined by a new generator as plain config, but Annet has a special tool for working with policies. Currently, only Huawei VRP, Arista EOS, and FRR (2025q3) are supported, but we expect this to be updated soon.
 
 First, create a new module by creating an empty file ``generators/rpl_views/__init__.py``. This module will contain policies and their elements.
 
@@ -2137,7 +2138,7 @@ Also we should add to the BGP BGP generator update source interface support — 
                   yield "neighbor", peer.addr, "remote-as", peer.remote_as
 
 
-What else? We need to configure an IGP to provide connectivity between loopbacks! Unfortunately, the mesh doesn't support any protocols except BGP for now (2025q2). We need to assign IP addresses to interfaces and create a new generator for the ISIS protocol.
+What else? We need to configure an IGP to provide connectivity between loopbacks! Unfortunately, the mesh doesn't support any protocols except BGP for now (2025q3). We need to assign IP addresses to interfaces and create a new generator for the ISIS protocol.
 
 Let's assign IP addresses following the table:
 

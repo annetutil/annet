@@ -2,6 +2,7 @@ from logging import getLogger
 
 from annet.annlib.netdev.views.hardware import HardwareView
 
+
 logger = getLogger(__name__)
 
 
@@ -27,6 +28,8 @@ def get_breed(manufacturer: str, model: str):
         return "cuml2"
     elif hw.Juniper:
         return "jun10"
+    elif hw.Cisco.NCS:
+        return "ios12"
     elif hw.Cisco.Nexus:
         return "nxos"
     elif hw.Cisco:

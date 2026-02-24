@@ -1,11 +1,12 @@
 from typing import Annotated, Optional, Union
 
-from annet.bgp_models import Family, Redistribute
-from .basemodel import BaseMeshModel, Concat, DictMerge, Merge, KeyDefaultDict
+from annet.bgp_models import Aggregate, Family, Redistribute
+
+from .basemodel import BaseMeshModel, Concat, DictMerge, KeyDefaultDict, Merge
 from .peer_models import MeshPeerGroup
 
 
-class Aggregate(BaseMeshModel):
+class _Aggregate(BaseMeshModel):
     policy: str
     routes: Annotated[tuple[str, ...], Concat()]
     as_path: str
@@ -17,13 +18,16 @@ class Aggregate(BaseMeshModel):
 
 class FamilyOptions(BaseMeshModel):
     def __init__(self, **kwargs):
-        kwargs.setdefault("aggregate", Aggregate())
+        kwargs.setdefault("aggregate", _Aggregate())
         super().__init__(**kwargs)
+
     family: Family
     vrf_name: str
     multipath: int
     global_multipath: int
-    aggregate: Annotated[Aggregate, Merge()]
+    aggregate: Annotated[_Aggregate, Merge()]  # use `aggregates` instead
+    aggregates: Annotated[tuple[Aggregate, ...], Concat()]
+    af_loops: int
     redistributes: Annotated[tuple[Redistribute, ...], Concat()]
     allow_default: bool
     aspath_relax: bool
@@ -34,6 +38,8 @@ class FamilyOptions(BaseMeshModel):
     rib_group: bool
     loops: int
     advertise_bgp_static: bool
+    import_policy: Optional[str]
+    export_policy: Optional[str]
 
 
 class _FamiliesMixin:
@@ -46,6 +52,7 @@ class _FamiliesMixin:
         kwargs.setdefault("ipv6_labeled_unicast", FamilyOptions(family="ipv6_labeled_unicast"))
         kwargs.setdefault("l2vpn_evpn", FamilyOptions(family="l2vpn_evpn"))
         super().__init__(**kwargs)
+
     ipv4_unicast: Annotated[FamilyOptions, Merge()]
     ipv6_unicast: Annotated[FamilyOptions, Merge()]
     ipv4_vpn_unicast: Annotated[FamilyOptions, Merge()]
@@ -104,6 +111,7 @@ class GlobalOptionsDTO(_FamiliesMixin, BaseMeshModel):
     loops: int
     multipath: int
     router_id: str
+    cluster_id: Optional[str]
     vrf: Annotated[dict[str, VrfOptions], DictMerge(Merge())]
     groups: Annotated[dict[str, MeshPeerGroup], DictMerge(Merge())]
     l2vpn: Annotated[dict[str, L2VpnOptions], DictMerge(Merge())]

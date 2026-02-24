@@ -30,11 +30,17 @@ def _process_vlandb(rule, key, diff, hw, explicit_changing, multi_chunk):
     if not prefix:
         prefix = prefix2
 
-    if len(diff[Op.ADDED]) == 1 and len(new) == 0:
-        # switchport trunk allowed vlan none
-        yield (True, "%s none" % prefix, None)
-        return
-    for vlan_id in ((set(old_blocks.keys()) - set(new_blocks)) & new):
+    if explicit_changing and not new:
+        if diff[Op.ADDED] and not diff[Op.UNCHANGED]:
+            # switchport trunk allowed vlan none
+            yield (True, "%s none" % prefix, None)
+            return
+        if diff[Op.REMOVED] and not diff[Op.UNCHANGED]:
+            # no switchport trunk allowed vlan
+            yield (False, "no %s" % prefix, None)
+            return
+
+    for vlan_id in (set(old_blocks.keys()) - set(new_blocks)) & new:
         # Удалено содержимое блока vlan, но сам влан остался
         yield (True, "%s %s" % (prefix, vlan_id), old_blocks[vlan_id])
 
@@ -47,12 +53,23 @@ def _process_vlandb(rule, key, diff, hw, explicit_changing, multi_chunk):
     if removed:
         collapsed = collapse_vlandb(removed, hw.Catalyst)
         for chunk in _chunked(collapsed, multi_chunk):
-            yield (False, "no %s%s%s" % (prefix, " remove " if explicit_changing else " ", ",".join(chunk)), None)
+            if explicit_changing:
+                yield (True, "%s%s%s" % (prefix, " remove ", ",".join(chunk)), None)
+            else:
+                yield (False, "no %s%s%s" % (prefix, " ", ",".join(chunk)), None)
 
     if added:
         collapsed = collapse_vlandb(added, hw.Catalyst)
+        if explicit_changing and not old:
+            # by default all vlans are allowed
+            # switchport trunk allowed vlan none
+            yield (True, "%s none" % prefix, None)
         for chunk in _chunked(collapsed, multi_chunk):
-            yield (True, "%s%s%s" % (prefix, " add " if explicit_changing else " ", ",".join(chunk)), None)
+            if explicit_changing:
+                yield (True, "%s%s%s" % (prefix, " add ", ",".join(chunk)), None)
+            else:
+                yield (True, "%s%s%s" % (prefix, " ", ",".join(chunk)), None)
+
     if new_blocks:
         for vlan_id, block in new_blocks.items():
             yield (True, "%s %s" % (prefix, vlan_id), block)
@@ -60,7 +77,7 @@ def _process_vlandb(rule, key, diff, hw, explicit_changing, multi_chunk):
 
 def _chunked(items, size):
     for offset in range(0, len(items), size):
-        yield items[offset:offset + size]
+        yield items[offset : offset + size]
 
 
 def _parse_vlancfg_actions(actions):

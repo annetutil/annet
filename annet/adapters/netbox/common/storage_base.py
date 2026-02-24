@@ -1,17 +1,26 @@
 import ssl
 from ipaddress import ip_interface
 from logging import getLogger
-from typing import Any, Optional, List, Union, Dict, cast, Generic, TypeVar
+from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union, cast
 
 from annetbox.v37 import models as api_models
+from requests import Session
+from requests_cache import CachedSession, SQLiteCache
 
-from annet.adapters.netbox.common.query import NetboxQuery, FIELD_VALUE_SEPARATOR
+from annet.adapters.netbox.common.query import FIELD_VALUE_SEPARATOR, NetboxQuery
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
 from annet.storage import Storage
+
 from .adapter import NetboxAdapter
 from .models import (
-    IpAddress, Interface, NetboxDevice, Prefix, FHRPGroup, FHRPGroupAssignment,
+    FHRPGroup,
+    FHRPGroupAssignment,
+    Interface,
+    IpAddress,
+    NetboxDevice,
+    Prefix,
 )
+
 
 logger = getLogger(__name__)
 NetboxDeviceT = TypeVar("NetboxDeviceT", bound=NetboxDevice)
@@ -20,7 +29,8 @@ IpAddressT = TypeVar("IpAddressT", bound=IpAddress)
 PrefixT = TypeVar("PrefixT", bound=Prefix)
 FHRPGroupT = TypeVar("FHRPGroupT", bound=FHRPGroup)
 FHRPGroupAssignmentT = TypeVar(
-    "FHRPGroupAssignmentT", bound=FHRPGroupAssignment,
+    "FHRPGroupAssignmentT",
+    bound=FHRPGroupAssignment,
 )
 
 
@@ -45,6 +55,7 @@ class BaseNetboxStorage(
         token = ""
         self.exact_host_filter = False
         threads = 1
+        session_factory = None
         if opts:
             if opts.insecure:
                 ctx = ssl.create_default_context()
@@ -54,18 +65,30 @@ class BaseNetboxStorage(
             token = opts.token
             threads = opts.threads
             self.exact_host_filter = opts.exact_host_filter
-        self.netbox = self._init_adapter(url=url, token=token, ssl_context=ctx, threads=threads)
+            self.all_hosts_filter = opts.all_hosts_filter
+
+            if opts.cache_path:
+                session_factory = cached_requests_session(opts)
+
+        self.netbox = self._init_adapter(
+            url=url,
+            token=token,
+            ssl_context=ctx,
+            threads=threads,
+            session_factory=session_factory,
+        )
         self._all_fqdns: Optional[list[str]] = None
         self._id_devices: dict[int, NetboxDeviceT] = {}
         self._name_devices: dict[str, NetboxDeviceT] = {}
         self._short_name_devices: dict[str, NetboxDeviceT] = {}
 
     def _init_adapter(
-            self,
-            url: str,
-            token: str,
-            ssl_context: Optional[ssl.SSLContext],
-            threads: int,
+        self,
+        url: str,
+        token: str,
+        ssl_context: Optional[ssl.SSLContext],
+        threads: int,
+        session_factory: Callable[[Session], Session] | None = None,
     ) -> NetboxAdapter[NetboxDeviceT, InterfaceT, IpAddressT, PrefixT, FHRPGroupT, FHRPGroupAssignmentT]:
         raise NotImplementedError()
 
@@ -76,27 +99,23 @@ class BaseNetboxStorage(
         pass
 
     def resolve_object_ids_by_query(self, query: NetboxQuery):
-        return [
-            d.id for d in self._load_devices(query)
-        ]
+        return [d.id for d in self._load_devices(query)]
 
     def resolve_fdnds_by_query(self, query: NetboxQuery):
-        return [
-            d.name for d in self._load_devices(query)
-        ]
+        return [d.name for d in self._load_devices(query)]
 
     def resolve_all_fdnds(self) -> list[str]:
         if self._all_fqdns is None:
-            self._all_fqdns = self.netbox.list_all_fqdns()
+            self._all_fqdns = self.netbox.list_fqdns(self.all_hosts_filter)
         return self._all_fqdns
 
     def make_devices(
-            self,
-            query: Union[NetboxQuery, list],
-            preload_neighbors=False,
-            use_mesh=None,
-            preload_extra_fields=False,
-            **kwargs,
+        self,
+        query: Union[NetboxQuery, list],
+        preload_neighbors=False,
+        use_mesh=None,
+        preload_extra_fields=False,
+        **kwargs,
     ) -> List[NetboxDeviceT]:
         if isinstance(query, list):
             query = NetboxQuery.new(query)
@@ -144,9 +163,7 @@ class BaseNetboxStorage(
         interface_mapping = {i.id: i for i in interfaces if i.count_fhrp_groups}
         assignments = self.netbox.list_fhrp_group_assignments(list(interface_mapping))
         group_ids = {r.fhrp_group_id for r in assignments}
-        groups = {
-            g.id: g for g in self.netbox.list_fhrp_groups(list(group_ids))
-        }
+        groups = {g.id: g for g in self.netbox.list_fhrp_groups(list(group_ids))}
         for assignment in assignments:
             assignment.group = groups[assignment.fhrp_group_id]
             interface_mapping[assignment.interface_id].fhrp_groups.append(assignment)
@@ -174,8 +191,11 @@ class BaseNetboxStorage(
             self._short_name_devices[short_name] = device
 
     def get_device(
-            self, obj_id, preload_neighbors=False, use_mesh=None,
-            **kwargs,
+        self,
+        obj_id,
+        preload_neighbors=False,
+        use_mesh=None,
+        **kwargs,
     ) -> NetboxDeviceT:
         if obj_id in self._id_devices:
             return self._id_devices[obj_id]
@@ -189,9 +209,9 @@ class BaseNetboxStorage(
         pass
 
     def search_connections(
-            self,
-            device: NetboxDeviceT,
-            neighbor: NetboxDeviceT,
+        self,
+        device: NetboxDeviceT,
+        neighbor: NetboxDeviceT,
     ) -> list[tuple[InterfaceT, InterfaceT]]:
         if device.storage is not self:
             raise ValueError("device does not belong to this storage")
@@ -258,3 +278,17 @@ def parse_glob(exact_host_filter: bool, query: NetboxQuery) -> dict[str, list[st
         else:
             query_groups["name__ic"] = [_hostname_dot_hack(name) for name in names]
     return query_groups
+
+
+def cached_requests_session(opts: NetboxStorageOpts) -> Callable[[Session], Session]:
+    def session_factory(session: Session) -> Session:
+        backend = SQLiteCache(db_path=opts.cache_path)
+        if opts.recache:
+            backend.clear()
+        return CachedSession.wrap(
+            session,
+            backend=backend,
+            expire_after=opts.cache_ttl,
+        )
+
+    return session_factory

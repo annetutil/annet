@@ -3,9 +3,9 @@ import re
 from collections import OrderedDict as odict
 
 from annet.annlib.lib import jun_activate, jun_is_inactive, merge_dicts
-from annet.vendors.tabparser import JuniperFormatter
 from annet.annlib.types import Op
 from annet.rulebook import common
+from annet.vendors.tabparser import JuniperFormatter
 
 
 def comment_processor(item: common.DiffItem):
@@ -42,21 +42,11 @@ def inactive_blocks(diff_foo):
             inactive_pre = odict([(jun_activate(k), v) for k, v in diff_pre.items() if jun_is_inactive(k)])
             merged_pre = merge_dicts(diff_pre, inactive_pre)
 
-            diff = diff_foo(
-                strip_toplevel_inactives(old),
-                strip_toplevel_inactives(new),
-                merged_pre,
-                *args, **kwargs
-            )
+            diff = diff_foo(strip_toplevel_inactives(old), strip_toplevel_inactives(new), merged_pre, *args, **kwargs)
 
             for activated in [k for k in old_inactives if k in new]:
                 diff.append(
-                    common.DiffItem(
-                        Op.ADDED,
-                        activate_cmd(activated, merged_pre),
-                        [],
-                        diff_pre[activated]["match"]
-                    )
+                    common.DiffItem(Op.ADDED, activate_cmd(activated, merged_pre), [], diff_pre[activated]["match"])
                 )
 
             for deactivated in [k for k in new_inactives if k not in old_inactives]:
@@ -64,19 +54,13 @@ def inactive_blocks(diff_foo):
                 if deactivated not in diff_pre:
                     diff = [
                         common.DiffItem(
-                            Op.ADDED,
-                            deactivate_cmd(deactivated, merged_pre),
-                            [],
-                            inactive_pre[deactivated]["match"]
+                            Op.ADDED, deactivate_cmd(deactivated, merged_pre), [], inactive_pre[deactivated]["match"]
                         )
                     ]
                 else:
                     diff.append(
                         common.DiffItem(
-                            Op.ADDED,
-                            deactivate_cmd(deactivated, merged_pre),
-                            [],
-                            diff_pre[deactivated]["match"]
+                            Op.ADDED, deactivate_cmd(deactivated, merged_pre), [], diff_pre[deactivated]["match"]
                         )
                     )
 

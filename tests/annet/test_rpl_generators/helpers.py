@@ -2,14 +2,22 @@ from collections.abc import Iterator
 from typing import Any, Sequence
 from unittest.mock import Mock
 
-from annet.vendors.tabparser import parse_to_tree
 from annet.rpl import RouteMap, RoutingPolicy
 from annet.rpl_generators import (
-    IpPrefixList, CumulusPolicyGenerator, RoutingPolicyGenerator, RDFilter, CommunityList, AsPathFilterGenerator,
-    AsPathFilter,  RDFilterFilterGenerator, PrefixListFilterGenerator, CommunityListGenerator
+    AsPathFilter,
+    AsPathFilterGenerator,
+    CommunityList,
+    CommunityListGenerator,
+    CumulusPolicyGenerator,
+    IpPrefixList,
+    PrefixListFilterGenerator,
+    RDFilter,
+    RDFilterFilterGenerator,
+    RoutingPolicyGenerator,
 )
-
 from annet.vendors import registry_connector
+from annet.vendors.tabparser import parse_to_tree
+
 from .. import MockDevice
 
 
@@ -41,11 +49,20 @@ def cumulus():
         "pc",
     )
 
+
 def iosxr():
     return MockDevice(
         "Cisco 8712-MOD-M",
         "Cisco IOS XR Release 7.4.2",
         "iosxr",
+    )
+
+
+def juniper():
+    return MockDevice(
+        "Juniper MX304",
+        "JUNOS 22.4R3-S4.5",
+        "juniper",
     )
 
 

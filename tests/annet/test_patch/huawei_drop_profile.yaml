@@ -1,0 +1,166 @@
+# https://support.huawei.com/enterprise/en/doc/EDOC1100198444/7bb5ba83/congestion-avoidance-and-congestion-management-commands#EN-US_CLIREF_0141119872
+#
+# drop-profile <>
+#   ecn { buffer-size low-limit low-buffer-size high-limit high-buffer-size | buffer-size cell low-limit low-buffer-cell-size high-limit high-buffer-cell-size | low-limit low-limit-percentage high-limit high-limit-percentage } discard-percentage discard-percentage-value
+#   undo ecn
+#
+#   ecn weight <weight-value>
+#   undo ecn weight [ weight-value ]
+#
+#   color { green | non-tcp | red | yellow } { buffer-size low-limit low-buffer-size high-limit high-buffer-size | buffer-size cell low-limit low-buffer-cell-size high-limit high-buffer-cell-size | low-limit low-limit-percentage high-limit high-limit-percentage } discard-percentage discard-percentage
+#   undo color { green | non-tcp | red | yellow }
+
+- vendor: Huawei CE
+  diff : |
+    + drop-profile ECN
+      + ecn low-limit 80 high-limit 95 discard-percentage 100
+      + ecn weight 10
+  patch: |
+    system-view
+    drop-profile ECN
+      ecn low-limit 80 high-limit 95 discard-percentage 100
+      ecn weight 10
+      quit
+    commit
+    q
+    save
+
+# "ecn weight" will stay
+- vendor: Huawei CE
+  diff: |
+    drop-profile ECN
+      - ecn low-limit 80 high-limit 95 discard-percentage 100
+      ecn weight 10
+  patch: |
+    system-view
+    drop-profile ECN
+      undo ecn
+      quit
+    commit
+    q
+    save
+
+- vendor: Huawei CE
+  diff : |
+    drop-profile ECN
+      ecn low-limit 80 high-limit 95 discard-percentage 100
+      - ecn weight 10
+  patch: |
+    system-view
+    drop-profile ECN
+      undo ecn weight
+      quit
+    commit
+    q
+    save
+
+- vendor: Huawei CE
+  diff: |
+    drop-profile ECN
+      ecn low-limit 80 high-limit 95 discard-percentage 100
+      - ecn weight 10
+      + ecn weight 8
+  patch: |
+    system-view
+    drop-profile ECN
+      ecn weight 8
+      quit
+    commit
+    q
+    save
+
+
+- vendor: Huawei CE
+  diff: |
+    drop-profile ECN
+      - ecn low-limit 80 high-limit 95 discard-percentage 100
+      + ecn buffer-size low-limit 150000 high-limit 1500000 discard-percentage 100
+  patch: |
+    system-view
+    drop-profile ECN
+      ecn buffer-size low-limit 150000 high-limit 1500000 discard-percentage 100
+      quit
+    commit
+    q
+    save
+
+
+- vendor: Huawei CE
+  diff: |
+    drop-profile ECN
+      - ecn low-limit 80 high-limit 95 discard-percentage 100
+      - ecn weight 10
+  patch: |
+    system-view
+    drop-profile ECN
+      undo ecn
+      undo ecn weight
+      quit
+    commit
+    q
+    save
+
+- vendor: Huawei CE
+  diff: |
+    - drop-profile ECN
+      - ecn low-limit 80 high-limit 95 discard-percentage 100
+      - ecn weight 10
+  patch: |
+    system-view
+    undo drop-profile ECN
+    commit
+    q
+    save
+
+
+- vendor: Huawei CE
+  diff: |
+    + drop-profile WRED
+      + color green low-limit 80 high-limit 100 discard-percentage 10
+      + color yellow low-limit 60 high-limit 80 discard-percentage 20
+      + color red low-limit 40 high-limit 60 discard-percentage 40
+      + color non-tcp low-limit 40 high-limit 60 discard-percentage 40
+  patch: |
+    system-view
+    drop-profile WRED
+      color green low-limit 80 high-limit 100 discard-percentage 10
+      color yellow low-limit 60 high-limit 80 discard-percentage 20
+      color red low-limit 40 high-limit 60 discard-percentage 40
+      color non-tcp low-limit 40 high-limit 60 discard-percentage 40
+      quit
+    commit
+    q
+    save
+
+- vendor: Huawei CE
+  diff: |
+    drop-profile WRED
+      - color green low-limit 80 high-limit 100 discard-percentage 10
+      - color yellow low-limit 60 high-limit 80 discard-percentage 20
+      - color red low-limit 40 high-limit 60 discard-percentage 40
+      - color non-tcp low-limit 40 high-limit 60 discard-percentage 40
+  patch: |
+    system-view
+    drop-profile WRED
+      undo color green
+      undo color yellow
+      undo color red
+      undo color non-tcp
+      quit
+    commit
+    q
+    save
+
+- vendor: Huawei CE
+  diff: |
+    drop-profile WRED
+      - color green low-limit 80 high-limit 100 discard-percentage 10
+      + color green buffer-size low-limit 100000 high-limit 1000000 discard-percentage 10
+  patch: |
+    system-view
+    drop-profile WRED
+      color green buffer-size low-limit 100000 high-limit 1000000 discard-percentage 10
+      quit
+    commit
+    q
+    save

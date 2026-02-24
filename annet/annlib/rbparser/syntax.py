@@ -1,14 +1,59 @@
+from __future__ import annotations
+
 import functools
 import re
 from collections import OrderedDict as odict
+from collections.abc import Iterator
+from typing import Any, TypedDict, cast
 
 from annet.annlib import lib
 from annet.vendors import tabparser
 
 
 # =====
-def parse_text(text, params_scheme):
-    return _parse_tree_with_params(tabparser.parse_to_tree(text, _split_rows, ["#"]), params_scheme)
+def _merge_trees(t1: odict[Any, Any], t2: odict[Any, Any]) -> odict[Any, Any]:
+    if not t1:
+        return t2
+    if not t2:
+        return t1
+    ret = t1.copy()
+    for k, v in t2.items():
+        if k in ret:
+            ret[k]["children"] = _merge_trees(ret[k]["children"], v["children"])
+        else:
+            ret[k] = v
+    return ret
+
+
+def _convert(tree: ParsedTree) -> odict[Any, Any]:
+    ret: odict[Any, Any] = odict()
+    for rule_id, attrs in tree:
+        if rule_id not in ret:
+            ret[rule_id] = attrs | {"children": odict()}
+        ret[rule_id]["children"] = _merge_trees(ret[rule_id]["children"], _convert(attrs["children"]))
+    return ret
+
+
+def parse_text(text: str, params_scheme) -> odict[Any, Any]:
+    ret = _parse_tree_with_params(tabparser.parse_to_tree_multi(text, _split_rows, ["#"]), params_scheme)
+    return _convert(ret)
+
+
+class _ParsedTreeNode(TypedDict):
+    row: str
+    type: str
+    params: dict[str, Any]
+    children: ParsedTree
+    raw_rule: str
+    context: Any
+
+
+ParsedTree = list[tuple[str, _ParsedTreeNode]]
+
+
+def parse_text_multi(text: str, params_scheme) -> ParsedTree:
+    ret = _parse_tree_with_params(tabparser.parse_to_tree_multi(text, _split_rows, ["#"]), params_scheme)
+    return ret
 
 
 @functools.lru_cache()
@@ -19,7 +64,7 @@ def compile_row_regexp(row, flags=0):
 
     if "*" in row:
         row = re.sub(r"\(([^\?])", r"(?:\1", row)  # Все дефолтные группы превратить в non-captured
-        row = re.sub(r"\*/(\S+)/", r"(\1)", row)   # */{regex_one_word}/ -> ({regex_one_word})
+        row = re.sub(r"\*/(\S+)/", r"(\1)", row)  # */{regex_one_word}/ -> ({regex_one_word})
         row = re.sub(r"(^|\s)\*", r"\1([^\\s]+)", row)
 
     # Заменяем <someting> на named-группы
@@ -40,59 +85,63 @@ def compile_row_regexp(row, flags=0):
 
 
 # =====
-def _split_rows(text):
+def _split_rows(text: str) -> Iterator[str]:
     for row in re.split(r"\n(?!\s*%(?!context))", text):
         yield row.replace("\n", " ")
 
 
-def _parse_tree_with_params(raw_tree, scheme, context=None):
-    tree = odict()
+def _parse_tree_with_params(raw_tree: tabparser.SimpleTree, scheme, context: dict | None = None) -> ParsedTree:
+    tree: ParsedTree = []
     if context is None:
         context = {}
-    for (raw_rule, children) in raw_tree.items():
+    for raw_rule, children in raw_tree:
         (row, params) = _parse_raw_rule(raw_rule, scheme)
         row_type = "normal"
+
         if row.startswith("!"):
             row = row[1:].strip()
             if len(row) == 0:
                 continue
             row_type = "ignore"
-        elif row.startswith(r"%context="):
-            context = _parse_context(context, row)
+        elif context_raw := params.get("context"):
+            context = _parse_context(context, context_raw)
             continue
-        tree[raw_rule] = {
-            "row": row,
-            "type": row_type,
-            "params": params,
-            "children": _parse_tree_with_params(children, scheme, context.copy()),
-            "raw_rule": raw_rule,
-            "context": context.copy(),
-        }
+        tree.append(
+            (
+                raw_rule,
+                {
+                    "row": row,
+                    "type": row_type,
+                    "params": params,
+                    "children": _parse_tree_with_params(children, scheme, cast(dict, context).copy()),
+                    "raw_rule": raw_rule,
+                    "context": cast(dict, context).copy(),
+                },
+            )
+        )
     return tree
 
 
-def _parse_raw_rule(raw_rule, scheme):
-    try:
-        index = raw_rule.index("%")
-        params = {
-            key: (value if len(value) != 0 else "1")
-            for (key, value) in re.findall(r"\s%([a-zA-Z_]\w*)(?:=([^\s]*))?", raw_rule)
-        }
-        if params:
-            raw_rule = raw_rule[:index].strip()
-    except ValueError:
-        params = {}
+def _parse_raw_rule(raw_rule: str, scheme) -> tuple[str, dict[str, str]]:
+    params: dict[str, str] = {}
 
-    row = re.sub(r"\s+", " ", raw_rule.strip())
+    row, *params_raw = re.split(r"(?:^|\s)%(?=[a-zA-Z_]\w*)", raw_rule)
+    for param in params_raw:
+        name, _, value = param.partition("=")
+        params[name.strip()] = value.strip() or "1"
+
+    row = re.sub(r"\s+", " ", row.strip())
     params = _fill_and_validate(params, scheme, raw_rule)
-    return (row, params)
+    return row, params
 
 
 def _fill_and_validate(params, scheme, raw_rule):
     return {
-        key: (attrs["validator"](params[key]) if key in params else (
-            attrs["default"](raw_rule) if callable(attrs["default"]) else attrs["default"]
-        ))
+        key: (
+            attrs["validator"](params[key])
+            if key in params
+            else (attrs["default"](raw_rule) if callable(attrs["default"]) else attrs["default"])
+        )
         for (key, attrs) in scheme.items()
     }
 
@@ -109,8 +158,5 @@ def match_context(ifcontext, context):
 
 
 def _parse_context(context, row):
-    keyword = r"%context="
-    if not row.startswith(keyword):
-        raise ValueError(row)
-    name, value = row[len(keyword):].strip().split(":")
+    name, value = row.strip().split(":")
     return lib.merge_dicts(context, {name: value})

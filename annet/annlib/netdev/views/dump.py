@@ -7,6 +7,7 @@ class DumpResult(str):
     """
     строка, у которой repr = value
     """
+
     def __new__(cls, value):
         return super().__new__(cls, value)
 
@@ -42,11 +43,11 @@ class DumpableView:
                     break
 
                 if chars and total_chars + len(line) >= chars:
-                    lines_list.append(line[chars - total_chars:])
+                    lines_list.append(line[chars - total_chars :])
                     break
 
                 if chars_in_line and len(line) > chars_in_line:
-                    lines_list.append(line[chars - total_chars:] + " ...")
+                    lines_list.append(line[chars - total_chars :] + " ...")
                 else:
                     lines_list.append(line)
                 total_lines += 1
@@ -58,6 +59,7 @@ class DumpableView:
             if add_tail:
                 ret += " ..."
             return DumpResult(ret)
+
         return bound_method
 
     def __dump_value(self, prefix, value, seen):

@@ -4,7 +4,7 @@ import pytest
 
 from annet.mesh import united_ports
 from annet.mesh.match_args import Left, Right
-from annet.mesh.registry import MeshRulesRegistry, MatchedIndirectPair, MatchedDirectPair
+from annet.mesh.registry import MatchedDirectPair, MatchedIndirectPair, MeshRulesRegistry
 
 
 def foo(*args, **kwargs) -> None:
@@ -37,6 +37,7 @@ def test_global(short):
     else:
         assert short_found == []
 
+
 @pytest.mark.parametrize("short", [True, False])
 def test_virtual(short):
     registry = MeshRulesRegistry(short)
@@ -48,7 +49,7 @@ def test_virtual(short):
     assert len(found) == 1
     assert found[0].handler is foo
     assert found[0].match.x == 1
-    assert found[0].num == (1,2)
+    assert found[0].num == (1, 2)
 
     short_found = registry.lookup_virtual("left1-1.example.com")
     if short:
@@ -78,15 +79,17 @@ def test_direct(short):
         ["right1-2.example.com", "right2-2.example.com"],
     )
     if short:
-        assert short_found == [MatchedDirectPair(
-            handler=foo,
-            port_processor=united_ports,
-            direct_order=True,
-            name_left="left1-1.example.com",
-            match_left=SimpleNamespace(x=1),
-            name_right="right1-2.example.com",
-            match_right=SimpleNamespace(x=2),
-        )]
+        assert short_found == [
+            MatchedDirectPair(
+                handler=foo,
+                port_processor=united_ports,
+                direct_order=True,
+                name_left="left1-1.example.com",
+                match_left=SimpleNamespace(x=1),
+                name_right="right1-2.example.com",
+                match_right=SimpleNamespace(x=2),
+            )
+        ]
     else:
         assert short_found == []
 
@@ -112,14 +115,16 @@ def test_indirect(short):
         ["right1-2.example.com", "right2-2.example.com"],
     )
     if short:
-        assert short_found == [MatchedIndirectPair(
-            handler=foo,
-            direct_order=True,
-            name_left="left1-1.example.com",
-            match_left=SimpleNamespace(x=1),
-            name_right="right1-2.example.com",
-            match_right=SimpleNamespace(x=2),
-        )]
+        assert short_found == [
+            MatchedIndirectPair(
+                handler=foo,
+                direct_order=True,
+                name_left="left1-1.example.com",
+                match_left=SimpleNamespace(x=1),
+                name_right="right1-2.example.com",
+                match_right=SimpleNamespace(x=2),
+            )
+        ]
     else:
         assert short_found == []
 
