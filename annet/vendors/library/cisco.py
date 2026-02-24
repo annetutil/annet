@@ -20,6 +20,7 @@ class CiscoVendor(AbstractVendor):
         return before, after
 
     def match(self) -> list[str]:
+        # ASR1k runs IOS-XE, so Cisco.ASR.ASR1000 must be explicetely returned here 
         return ["Cisco", "Cisco.ASR.ASR1000"]
 
     @property
