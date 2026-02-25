@@ -40,6 +40,10 @@ class AclNotExclusiveError(AclError):
     pass
 
 
+class AclExcludesOrderedError(AclError):
+    pass
+
+
 class PatchRow:
     row: str
 
@@ -412,18 +416,34 @@ class Orderer:
 
 
 # =====
-def apply_acl(config, rules, fatal_acl=False, exclusive=False, with_annotations=False, _path=()):
+def apply_acl(
+    config,
+    rules,
+    fatal_acl=False,
+    exclusive=False,
+    with_annotations=False,
+    forbid_ordered=False,
+    rb=None,
+    _path=(),
+    _ordered_paths=None,
+):
+    if _ordered_paths is None:
+        _ordered_paths: set[tuple[str, ...]] = set()
+        if forbid_ordered:
+            _ordered_paths = filter_rows_by_rulebook_selector(config, rb, "ordered")
+
     passed = odict()
     for row, children in config.items():
+        full_path = _path + (row,)
         if with_annotations:
             # do not pass annotations through ACL
             test_row = strip_annotation(row)
         else:
             test_row = row
         try:
-            (match, children_rules) = match_row_to_acl(test_row, rules, exclusive)
+            match, children_rules = match_row_to_acl(test_row, rules, exclusive)
         except AclNotExclusiveError as err:
-            raise AclNotExclusiveError("'%s', %s" % ("/ ".join(_path + (row,)), err))
+            raise AclNotExclusiveError("'%s', %s" % ("/ ".join(full_path), err))
         if match:
             if not (match["is_reverse"] and all(match["attrs"]["cant_delete"])):
                 passed[row] = apply_acl(
@@ -432,10 +452,15 @@ def apply_acl(config, rules, fatal_acl=False, exclusive=False, with_annotations=
                     fatal_acl=fatal_acl,
                     exclusive=exclusive,
                     with_annotations=with_annotations,
-                    _path=_path + (row,),
+                    forbid_ordered=forbid_ordered,
+                    rb=rb,
+                    _path=full_path,
+                    _ordered_paths=_ordered_paths,
                 )
         elif fatal_acl:
-            raise AclError(" / ".join(_path + (row,)))
+            raise AclError(" / ".join(full_path))
+        elif full_path in _ordered_paths:
+            raise AclExcludesOrderedError(f"row is marked %ordered but excluded by filter-acl: {' / '.join(full_path)}")
     return passed
 
 
@@ -489,7 +514,7 @@ def apply_diff_rb(old, new, rb):
     """Diff pre is a odict {(key, diff_logic): {}}"""
     diff_pre = odict()
     for row in list(uniq(old, new)):
-        (match, children_rules) = _match_row_to_rules(row, rb["patching"])
+        match, children_rules = _match_row_to_rules(row, rb["patching"])
         if match:
             diff_pre[row] = {
                 "match": match,
@@ -503,6 +528,30 @@ def apply_diff_rb(old, new, rb):
             old.pop(row, None)
             new.pop(row, None)
     return diff_pre
+
+
+def filter_rows_by_rulebook_selector(config, rb, selector):
+    if not rb:
+        return
+    ret: set[tuple[str, ...]] = set()
+    _filter_rows_by_rulebook_selector(config, rb, selector, ret)
+    return ret
+
+
+def _filter_rows_by_rulebook_selector(config, rb, selector, ret, path=()):
+    for row in config:
+        match, children_rules = _match_row_to_rules(row, rb["patching"])
+        if match:
+            full_path = path + (row,)
+            if match["attrs"].get(selector):
+                ret.add(full_path)
+            _filter_rows_by_rulebook_selector(
+                config[row],
+                {"patching": children_rules},
+                selector,
+                ret,
+                full_path,
+            )
 
 
 def make_pre(diff: Diff, _parent_match=None) -> dict[str, Any]:
@@ -568,6 +617,7 @@ class _PreAttrs(TypedDict):
     parent: NotRequired[bool]
     force_commit: bool
     ignore_case: bool
+    ordered: bool
     context: Any
 
 

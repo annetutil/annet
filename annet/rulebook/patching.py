@@ -114,6 +114,7 @@ def _compile_patching(tree, reverse_prefix, vendor):
                     "parent": attrs["params"]["parent"] or bool(attrs["children"]),
                     "force_commit": attrs["params"]["force_commit"],
                     "ignore_case": attrs["params"]["ignore_case"],
+                    "ordered": attrs["params"]["ordered"],
                     "context": attrs["context"],
                 },
                 "children": None,
