@@ -25,7 +25,7 @@ from typing import (
 import tabulate
 from contextlog import get_logger
 
-from annet import generators, implicit, patching, tracing
+from annet import generators, implicit, patching, rulebook, tracing
 from annet.annlib import jsontools
 from annet.annlib.rbparser.acl import compile_acl_text
 from annet.cli_args import DeployOptions, GenOptions, ShowGenOptions
@@ -226,12 +226,15 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
 
         filter_acl_rules = build_filter_acl(filterer, device, ctx.stdin, ctx.args, ctx.config)
         if filter_acl_rules is not None:
-            old = old and patching.apply_acl(old, filter_acl_rules, fatal_acl=False)
+            rb = rulebook.get_rulebook(device.hw)
+            old = old and patching.apply_acl(old, filter_acl_rules, fatal_acl=False, forbid_ordered=True, rb=rb)
             new = patching.apply_acl(
                 new,
                 filter_acl_rules,
                 fatal_acl=False,
                 with_annotations=ctx.add_annotations,
+                forbid_ordered=True,
+                rb=rb,
             )
     else:  # vendor == pc
         try:
