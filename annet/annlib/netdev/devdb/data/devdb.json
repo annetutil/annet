@@ -199,10 +199,10 @@
     "H3C.S12500": " S125\\d{2}",
     "H3C.S12500.S12500R": " S12500R",
 
-    "B4com": "^[Bb]4com",
-    "B4com.CS2148P": "^[Bb]4com B4T-CS2148P.*",
-    "B4com.CS4100": "^[Bb]4com B4T-CS41.*",
-    "B4com.CS4132U": "^[Bb]4com B4T-CS4132U.*",
-    "B4com.CS4148Q": "^[Bb]4com B4T-CS4148Q.*",
-    "B4com.CS4164U": "^[Bb]4com B4T-CS4164U.*"
+    "B4com": "^[Bb]4[Cc][Oo][Mm]",
+    "B4com.CS2148P": " B4T-CS2148P",
+    "B4com.CS4100":  " B4T-CS41",
+    "B4com.CS4132U": " B4T-CS4132U",
+    "B4com.CS4148Q": " B4T-CS4148Q",
+    "B4com.CS4164U": " B4T-CS4164U"
 }
