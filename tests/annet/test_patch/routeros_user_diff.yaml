@@ -1,0 +1,17 @@
+- vendor: routeros
+  before: |
+    /user
+    add address="" comment="oldhash123" disabled=no group=full name=admin password=oldpass
+    add address="" comment="hash456" disabled=no group=full name=user1 password=pass1
+    add address="" comment="hash789" disabled=no group=read name=user2 password=pass2
+    add address="" comment="hashremove" disabled=no group=write name=toremove password=oldpass
+  after: |
+    /user
+    add address="" comment="oldhash123" disabled=no group=full name=admin password=oldpass
+    add address="" comment="newhash456" disabled=no group=full name=user1 password=newpass1
+    add address="" comment="hash789" disabled=no group=read name=user2 password=pass2
+    add address="" comment="hashnew" disabled=no group=full name=newuser password=newpass
+  patch: |
+    /user remove [ find address="" comment="hashremove" disabled=no group=write name=toremove ]
+    /user add address="" comment="newhash456" disabled=no group=full name=user1 password=newpass1
+    /user add address="" comment="hashnew" disabled=no group=full name=newuser password=newpass
