@@ -5,6 +5,7 @@ from annet.annlib.lib import cisco_collapse_vlandb as collapse_vlandb
 from annet.annlib.lib import cisco_expand_vlandb as expand_vlandb
 from annet.annlib.types import Op
 
+
 # Constants
 NEXUS_SWITCHPORT_VLAN_CHUNK: int = 64
 NEXUS_DEFAULT_RANGE: range = range(1, 4095)  # 4094 inclusive
