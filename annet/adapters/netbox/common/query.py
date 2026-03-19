@@ -6,7 +6,7 @@ from annet.storage import Query
 
 
 FIELD_VALUE_SEPARATOR = ":"
-ALLOWED_GLOB_GROUPS = ["site", "tag", "role", "device_type", "status", "tenant", "asset_tag"]
+ALLOWED_GLOB_GROUPS = ["site", "tag", "role", "device_type", "status", "tenant", "asset_tag", "platform"]
 
 
 class Filter(TypedDict, total=False):
@@ -18,6 +18,7 @@ class Filter(TypedDict, total=False):
     status: list[str]
     tenant: list[str]
     asset_tag: list[str]
+    platform: list[str]
 
 
 @dataclass
