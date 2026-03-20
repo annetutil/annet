@@ -487,7 +487,7 @@ def on_unnumbered(
 
 
 @pytest.mark.parametrize("direct", [True, False])
-def test_2ports_unnumbered(storage, direct, device1, device2, device_neighbor):
+def test_unnumbered(storage, direct, device1, device2, device_neighbor):
     registry = MeshRulesRegistry()
     if direct:
         connected_device = device_neighbor
@@ -511,3 +511,33 @@ def test_2ports_unnumbered(storage, direct, device1, device2, device_neighbor):
     assert peer.addr is UNNUMBERED
     assert peer.vrf_name == ""
     assert connected_device.find_interface("Vlan2").addrs == []
+
+
+def on_one_unnumbered(
+    local: DirectPeer | VirtualLocal | IndirectPeer,
+    neighbor: DirectPeer | VirtualPeer | IndirectPeer,
+    session: MeshSession,
+):
+    local.addr = UNNUMBERED
+    neighbor.addr = "192.168.1.1"
+    session.asnum = 12345
+    local.af_loops = 42
+    local.svi = 1
+    neighbor.svi = 2
+
+
+@pytest.mark.parametrize("direct", [True, False])
+def test_unnumbered_one_side(storage, direct, device1, device2, device_neighbor):
+    registry = MeshRulesRegistry()
+    if direct:
+        connected_device = device_neighbor
+        registry.direct(device1.fqdn, connected_device.fqdn)(on_one_unnumbered)
+    else:
+        connected_device = device2
+        registry.indirect(device1.fqdn, connected_device.fqdn)(on_one_unnumbered)
+
+    r = MeshExecutor(registry, storage)
+    with pytest.raises(ValueError):
+        r.execute_for(device1)
+    with pytest.raises(ValueError):
+        r.execute_for(connected_device)

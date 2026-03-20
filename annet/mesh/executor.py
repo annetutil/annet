@@ -187,6 +187,11 @@ class MeshExecutor:
                 addr = getattr(pair.connected, "addr", ...)
                 if addr is Ellipsis:
                     raise ValueError(f"Handler `{handler_name}` returned no peer addr")
+                if (pair.local.addr is UNNUMBERED) != (pair.connected.addr is UNNUMBERED):
+                    raise ValueError(
+                        f"Handler `{handler_name}` returned on peer UNNUMBERED while another has ip address"
+                    )
+
                 peer_key = PeerKey(
                     fqdn=pair.device.fqdn,
                     addr=addr,
@@ -290,6 +295,8 @@ class MeshExecutor:
             addr = getattr(connected_dto, "addr", ...)
             if addr is Ellipsis:
                 raise ValueError(f"Handler `{handler_name}` returned no peer addr")
+            if (pair.local.addr is UNNUMBERED) != (pair.connected.addr is UNNUMBERED):
+                raise ValueError(f"Handler `{handler_name}` returned on peer UNNUMBERED while another has ip address")
             peer_key = PeerKey(
                 fqdn=connected_device.fqdn,
                 addr=addr,
@@ -311,7 +318,7 @@ class MeshExecutor:
                 ) from e
             connected_peers[peer_key] = pair
 
-        return list(connected_peers.values())  # FIXME
+        return list(connected_peers.values())
 
     def _to_bgp_peer(self, pair: Pair, interface: Optional[str]) -> Peer:
         return to_bgp_peer(pair.local, pair.connected, pair.device.hostname, interface)
