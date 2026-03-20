@@ -108,7 +108,7 @@ class FakeDevice(Device):
 
 
 class FakeStorage(Storage):
-    def __init__(self):
+    def __init__(self) -> None:
         self.devices: list[FakeDevice] = []
 
     def add_device(self, device: FakeDevice):

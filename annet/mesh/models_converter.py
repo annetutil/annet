@@ -100,6 +100,7 @@ def to_interface_changes(local: LocalDTO, peer: PeerDTO) -> InterfaceChanges:
 
 def to_bgp_peer(local: LocalDTO, connected: PeerDTO, connected_hostname: str, interface: Optional[str]) -> Peer:
     options = retort.load(local, PeerOptions)
+    addr: str | SpecialAddr
     if isinstance(connected.addr, SpecialAddr):
         addr = connected.addr
     else:
