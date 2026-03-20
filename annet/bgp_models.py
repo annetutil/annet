@@ -1,5 +1,6 @@
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Annotated, Literal, Optional, Union
 
 
@@ -223,9 +224,16 @@ class PeerFamilyOptions:
     l2vpn_evpn: PeerFamilyOption = field(default_factory=PeerFamilyOption)
 
 
+class SpecialAddr(Enum):
+    UNNUMBERED = "UNNUMBERED"
+
+
+UNNUMBERED = SpecialAddr.UNNUMBERED
+
+
 @dataclass
 class Peer:
-    addr: str
+    addr: str | SpecialAddr
     interface: Optional[str]
     remote_as: ASN
     families: set[Family] = field(default_factory=set)

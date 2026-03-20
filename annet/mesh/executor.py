@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from logging import getLogger
 from typing import Annotated, Callable, Optional, Union
 
-from annet.bgp_models import BgpConfig, GlobalOptions, Peer
+from annet.bgp_models import UNNUMBERED, BgpConfig, GlobalOptions, Peer
 from annet.storage import Device, Storage
 
 from .basemodel import BaseMeshModel, Merge, MergeForbiddenError, UseLast, merge
@@ -18,9 +18,7 @@ from .registry import (
     VirtualLocal,
     VirtualPeer,
 )
-from .registry import (
-    GlobalOptions as MeshGlobalOptions,
-)
+from .registry import GlobalOptions as MeshGlobalOptions
 
 
 logger = getLogger(__name__)
@@ -186,8 +184,8 @@ class MeshExecutor:
                 if pair is None:
                     # nothing was set
                     continue
-                addr = getattr(pair.connected, "addr", None)
-                if addr is None:
+                addr = getattr(pair.connected, "addr", ...)
+                if addr is Ellipsis:
                     raise ValueError(f"Handler `{handler_name}` returned no peer addr")
                 peer_key = PeerKey(
                     fqdn=pair.device.fqdn,
@@ -289,8 +287,8 @@ class MeshExecutor:
                 ) from e
 
             pair = Pair(local=device_dto, connected=connected_dto, device=connected_device)
-            addr = getattr(connected_dto, "addr", None)
-            if addr is None:
+            addr = getattr(connected_dto, "addr", ...)
+            if addr is Ellipsis:
                 raise ValueError(f"Handler `{handler_name}` returned no peer addr")
             peer_key = PeerKey(
                 fqdn=connected_device.fqdn,
@@ -354,7 +352,8 @@ class MeshExecutor:
             target_interface = device.add_svi(changes.svi)
         else:
             target_interface, _ = port_pairs[0]
-        target_interface.add_addr(changes.addr, changes.vrf)
+        if changes.addr is not UNNUMBERED:
+            target_interface.add_addr(changes.addr, changes.vrf)
         return target_interface.name
 
     def _apply_nondirect_interface_changes(
@@ -375,7 +374,8 @@ class MeshExecutor:
             target_interface = device.find_interface(ifname)
             if not target_interface:
                 raise ValueError(f"Interface {ifname} not found for device {device.fqdn}")
-        target_interface.add_addr(changes.addr, changes.vrf)
+        if changes.addr is not UNNUMBERED:
+            target_interface.add_addr(changes.addr, changes.vrf)
         return target_interface.name
 
     def execute_for(self, device: Device) -> BgpConfig:

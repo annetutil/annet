@@ -1,6 +1,6 @@
 import pytest
 
-from annet.bgp_models import Aggregate, BFDTimers, Redistribute, VidCollection, VidRange
+from annet.bgp_models import UNNUMBERED, Aggregate, BFDTimers, Redistribute, VidCollection, VidRange
 from annet.mesh import (
     DirectPeer,
     GlobalOptions,
@@ -353,8 +353,8 @@ def test_empty_handler(storage, device1):
 
 
 def on_connected_2vrfs(
-    local: DirectPeer | VirtualLocal,
-    neighbor: DirectPeer | VirtualPeer,
+    local: DirectPeer | VirtualLocal | IndirectPeer,
+    neighbor: DirectPeer | VirtualPeer | IndirectPeer,
     session: MeshSession,
 ):
     local.addr = "192.168.1.254"
@@ -471,3 +471,43 @@ def test_two_connections_lag(two_connections_storage):
         assert peer.addr == "fd00:199:a:1::2"
         assert peer.export_policy == EXPORT_POLICY1
         assert peer.options.af_loops == 42
+
+
+def on_unnumbered(
+    local: DirectPeer | VirtualLocal | IndirectPeer,
+    neighbor: DirectPeer | VirtualPeer | IndirectPeer,
+    session: MeshSession,
+):
+    local.addr = UNNUMBERED
+    neighbor.addr = UNNUMBERED
+    session.asnum = 12345
+    local.af_loops = 42
+    local.svi = 1
+    neighbor.svi = 2
+
+
+@pytest.mark.parametrize("direct", [True, False])
+def test_2ports_unnumbered(storage, direct, device1, device2, device_neighbor):
+    registry = MeshRulesRegistry()
+    if direct:
+        connected_device = device_neighbor
+        registry.direct(device1.fqdn, connected_device.fqdn)(on_unnumbered)
+    else:
+        connected_device = device2
+        registry.indirect(device1.fqdn, connected_device.fqdn)(on_unnumbered)
+
+    r = MeshExecutor(registry, storage)
+    res_dev1 = r.execute_for(device1)
+
+    assert len(res_dev1.peers) == 1
+    peer = res_dev1.peers[0]
+    assert peer.addr is UNNUMBERED
+    assert peer.vrf_name == ""
+    assert device1.find_interface("Vlan1").addrs == []
+
+    res_dev2 = r.execute_for(connected_device)
+    assert len(res_dev2.peers) == 1
+    peer = res_dev2.peers[0]
+    assert peer.addr is UNNUMBERED
+    assert peer.vrf_name == ""
+    assert connected_device.find_interface("Vlan2").addrs == []
