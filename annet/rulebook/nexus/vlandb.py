@@ -11,9 +11,7 @@ NEXUS_SWITCHPORT_VLAN_CHUNK: int = 64
 NEXUS_DEFAULT_RANGE: range = range(1, 4095)  # 4094 inclusive
 
 
-def swtrunk(
-    rule: Dict[str, Any], key: Tuple, diff: Dict[str, Any], **_
-) -> Iterator[Tuple[bool, str, Optional[list]]]:
+def swtrunk(rule: Dict[str, Any], key: Tuple, diff: Dict[str, Any], **_) -> Iterator[Tuple[bool, str, Optional[list]]]:
     """
     Patch logic for Cisco Nexus `switchport trunk allowed vlan` command.
     Processes VLAN configuration changes and yields commands to apply.
@@ -128,9 +126,7 @@ def _parse_vlancfg_actions(
         # Handle VLAN blocks with children
         if action["children"]:
             if len(vlan_set) != 1:
-                raise ValueError(
-                    f"VLAN block must contain exactly one VLAN ID: {action['row']}"
-                )
+                raise ValueError(f"VLAN block must contain exactly one VLAN ID: {action['row']}")
             vlan_id = next(iter(vlan_set))
             blocks[str(vlan_id)] = action["children"]
 
