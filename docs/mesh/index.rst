@@ -138,7 +138,7 @@ You cannot set different values for the same option in different handlers, but c
 
 Minimum of data required to be filled is ``DirectPeer`` and ``IndirectPeer``
 
-* ``addr``
+* ``addr`` (string containing IPv4/IPv6 address or ``annet.bgp_models.UNNUMBERED`` for unnumbered BGP)
 * ``remote_as``
 * ``families``
 

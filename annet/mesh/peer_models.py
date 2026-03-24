@@ -1,6 +1,6 @@
 from typing import Annotated, Literal, Optional, Union
 
-from ..bgp_models import BFDTimers, PeerFamilyOptions
+from ..bgp_models import BFDTimers, PeerFamilyOptions, SpecialAddr
 from .basemodel import BaseMeshModel, Concat, Unite
 
 
@@ -91,7 +91,7 @@ class _OptionsDTO(_SharedOptionsDTO):
 
 class DirectPeerDTO(MeshSession, _OptionsDTO):
     pod: int
-    addr: str
+    addr: str | SpecialAddr
     description: str
     update_source: str
 
@@ -103,7 +103,7 @@ class DirectPeerDTO(MeshSession, _OptionsDTO):
 
 class IndirectPeerDTO(MeshSession, _OptionsDTO):
     pod: int
-    addr: str
+    addr: str | SpecialAddr
     description: str
     update_source: str
 
@@ -114,7 +114,7 @@ class IndirectPeerDTO(MeshSession, _OptionsDTO):
 
 class VirtualLocalDTO(MeshSession, _OptionsDTO):
     pod: int
-    addr: str
+    addr: str | SpecialAddr
     description: str
     update_source: str
 
@@ -122,7 +122,7 @@ class VirtualLocalDTO(MeshSession, _OptionsDTO):
 
 
 class VirtualPeerDTO(MeshSession):
-    addr: str
+    addr: str | SpecialAddr
     description: str
 
 

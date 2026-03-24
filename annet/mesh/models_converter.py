@@ -17,6 +17,7 @@ from ..bgp_models import (
     PeerGroup,
     PeerOptions,
     Redistribute,
+    SpecialAddr,
     VidCollection,
     VrfOptions,
 )
@@ -99,8 +100,13 @@ def to_interface_changes(local: LocalDTO, peer: PeerDTO) -> InterfaceChanges:
 
 def to_bgp_peer(local: LocalDTO, connected: PeerDTO, connected_hostname: str, interface: Optional[str]) -> Peer:
     options = retort.load(local, PeerOptions)
+    addr: str | SpecialAddr
+    if isinstance(connected.addr, SpecialAddr):
+        addr = connected.addr
+    else:
+        addr = str(ip_interface(connected.addr).ip)
     result = Peer(
-        addr=str(ip_interface(connected.addr).ip),
+        addr=addr,
         interface=interface,
         remote_as=ASN(connected.asnum),
         hostname=connected_hostname,
