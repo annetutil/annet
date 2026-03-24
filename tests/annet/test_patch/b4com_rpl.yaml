@@ -3,6 +3,7 @@ before: |
   ip prefix-list RFC1918
     seq 5 deny 10.0.0.0/8
     seq 10 permit 192.168.0.0/16
+    seq 15 permit 224.0.0.0/4 le 32
     exit
 after: |
   ip prefix-list RFC1918
@@ -24,6 +25,7 @@ after: |
 patch: |
   conf t
   ip prefix-list RFC1918
+    no seq 15 permit 224.0.0.0/4
     seq 15 permit 172.16.0.0/12
     exit
   route-map RM_FROM_PEER_IN permit 5

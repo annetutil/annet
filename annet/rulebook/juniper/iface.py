@@ -1,4 +1,5 @@
 import ipaddress
+
 from annet.annlib.types import Op
 from annet.rulebook import common
 from annet.rulebook.common import DiffItem

@@ -1,9 +1,9 @@
-from annet.adapters.file.provider import FS, Query, StorageOpts, Device
-from annet.storage import StorageProvider, Storage
-import typing
-import tempfile
 import platform
 import sys
+import tempfile
+
+from annet.adapters.file.provider import FS, Device, StorageOpts
+
 
 kwargs = dict()
 if platform.system() == "Windows":
@@ -11,6 +11,7 @@ if platform.system() == "Windows":
         kwargs = {"delete": False}
     else:
         kwargs = {"delete": True, "delete_on_close": False}
+
 
 def test_fs():
     Device

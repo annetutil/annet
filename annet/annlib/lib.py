@@ -20,6 +20,7 @@ from typing import List, NamedTuple, Optional, Tuple, Union
 import contextlog
 import mako.template
 
+
 _logger = contextlog.get_logger()
 
 
@@ -58,7 +59,7 @@ class HuaweiNumBlock(metaclass=abc.ABCMeta):
 def huawei_expand_vlandb(row):
     expanded = set()
     row_parts = row.split()
-    for (index, part) in enumerate(row_parts):
+    for index, part in enumerate(row_parts):
         if part == "to":
             left = int(row_parts[index - 1])
             right = int(row_parts[index + 1])
@@ -131,7 +132,7 @@ def collapse_vlandb(vlans, range_sep, tiny_ranges=True, chunk_len=0):
 
     # Устройства бьют списки вланов на чанки при добавлении в конфиг
     if chunk_len:
-        chunks = [res[i:i + chunk_len] for i in range(0, len(res), chunk_len)]
+        chunks = [res[i : i + chunk_len] for i in range(0, len(res), chunk_len)]
         return chunks
 
     return res
@@ -176,13 +177,13 @@ def make_ip4_mask(prefix_len, inverse=False):
     """
     if not isinstance(prefix_len, int) or prefix_len < 0 or prefix_len > 32:
         raise ValueError("invalid prefix_len %r" % prefix_len)
-    bin_mask = (0xffffffff & (0xffffffff << (32 - prefix_len))).to_bytes(4, byteorder="big")
+    bin_mask = (0xFFFFFFFF & (0xFFFFFFFF << (32 - prefix_len))).to_bytes(4, byteorder="big")
     if inverse:
         bin_mask = bytes(byte ^ 255 for byte in bin_mask)
     return socket.inet_ntop(socket.AF_INET, bin_mask)
 
 
-def merge_dicts(*args):
+def merge_dicts(*args: dict | odict) -> odict:
     if len(args) == 0:
         return odict()
     if len(args) == 1:
@@ -193,7 +194,7 @@ def merge_dicts(*args):
     merged = odict()
     for dictionary in args:
         assert isinstance(dictionary, (dict, odict))
-        for (key, value) in dictionary.items():
+        for key, value in dictionary.items():
             if isinstance(value, (dict, odict)):
                 merged[key] = merge_dicts(*[x[key] for x in args if key in x])
             elif key not in merged:
@@ -293,8 +294,7 @@ def mako_render(template, dedent=False, **kwargs):
 
 # =====
 def find_exc_in_stack(
-    container_exc: Exception,
-    target_exc_type: Union[type, Tuple[type, ...]]
+    container_exc: Exception, target_exc_type: Union[type, Tuple[type, ...]]
 ) -> Optional[BaseException]:
     curr_err: Optional[BaseException] = container_exc
     while curr_err is not None:
@@ -382,15 +382,13 @@ class LMSegment(NamedTuple):
 
 
 class LMSegmentList:
-    """Упорядоченный список подсетей
-    """
+    """Упорядоченный список подсетей"""
 
     def __init__(self):
         self.pfxs: List[LMSegment] = []
 
     def add(self, pref: LMSegment) -> None:
-        """Добавляем новый префикс в упорядоченный список, если он не дублируется
-        """
+        """Добавляем новый префикс в упорядоченный список, если он не дублируется"""
         idx = bisect.bisect(self.pfxs, pref) - 1
         if 0 <= idx < len(self.pfxs):
             if pref == self.pfxs[idx]:
@@ -398,8 +396,7 @@ class LMSegmentList:
         self.pfxs.insert(idx + 1, pref)
 
     def find(self, target: LMSegment) -> Optional[LMSegment]:
-        """LPM поиск в добавленных
-        """
+        """LPM поиск в добавленных"""
         upper_bound = bisect.bisect(self.pfxs, target)
         for i in reversed(range(0, upper_bound)):
             if self.pfxs[i].contains(target):
@@ -410,8 +407,7 @@ class LMSegmentList:
 
 
 class LMSMatcher:
-    """Обертка над парой LMSegmentList над парой LMSegmentList для v4/v6
-    """
+    """Обертка над парой LMSegmentList над парой LMSegmentList для v4/v6"""
 
     def __init__(self):
         self.v4 = LMSegmentList()
@@ -440,8 +436,7 @@ class LMSMatcher:
 
 
 def is_relative(path: pathlib.PurePath, *other: str) -> bool:
-    """Проверяет является ли путь path относительным любого из other
-    """
+    """Проверяет является ли путь path относительным любого из other"""
     for checkpath in other:
         try:
             path.relative_to(checkpath)
@@ -472,7 +467,7 @@ def jun_is_inactive(key) -> bool:
 
 def jun_activate(key) -> str:
     if jun_is_inactive(key):
-        key = key[len(jun_inactive_pfx()):]
+        key = key[len(jun_inactive_pfx()) :]
     return key
 
 

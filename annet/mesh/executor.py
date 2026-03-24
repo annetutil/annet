@@ -2,15 +2,15 @@ from dataclasses import dataclass
 from logging import getLogger
 from typing import Annotated, Callable, Optional, Union
 
-from annet.bgp_models import Peer, GlobalOptions, BgpConfig
+from annet.bgp_models import UNNUMBERED, BgpConfig, GlobalOptions, Peer
 from annet.storage import Device, Storage
-from .basemodel import merge, BaseMeshModel, Merge, UseLast, MergeForbiddenError
+
+from .basemodel import BaseMeshModel, Merge, MergeForbiddenError, UseLast, merge
 from .device_models import GlobalOptionsDTO
-from .models_converter import to_bgp_global_options, to_bgp_peer, InterfaceChanges, to_interface_changes
+from .models_converter import InterfaceChanges, to_bgp_global_options, to_bgp_peer, to_interface_changes
 from .peer_models import DirectPeerDTO, IndirectPeerDTO, VirtualLocalDTO, VirtualPeerDTO
 from .registry import (
     DirectPeer,
-    GlobalOptions as MeshGlobalOptions,
     IndirectPeer,
     MatchedDirectPair,
     MeshRulesRegistry,
@@ -18,6 +18,8 @@ from .registry import (
     VirtualLocal,
     VirtualPeer,
 )
+from .registry import GlobalOptions as MeshGlobalOptions
+
 
 logger = getLogger(__name__)
 
@@ -39,8 +41,8 @@ class PeerKey:
 
 
 def target_interface(
-        peer: DirectPeerDTO | IndirectPeerDTO | VirtualLocalDTO,
-        ports: list[str],
+    peer: DirectPeerDTO | IndirectPeerDTO | VirtualLocalDTO,
+    ports: list[str],
 ) -> TargetInterface:
     subif = getattr(peer, "subif", None)
     svi = getattr(peer, "svi", None)
@@ -66,9 +68,9 @@ class VirtualPair(BaseMeshModel):
 
 class MeshExecutor:
     def __init__(
-            self,
-            registry: MeshRulesRegistry,
-            storage: Storage,
+        self,
+        registry: MeshRulesRegistry,
+        storage: Storage,
     ):
         self._registry = registry
         self._storage = storage
@@ -101,12 +103,12 @@ class MeshExecutor:
             return str(handler)
 
     def _execute_direct_pair(
-            self,
-            device: Device,
-            neighbor_device: Device,
-            rule: MatchedDirectPair,
-            ports: list[tuple[str, str]],
-            all_connected_ports: list[tuple[str, str]],
+        self,
+        device: Device,
+        neighbor_device: Device,
+        rule: MatchedDirectPair,
+        ports: list[tuple[str, str]],
+        all_connected_ports: list[tuple[str, str]],
     ) -> Optional[Pair]:
         session = MeshSession()
         handler_name = self._handler_name(rule.handler)
@@ -156,14 +158,9 @@ class MeshExecutor:
         # we merge them according to remote fqdn
         neighbor_peers: dict[PeerKey, Pair] = {}
         rules = self._registry.lookup_direct(device.fqdn, device.neighbours_fqdns)
-        fqdns = {
-            rule.name_right if rule.direct_order else rule.name_left
-            for rule in rules
-        }
+        fqdns = {rule.name_right if rule.direct_order else rule.name_left for rule in rules}
         logger.debug("Loading neighbor devices: %s", fqdns)
-        neighbors = {
-            d.fqdn: d for d in self._storage.make_devices(list(fqdns))
-        }
+        neighbors = {d.fqdn: d for d in self._storage.make_devices(list(fqdns))}
         for rule in rules:
             handler_name = self._handler_name(rule.handler)
             if rule.direct_order:
@@ -180,17 +177,21 @@ class MeshExecutor:
                     )
                 neighbor_device = neighbors[rule.name_left]
             all_connected_ports = [
-                (p1.name, p2.name)
-                for p1, p2 in self._storage.search_connections(device, neighbor_device)
+                (p1.name, p2.name) for p1, p2 in self._storage.search_connections(device, neighbor_device)
             ]
             for ports in rule.port_processor(all_connected_ports):
                 pair = self._execute_direct_pair(device, neighbor_device, rule, ports, all_connected_ports)
                 if pair is None:
                     # nothing was set
                     continue
-                addr = getattr(pair.connected, "addr", None)
-                if addr is None:
+                addr = getattr(pair.connected, "addr", ...)
+                if addr is Ellipsis:
                     raise ValueError(f"Handler `{handler_name}` returned no peer addr")
+                if (pair.local.addr is UNNUMBERED) != (pair.connected.addr is UNNUMBERED):
+                    raise ValueError(
+                        f"Handler `{handler_name}` returned on peer UNNUMBERED while another has ip address"
+                    )
+
                 peer_key = PeerKey(
                     fqdn=pair.device.fqdn,
                     addr=addr,
@@ -253,14 +254,9 @@ class MeshExecutor:
         connected_peers: dict[PeerKey, Pair] = {}
 
         rules = self._registry.lookup_indirect(device.fqdn, all_fqdns)
-        fqdns = {
-            rule.name_right if rule.direct_order else rule.name_left
-            for rule in rules
-        }
+        fqdns = {rule.name_right if rule.direct_order else rule.name_left for rule in rules}
         logger.debug("Loading indirect connected devices: %s", fqdns)
-        connected_devices = {
-            d.fqdn: d for d in self._storage.make_devices(list(fqdns))
-        }
+        connected_devices = {d.fqdn: d for d in self._storage.make_devices(list(fqdns))}
         for rule in rules:
             session = MeshSession()
             handler_name = self._handler_name(rule.handler)
@@ -296,9 +292,11 @@ class MeshExecutor:
                 ) from e
 
             pair = Pair(local=device_dto, connected=connected_dto, device=connected_device)
-            addr = getattr(connected_dto, "addr", None)
-            if addr is None:
+            addr = getattr(connected_dto, "addr", ...)
+            if addr is Ellipsis:
                 raise ValueError(f"Handler `{handler_name}` returned no peer addr")
+            if (pair.local.addr is UNNUMBERED) != (pair.connected.addr is UNNUMBERED):
+                raise ValueError(f"Handler `{handler_name}` returned on peer UNNUMBERED while another has ip address")
             peer_key = PeerKey(
                 fqdn=connected_device.fqdn,
                 addr=addr,
@@ -320,7 +318,7 @@ class MeshExecutor:
                 ) from e
             connected_peers[peer_key] = pair
 
-        return list(connected_peers.values())  # FIXME
+        return list(connected_peers.values())
 
     def _to_bgp_peer(self, pair: Pair, interface: Optional[str]) -> Peer:
         return to_bgp_peer(pair.local, pair.connected, pair.device.hostname, interface)
@@ -332,19 +330,18 @@ class MeshExecutor:
         return to_bgp_global_options(global_options)
 
     def _apply_direct_interface_changes(
-            self, device: Device, neighbor: Device, ports: list[str], changes: InterfaceChanges,
+        self,
+        device: Device,
+        neighbor: Device,
+        ports: list[str],
+        changes: InterfaceChanges,
     ) -> str:
         # filter ports according to processed in pair
-        port_pairs = [
-            p
-            for p in self._storage.search_connections(device, neighbor)
-            if p[0].name in ports
-        ]
+        port_pairs = [p for p in self._storage.search_connections(device, neighbor) if p[0].name in ports]
         if len(port_pairs) > 1:
             if changes.lag is changes.svi is None:
                 raise ValueError(
-                    f"Multiple connections found between {device.fqdn} and {neighbor.fqdn}."
-                    "Specify LAG or SVI"
+                    f"Multiple connections found between {device.fqdn} and {neighbor.fqdn}.Specify LAG or SVI"
                 )
         if changes.lag is not None:
             target_interface = device.make_lag(
@@ -362,11 +359,15 @@ class MeshExecutor:
             target_interface = device.add_svi(changes.svi)
         else:
             target_interface, _ = port_pairs[0]
-        target_interface.add_addr(changes.addr, changes.vrf)
+        if changes.addr is not UNNUMBERED:
+            target_interface.add_addr(changes.addr, changes.vrf)
         return target_interface.name
 
     def _apply_nondirect_interface_changes(
-            self, device: Device, ifname: Optional[str], changes: InterfaceChanges,
+        self,
+        device: Device,
+        ifname: Optional[str],
+        changes: InterfaceChanges,
     ) -> Optional[str]:
         if changes.lag is not None:
             raise ValueError("LAG creation unsupported for indirect and virtual peers")
@@ -380,7 +381,8 @@ class MeshExecutor:
             target_interface = device.find_interface(ifname)
             if not target_interface:
                 raise ValueError(f"Interface {ifname} not found for device {device.fqdn}")
-        target_interface.add_addr(changes.addr, changes.vrf)
+        if changes.addr is not UNNUMBERED:
+            target_interface.add_addr(changes.addr, changes.vrf)
         return target_interface.name
 
     def execute_for(self, device: Device) -> BgpConfig:

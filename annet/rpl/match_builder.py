@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Generic, Sequence, Callable, Optional, TypeVar, Any
+from typing import Any, Callable, Generic, Optional, Sequence, TypeVar
 
-from .condition import SingleCondition, ConditionOperator, AndCondition
+from .condition import AndCondition, ConditionOperator, SingleCondition
 
 
 class MatchField(str, Enum):
@@ -93,9 +93,9 @@ class Checkable:
         return SingleCondition(MatchField.as_path_filter, ConditionOperator.EQ, name)
 
     def match_v6(
-            self,
-            *names: str,
-            or_longer: bool | OrLonger = (None, None),
+        self,
+        *names: str,
+        or_longer: bool | OrLonger = (None, None),
     ) -> SingleCondition[PrefixMatchValue]:
         if or_longer is True:
             or_longer = (None, 128)
@@ -108,9 +108,9 @@ class Checkable:
         )
 
     def match_v4(
-            self,
-            *names: str,
-            or_longer: bool | OrLonger = (None, None),
+        self,
+        *names: str,
+        or_longer: bool | OrLonger = (None, None),
     ) -> SingleCondition[PrefixMatchValue]:
         if or_longer is True:
             or_longer = (None, 32)

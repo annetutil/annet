@@ -1,6 +1,7 @@
 import enum
 from typing import List, Tuple
 
+
 Diff = List[Tuple]
 
 

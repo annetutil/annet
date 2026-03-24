@@ -1,20 +1,32 @@
 import re
 from abc import ABC
 from os import path
-from typing import Iterable, Union
+from typing import Any, Dict, Iterable, List, OrderedDict, TypedDict, Union
 
 from annet.annlib.lib import mako_render
-from annet.annlib.rbparser.ordering import compile_ordering_text
+from annet.annlib.rbparser.ordering import CompiledTree, compile_ordering_text
 from annet.annlib.rbparser.platform import VENDOR_ALIASES
-
 from annet.connectors import CachedConnector
 from annet.rulebook.deploying import compile_deploying_text
 from annet.rulebook.patching import compile_patching_text
 from annet.vendors import registry_connector
 
 
+class RulebookTexts(TypedDict):
+    patching: str
+    ordering: str
+    deploying: str
+
+
+class Rulebook(TypedDict):
+    patching: Dict[str, OrderedDict[str, Any]]
+    ordering: CompiledTree
+    deploying: OrderedDict[str, Any]
+    texts: RulebookTexts
+
+
 class RulebookProvider(ABC):
-    def get_rulebook(self, hw):
+    def get_rulebook(self, hw) -> Rulebook:
         raise NotImplementedError
 
     def get_root_modules(self) -> Iterable[str]:
@@ -29,7 +41,7 @@ class _RulebookProviderConnector(CachedConnector[RulebookProvider]):
 rulebook_provider_connector = _RulebookProviderConnector()
 
 
-def get_rulebook(hw):
+def get_rulebook(hw) -> Rulebook:
     return rulebook_provider_connector.get().get_rulebook(hw)
 
 
@@ -37,8 +49,9 @@ class DefaultRulebookProvider(RulebookProvider):
     root_dir = (path.dirname(__file__),)
     root_modules = ("annet.rulebook",)
 
-    def __init__(self, root_dir: Union[str, Iterable[str], None] = None,
-                 root_modules: Union[str, Iterable[str], None] = None):
+    def __init__(
+        self, root_dir: Union[str, Iterable[str], None] = None, root_modules: Union[str, Iterable[str], None] = None
+    ):
         self._rulebook_cache = {}
         self._render_rul_cache = {}
         self._escaped_rul_cache = {}
@@ -60,13 +73,15 @@ class DefaultRulebookProvider(RulebookProvider):
     def get_root_modules(self):
         return self.root_modules
 
-    def get_rulebook(self, hw):
+    def get_rulebook(self, hw) -> Rulebook:
         if hw in self._rulebook_cache:
             return self._rulebook_cache[hw]
 
         assert hw.vendor in registry_connector.get(), "Unknown vendor: %s" % (hw.vendor)
         rul_vendor_name = VENDOR_ALIASES.get(hw.vendor, hw.vendor)
-        patching = compile_patching_text(self._render_rul(rul_vendor_name + ".rul", hw), rul_vendor_name)
+
+        patching_text = self._render_rul(rul_vendor_name + ".rul", hw)
+        patching = compile_patching_text(patching_text, rul_vendor_name)
 
         try:
             ordering_text = self._render_rul(hw.vendor + ".order", hw)
@@ -85,6 +100,11 @@ class DefaultRulebookProvider(RulebookProvider):
             "patching": patching,
             "ordering": ordering,
             "deploying": deploying,
+            "texts": {
+                "patching": patching_text,
+                "ordering": ordering_text,
+                "deploying": deploying_text,
+            },
         }
         return self._rulebook_cache[hw]
 

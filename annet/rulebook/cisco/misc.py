@@ -3,7 +3,6 @@ from collections import OrderedDict
 from typing import Any
 
 from annet.annlib.types import Op
-
 from annet.rulebook import common
 
 

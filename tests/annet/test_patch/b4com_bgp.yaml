@@ -1,0 +1,44 @@
+vendor: b4com
+before: |
+  router bgp 65512
+   bgp router-id 10.0.0.1
+   bgp bestpath as-path multipath-relax
+   bgp log-neighbor-changes
+   neighbor 2001:db8::1234 remote-as 1234
+   neighbor 2001:db8::1234 fall-over bfd
+   neighbor 2001:db8::1234 description blf02
+   neighbor 2001:db8::1234 advertisement-interval 0
+   address-family ipv4 vrf TEST_VRF
+   network 10.1.1.0/24
+   network 10.1.2.0/24
+   neighbor 10.1.1.2 remote-as 65513
+   neighbor 10.1.1.2 activate
+   neighbor 10.1.1.4 remote-as 65514
+   neighbor 10.1.1.4 activate
+
+after: |
+  router bgp 65512
+   bgp router-id 10.0.0.1
+   bgp bestpath as-path multipath-relax
+   bgp log-neighbor-changes
+   address-family ipv4 vrf TEST_VRF
+   network 10.1.1.0/24
+   neighbor 10.1.1.2 remote-as 65513
+   neighbor 10.1.1.2 activate
+   neighbor 10.1.1.6 remote-as 65515
+   neighbor 10.1.1.6 activate
+
+patch: |
+  conf t
+  router bgp 65512
+    no neighbor 2001:db8::1234 remote-as 1234
+    address-family ipv4 vrf TEST_VRF
+      no network 10.1.2.0/24
+      no neighbor 10.1.1.4 remote-as 65514
+      neighbor 10.1.1.6 remote-as 65515
+      neighbor 10.1.1.6 activate
+      exit-address-family
+    exit
+  commit
+  end
+  write

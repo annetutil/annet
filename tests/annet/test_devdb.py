@@ -1,4 +1,8 @@
+import keyword
+
 import pytest
+
+from annet.annlib.netdev.devdb import _prepare_db
 from annet.annlib.netdev.views.hardware import HardwareView
 
 
@@ -74,8 +78,9 @@ MODELS = [
     ("Aruba AP-515 (US)", "Aruba.AP.AP500.AP515"),
     ("Aruba AP-565", "Aruba.AP.AP500.AP565"),
     ("Aruba AP-655", "Aruba.AP.AP600.AP655"),
-    ("Asterfusion CX532P-N-AC", "PC.Whitebox.Asterfusion.CX.CX500.CX532P-N"),
-    ("Asterfusion CX732Q-N-AC", "PC.Whitebox.Asterfusion.CX"),
+    ("Asterfusion CX532P-N-AC", "PC.Whitebox.Asterfusion.CX.CX500.CX532PN"),
+    ("Asterfusion CX732Q-N-AC", "PC.Whitebox.Asterfusion.CX.CX700.CX732QN"),
+    ("Asterfusion CX864E-N", "PC.Whitebox.Asterfusion.CX.CX800.CX864EN"),
     ("B4com AS9726-32DB-O-AC-F", "B4com"),
     ("B4com CS4148Q08U", "B4com"),
     ("Cisco 8201-24H8FH", "Cisco.XR"),
@@ -356,6 +361,7 @@ MODELS = [
     ("Cisco Nexus N9K-C93180YC-EX", "Cisco.Nexus.N9x"),
     ("Cisco Nexus N9K-C93240YC-FX2", "Cisco.Nexus.N9x"),
     ("Cisco Nexus N9K-C9364C", "Cisco.Nexus.N9x.N9364"),
+    ("Cisco NCS-55A2-MODS-SYS", "Cisco.NCS"),
     ("Cisco SF200-24", "Cisco"),
     ("Cisco SF200-24FP", "Cisco"),
     ("Cisco SF200-24P", "Cisco"),
@@ -498,6 +504,7 @@ MODELS = [
     ("Huawei LS-S5352C-SI", "Huawei.Quidway.S5300.S5352"),
     ("Huawei NE40E-F1A-14H24Q", "Huawei.NE.NE40E"),
     ("Huawei NE8000-F2A", "Huawei.NE.NE8000"),
+    ("Huawei XH9230-128DQ", "Huawei.CE.XH9000.XH9200"),
     ("Huawei S2309TP-EI", "Huawei.Quidway.S2x.S2300"),
     ("Huawei S2309TP-PWR-EI", "Huawei.Quidway.S2x.S2300"),
     ("Huawei S2309TP-SI", "Huawei.Quidway.S2x.S2300"),
@@ -714,3 +721,16 @@ MODELS = [
 def test_devdb(model, expected):
     hwview = HardwareView(model)
     assert str(hwview) == expected
+
+
+def test_devdb_valid_identifiers():
+    invalid_keys = []
+    for key in _prepare_db().keys():
+        for part in key:
+            if not part.isidentifier() or keyword.iskeyword(part):
+                invalid_keys.append(f"{'.'.join(key)} (offending part: {part!r})")  # fmt: skip
+    if invalid_keys:
+        pytest.fail(
+            "Every part in `devdb.json` key must be a valid Python identifier. "
+            "Found invalid keys:\n" + "\n".join((f' * {key}' for key in invalid_keys))
+        )  # fmt: skip

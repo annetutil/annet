@@ -1,8 +1,8 @@
 from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.vendors.tabparser import CiscoFormatter
 from annet.vendors.base import AbstractVendor
 from annet.vendors.registry import registry
+from annet.vendors.tabparser import CiscoFormatter
 
 
 @registry.register
@@ -20,7 +20,8 @@ class CiscoVendor(AbstractVendor):
         return before, after
 
     def match(self) -> list[str]:
-        return ["Cisco"]
+        # ASR1k runs IOS-XE, so Cisco.ASR.ASR1000 must be explicetely returned here
+        return ["Cisco", "Cisco.ASR.ASR1000"]
 
     @property
     def reverse(self) -> str:

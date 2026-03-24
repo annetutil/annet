@@ -1,39 +1,46 @@
-
-import re
-import tempfile
-import os
-import sys
-import math
 import asyncio
+import math
+import os
 import platform
+import re
+import sys
+import tempfile
 import textwrap
 import time
 import traceback
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 from contextlog import get_logger
 
 from annet import text_term_format
 from annet.deploy import ProgressBar
 from annet.output import TextArgs
+
+
 try:
     import curses
 except ImportError:
     curses = None
 
 uname = platform.uname()[0]
-NCURSES_SIZE_T = 2 ** 15 - 1
+NCURSES_SIZE_T = 2**15 - 1
 MIN_CONTENT_HEIGHT = 20
 
 
 class AskConfirm:
     CUT_WARN_MSG = "WARNING: the text was cut because of curses limits."
 
-    def __init__(self, text: str, text_type="diff", alternative_text: str = "",
-                 alternative_text_type: str = "diff", allow_force_yes: bool = False):
+    def __init__(
+        self,
+        text: str,
+        text_type="diff",
+        alternative_text: str = "",
+        alternative_text_type: str = "diff",
+        allow_force_yes: bool = False,
+    ):
         self.text = [text, text_type]
         self.alternative_text = [alternative_text, alternative_text_type]
         self.color_to_curses: Dict[Optional[str], int] = {}
@@ -52,14 +59,15 @@ class AskConfirm:
         self.prompt = [
             TextArgs("Execute these commands? [Y%s/q] (/ - search, a - patch/cmds)" % s_force, "blue", offset=0),
             self.page_position,
-            self.debug_prompt]
+            self.debug_prompt,
+        ]
 
     def _parse_text(self):
         txt = self.text[0]
         txt_split = txt.splitlines()
         # curses pad, который тут используется, имеет ограничение на количество линий
         if (len(txt_split) + 1) >= NCURSES_SIZE_T:  # +1 для того чтобы курсор можно было переместить на пустую строку
-            del txt_split[NCURSES_SIZE_T - 3:]
+            del txt_split[NCURSES_SIZE_T - 3 :]
             txt_split.insert(0, self.CUT_WARN_MSG)
             txt_split.append(self.CUT_WARN_MSG)
             txt = "\n".join(txt_split)
@@ -77,7 +85,7 @@ class AskConfirm:
         except Exception:
             return None
         lines = self.text[0].splitlines()
-        for (line_no, line) in enumerate(lines):
+        for line_no, line in enumerate(lines):
             for match in re.finditer(expr, line):
                 if line_no not in self.found_pos:
                     self.found_pos[line_no] = []
@@ -282,8 +290,16 @@ class AskConfirm:
                 self.pad.move(y, x)
 
             if self.debug_prompt.text != "":
-                debug_line = "y=%s x=%s, x_delta=%s y_delta=%s top=%s, max_y=%s max_x=%s lines=%s" % \
-                             (y, x, x_delta, y_delta, self.top, max_y, max_x, len(self.lines))
+                debug_line = "y=%s x=%s, x_delta=%s y_delta=%s top=%s, max_y=%s max_x=%s lines=%s" % (
+                    y,
+                    x,
+                    x_delta,
+                    y_delta,
+                    self.top,
+                    max_y,
+                    max_x,
+                    len(self.lines),
+                )
                 self.debug_prompt.text = debug_line
                 self.debug_prompt.color = "green_bold"
                 self.debug_prompt.offset = max_x - len(debug_line) - 1
@@ -450,8 +466,12 @@ class ProgressBars(ProgressBar):
         tile_no = 0
         status_bar_win = curses.newwin(1, width, scree_size[0], 0)
         self.tiles["status:"] = Tile(
-            win=status_bar_win, content=[], title=[""],
-            height=1, width=width, need_draw=True,
+            win=status_bar_win,
+            content=[],
+            title=[""],
+            height=1,
+            width=width,
+            need_draw=True,
         )
         max_tile_name_len = max(len(tile_name) for tile_name in self.tiles_params)
 
@@ -474,8 +494,9 @@ class ProgressBars(ProgressBar):
 
                 if tile_no < max_height:
                     begin_y = scree_offset[0] + begin_y
-                    get_logger().debug("newwin height=%s, width=%s, begin_y=%s, begin_x=%s", height, width, begin_y,
-                                       begin_x)
+                    get_logger().debug(
+                        "newwin height=%s, width=%s, begin_y=%s, begin_x=%s", height, width, begin_y, begin_x
+                    )
                     win = curses.newwin(height, width, begin_y, begin_x)
                 if tile_no == max_height:
                     left = len(self.tiles_params) - max_height + 1
@@ -483,14 +504,18 @@ class ProgressBars(ProgressBar):
                         win=curses.newwin(height, width, begin_y, begin_x),
                         content=[],
                         title=["... and %s more" % left],
-                        height=height, width=width, need_draw=True,
+                        height=height,
+                        width=width,
+                        need_draw=True,
                     )
 
             self.tiles[tile_name] = Tile(
                 win=win,
                 content=[],
                 title=[("{:<%s}" % (max_tile_name_len)).format(tile_name)],
-                height=height, width=width, need_draw=True,
+                height=height,
+                width=width,
+                need_draw=True,
             )
             i += 1
             begin_y += height
@@ -571,8 +596,9 @@ class ProgressBars(ProgressBar):
         curses.noecho()
         curses.cbreak()
         scree_size = self.screen.getmaxyx()
-        get_logger().debug("orig scree_size y=%s, x=%s offset=%s %s", scree_size[0], scree_size[1], self.offset[0],
-                           self.offset[1])
+        get_logger().debug(
+            "orig scree_size y=%s, x=%s offset=%s %s", scree_size[0], scree_size[1], self.offset[0], self.offset[1]
+        )
 
         if self.offset[0] == 0:
             new_y = 0
@@ -701,15 +727,16 @@ class ProgressBars(ProgressBar):
         if not self.terminal_refresher_coro:
             self.refresh(tile_name)
 
-    def set_progress(self,
-                     tile_name: str,
-                     iteration: int,
-                     total: int,
-                     prefix="",
-                     suffix="",
-                     fill="█",
-                     error=False,
-                     ):
+    def set_progress(
+        self,
+        tile_name: str,
+        iteration: int,
+        total: int,
+        prefix="",
+        suffix="",
+        fill="█",
+        error=False,
+    ):
         """
         Call in a loop to create terminal progress bar
         @params:
@@ -769,12 +796,12 @@ class ProgressBars(ProgressBar):
 
 
 def draw_lines_in_win(
-        lines: list[list[TextArgs]],
-        win: "curses.window | None",
-        color_to_curses: dict[Optional[str], int],
-        margin: int = 0,
-        x_margin: int = 0,
-        y_margin: int = 0,
+    lines: list[list[TextArgs]],
+    win: "curses.window | None",
+    color_to_curses: dict[Optional[str], int],
+    margin: int = 0,
+    x_margin: int = 0,
+    y_margin: int = 0,
 ) -> None:
     if win is None:
         return

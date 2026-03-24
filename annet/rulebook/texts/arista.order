@@ -7,7 +7,7 @@
 
 
 alias tmate-arista bash tmate-arista
-service 
+service
 switch
 hardware
 transceiver

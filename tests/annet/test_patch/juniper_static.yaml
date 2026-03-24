@@ -1,0 +1,350 @@
+- vendor: juniper
+  diff: |-
+    routing-options {
+        rib inet.0 {
+            static {
+                + route 10.0.1.0/24 discard;
+            }
+        }
+        rib inet6.0 {
+            static {
+                + route 2001:db8:1::/40 discard;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    set routing-options rib inet.0 static route 10.0.1.0/24 discard
+    set routing-options rib inet6.0 static route 2001:db8:1::/40 discard
+    commit
+    exit
+
+
+- vendor: juniper
+  diff: |-
+    routing-options {
+        rib inet.0 {
+            static {
+                - route 10.0.1.0/24 discard;
+                + route 10.0.1.0/24 reject;
+            }
+        }
+        rib inet6.0 {
+            static {
+                - route 2001:db8:1::/40 discard;
+                + route 2001:db8:1::/40 reject;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-options rib inet.0 static route 10.0.1.0/24
+    set routing-options rib inet.0 static route 10.0.1.0/24 reject
+    delete routing-options rib inet6.0 static route 2001:db8:1::/40
+    set routing-options rib inet6.0 static route 2001:db8:1::/40 reject
+    commit
+    exit
+
+
+- vendor: juniper
+  diff: |-
+    routing-options {
+        rib inet.0 {
+            static {
+                - route 10.0.1.0/24 discard;
+                + route 10.0.2.0/24 discard;
+            }
+        }
+        rib inet6.0 {
+            static {
+                - route 2001:db8:1::/40 discard;
+                + route 2001:db8:2::/40 discard;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-options rib inet.0 static route 10.0.1.0/24
+    set routing-options rib inet.0 static route 10.0.2.0/24 discard
+    delete routing-options rib inet6.0 static route 2001:db8:1::/40
+    set routing-options rib inet6.0 static route 2001:db8:2::/40 discard
+    commit
+    exit
+
+
+- vendor: juniper
+  diff: |-
+    routing-options {
+        rib inet.0 {
+            static {
+                - route 10.0.1.0/24 discard;
+                - route 10.0.2.0/24;
+            }
+        }
+        rib inet6.0 {
+            static {
+                - route 2001:db8:1::/40 discard;
+                - route 2001:db8:2::/40;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-options rib inet.0 static route 10.0.1.0/24
+    delete routing-options rib inet.0 static route 10.0.2.0/24
+    delete routing-options rib inet6.0 static route 2001:db8:1::/40
+    delete routing-options rib inet6.0 static route 2001:db8:2::/40
+    commit
+    exit
+
+
+- vendor: juniper
+  before: |-
+    routing-options {
+        rib inet.0 {
+            static {
+                route 10.0.2.0/24 discard;
+            }
+        }
+    }
+  after: |-
+    routing-options {
+        rib inet.0 {
+            static {
+                route 10.0.2.0/24 {
+                    as-path {
+                        origin igp;
+                    }
+                    discard;
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-options rib inet.0 static route 10.0.2.0/24
+    set routing-options rib inet.0 static route 10.0.2.0/24 as-path origin igp
+    set routing-options rib inet.0 static route 10.0.2.0/24 discard
+    commit
+    exit
+
+
+- vendor: juniper
+  before: |-
+    routing-options {
+        rib inet.0 {
+            static {
+                route 10.0.2.0/24 discard;
+            }
+        }
+    }
+  after: |-
+    routing-options {
+        rib inet.0 {
+            static {
+                route 10.0.2.0/24 {
+                    as-path {
+                        origin igp;
+                    }
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-options rib inet.0 static route 10.0.2.0/24
+    set routing-options rib inet.0 static route 10.0.2.0/24 as-path origin igp
+    commit
+    exit
+
+
+- vendor: juniper
+  diff: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    static {
+                        + route 10.0.1.0/24 discard;
+                    }
+                }
+                rib VRF_A.inet6.0 {
+                    static {
+                        + route 2001:db8:1::/40 discard;
+                    }
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    set routing-instances VRF_A routing-options rib VRF_A.inet.0 static route 10.0.1.0/24 discard
+    set routing-instances VRF_A routing-options rib VRF_A.inet6.0 static route 2001:db8:1::/40 discard
+    commit
+    exit
+
+
+- vendor: juniper
+  diff: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    static {
+                        - route 10.0.1.0/24 discard;
+                        + route 10.0.1.0/24 reject;
+                    }
+                }
+                rib VRF_A.inet6.0 {
+                    static {
+                        - route 2001:db8:1::/40 discard;
+                        + route 2001:db8:1::/40 reject;
+                    }
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-instances VRF_A routing-options rib VRF_A.inet.0 static route 10.0.1.0/24
+    set routing-instances VRF_A routing-options rib VRF_A.inet.0 static route 10.0.1.0/24 reject
+    delete routing-instances VRF_A routing-options rib VRF_A.inet6.0 static route 2001:db8:1::/40
+    set routing-instances VRF_A routing-options rib VRF_A.inet6.0 static route 2001:db8:1::/40 reject
+    commit
+    exit
+
+
+- vendor: juniper
+  diff: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    static {
+                        - route 10.0.1.0/24 discard;
+                        + route 10.0.2.0/24 discard;
+                    }
+                }
+                rib VRF_A.inet6.0 {
+                    static {
+                        - route 2001:db8:1::/40 discard;
+                        + route 2001:db8:2::/40 discard;
+                    }
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-instances VRF_A routing-options rib VRF_A.inet.0 static route 10.0.1.0/24
+    set routing-instances VRF_A routing-options rib VRF_A.inet.0 static route 10.0.2.0/24 discard
+    delete routing-instances VRF_A routing-options rib VRF_A.inet6.0 static route 2001:db8:1::/40
+    set routing-instances VRF_A routing-options rib VRF_A.inet6.0 static route 2001:db8:2::/40 discard
+    commit
+    exit
+
+
+- vendor: juniper
+  diff: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    static {
+                        - route 10.0.1.0/24 discard;
+                        - route 10.0.2.0/24;
+                    }
+                }
+                rib VRF_A.inet6.0 {
+                    static {
+                        - route 2001:db8:1::/40 discard;
+                        - route 2001:db8:2::/40;
+                    }
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-instances VRF_A routing-options rib VRF_A.inet.0 static route 10.0.1.0/24
+    delete routing-instances VRF_A routing-options rib VRF_A.inet.0 static route 10.0.2.0/24
+    delete routing-instances VRF_A routing-options rib VRF_A.inet6.0 static route 2001:db8:1::/40
+    delete routing-instances VRF_A routing-options rib VRF_A.inet6.0 static route 2001:db8:2::/40
+    commit
+    exit
+
+
+- vendor: juniper
+  before: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    static {
+                        route 10.0.2.0/24 discard;
+                    }
+                }
+            }
+        }
+    }
+  after: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    static {
+                        route 10.0.2.0/24 {
+                            as-path {
+                                origin igp;
+                            }
+                            discard;
+                        }
+                    }
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-instances VRF_A routing-options rib VRF_A.inet.0 static route 10.0.2.0/24
+    set routing-instances VRF_A routing-options rib VRF_A.inet.0 static route 10.0.2.0/24 as-path origin igp
+    set routing-instances VRF_A routing-options rib VRF_A.inet.0 static route 10.0.2.0/24 discard
+    commit
+    exit
+
+
+- vendor: juniper
+  before: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    static {
+                        route 10.0.2.0/24 discard;
+                    }
+                }
+            }
+        }
+    }
+  after: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    static {
+                        route 10.0.2.0/24 {
+                            as-path {
+                                origin igp;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-instances VRF_A routing-options rib VRF_A.inet.0 static route 10.0.2.0/24
+    set routing-instances VRF_A routing-options rib VRF_A.inet.0 static route 10.0.2.0/24 as-path origin igp
+    commit
+    exit

@@ -21,8 +21,8 @@ __all__ = [
 
 from .action import Action, ActionType, SingleAction
 from .condition import AndCondition, Condition, ConditionOperator, SingleCondition
-from .match_builder import R, MatchField, PrefixMatchValue, OrLonger
-from .policy import RoutingPolicyStatement, RoutingPolicy
+from .match_builder import MatchField, OrLonger, PrefixMatchValue, R
+from .policy import RoutingPolicy, RoutingPolicyStatement
 from .result import ResultType
-from .routemap import RouteMap, Route
-from .statement_builder import ThenField, CommunityActionValue
+from .routemap import Route, RouteMap
+from .statement_builder import CommunityActionValue, ThenField

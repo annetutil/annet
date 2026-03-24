@@ -1,8 +1,8 @@
 from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.vendors.tabparser import AsrFormatter
 from annet.vendors.base import AbstractVendor
 from annet.vendors.registry import registry
+from annet.vendors.tabparser import AsrFormatter
 
 
 @registry.register
@@ -20,7 +20,7 @@ class IosXrVendor(AbstractVendor):
         return before, after
 
     def match(self) -> list[str]:
-        return ["Cisco.ASR", "Cisco.XR", "Cisco.XRV"]
+        return ["Cisco.ASR", "Cisco.XR", "Cisco.XRV", "Cisco.NCS"]
 
     @property
     def reverse(self) -> str:

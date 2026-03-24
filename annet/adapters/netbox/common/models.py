@@ -1,8 +1,8 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from ipaddress import ip_interface, IPv6Interface
-from typing import List, Optional, Any, Dict, Sequence, TypeVar, Generic
+from ipaddress import IPv6Interface, ip_interface
+from typing import Any, Dict, Generic, List, Optional, Sequence, TypeVar
 
 from annet.annlib.netdev.views.dump import DumpableView
 from annet.annlib.netdev.views.hardware import HardwareView, lag_name
@@ -323,10 +323,7 @@ class NetboxDevice(Entity, Generic[_InterfaceT, _DeviceIPT]):
         for interface in self.interfaces:
             if interface.name == name:
                 return interface
-        interface = self._make_interface(
-            name=name,
-            type=InterfaceType("virtual", "Virtual")
-        )
+        interface = self._make_interface(name=name, type=InterfaceType("virtual", "Virtual"))
         self.interfaces.append(interface)
         return interface
 
@@ -338,10 +335,7 @@ class NetboxDevice(Entity, Generic[_InterfaceT, _DeviceIPT]):
         for target_port in self.interfaces:
             if target_port.name == name:
                 return target_port
-        target_port = self._make_interface(
-            name=name,
-            type=InterfaceType("virtual", "Virtual")
-        )
+        target_port = self._make_interface(name=name, type=InterfaceType("virtual", "Virtual"))
         self.interfaces.append(target_port)
         return target_port
 

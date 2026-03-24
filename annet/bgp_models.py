@@ -1,6 +1,7 @@
-from collections.abc import Sequence, Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Literal, Union, Optional, Annotated
+from enum import Enum
+from typing import Annotated, Literal, Optional, Union
 
 
 class VidRange:
@@ -80,6 +81,7 @@ class ASN(int):
     None is treated like 0. Supports integer operations
     Supported formats: https://tools.ietf.org/html/rfc5396#section-1
     """
+
     PLAIN_MAX = 0x10000
 
     def __new__(cls, asn: Union[int, str, None, "ASN"]):
@@ -94,7 +96,7 @@ class ASN(int):
                     raise ValueError("Invalid ASN asn %r" % asn)
                 asn = (high << 16) + low
             asn = int(asn)
-        if not 0 <= asn <= 0xffffffff:
+        if not 0 <= asn <= 0xFFFFFFFF:
             raise ValueError("Invalid ASN asn %r" % asn)
         return int.__new__(cls, asn)
 
@@ -153,6 +155,7 @@ Family = Literal[
 @dataclass(frozen=True)
 class PeerOptions:
     """The same options as for group but any field is optional"""
+
     local_as: Optional[ASN] = None
     unnumbered: Optional[bool] = None
     rr_client: Optional[bool] = None
@@ -221,9 +224,16 @@ class PeerFamilyOptions:
     l2vpn_evpn: PeerFamilyOption = field(default_factory=PeerFamilyOption)
 
 
+class SpecialAddr(Enum):
+    UNNUMBERED = "UNNUMBERED"
+
+
+UNNUMBERED = SpecialAddr.UNNUMBERED
+
+
 @dataclass
 class Peer:
-    addr: str
+    addr: str | SpecialAddr
     interface: Optional[str]
     remote_as: ASN
     families: set[Family] = field(default_factory=set)

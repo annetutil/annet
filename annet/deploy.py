@@ -2,16 +2,16 @@
 import abc
 import itertools
 from collections import namedtuple
-from typing import Dict, List, Optional, Any, OrderedDict, Tuple, Type
+from typing import Any, Dict, List, Optional, OrderedDict, Tuple, Type
 
 from contextlog import get_logger
 
-from annet.annlib.command import Command, Question, CommandList
+from annet.annlib.command import Command, CommandList, Question
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.annlib.rbparser.deploying import MakeMessageMatcher, Answer
+from annet.annlib.rbparser.deploying import Answer, MakeMessageMatcher
 from annet.cli_args import DeployOptions
 from annet.connectors import Connector, get_connector_from_config
-from annet.rulebook import get_rulebook, deploying
+from annet.rulebook import deploying, get_rulebook
 from annet.storage import Device
 
 
@@ -21,31 +21,32 @@ _DeployResultBase = namedtuple("_DeployResultBase", ("hostnames", "results", "du
 class ProgressBar(abc.ABC):
     @abc.abstractmethod
     def set_content(self, tile_name: str, content: str):
-        ...
+        pass
 
     @abc.abstractmethod
     def add_content(self, tile_name: str, content: str):
-        ...
+        pass
 
     @abc.abstractmethod
     def reset_content(self, tile_name: str):
-        ...
+        pass
 
     @abc.abstractmethod
-    def set_progress(self,
-                     tile_name: str,
-                     iteration: int,
-                     total: int,
-                     prefix: str = "",
-                     suffix: str = "",
-                     fill: str = "",
-                     error: bool = False,
-                     ):
-        ...
+    def set_progress(
+        self,
+        tile_name: str,
+        iteration: int,
+        total: int,
+        prefix: str = "",
+        suffix: str = "",
+        fill: str = "",
+        error: bool = False,
+    ):
+        pass
 
     @abc.abstractmethod
     def set_exception(self, tile_name: str, cmd_exc: str, last_cmd: str, progress_max: int, content: str = "") -> None:
-        ...
+        pass
 
 
 class DeployResult(_DeployResultBase):  # noqa: E302
@@ -65,6 +66,7 @@ class _FetcherConnector(Connector["Fetcher"]):
     def _get_default(self) -> Type["Fetcher"]:
         # if entry points are broken, try to use direct import
         import annet.adapters.fetchers.stub.fetcher as stub_fetcher
+
         return stub_fetcher.StubFetcher
 
 
@@ -76,6 +78,7 @@ class _DriverConnector(Connector["DeployDriver"]):
     def _get_default(self) -> Type["DeployDriver"]:
         # if entry points are broken, try to use direct import
         import annet.adapters.deployers.stub.deployer as stub_deployer
+
         return stub_deployer.StubDeployDriver
 
 
@@ -85,20 +88,22 @@ driver_connector = _DriverConnector()
 
 class Fetcher(abc.ABC):
     @abc.abstractmethod
-    async def fetch_packages(self,
-                             devices: list[Device],
-                             processes: int = 1,
-                             max_slots: int = 0,
-                             ) -> tuple[dict[Device, str], dict[Device, Any]]:
+    async def fetch_packages(
+        self,
+        devices: list[Device],
+        processes: int = 1,
+        max_slots: int = 0,
+    ) -> tuple[dict[Device, str], dict[Device, Any]]:
         pass
 
     @abc.abstractmethod
-    async def fetch(self,
-                    devices: list[Device],
-                    files_to_download: dict[str, list[str]] | None = None,
-                    processes: int = 1,
-                    max_slots: int = 0,
-                    ):
+    async def fetch(
+        self,
+        devices: list[Device],
+        files_to_download: dict[str, list[str]] | None = None,
+        processes: int = 1,
+        max_slots: int = 0,
+    ):
         pass
 
 
@@ -110,7 +115,9 @@ def get_fetcher() -> Fetcher:
 
 class DeployDriver(abc.ABC):
     @abc.abstractmethod
-    async def bulk_deploy(self, deploy_cmds: dict, args: DeployOptions, progress_bar: ProgressBar | None = None) -> DeployResult:
+    async def bulk_deploy(
+        self, deploy_cmds: dict, args: DeployOptions, progress_bar: ProgressBar | None = None
+    ) -> DeployResult:
         pass
 
     @abc.abstractmethod

@@ -1,0 +1,40 @@
+[tool.ruff]
+line-length = 120
+exclude = ['.tox', '.venv', 'venv']
+target-version = "py310"
+
+[tool.ruff.format]
+skip-magic-trailing-comma = false
+line-ending = "auto"
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint] # https://docs.astral.sh/ruff/rules/
+select = [
+    "I", # isort
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/*.pyi" = ["I"]
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+force-single-line = false
+force-wrap-aliases = false
+split-on-trailing-comma = true
+
+[tool.flake8]
+ignore = [
+    "W503", # line break before binary operator
+    "W504", # line break after binary operator
+    "E125", # continuation line with same indent as next logical line
+    "E241", # multiple spaces after
+    "E272", # multiple spaces before keyword
+    "E126", # continuation line over-indented for hanging indent
+    "E121", # continuation line under-indented for hanging indent
+    "F401", # imported but unused  (already checked by pylint)
+    "E402", # module level import not at top of file  (already checked by pylint)
+    "E203",
+]
+max-line-length = 120
+inline-quotes = '"'

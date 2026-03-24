@@ -64,6 +64,7 @@ class HardwareView(HardwareLeaf):
     @property
     def vendor(self) -> Optional[str]:
         from annet.hardware import hardware_connector
+
         return hardware_connector.get().hw_to_vendor(self)
 
     @property

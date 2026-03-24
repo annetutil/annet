@@ -36,7 +36,7 @@ def expand_diff(diff, splitter):
                 line = line[1:].strip()
             assert sign == 0 or line_sign == sign
 
-            (sub1, sub2) = _process_node(children, deep + 1, line_sign)
+            sub1, sub2 = _process_node(children, deep + 1, line_sign)
             if line_sign != 1:
                 ret1[line] = sub1
             if line_sign != -1:

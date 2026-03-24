@@ -24,3 +24,66 @@
             }
         }
     }
+- vendor: juniper
+  acl: |
+    interfaces %cant_delete
+      (ae1.*|ae2.*) %cant_delete
+        description ~
+    protocols %cant_delete
+      isis %cant_delete
+        interface (ae1.*|ae2.*) %cant_delete
+          level * %cant_delete
+            metric *
+            ipv6-unicast-metric *
+
+    interfaces %cant_delete
+      (ae444.*) %cant_delete
+        description ~
+    protocols %cant_delete
+      isis %cant_delete
+        interface (ae444.*) %cant_delete
+          level * %cant_delete
+            metric *
+            ipv6-unicast-metric *
+
+    interfaces %cant_delete
+      (Eth-Trunk555.*) %cant_delete
+        description ~
+    protocols %cant_delete
+      isis %cant_delete
+        interface (Eth-Trunk555.*) %cant_delete
+          level * %cant_delete
+            metric *
+            ipv6-unicast-metric *
+  input: |
+    interfaces {
+        ae444 {
+            description "desc";
+        }
+    }
+    protocols {
+        isis {
+            interface ae444.0 {
+                level 2 {
+                    metric 1100;
+                    ipv6-unicast-metric 1100;
+                }
+            }
+        }
+    }
+  output: |
+    interfaces {
+        ae444 {
+            description "desc";
+        }
+    }
+    protocols {
+        isis {
+            interface ae444.0 {
+                level 2 {
+                    metric 1100;
+                    ipv6-unicast-metric 1100;
+                }
+            }
+        }
+    }
