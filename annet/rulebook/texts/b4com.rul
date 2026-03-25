@@ -14,6 +14,7 @@
 feature ~
 ntp ~
 sflow
+ip vrf *
 username * */(sshkey|role)/       %logic=b4com.misc.undo_username
 rsa key *
     ~                             %global
