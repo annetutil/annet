@@ -58,7 +58,7 @@ class DeviceIp(DumpableView):
 @dataclass
 class Vrf(Entity):
     description: str
-    rd: str | None
+    rd: str | None  # netbox get null if not present
 
 
 @dataclass
