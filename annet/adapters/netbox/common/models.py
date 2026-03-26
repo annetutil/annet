@@ -56,11 +56,17 @@ class DeviceIp(DumpableView):
 
 
 @dataclass
+class Vrf(Entity):
+    description: str
+    rd: str | None
+
+
+@dataclass
 class Prefix(DumpableView):
     id: int
     prefix: str
     # `site` deprecated since v4.2, replace in derived classes.
-    vrf: Optional[Entity]
+    vrf: Optional[Vrf]
     tenant: Optional[Entity]
     vlan: Optional[Entity]
     role: Optional[Entity]
@@ -91,7 +97,7 @@ class IpAddress(DumpableView, Generic[_PrefixT]):
     created: datetime
     last_updated: datetime
     prefix: Optional[_PrefixT] = None
-    vrf: Optional[Entity] = None
+    vrf: Optional[Vrf] = None
 
     @property
     def _dump__list_key(self):
@@ -124,7 +130,7 @@ def vrf_object(vrf: str | None) -> Entity | None:
     if vrf is None:
         return None
     else:
-        return Entity(id=0, name=vrf)
+        return Vrf(id=0, name=vrf, description="", rd="")
 
 
 _IpAddressT = TypeVar("_IpAddressT", bound=IpAddress)
@@ -183,7 +189,7 @@ class Interface(Entity, Generic[_IpAddressT, _FHRPGroupAssignmentT]):
     tagged_vlans: Optional[List[InterfaceVlan]]
     tags: List[EntityWithSlug] = field(default_factory=list)
     display: str = ""
-    vrf: Optional[Entity] = None
+    vrf: Optional[Vrf] = None
     mtu: int | None = None
     lag: Entity | None = None
     lag_min_links: int | None = None
