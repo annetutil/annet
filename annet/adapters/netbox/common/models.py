@@ -130,7 +130,7 @@ def vrf_object(vrf: str | None) -> Entity | None:
     if vrf is None:
         return None
     else:
-        return Vrf(id=0, name=vrf, description="", rd="")
+        return Vrf(id=0, name=vrf, description="", rd=None)
 
 
 _IpAddressT = TypeVar("_IpAddressT", bound=IpAddress)
