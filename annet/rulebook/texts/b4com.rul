@@ -42,6 +42,7 @@ interface */(ce|xe|po|eth(-0-)?|vlan1\.)[0-9\/]+$/     %logic=common.permanent %
         !exit
 router bgp *
     bgp ~
+    max-paths ebgp
     no neighbor * send-community extended
     neighbor ~                                  %logic=b4com.bgp.undo_peer
     address-family ~

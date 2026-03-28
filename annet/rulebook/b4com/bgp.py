@@ -44,10 +44,7 @@ def undo_peer(rule, key, diff, **kwargs):
             is_neighbor_removing = False
             for item in kwargs["rule_pre"]["items"].values():
                 if item[Op.REMOVED]:
-                    if (
-                        f"neighbor {key[0].split()[0]} remote-as"
-                        in item[Op.REMOVED][0]["row"]
-                    ):
+                    if f"neighbor {key[0].split()[0]} remote-as" in item[Op.REMOVED][0]["row"]:
                         is_neighbor_removing = True
                         break
             if not is_neighbor_removing:
