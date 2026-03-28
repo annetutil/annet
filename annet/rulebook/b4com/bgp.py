@@ -29,7 +29,7 @@ def undo_peer(rule, key, diff, **kwargs):
                 groups_for_deletion = []
                 for item in kwargs["rule_pre"]["items"].values():
                     if item[Op.REMOVED]:
-                        if "{neighbor} peer-group" in item[Op.REMOVED][0]["row"]:
+                        if f"{neighbor} peer-group" in item[Op.REMOVED][0]["row"]:
                             neighbor_group = item[Op.REMOVED][0]["row"].split()[-1]
                         if "remote-as" in item[Op.REMOVED][0]["row"]:
                             n = item[Op.REMOVED][0]["row"].split()[1]
