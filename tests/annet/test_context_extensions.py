@@ -1,6 +1,7 @@
 import os
 
 import pytest
+
 from annet.lib import add_context_extension
 
 
@@ -10,7 +11,7 @@ def mock_home_directory(tmp_path, monkeypatch):
         if path.startswith("~"):
             return str(tmp_path) + path[1:]
         return path
-    
+
     monkeypatch.setattr(os.path, "expanduser", mock_expanduser)
     return tmp_path
 
@@ -25,7 +26,7 @@ def test_add_context_extension_default_exists(tmp_path):
     base_path = tmp_path / "context"
     default_path = base_path.with_suffix(".yml")
     default_path.touch()
-    
+
     result = add_context_extension(base_path, ".yml", ".yaml")
     assert result == str(default_path)
 
