@@ -13,14 +13,14 @@
 
 
 user
-    add ~ %diff_logic=routeros.user.diff
+    add ~ %diff_logic=annet.rulebook.routeros.user.diff
     ~
     group
         add ~
 
 file
     print file=*
-    set * %logic=routeros.file.change
+    set * %logic=annet.rulebook.routeros.file.change
 
 system
     logging

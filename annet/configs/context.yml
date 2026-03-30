@@ -8,9 +8,14 @@ storage:
   default:
     adapter: netbox
 
+rulebook_module:
+  default:
+    - annet.rulebook.texts
+
 context:
   default:
     generators: default
     storage: default
+    rulebook_module: default
 
 selected_context: default

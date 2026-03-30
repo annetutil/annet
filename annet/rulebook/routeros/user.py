@@ -4,8 +4,9 @@ Custom diff logic for RouterOS user commands.
 
 import re
 from collections import OrderedDict as odict
-from annet.types import Op
+
 from annet.annlib.rulebook.common import DiffItem, call_diff_logic
+from annet.types import Op
 
 
 def extract_comment(line: str) -> str:

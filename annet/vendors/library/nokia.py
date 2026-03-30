@@ -37,4 +37,4 @@ class NokiaVendor(AbstractVendor):
         return ""
 
     def diff(self, order: bool) -> str:
-        return "juniper.ordered_diff" if order else "juniper.default_diff"
+        return "annet.rulebook.juniper.ordered_diff" if order else "annet.rulebook.juniper.default_diff"

@@ -11,11 +11,11 @@ from annet.vendors import registry_connector
 from .common import import_rulebook_function
 
 
-DEFAULT_PATCH_LOGIC = "common.default"
-ORDERED_PATCH_LOGIC = "common.ordered"
-REWRITE_PATCH_LOGIC = "common.rewrite"
-REWRITE_DIFF_LOGIC = "common.rewrite_diff"
-MULTILINE_DIFF_LOGIC = "common.multiline_diff"
+DEFAULT_PATCH_LOGIC = "annet.rulebook.common.default"
+ORDERED_PATCH_LOGIC = "annet.rulebook.common.ordered"
+REWRITE_PATCH_LOGIC = "annet.rulebook.common.rewrite"
+REWRITE_DIFF_LOGIC = "annet.rulebook.common.rewrite_diff"
+MULTILINE_DIFF_LOGIC = "annet.rulebook.common.multiline_diff"
 
 
 # =====

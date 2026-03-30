@@ -317,7 +317,7 @@ Additionally, rulebooks can use `Mako template <https://www.makotemplates.org>`_
 .. code-block:: text
 
     %if hw.Huawei.Quidway:
-    snmp-agent protocol source-interface %logic=huawei.misc.undo_redo
+    snmp-agent protocol source-interface %logic=annet.rulebook.huawei.misc.undo_redo
     %else:
     snmp-agent protocol source-interface *
     %endif

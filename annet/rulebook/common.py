@@ -7,13 +7,9 @@ from annet.annlib.rulebook.common import *  # pylint: disable=wildcard-import,un
 
 @functools.lru_cache()
 def import_rulebook_function(name):
-    from . import rulebook_provider_connector
-
-    index = name.rindex(".")
-    for root in rulebook_provider_connector.get().get_root_modules():
-        try:
-            module = importlib.import_module(f"{root}.{name[:index]}", package=__name__.rsplit(".", 1)[0])
-            return getattr(module, name[index + 1 :])
-        except ImportError:
-            pass
-    raise ImportError(f"Could not import {name}")
+    module, function_name = name.rsplit('.', 1) 
+    try:
+        module = importlib.import_module(module)
+        return getattr(module, function_name)
+    except ImportError:
+        raise ImportError(f"Could not import {name}") 
