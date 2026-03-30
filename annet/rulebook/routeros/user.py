@@ -17,7 +17,7 @@ def extract_comment(line: str) -> str:
 
 def normalize_user_line(line: str) -> str:
     """Normalize user line by removing password parameter."""
-    normalized = re.sub(r'\s+password=["\']?[^"\'\s]+["\']?', '', line)
+    normalized = re.sub(r'\s+password=["\']?[^"\'\s]+["\']?', "", line)
     return normalized.strip()
 
 
