@@ -8,14 +8,13 @@ storage:
   default:
     adapter: netbox
 
-rulebook_module:
-  default:
-    - annet.rulebook.texts
+rulebook_module: 
+  path: annet.rulebook.texts
 
 context:
   default:
     generators: default
     storage: default
-    rulebook_module: default
+    rulebook_module: path
 
 selected_context: default

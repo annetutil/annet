@@ -30,10 +30,7 @@ def mock_rulebook_module(request):
     
     custom_context = original_context.copy()
     
-    if isinstance(request.param, str):
-        custom_context["rulebook_module"] = [request.param]
-    else:
-        custom_context["rulebook_module"] = request.param
+    custom_context["rulebook_module"] = request.param
     
     with mock.patch("annet.rulebook.get_context", return_value=custom_context):
         yield request.param

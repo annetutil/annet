@@ -85,7 +85,7 @@ class DefaultRulebookProvider(RulebookProvider):
     def _read_escaped_rul(self, name):
         if name in self._escaped_rul_cache:
             return self._escaped_rul_cache[name]
-        python_path_to_module = get_context().get("rulebook_module")[0]
+        python_path_to_module = get_context().get("rulebook_module")
         module = import_module(python_path_to_module)
         if module.__file__ is None:
             raise ModuleNotFoundError(f"File __init__.py missing from the {python_path_to_module} module.")
