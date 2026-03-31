@@ -60,9 +60,10 @@ def device():
         "sonic",
     )
 
+
 @pytest.mark.parametrize(
-    'mock_rulebook_module',
-    ['tests.annet.test_pc_deploy.texts'],
+    "mock_rulebook_module",
+    ["tests.annet.test_pc_deploy.texts"],
     indirect=True,
 )
 def test_pc_deployer_rulebooks(device: Device, mocks, mock_rulebook_module):

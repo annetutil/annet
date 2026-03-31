@@ -1,6 +1,6 @@
-from importlib import import_module
 import os
 import re
+from importlib import import_module
 from typing import Any, Dict, OrderedDict, TypedDict
 
 from annet.annlib.lib import mako_render

@@ -7,9 +7,9 @@ from annet.annlib.rulebook.common import *  # pylint: disable=wildcard-import,un
 
 @functools.lru_cache()
 def import_rulebook_function(name):
-    module, function_name = name.rsplit('.', 1) 
+    module, function_name = name.rsplit(".", 1)
     try:
         module = importlib.import_module(module)
         return getattr(module, function_name)
     except ImportError:
-        raise ImportError(f"Could not import {name}") 
+        raise ImportError(f"Could not import {name}")
