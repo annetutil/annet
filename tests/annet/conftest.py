@@ -23,7 +23,7 @@ def mock_rulebook_module(request):
     def test_example(mock_rulebook_module):
         ...
     Значение ["custom.rulebook.texts"] будет подставлен в "rulebook_module" в context файл при использовании
-    функции annet.lib.get_context в annet.rulebook.__init__.DefaultRulebookProvider
+    функции annet.lib.get_context в annet.rulebook.__init__.RulebookProvider
     """
     from annet.lib import get_context
     original_context = get_context()

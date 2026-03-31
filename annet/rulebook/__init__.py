@@ -1,4 +1,3 @@
-from abc import ABC
 from importlib import import_module
 import os
 import re
@@ -26,16 +25,11 @@ class Rulebook(TypedDict):
     texts: RulebookTexts
 
 
-class RulebookProvider(ABC):
-    def get_rulebook(self, hw) -> Rulebook:
-        raise NotImplementedError
-
-
 def get_rulebook(hw) -> Rulebook:
-    return DefaultRulebookProvider().get_rulebook(hw)
+    return RulebookProvider().get_rulebook(hw)
 
 
-class DefaultRulebookProvider(RulebookProvider):
+class RulebookProvider:
     def __init__(self):
         self._rulebook_cache = {}
         self._render_rul_cache = {}
