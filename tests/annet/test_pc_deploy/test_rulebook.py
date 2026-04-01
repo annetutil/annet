@@ -62,11 +62,11 @@ def device():
 
 
 @pytest.mark.parametrize(
-    "mock_rulebook_module",
+    "mock_rulebooks_path",
     ["tests.annet.test_pc_deploy.texts"],
     indirect=True,
 )
-def test_pc_deployer_rulebooks(device: Device, mocks, mock_rulebook_module):
+def test_pc_deployer_rulebooks(device: Device, mocks, mock_rulebooks_path):
     opts = mock.Mock()
     path = "/etc/sonic/config_db.json"
     commands = "commands"
