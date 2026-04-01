@@ -13,37 +13,37 @@
 
 %context=block:ap-env
 
-name:~               %logic=aruba.ap_env.hostname
+name:~               %logic=annet.rulebook.aruba.ap_env.hostname
 
-*/ipaddr|netmask|gatewayip|dnsip|domainname/:...  %logic=aruba.ap_env.mgmt
+*/ipaddr|netmask|gatewayip|dnsip|domainname/:...  %logic=annet.rulebook.aruba.ap_env.mgmt
 
-usb-port-disable:... %logic=aruba.ap_env.patch_flag
-iap_master:...       %logic=aruba.ap_env.patch_flag
-iap_conductor:...    %logic=aruba.ap_env.patch_flag
+usb-port-disable:... %logic=annet.rulebook.aruba.ap_env.patch_flag
+iap_master:...       %logic=annet.rulebook.aruba.ap_env.patch_flag
+iap_conductor:...    %logic=annet.rulebook.aruba.ap_env.patch_flag
 
-iap_zone:~  %logic=aruba.ap_env.iap_zone
+iap_zone:~  %logic=annet.rulebook.aruba.ap_env.iap_zone
 
-dot11a_radio:disable %logic=aruba.ap_env.dot11_radio
-dot11g_radio:disable %logic=aruba.ap_env.dot11_radio
+dot11a_radio:disable %logic=annet.rulebook.aruba.ap_env.dot11_radio
+dot11g_radio:disable %logic=annet.rulebook.aruba.ap_env.dot11_radio
 
-installation_type:...  %logic=aruba.ap_env.installation_type
+installation_type:...  %logic=annet.rulebook.aruba.ap_env.installation_type
 
-standalone_mode:... %logic=aruba.ap_env.swarm_mode
+standalone_mode:... %logic=annet.rulebook.aruba.ap_env.swarm_mode
 
-*/wifi0_arm_(channel|power_10x)/:...    %logic=aruba.ap_env.wifi_arm
-*/wifi1_arm_(channel|power_10x)/:...    %logic=aruba.ap_env.wifi_arm
+*/wifi0_arm_(channel|power_10x)/:...    %logic=annet.rulebook.aruba.ap_env.wifi_arm
+*/wifi1_arm_(channel|power_10x)/:...    %logic=annet.rulebook.aruba.ap_env.wifi_arm
 
-a_ant_gain_10x:...  %logic=aruba.ap_env.ant_gain
-g_ant_gain_10x:...  %logic=aruba.ap_env.ant_gain
+a_ant_gain_10x:...  %logic=annet.rulebook.aruba.ap_env.ant_gain
+g_ant_gain_10x:...  %logic=annet.rulebook.aruba.ap_env.ant_gain
 
-a_ant_pol:...  %logic=aruba.ap_env.ant_pol
-g_ant_pol:...  %logic=aruba.ap_env.ant_pol
+a_ant_pol:...  %logic=annet.rulebook.aruba.ap_env.ant_pol
+g_ant_pol:...  %logic=annet.rulebook.aruba.ap_env.ant_pol
 
 %context=block:conf-t
 syslog-server
 
-*/syslog-level/ ~/(emergency|alert|critical|error|warn|notice|info|debug)/ * %logic=aruba.misc.syslog_level
-*/syslog-level/ ~/(emergency|alert|critical|error|warn|notice|info|debug)/ %logic=aruba.misc.syslog_level
+*/syslog-level/ ~/(emergency|alert|critical|error|warn|notice|info|debug)/ * %logic=annet.rulebook.aruba.misc.syslog_level
+*/syslog-level/ ~/(emergency|alert|critical|error|warn|notice|info|debug)/ %logic=annet.rulebook.aruba.misc.syslog_level
 
 arm
     wide-bands

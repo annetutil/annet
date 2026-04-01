@@ -15,7 +15,7 @@ from .common import import_rulebook_function
 Answer = namedtuple("Answer", ("text", "send_nl"))
 DEFAULT_TIMEOUT = 30
 DEFAULT_SEND_NL = True
-DEFAULT_APPLY_LOGIC = "common.apply"
+DEFAULT_APPLY_LOGIC = "annet.rulebook.common.apply"
 
 
 # =====

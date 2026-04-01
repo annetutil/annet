@@ -62,9 +62,9 @@ def test_ordered_and_filter_acl():
       policy-options
         policy-statement *
           term *               %ordered
-            from               %logic=common.undo_redo
+            from               %logic=annet.rulebook.common.undo_redo
               ~
-            then               %logic=common.undo_redo
+            then               %logic=annet.rulebook.common.undo_redo
               community ~      %ordered
               ~
             ~                  %global
