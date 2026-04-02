@@ -75,7 +75,7 @@ Here is the part of rulebook/texts/huawei.rul responsible for this:
 .. code-block::
 
     acl name *
-        rule * %logic=huawei.misc.undo_redo
+        rule * %logic=annet.rulebook.huawei.misc.undo_redo
 
 The asterisk here means that the key argument of the undo_redo function will contain the first word after rule,
 namely the rule number.

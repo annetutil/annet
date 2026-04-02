@@ -28,25 +28,24 @@ aaa group server tacacs\+ *
 route-map ~
     ~                             %global
 ip community-list ~
-interface */(ce|xe|po|eth(-0-)?|vlan1\.)[0-9\/]+$/     %logic=common.permanent %diff_logic=b4com.iface.diff
+interface */(ce|xe|po|eth(-0-)?|vlan1\.)[0-9\/]+$/     %logic=annet.rulebook.common.permanent %diff_logic=annet.rulebook.b4com.iface.diff
     description
     ip vrf forwarding *
     ip address *
     ipv6 address *
     ipv6 nd *
     mtu
-    sflow *                       %logic=b4com.iface.sflow
+    sflow *                       %logic=annet.rulebook.b4com.iface.sflow
     lldp-agent
-        ~ %global                 %logic=b4com.iface.lldp
+        ~ %global                 %logic=annet.rulebook.b4com.iface.lldp
         !dcbx *
         !exit
 router bgp *
     bgp ~
     max-paths ebgp
     no neighbor * send-community extended
-    neighbor ~                                  %logic=b4com.bgp.undo_peer
+    neighbor ~                                  %logic=annet.rulebook.b4com.bgp.undo_peer
     address-family ~
         network *
         max-paths ebgp
-        neighbor ~                              %logic=b4com.bgp.undo_peer
-        no neighbor * send-community extended
+        neighbor ~                              %logic=annet.rulebook.b4com.bgp.undo_peer

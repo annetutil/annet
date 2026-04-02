@@ -16,7 +16,11 @@ def iterate_files(files_or_dirs: typing.List[str]) -> typing.Iterable[pathlib.Pa
             yield pathlib.Path(file_or_dir)
         elif os.path.isdir(file_or_dir):
             for dirpath, dirnames, filenames in os.walk(file_or_dir):
+                if os.path.basename(dirpath) == "__pycache__":
+                    continue
                 for filename in filenames:
+                    if filename == "__init__.py":
+                        continue
                     yield pathlib.Path(os.path.join(dirpath, filename))
 
 

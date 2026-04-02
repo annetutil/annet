@@ -1,12 +1,12 @@
+import os
 import re
-from abc import ABC
-from os import path
-from typing import Any, Dict, Iterable, List, OrderedDict, TypedDict, Union
+from importlib import import_module
+from typing import Any, Dict, OrderedDict, TypedDict
 
 from annet.annlib.lib import mako_render
 from annet.annlib.rbparser.ordering import CompiledTree, compile_ordering_text
 from annet.annlib.rbparser.platform import VENDOR_ALIASES
-from annet.connectors import CachedConnector
+from annet.lib import get_context
 from annet.rulebook.deploying import compile_deploying_text
 from annet.rulebook.patching import compile_patching_text
 from annet.vendors import registry_connector
@@ -25,53 +25,15 @@ class Rulebook(TypedDict):
     texts: RulebookTexts
 
 
-class RulebookProvider(ABC):
-    def get_rulebook(self, hw) -> Rulebook:
-        raise NotImplementedError
-
-    def get_root_modules(self) -> Iterable[str]:
-        raise NotImplementedError
-
-
-class _RulebookProviderConnector(CachedConnector[RulebookProvider]):
-    name = "Rulebook provider"
-    ep_name = "rulebook"
-
-
-rulebook_provider_connector = _RulebookProviderConnector()
-
-
 def get_rulebook(hw) -> Rulebook:
-    return rulebook_provider_connector.get().get_rulebook(hw)
+    return RulebookProvider().get_rulebook(hw)
 
 
-class DefaultRulebookProvider(RulebookProvider):
-    root_dir = (path.dirname(__file__),)
-    root_modules = ("annet.rulebook",)
-
-    def __init__(
-        self, root_dir: Union[str, Iterable[str], None] = None, root_modules: Union[str, Iterable[str], None] = None
-    ):
+class RulebookProvider:
+    def __init__(self):
         self._rulebook_cache = {}
         self._render_rul_cache = {}
         self._escaped_rul_cache = {}
-
-        if root_dir is None:
-            pass
-        elif isinstance(root_dir, str):
-            self.root_dir = (root_dir,)
-        else:
-            self.root_dir = tuple(root_dir)
-
-        if root_modules is None:
-            pass
-        elif isinstance(root_modules, str):
-            self.root_modules = (root_modules,)
-        else:
-            self.root_modules = tuple(root_modules)
-
-    def get_root_modules(self):
-        return self.root_modules
 
     def get_rulebook(self, hw) -> Rulebook:
         if hw in self._rulebook_cache:
@@ -117,15 +79,21 @@ class DefaultRulebookProvider(RulebookProvider):
     def _read_escaped_rul(self, name):
         if name in self._escaped_rul_cache:
             return self._escaped_rul_cache[name]
-        for root_dir in self.root_dir:
-            try:
-                with open(path.join(root_dir, "texts", name), "r", encoding="utf-8") as f:
-                    self._escaped_rul_cache[name] = self._escape_mako(f.read())
-                    return self._escaped_rul_cache[name]
-            except FileNotFoundError:
-                pass
-
-        raise FileNotFoundError(f"Unable to find rul: {name}")
+        context = get_context()
+        try:
+            python_path_to_module = context["rulebooks"]["path"]
+        except KeyError:
+            raise KeyError("No path to rulebooks in the context.yml")
+        module = import_module(python_path_to_module)
+        if module.__file__ is None:
+            raise ModuleNotFoundError(f"File __init__.py missing from the {python_path_to_module} module.")
+        path_to_rulebook_dir = os.path.dirname(module.__file__)
+        try:
+            with open(os.path.join(path_to_rulebook_dir, name), "r", encoding="utf-8") as f:
+                self._escaped_rul_cache[name] = self._escape_mako(f.read())
+                return self._escaped_rul_cache[name]
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Unable to find rul: {name}")
 
     @staticmethod
     def _escape_mako(text):

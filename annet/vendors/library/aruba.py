@@ -40,4 +40,4 @@ class ArubaVendor(AbstractVendor):
         return "exit"
 
     def diff(self, order: bool) -> str:
-        return "common.ordered_diff" if order else "aruba.default_diff"
+        return "annet.rulebook.common.ordered_diff" if order else "annet.rulebook.aruba.default_diff"
