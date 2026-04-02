@@ -46,6 +46,7 @@ router bgp *
     no neighbor * send-community extended
     neighbor ~                                  %logic=annet.rulebook.b4com.bgp.undo_peer
     address-family ~
+        no neighbor * send-community extended
         network *
         max-paths ebgp
         neighbor ~                              %logic=annet.rulebook.b4com.bgp.undo_peer
