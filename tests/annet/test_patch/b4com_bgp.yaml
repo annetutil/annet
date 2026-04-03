@@ -4,23 +4,61 @@ before: |
    bgp router-id 10.0.0.1
    bgp bestpath as-path multipath-relax
    bgp log-neighbor-changes
+   neighbor GROUP_WITH_NEIGHBORS peer-group
+   neighbor GROUP_WITH_NEIGHBORS remote-as 99999
+   neighbor GROUP_WITH_NEIGHBORS advertisement-interval 0
+   neighbor GROUP_WITH_NEIGHBORS fall-over bfd
+   neighbor 2001:db8:1::1234 remote-as 12345
+   neighbor 2001:db8:1::1234 peer-group LAB-BLEAFS
+   neighbor 2001:db8:1::1234 description NEIGHBOR_1
+   neighbor 2001:db8:2::1234 remote-as 23456
+   neighbor 2001:db8:2::1234 peer-group LAB-BLEAFS
+   neighbor 2001:db8:2::1234 description NEIGHBOR_2
    neighbor 2001:db8::1234 remote-as 1234
    neighbor 2001:db8::1234 fall-over bfd
    neighbor 2001:db8::1234 description blf02
    neighbor 2001:db8::1234 advertisement-interval 0
    address-family ipv4 vrf TEST_VRF
+   neighbor GROUP_UNDER_DELETION peer-group
+   neighbor GROUP_UNDER_DELETION remote-as 99999
+   neighbor GROUP_UNDER_DELETION advertisement-interval 0
+   neighbor GROUP_UNDER_DELETION fall-over bfd
+   neighbor 2001:db8:3::1234 remote-as 12345
+   neighbor 2001:db8:3::1234 peer-group GROUP_UNDER_DELETION
+   neighbor 2001:db8:3::1234 description NEIGHBOR_1
+   neighbor 2001:db8:4::1234 remote-as 23456
+   neighbor 2001:db8:4::1234 peer-group GROUP_UNDER_DELETION
+   neighbor 2001:db8:4::1234 description NEIGHBOR_2
    network 10.1.1.0/24
    network 10.1.2.0/24
    neighbor 10.1.1.2 remote-as 65513
    neighbor 10.1.1.2 activate
    neighbor 10.1.1.4 remote-as 65514
    neighbor 10.1.1.4 activate
+   address-family ipv6 vrf VRF_UNDER_DELETION
+   neighbor GROUP_UNDER_DELETION peer-group
+   neighbor GROUP_UNDER_DELETION remote-as 99999
+   neighbor GROUP_UNDER_DELETION advertisement-interval 0
+   neighbor GROUP_UNDER_DELETION fall-over bfd
+   neighbor 2001:db8:5::1234 remote-as 12345
+   neighbor 2001:db8:5::1234 peer-group GROUP_UNDER_DELETION
+   neighbor 2001:db8:5::1234 description NEIGHBOR_1
+   neighbor 2001:db8:6::1234 remote-as 23456
+   neighbor 2001:db8:6::1234 peer-group GROUP_UNDER_DELETION
+   neighbor 2001:db8:6::1234 description NEIGHBOR_2
 
 after: |
   router bgp 65512
    bgp router-id 10.0.0.1
    bgp bestpath as-path multipath-relax
    bgp log-neighbor-changes
+   neighbor GROUP_WITH_NEIGHBORS peer-group
+   neighbor GROUP_WITH_NEIGHBORS remote-as 99999
+   neighbor GROUP_WITH_NEIGHBORS advertisement-interval 0
+   neighbor GROUP_WITH_NEIGHBORS fall-over bfd
+   neighbor 2001:db8:1::1234 remote-as 12345
+   neighbor 2001:db8:1::1234 peer-group LAB-BLEAFS
+   neighbor 2001:db8:1::1234 description NEIGHBOR_1
    address-family ipv4 vrf TEST_VRF
    network 10.1.1.0/24
    neighbor 10.1.1.2 remote-as 65513
@@ -31,12 +69,16 @@ after: |
 patch: |
   conf t
   router bgp 65512
+    no address-family ipv6 vrf VRF_UNDER_DELETION
+    no neighbor 2001:db8:2::1234 remote-as 23456
     no neighbor 2001:db8::1234 remote-as 1234
     address-family ipv4 vrf TEST_VRF
-      no network 10.1.2.0/24
+      no neighbor GROUP_UNDER_DELETION remote-as
       no neighbor 10.1.1.4 remote-as 65514
-      neighbor 10.1.1.6 remote-as 65515
+      no network 10.1.2.0/24
+      no neighbor GROUP_UNDER_DELETION peer-group
       neighbor 10.1.1.6 activate
+      neighbor 10.1.1.6 remote-as 65515
       exit-address-family
     exit
   commit

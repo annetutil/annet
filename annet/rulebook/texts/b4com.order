@@ -12,6 +12,7 @@ sflow
 ip prefix-list
 ipv6 prefix-list
 route-map
+ip vrf
 interface *
     description
     ip vrf forwarding
@@ -35,4 +36,6 @@ router bgp *
     neighbor * advertisement-interval *
     address-family ~
         max-paths ebgp *
+        neighbor * peer-group
         neighbor * activate
+        ~
