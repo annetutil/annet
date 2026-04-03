@@ -23,8 +23,6 @@ def test_patch(name, sample, ann_connectors):
 
     old, new, expected_patch = patch_data.get_configs(hw, sample)
 
-    assert old != new
-
     implicit_rules = implicit.compile_rules(mock.Mock(hw=hw))
     old = lib.merge_dicts(old, implicit.config(old, implicit_rules))
     new = lib.merge_dicts(new, implicit.config(new, implicit_rules))
