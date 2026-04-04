@@ -28,7 +28,7 @@ routing-options
     autonomous-system *
     rib *
         */(aggregate|static)/
-            route *                    %logic=common.undo_redo
+            route *                    %logic=annet.rulebook.common.undo_redo
                 ~
     ~
 
@@ -67,7 +67,7 @@ routing-instances
             autonomous-system *
             rib *
                 */(aggregate|static)/
-                    route *            %logic=common.undo_redo
+                    route *            %logic=annet.rulebook.common.undo_redo
                         ~
         protocols
             bgp
@@ -81,7 +81,7 @@ interfaces
             mtu *
             vlan-tags
             family inet6
-                address * %diff_logic=juniper.iface.ipv6_addr
+                address * %diff_logic=annet.rulebook.juniper.iface.ipv6_addr
         description ~
         mtu *
         hold-time
@@ -118,9 +118,9 @@ policy-options
     prefix-list ~
     policy-statement *
         term *               %ordered
-            from             %logic=common.undo_redo
+            from             %logic=annet.rulebook.common.undo_redo
                 ~
-            then             %logic=common.undo_redo
+            then             %logic=annet.rulebook.common.undo_redo
                 community ~  %ordered
                 ~
             ~                %global
@@ -131,9 +131,9 @@ firewall
     family *
         filter *
             term *     %ordered
-                from   %logic=common.undo_redo
+                from   %logic=annet.rulebook.common.undo_redo
                     ~
-                then   %logic=common.undo_redo
+                then   %logic=annet.rulebook.common.undo_redo
                     ~
                 ~      %global
 

@@ -4,7 +4,7 @@ import sys
 from importlib.metadata import distributions
 
 import annet
-from annet import argparse, cli, diff, generators, hardware, lib, rulebook
+from annet import argparse, cli, diff, generators, hardware, lib
 
 
 def _get_installed_packages_list():
@@ -17,7 +17,6 @@ def main():
     annet.assert_python_version()
     parser = argparse.ArgParser()
     cli.fill_base_args(parser, annet.__name__, "configs/logging.yaml")
-    rulebook.rulebook_provider_connector.set(rulebook.DefaultRulebookProvider)
     hardware.hardware_connector.set(hardware.AnnetHardwareProvider)
     diff.file_differ_connector.set(diff.UnifiedFileDiffer)
 

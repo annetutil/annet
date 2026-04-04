@@ -5,7 +5,7 @@ qos profile *
     ~ %global
 
 username * ssh-key
-username *                %logic=arista.aaa.user
+username *                %logic=annet.rulebook.arista.aaa.user
 
 aaa group ~
     ~ %global
@@ -19,7 +19,7 @@ vrf instance *
     ~ %global
 
 
-interface *               %logic=arista.iface.permanent
+interface *               %logic=annet.rulebook.arista.iface.permanent
     no switchport
     description *
     channel-group *
@@ -29,13 +29,13 @@ interface *               %logic=arista.iface.permanent
 
 
 ip access-list standard *
-    *                       %logic=common.undo_redo
+    *                       %logic=annet.rulebook.common.undo_redo
 
 ipv6 access-list standard *
-    *                       %logic=common.undo_redo
+    *                       %logic=annet.rulebook.common.undo_redo
 
 ipv6 access-list *
-    *                       %logic=common.undo_redo
+    *                       %logic=annet.rulebook.common.undo_redo
 
 
 # ios-like way of configuring prefix lists
@@ -43,8 +43,8 @@ ipv6 access-list *
 # since beginnig of commands are the same
 # if you use it keep all prefix lists in this format
 
-ip prefix-list * seq *    %logic=common.undo_redo
-ipv6 prefix-list * seq *  %logic=common.undo_redo
+ip prefix-list * seq *    %logic=annet.rulebook.common.undo_redo
+ipv6 prefix-list * seq *  %logic=annet.rulebook.common.undo_redo
 
 
 # arista eos native way of configuring prefix lists
@@ -53,10 +53,10 @@ ipv6 prefix-list * seq *  %logic=common.undo_redo
 # prefer this one over the ios-like one
 
 ip prefix-list *
-    seq *                 %logic=common.undo_redo
+    seq *                 %logic=annet.rulebook.common.undo_redo
 
 ipv6 prefix-list *
-    seq *                 %logic=common.undo_redo
+    seq *                 %logic=annet.rulebook.common.undo_redo
 
 
 route-map * * *
@@ -72,7 +72,7 @@ router bgp *
     ! no neighbor * shutdown
     ~ %global
 
-ip load-sharing trident fields *              %logic=common.default_instead_undo
+ip load-sharing trident fields *              %logic=annet.rulebook.common.default_instead_undo
 
 management *
     ~ %global

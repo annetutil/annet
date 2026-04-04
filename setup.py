@@ -45,7 +45,7 @@ if __name__ == "__main__":
         },
         extras_require={
             "netbox": [
-                "annetbox[sync]>=0.9.0",
+                "annetbox[sync]>=0.11.1",
                 "requests-cache>=1.2.1",
             ],
         },

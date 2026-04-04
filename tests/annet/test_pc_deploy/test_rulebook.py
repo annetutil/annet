@@ -9,18 +9,9 @@ from annet.deploy import CommandList, DeployDriver, Fetcher
 from annet.diff import UnifiedFileDiffer
 from annet.gen import OldNewResult
 from annet.output import OutputDriver
-from annet.rulebook import DefaultRulebookProvider
 from annet.storage import StorageProvider
 
 from .. import MockDevice
-
-
-class MockDefaultRulebookProvider(DefaultRulebookProvider):
-    def __init__(self):
-        super().__init__(
-            root_dir=(path.dirname(__file__),),
-            root_modules=("tests.annet.test_pc_deploy",),
-        )
 
 
 @pytest.fixture
@@ -29,8 +20,6 @@ def mocks():
     orig_driver_connector_classes = annet.deploy.driver_connector._classes
     orig_output_driver_connector_classes = annet.output.output_driver_connector._classes
     orig_storage_connector_classes = annet.storage.storage_connector._classes
-    orig_rulebook_provider_classes = annet.rulebook.rulebook_provider_connector._classes
-    orig_rulebook_provider_cache = annet.rulebook.rulebook_provider_connector._cache
     orig_device_file_differ_connector_classes = annet.diff.file_differ_connector._classes
     orig_device_file_differ_connector_cache = annet.diff.file_differ_connector._cache
     orig_get_deployer = annet.deploy.get_deployer
@@ -42,8 +31,6 @@ def mocks():
     annet.deploy.fetcher_connector._classes = [fetcher_connector]
     annet.output.output_driver_connector._classes = [output_driver]
     annet.storage.storage_connector._classes = [storage_provider]
-    annet.rulebook.rulebook_provider_connector._classes = [MockDefaultRulebookProvider]
-    annet.rulebook.rulebook_provider_connector._cache = None
     annet.diff.file_differ_connector._classes = [UnifiedFileDiffer]
     annet.diff.file_differ_connector._cache = None
 
@@ -62,8 +49,6 @@ def mocks():
     annet.deploy.driver_connector._classes = orig_driver_connector_classes
     annet.output.output_driver_connector._classes = orig_output_driver_connector_classes
     annet.storage.storage_connector._classes = orig_storage_connector_classes
-    annet.rulebook.rulebook_provider_connector._classes = orig_rulebook_provider_classes
-    annet.rulebook.rulebook_provider_connector._cache = orig_rulebook_provider_cache
     annet.deploy.get_deployer = orig_get_deployer
 
 
@@ -76,7 +61,12 @@ def device():
     )
 
 
-def test_pc_deployer_rulebooks(device: Device, mocks):
+@pytest.mark.parametrize(
+    "mock_rulebooks_path",
+    ["tests.annet.test_pc_deploy.texts"],
+    indirect=True,
+)
+def test_pc_deployer_rulebooks(device: Device, mocks, mock_rulebooks_path):
     opts = mock.Mock()
     path = "/etc/sonic/config_db.json"
     commands = "commands"

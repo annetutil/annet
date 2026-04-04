@@ -22,7 +22,7 @@ class AbstractVendor(abc.ABC):
         raise NotImplementedError
 
     def diff(self, order: bool) -> str:
-        return "common.ordered_diff" if order else "common.default_diff"
+        return "annet.rulebook.common.ordered_diff" if order else "annet.rulebook.common.default_diff"
 
     @property
     @abc.abstractmethod

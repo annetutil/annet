@@ -113,7 +113,7 @@ hwtacacs server
 radius-server
 
 local-user ~
-    password hash *  %logic=h3c.aaa.user
+    password hash *  %logic=annet.rulebook.h3c.aaa.user
     service-type ~   
     ~ %global
 
