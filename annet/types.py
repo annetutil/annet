@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any, Dict, List, MutableMapping, NamedTuple, Optional, Tuple, Union
+from typing import Any, Dict, List, MutableMapping, NamedTuple, Optional, Tuple, TypeAlias, Union
 
 from annet.annlib.types import Op  # pylint: disable=unused-import
 from annet.storage import Device, Storage
@@ -15,8 +15,9 @@ class PCDiff(NamedTuple):
     diff_files: List[PCDiffFile]
 
 
-Diff = List[Tuple]
-ExitCode = int
+DiffItem: TypeAlias = tuple[Op, str, "Diff", dict]
+Diff: TypeAlias = list[DiffItem]
+ExitCode: TypeAlias = int
 
 
 class GeneratorPerf:

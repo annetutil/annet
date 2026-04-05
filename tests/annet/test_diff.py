@@ -4,7 +4,7 @@ import re
 from annet import patching
 from annet.annlib.types import Op
 from annet.diff import diff_cmp, diff_ops, gen_pre_as_diff, resort_diff
-from annet.types import Diff
+from annet.types import Diff, DiffItem
 
 
 diff_unsorted = """
@@ -193,7 +193,7 @@ bgp 65401
 
 
 def str2diff(raw_diff: str) -> Diff:
-    res = []
+    res: Diff = []
     for raw_line in raw_diff.splitlines():
         level = 0
         if len(raw_line) < 2:
@@ -204,7 +204,7 @@ def str2diff(raw_diff: str) -> Diff:
         m = re.match(r"([+-])?(\s+)", raw_line)
         if m:
             level = (len(m.group(2)) - 1) // 4
-        diffline: tuple[Op, str, list, dict] = (
+        diffline: DiffItem = (
             diff_ops[op],
             line,
             [],
@@ -222,13 +222,13 @@ def str2diff(raw_diff: str) -> Diff:
 
 
 def test_sort() -> None:
-    l1 = (
+    l1: DiffItem = (
         diff_ops["-"],
         "peer FE80::11:11 bfd min-tx-interval 250 min-rx-interval 250",
         [],
         {},
     )
-    l2 = (diff_ops["+"], "peer RR_11 advertise-community", [], {})
+    l2: DiffItem = (diff_ops["+"], "peer RR_11 advertise-community", [], {})
     assert diff_cmp(l1, l2) > 0
     l1 = (diff_ops["-"], "peer FE80::11:12 advertise-community", [], {})
     l2 = (

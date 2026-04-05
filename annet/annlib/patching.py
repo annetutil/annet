@@ -23,12 +23,12 @@ else:
 
 from annet.vendors.tabparser import CommonFormatter
 
+from ..types import Diff, Op
 from ..vendors import registry_connector
 from .lib import jun_activate, merge_dicts, strip_annotation, uniq
 from .rbparser.ordering import CompiledTree, compile_ordering_text
 from .rulebook.common import call_diff_logic
 from .rulebook.common import default as common_default
-from .types import Diff, Op
 
 
 # =====

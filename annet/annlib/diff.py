@@ -1,10 +1,9 @@
-import functools
 import ipaddress
 from collections.abc import Generator
 
 import colorama
 
-from .types import Diff, Op
+from ..types import Diff, DiffItem, Op
 
 
 # NOCDEV-1720
@@ -51,8 +50,8 @@ def is_ip(ts: str) -> bool:
 
 
 def diff_cmp(
-    diff_l: tuple[Op, str, list, dict],
-    diff_r: tuple[Op, str, list, dict],
+    diff_l: DiffItem,
+    diff_r: DiffItem,
 ) -> int:
     key_l = diff_sort_key(diff_l)
     key_r = diff_sort_key(diff_r)
@@ -60,7 +59,7 @@ def diff_cmp(
 
 
 def diff_sort_key(
-    diff_line: tuple[Op, str, list, dict],
+    diff_line: DiffItem,
 ) -> ...:
     op, line, _, _ = diff_line
 
