@@ -1,6 +1,7 @@
 import os
 import re
 from importlib import import_module
+from types import ModuleType
 from typing import Any, Dict, OrderedDict, TypedDict
 
 from annet.annlib.lib import mako_render
@@ -10,6 +11,9 @@ from annet.lib import get_context
 from annet.rulebook.deploying import compile_deploying_text
 from annet.rulebook.patching import compile_patching_text
 from annet.vendors import registry_connector
+
+
+DEFAULT_RULEBOOK_MODULE = "annet.rulebook.texts"
 
 
 class RulebookTexts(TypedDict):
@@ -26,15 +30,27 @@ class Rulebook(TypedDict):
 
 
 def get_rulebook(hw, rulebook_module: str | None = None) -> Rulebook:
-    return RulebookProvider(rulebook_module).get_rulebook(hw)
+    module = select_rulebook_module(rulebook_module)
+    return RulebookProvider(module).get_rulebook(hw)
+
+
+def select_rulebook_module(rulebook_module: str) -> str:
+    if rulebook_module is not None:
+        path_to_module = rulebook_module
+    else:
+        try:
+            path_to_module = get_context()["rulebooks"]["path"]
+        except KeyError:
+            path_to_module = DEFAULT_RULEBOOK_MODULE
+    return path_to_module
 
 
 class RulebookProvider:
-    def __init__(self, rulebook_module: str | None = None):
+    def __init__(self, rulebook_module: str):
         self._rulebook_cache = {}
         self._render_rul_cache = {}
         self._escaped_rul_cache = {}
-        self.rulebook_module = self._get_rulebook_module(rulebook_module)
+        self._rulebook_module = self._get_rulebook_module(rulebook_module)
 
     def get_rulebook(self, hw) -> Rulebook:
         if hw in self._rulebook_cache:
@@ -71,18 +87,10 @@ class RulebookProvider:
         }
         return self._rulebook_cache[hw]
 
-    def _get_rulebook_module(self, rulebook_module: str | None = None) -> str:
-        if rulebook_module is not None:
-            path_to_module = rulebook_module
-            module = import_module(path_to_module)
-        else:
-            try:
-                path_to_module = get_context()["rulebooks"]["path"]
-            except KeyError:
-                raise KeyError("No path to rulebooks in the context.yml")
-            module = import_module(path_to_module)
+    def _get_rulebook_module(self, rulebook_module: str) -> ModuleType:
+        module = import_module(rulebook_module)
         if module.__file__ is None:
-            raise ModuleNotFoundError(f"File __init__.py missing from the {path_to_module} module.")
+            raise ModuleNotFoundError(f"File __init__.py missing from the {rulebook_module} module.")
         return module
 
     def _render_rul(self, name, hw):
@@ -94,7 +102,7 @@ class RulebookProvider:
     def _read_escaped_rul(self, name):
         if name in self._escaped_rul_cache:
             return self._escaped_rul_cache[name]
-        path_to_rulebook = os.path.dirname(self.rulebook_module.__file__)
+        path_to_rulebook = os.path.dirname(self._rulebook_module.__file__)
         try:
             with open(os.path.join(path_to_rulebook, name), "r", encoding="utf-8") as f:
                 self._escaped_rul_cache[name] = self._escape_mako(f.read())
