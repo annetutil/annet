@@ -1,16 +1,15 @@
-import functools
 import ipaddress
-from typing import Dict, Generator
+from collections.abc import Generator
 
 import colorama
 
-from .types import Diff, Op
+from ..types import Diff, DiffItem, Op
 
 
 # NOCDEV-1720
 
 
-diff_ops = {
+diff_ops: dict[str, Op] = {
     "+": Op.ADDED,
     "-": Op.REMOVED,
     " ": Op.AFFECTED,
@@ -19,14 +18,14 @@ diff_ops = {
 
 ops_sign = {v: k for k, v in diff_ops.items()}
 
-ops_order = {
+ops_order: dict[Op, int] = {
     Op.AFFECTED: 0,
     Op.MOVED: 1,
     Op.REMOVED: 2,
     Op.ADDED: 3,
 }
 
-ops_color = {
+ops_color: dict[Op, int] = {
     Op.REMOVED: colorama.Fore.RED,
     Op.ADDED: colorama.Fore.GREEN,
     Op.AFFECTED: colorama.Fore.CYAN,
@@ -34,7 +33,7 @@ ops_color = {
 }
 
 
-def is_int(ts):
+def is_int(ts: str) -> bool:
     try:
         int(ts)
         return True
@@ -42,7 +41,7 @@ def is_int(ts):
         return False
 
 
-def is_ip(ts):
+def is_ip(ts: str) -> bool:
     try:
         ipaddress.ip_interface(ts)
         return True
@@ -50,60 +49,41 @@ def is_ip(ts):
         return False
 
 
-def diff_cmp(diff_l, diff_r):
-    """
-    Сборник костылей для сравнения двух строк диффа
-    """
-    (op_l, line_l, _, _) = diff_l
-    (op_r, line_r, _, _) = diff_r
+def diff_cmp(
+    diff_l: DiffItem,
+    diff_r: DiffItem,
+) -> int:
+    key_l = diff_sort_key(diff_l)
+    key_r = diff_sort_key(diff_r)
+    return (key_l > key_r) - (key_l < key_r)
 
-    cmp_op = ops_order[op_l] - ops_order[op_r]
-    if line_l == line_r:
-        # При равенстве строк порядок определяется операцией
-        return cmp_op
 
-    if cmp_op == 0:
-        # Если для строк операции одинаковы, то считаем их равными
-        # По идее TimSort стабилен и порядок просто не должен измениться
-        return 0
+def diff_sort_key(
+    diff_line: DiffItem,
+) -> ...:
+    op, line, _, _ = diff_line
 
-    # Для частично совпадающих строк
-    lws = line_l.split(" ")
-    rws = line_r.split(" ")
-    res = 0
-    for i, lw in enumerate(lws):
-        if len(rws) > i:
-            rw = rws[i]
-            if is_int(lw) and is_int(rw):
-                # В одинаковом положении в строках есть инты, сортируем по ним
-                res = int(lw) - int(rw)
-                if res == 0:
-                    # При равных интах - сортируем по операции
-                    res = cmp_op
-            elif is_ip(lw) and is_ip(rw):
-                # Аналогично интам обрабатываем ip-адреса
-                ip_l = ipaddress.ip_interface(lw)
-                ip_r = ipaddress.ip_interface(rw)
-                try:
-                    res = (ip_l > ip_r) - (ip_l < ip_r)
-                except TypeError:
-                    res = 1
-                    if ip_l.version == 4:
-                        res = -1
-                if res == 0:
-                    res = cmp_op
-            elif i > 0:
-                if lw == rw:
-                    res = cmp_op
-            else:
-                continue
+    res = []
+    for word in line.split(" ")[:2]:
+        if is_int(word):
+            res.append(int(word))
             break
+        elif is_ip(word):
+            ip = ipaddress.ip_interface(word)
+            if ip.version == 4:
+                res.append(2**32 - int(ip))
+            else:
+                res.append(+int(ip))
+            break
+    else:
+        res.append(0)
+    res.append(ops_order[op])
     return res
 
 
 def resort_diff(diff: Diff) -> Diff:
     res = []
-    df = sorted(diff, key=functools.cmp_to_key(diff_cmp))
+    df = sorted(diff, key=diff_sort_key)
     for line in df:
         ln = line
         if len(line[2]) > 0:
@@ -112,7 +92,7 @@ def resort_diff(diff: Diff) -> Diff:
     return res
 
 
-def colorize_line_with_color(line: str, color: int, no_color: bool):
+def colorize_line_with_color(line: str, color: int, no_color: bool) -> str:
     stripped = line.rstrip("\n")
     add_newlines = len(line) - len(stripped)
     line = stripped
@@ -124,14 +104,14 @@ def colorize_line_with_color(line: str, color: int, no_color: bool):
     return line
 
 
-def colorize_line(line, no_color=False):
+def colorize_line(line: str, no_color: bool = False) -> str:
     op = diff_ops[line[0]]
     color = ops_color[op]
     return colorize_line_with_color(line, color, no_color)
 
 
 def gen_pre_as_diff(
-    pre: Dict, show_rules: bool, indent: str, no_color: bool, _level: int = 0
+    pre: dict, show_rules: bool, indent: str, no_color: bool, _level: int = 0
 ) -> Generator[str, None, None]:
     ops = [(order, op) for op, order in ops_order.items()]
     ops.sort()
