@@ -511,7 +511,7 @@ class JuniperFormatter(CommonFormatter):
         self._block_begin = " {"
         self._block_end = "}"
         self._statement_end = ";"
-        self._endofline_comment = "; ##"
+        self._endofline_comment = "[;{] ##"
 
         self._sub_regexs = (
             (re.compile(self._block_begin + r"\s*" + self._block_end + r"$"), ""),  # collapse empty blocks
