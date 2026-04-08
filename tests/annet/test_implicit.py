@@ -1,4 +1,5 @@
 from collections import OrderedDict as odict
+from unittest import mock
 
 import pytest
 
@@ -9,6 +10,7 @@ from .. import make_hw_stub
 
 
 VENDOR = "huawei"
+VENDOR_ROS = "routeros"
 
 
 @pytest.fixture
@@ -60,3 +62,36 @@ def test_subcommand(config, implicit_rules):
             ("added_command", odict()),
         ]
     )
+
+
+# ====== RouterOS tests ======
+
+
+@pytest.fixture
+def ros_empty_config():
+    formatter = registry_connector.get().match(make_hw_stub(VENDOR_ROS)).make_formatter()
+    return tabparser.parse_to_tree("", splitter=formatter.split)
+
+
+@pytest.fixture
+def ros_config_enabled_no():
+    formatter = registry_connector.get().match(make_hw_stub(VENDOR_ROS)).make_formatter()
+    return tabparser.parse_to_tree(
+        "/tool mac-server ping\nset enabled=no",
+        splitter=formatter.split,
+    )
+
+
+def test_ros_implicit_adds_default(ros_empty_config):
+    """If set enabled is not specified — implicit adds set enabled=yes"""
+    rules = implicit.compile_rules(mock.Mock(hw=make_hw_stub(VENDOR_ROS)))
+    result = implicit.config(ros_empty_config, rules)
+    assert result["tool"]["mac-server"]["ping"]["set enabled=yes"] == odict()
+
+
+def test_ros_implicit_no_override_when_disabled(ros_config_enabled_no):
+    """If set enabled=no — implicit does NOT add set enabled=yes"""
+    rules = implicit.compile_rules(mock.Mock(hw=make_hw_stub(VENDOR_ROS)))
+    result = implicit.config(ros_config_enabled_no, rules)
+    ping = result.get("tool", {}).get("mac-server", {}).get("ping", {})
+    assert "set enabled=yes" not in ping

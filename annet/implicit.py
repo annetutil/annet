@@ -9,7 +9,7 @@ def config(config_tree, rules):
         matched_lines = [line for line in config_tree.keys() if rule["regexp"].match(line)]
         if rule["type"] != "ignore":
             if not any(matched_lines) and row not in config_tree:
-                implicit_config_tree[row] = odict()
+                implicit_config_tree[row] = config(odict(), rule["children"])
         for line in matched_lines:
             implicit_config_tree[line] = config(config_tree[line], rule["children"])
     return implicit_config_tree
@@ -201,6 +201,13 @@ def _implicit_tree(device):
                 system mtu routing 1500
                 system mtu jumbo 9000
             """
+    elif device.hw.RouterOS:
+        text = """
+            tool
+                mac-server
+                    ping
+                        set enabled=yes %regexp=set enabled=.*
+        """
 
     return parse_text(text)
 
