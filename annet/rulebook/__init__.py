@@ -1,7 +1,6 @@
-import os
 import re
-from importlib import import_module
-from types import ModuleType
+from importlib import resources
+from importlib.resources.abc import TraversalError
 from typing import Any, Dict, OrderedDict, TypedDict
 
 from annet.annlib.lib import mako_render
@@ -34,7 +33,7 @@ def get_rulebook(hw, rulebook_module: str | None = None) -> Rulebook:
     return RulebookProvider(module).get_rulebook(hw)
 
 
-def select_rulebook_module(rulebook_module: str) -> str:
+def select_rulebook_module(rulebook_module: str | None) -> str:
     if rulebook_module is not None:
         path_to_module = rulebook_module
     else:
@@ -50,7 +49,7 @@ class RulebookProvider:
         self._rulebook_cache = {}
         self._render_rul_cache = {}
         self._escaped_rul_cache = {}
-        self._rulebook_module = self._get_rulebook_module(rulebook_module)
+        self._rulebook_module = rulebook_module
 
     def get_rulebook(self, hw) -> Rulebook:
         if hw in self._rulebook_cache:
@@ -87,12 +86,6 @@ class RulebookProvider:
         }
         return self._rulebook_cache[hw]
 
-    def _get_rulebook_module(self, rulebook_module: str) -> ModuleType:
-        module = import_module(rulebook_module)
-        if module.__file__ is None:
-            raise ModuleNotFoundError(f"File __init__.py missing from the {rulebook_module} module.")
-        return module
-
     def _render_rul(self, name, hw):
         key = (name, hw)
         if key not in self._render_rul_cache:
@@ -102,11 +95,10 @@ class RulebookProvider:
     def _read_escaped_rul(self, name):
         if name in self._escaped_rul_cache:
             return self._escaped_rul_cache[name]
-        path_to_rulebook = os.path.dirname(self._rulebook_module.__file__)
         try:
-            with open(os.path.join(path_to_rulebook, name), "r", encoding="utf-8") as f:
-                self._escaped_rul_cache[name] = self._escape_mako(f.read())
-                return self._escaped_rul_cache[name]
+            text = resources.files(self._rulebook_module).joinpath(name).read_text(encoding="utf-8")
+            self._escaped_rul_cache[name] = self._escape_mako(text)
+            return self._escaped_rul_cache[name]
         except FileNotFoundError:
             raise FileNotFoundError(f"Unable to find rul: {name}")
 
