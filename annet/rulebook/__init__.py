@@ -1,4 +1,5 @@
 import re
+import sys
 from importlib import resources
 from typing import Any, Dict, OrderedDict, TypedDict
 
@@ -9,6 +10,14 @@ from annet.lib import get_context
 from annet.rulebook.deploying import compile_deploying_text
 from annet.rulebook.patching import compile_patching_text
 from annet.vendors import registry_connector
+
+
+if sys.version_info >= (3, 12):
+    from importlib.resources.abc import TraversalError
+
+    RULEBOOK_READ_EXCEPTIONS = (FileNotFoundError, TraversalError)
+else:
+    RULEBOOK_READ_EXCEPTIONS = (FileNotFoundError,)
 
 
 DEFAULT_RULEBOOK_MODULE = "annet.rulebook.texts"
@@ -98,8 +107,8 @@ class RulebookProvider:
             text = resources.files(self._rulebook_module).joinpath(name).read_text(encoding="utf-8")
             self._escaped_rul_cache[name] = self._escape_mako(text)
             return self._escaped_rul_cache[name]
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Unable to find rul: {name}")
+        except RULEBOOK_READ_EXCEPTIONS as err:
+            raise FileNotFoundError(f"Unable to find rul: {name}") from err
 
     @staticmethod
     def _escape_mako(text):
