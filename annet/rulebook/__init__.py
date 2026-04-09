@@ -1,6 +1,5 @@
 import re
 from importlib import resources
-from importlib.resources.abc import TraversalError
 from typing import Any, Dict, OrderedDict, TypedDict
 
 from annet.annlib.lib import mako_render
