@@ -38,9 +38,6 @@ class RulebookProvider(ABC):
     def get_rulebook(self, hw) -> Rulebook:
         raise NotImplementedError
 
-    def get_rulebook_module(self) -> str:
-        raise NotImplementedError
-
 
 class _RulebookProviderConnector(CachedConnector[RulebookProvider]):
     name = "Rulebook provider"
