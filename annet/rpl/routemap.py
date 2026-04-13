@@ -21,6 +21,16 @@ class Route:
         name: Optional[str] = None,
         number: Optional[int] = None,
     ) -> "StatementBuilder":
+        if number is not None:
+            for statement in self.statements:
+                if statement.number == number:
+                    error = f"Multiple statements with number {number}"
+                    raise ValueError(error)
+        if name is not None:
+            for statement in self.statements:
+                if statement.name == name:
+                    error = f"Multiple statements with name {name}"
+                    raise ValueError(error)
         statement = RoutingPolicyStatement(
             name=name,
             number=number,
