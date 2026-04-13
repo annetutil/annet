@@ -20,7 +20,7 @@ def test_iosxr_rd_match():
     def policy(device: Mock, route: Route):
         with route(R.rd.has("rd1", "rd2"), name="n20", number=20) as rule:
             rule.allow()
-        with route(R.rd.has_any("rd1", "rd2"), name="n20", number=20) as rule:
+        with route(R.rd.has_any("rd1", "rd2"), name="n21", number=21) as rule:
             rule.allow()
 
     result = generate(routemaps=routemaps, rd_filters=rd_filters, dev=iosxr())
