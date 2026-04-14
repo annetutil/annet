@@ -1,12 +1,13 @@
 import re
 import sys
+from abc import ABC
 from importlib import resources
 from typing import Any, Dict, OrderedDict, TypedDict
 
 from annet.annlib.lib import mako_render
 from annet.annlib.rbparser.ordering import CompiledTree, compile_ordering_text
 from annet.annlib.rbparser.platform import VENDOR_ALIASES
-from annet.lib import get_context
+from annet.connectors import CachedConnector
 from annet.rulebook.deploying import compile_deploying_text
 from annet.rulebook.patching import compile_patching_text
 from annet.vendors import registry_connector
@@ -18,9 +19,6 @@ if sys.version_info >= (3, 12):
     RULEBOOK_READ_EXCEPTIONS = (FileNotFoundError, TraversalError)
 else:
     RULEBOOK_READ_EXCEPTIONS = (FileNotFoundError,)
-
-
-DEFAULT_RULEBOOK_MODULE = "annet.rulebook.texts"
 
 
 class RulebookTexts(TypedDict):
@@ -36,28 +34,30 @@ class Rulebook(TypedDict):
     texts: RulebookTexts
 
 
-def get_rulebook(hw, rulebook_module: str | None = None) -> Rulebook:
-    module = select_rulebook_module(rulebook_module)
-    return RulebookProvider(module).get_rulebook(hw)
+class RulebookProvider(ABC):
+    def get_rulebook(self, hw) -> Rulebook:
+        raise NotImplementedError
 
 
-def select_rulebook_module(rulebook_module: str | None) -> str:
-    if rulebook_module is not None:
-        path_to_module = rulebook_module
-    else:
-        try:
-            path_to_module = get_context()["rulebooks"]["path"]
-        except KeyError:
-            path_to_module = DEFAULT_RULEBOOK_MODULE
-    return path_to_module
+class _RulebookProviderConnector(CachedConnector[RulebookProvider]):
+    name = "Rulebook provider"
+    ep_name = "rulebook"
 
 
-class RulebookProvider:
-    def __init__(self, rulebook_module: str):
+rulebook_provider_connector = _RulebookProviderConnector()
+
+
+def get_rulebook(hw) -> Rulebook:
+    return rulebook_provider_connector.get().get_rulebook(hw)
+
+
+class DefaultRulebookProvider(RulebookProvider):
+    rulebook_module = "annet.rulebook.texts"
+
+    def __init__(self):
         self._rulebook_cache = {}
         self._render_rul_cache = {}
         self._escaped_rul_cache = {}
-        self._rulebook_module = rulebook_module
 
     def get_rulebook(self, hw) -> Rulebook:
         if hw in self._rulebook_cache:
@@ -104,7 +104,7 @@ class RulebookProvider:
         if name in self._escaped_rul_cache:
             return self._escaped_rul_cache[name]
         try:
-            text = resources.files(self._rulebook_module).joinpath(name).read_text(encoding="utf-8")
+            text = resources.files(self.rulebook_module).joinpath(name).read_text(encoding="utf-8")
             self._escaped_rul_cache[name] = self._escape_mako(text)
             return self._escaped_rul_cache[name]
         except RULEBOOK_READ_EXCEPTIONS as err:
