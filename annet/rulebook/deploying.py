@@ -76,10 +76,6 @@ def match_deploy_rule(rules, cmd_path, context):
                 if syntax.match_context(ifcontext, context):
                     if depth == len(cmd_path) - 1:
                         return rule
-                    else:
-                        rules = rule["children"]
-                        if len(rules) == 0:
-                            break
     # default match
     return {
         "attrs": {
