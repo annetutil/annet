@@ -847,6 +847,14 @@ class RosFormatter(CommonFormatter):
         return commands
 
 
+class SNRFormatter(BlockExitFormatter):
+    def __init__(self, indent="  "):
+        super().__init__("exit", indent)
+
+    def split(self, text):
+        return self.split_remove_spaces(text)
+
+
 # ====
 
 
