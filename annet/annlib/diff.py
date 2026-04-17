@@ -20,9 +20,9 @@ ops_sign = {v: k for k, v in diff_ops.items()}
 
 ops_order: dict[Op, int] = {
     Op.AFFECTED: 0,
-    Op.MOVED: 1,
-    Op.REMOVED: 2,
-    Op.ADDED: 3,
+    Op.REMOVED: 1,
+    Op.ADDED: 2,
+    Op.MOVED: 4,
 }
 
 ops_color: dict[Op, int] = {
@@ -58,27 +58,25 @@ def diff_cmp(
     return (key_l > key_r) - (key_l < key_r)
 
 
-def diff_sort_key(
-    diff_line: DiffItem,
-) -> ...:
+def diff_sort_key(diff_line: DiffItem) -> tuple[int, int]:
     op, line, _, _ = diff_line
 
-    res = []
+    op_key = ops_order[op]
+
+    value = 0
     for word in line.split(" ")[:2]:
         if is_int(word):
-            res.append(int(word))
+            value = int(word)
             break
         elif is_ip(word):
             ip = ipaddress.ip_interface(word)
             if ip.version == 4:
-                res.append(2**32 - int(ip))
+                value = 2**32 - int(ip)
             else:
-                res.append(+int(ip))
+                value = +int(ip)
             break
-    else:
-        res.append(0)
-    res.append(ops_order[op])
-    return res
+
+    return value, op_key
 
 
 def resort_diff(diff: Diff) -> Diff:
@@ -115,12 +113,14 @@ def gen_pre_as_diff(
 ) -> Generator[str, None, None]:
     ops = [(order, op) for op, order in ops_order.items()]
     ops.sort()
+
     for raw_rule, content in pre.items():
         items = content["items"].items()
         for _, diff in items:  # pylint: disable=redefined-outer-name
             if show_rules and not raw_rule == "__MULTILINE_BODY__":
                 line = "# %s%s\n" % (indent * _level, raw_rule)
                 yield colorize_line_with_color(line, colorama.Fore.BLACK, no_color)
+
             for op, rows in [(op, diff[op]) for (_, op) in ops]:
                 for item in rows:
                     line = "%s%s %s\n" % (ops_sign[op], indent * _level, item["row"])
