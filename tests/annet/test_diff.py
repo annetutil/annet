@@ -2,7 +2,6 @@ import io
 import re
 
 from annet import patching
-from annet.annlib.types import Op
 from annet.diff import diff_cmp, diff_ops, gen_pre_as_diff, resort_diff
 from annet.types import Diff, DiffItem
 
