@@ -12,6 +12,7 @@
 # -----
 # Physical
 feature ~
+clock *
 ntp ~
 sflow
 ip vrf
