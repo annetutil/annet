@@ -285,22 +285,34 @@ def gen(args: cli_args.ShowGenOptions, loader: ann_gen.Loader):
 
 def patch(args: cli_args.ShowPatchOptions, loader: ann_gen.Loader):
     """Сгенерировать патч для устройств"""
-    if args.config == "running":
-        fetcher = annet.deploy.get_fetcher()
-        ann_gen.live_configs = annet.lib.do_async(fetcher.fetch(loader.devices, processes=args.parallel))
+    current_state = annet.lib.do_async(
+        ann_gen.get_current_state(
+            args.config,
+            loader.devices,
+            loader.resolve_gens(loader.devices),
+            do_files_download=True,
+            processes=args.parallel,
+        ),
+        new_thread=True,
+    )
     stdin = args.stdin(filter_acl=args.filter_acl, config=args.config)
 
     filterer = filtering.filterer_connector.get()
-    pool = Parallel(_patch_worker, args, stdin, loader, filterer).tune_args(args)
+    pool = Parallel(_patch_worker, args, stdin, loader, filterer, current_state).tune_args(args)
     if args.show_hosts_progress:
         pool.add_callback(PoolProgressLogger(loader.device_fqdns))
     return pool.run(loader.device_ids, args.tolerate_fails, args.strict_exit_code)
 
 
 def _patch_worker(
-    device_id, args: cli_args.ShowPatchOptions, stdin, loader: ann_gen.Loader, filterer: filtering.Filterer
+    device_id,
+    args: cli_args.ShowPatchOptions,
+    stdin,
+    loader: ann_gen.Loader,
+    filterer: filtering.Filterer,
+    current_state: ann_gen.CurrentState,
 ):
-    for res, _, patch_tree in res_diff_patch(device_id, args, stdin, loader, filterer):
+    for res, _, patch_tree in res_diff_patch(device_id, args, stdin, loader, filterer, current_state):
         old_files = res.old_files
         new_files = res.get_new_files(args.acl_safe)
         new_json_fragment_files = res.get_new_file_fragments(args.acl_safe)
@@ -334,12 +346,14 @@ def res_diff_patch(
     stdin,
     loader: ann_gen.Loader,
     filterer: filtering.Filterer,
+    current_state: ann_gen.CurrentState,
 ) -> Iterable[Tuple[OldNewResult, Dict, Dict]]:
     for res in ann_gen.old_new(
         args,
         config=args.config,
         loader=loader,
         filterer=filterer,
+        current_state=current_state,
         stdin=stdin,
         device_ids=[device_id],
         no_new=args.clear,
@@ -364,16 +378,21 @@ def diff(
     args: cli_args.DiffOptions, loader: ann_gen.Loader, device_ids: List[Any]
 ) -> tuple[Mapping[Device, Union[Diff, PCDiff]], Mapping[Device, Exception]]:
     """Сгенерировать дифф для устройств"""
-    if args.config == "running":
-        fetcher = annet.deploy.get_fetcher()
-        ann_gen.live_configs = annet.lib.do_async(
-            fetcher.fetch([device for device in loader.devices if device.id in device_ids], processes=args.parallel),
-            new_thread=True,
-        )
+    devices = [device for device in loader.devices if device.id in device_ids]
+    current_state = annet.lib.do_async(
+        ann_gen.get_current_state(
+            args.config,
+            devices,
+            loader.resolve_gens(devices),
+            do_files_download=True,
+            processes=args.parallel,
+        ),
+        new_thread=True,
+    )
     stdin = args.stdin(filter_acl=args.filter_acl, config=None)
 
     filterer = filtering.filterer_connector.get()
-    pool = Parallel(ann_diff.worker, args, stdin, loader, filterer).tune_args(args)
+    pool = Parallel(ann_diff.worker, args, stdin, loader, filterer, current_state).tune_args(args)
     if args.show_hosts_progress:
         fqdns = {k: v for k, v in loader.device_fqdns.items() if k in device_ids}
         pool.add_callback(PoolProgressLogger(fqdns))
@@ -656,9 +675,6 @@ class Deployer:
         if not diff_args.query:
             return
 
-        # clear cache
-        ann_gen.live_configs = None
-
         # collect new diffs for devices on which we had successfully uploaded something
         success_device_ids = []
         for host, hres in result.results.items():
@@ -706,10 +722,9 @@ def deploy(
     loader: ann_gen.Loader,
     deployer: Deployer,
     filterer: Filterer,
-    fetcher: Fetcher,
     deploy_driver: DeployDriver,
 ) -> ExitCode:
-    return annet.lib.do_async(adeploy(args, loader, deployer, filterer, fetcher, deploy_driver))
+    return annet.lib.do_async(adeploy(args, loader, deployer, filterer, deploy_driver))
 
 
 async def adeploy(
@@ -717,13 +732,17 @@ async def adeploy(
     loader: ann_gen.Loader,
     deployer: Deployer,
     filterer: Filterer,
-    fetcher: Fetcher,
     deploy_driver: DeployDriver,
 ) -> ExitCode:
     """Сгенерировать конфиг для устройств и задеплоить его"""
     ret: ExitCode = 0
-    ann_gen.live_configs = await fetcher.fetch(
-        devices=loader.devices, processes=args.parallel, max_slots=args.max_slots
+    current_state = await ann_gen.get_current_state(
+        "running",
+        loader.devices,
+        loader.resolve_gens(loader.devices),
+        do_files_download=True,
+        processes=args.parallel,
+        max_slots=args.max_slots,
     )
 
     device_ids = [d.id for d in loader.devices]
@@ -736,6 +755,7 @@ async def adeploy(
         do_files_download=True,
         device_ids=device_ids,
         filterer=filterer,
+        current_state=current_state,
     ):
         # Меняем exit code если хоть один device ловил exception
         if res.err is not None:

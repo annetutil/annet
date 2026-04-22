@@ -24,7 +24,7 @@ from annet.storage import Device
 from annet.types import Diff, PCDiff, PCDiffFile
 from annet.vendors import registry_connector, tabparser
 
-from .gen import Loader, old_new
+from .gen import CurrentState, Loader, old_new
 
 
 def _diff_files(hw, old_files, new_files):
@@ -77,6 +77,7 @@ def worker(
     stdin,
     loader: Loader,
     filterer: filtering.Filterer,
+    current_state: CurrentState,
 ) -> Union[Diff, PCDiff, None]:
     for res in old_new(
         args,
@@ -86,6 +87,7 @@ def worker(
         do_files_download=True,
         device_ids=[device_id],
         filterer=filterer,
+        current_state=current_state,
         stdin=stdin,
     ):
         old = res.get_old(args.acl_safe)
