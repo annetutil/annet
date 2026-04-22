@@ -479,6 +479,7 @@ def worker(
         config="/dev/null",
         loader=loader,
         filterer=filterer,
+        current_state=CurrentState(),
         add_implicit=False,
         add_annotations=args.annotate,
         stdin=stdin,
