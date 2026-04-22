@@ -18,10 +18,10 @@ from valkit.python import valid_logging_level
 from annet import api, cli_args, filtering, generators
 from annet.api import Deployer, collapse_texts
 from annet.argparse import ArgParser, subcommand
-from annet.deploy import get_deployer, get_fetcher
+from annet.deploy import get_deployer
 from annet.diff import gen_sort_diff
-from annet.gen import Loader, old_raw
-from annet.lib import get_context_path, repair_context_file
+from annet.gen import CurrentState, Loader, get_current_state, old_raw
+from annet.lib import do_async, get_context_path, repair_context_file
 from annet.output import OutputDriver, output_driver_connector
 from annet.storage import Device, get_storage
 
@@ -47,14 +47,14 @@ def _gen_current_items(
     loader: Loader,
     output_driver: OutputDriver,
     gen_args: cli_args.GenOptions,
+    current_state: CurrentState,
 ) -> Iterable[Tuple[str, str, bool]]:
     for device, result in old_raw(
         args=gen_args,
         loader=loader,
         config=config,
+        current_state=current_state,
         stdin=stdin,
-        do_files_download=True,
-        use_mesh=False,
     ):
         if device.hw.vendor != "pc":
             destname = output_driver.cfg_file_names(device)[0]
@@ -93,12 +93,23 @@ def show_current(args: cli_args.QueryOptions, config, arg_out: cli_args.FileOutO
         if not loader.devices:
             get_logger().error("No devices found for %s", args.query)
 
+        current_state = do_async(
+            get_current_state(
+                config,
+                loader.devices,
+                loader.resolve_gens(loader.devices),
+                do_files_download=True,
+            ),
+            new_thread=True,
+        )
+
         items = _gen_current_items(
             loader=loader,
             output_driver=output_driver,
             gen_args=gen_args,
             stdin=args.stdin(config=config),
             config=config,
+            current_state=current_state,
         )
         output_driver.write_output(arg_out, items, len(loader.devices))
 
@@ -249,7 +260,6 @@ def deploy(args: cli_args.DeployOptions):
 
     deployer = Deployer(args)
     filterer = filtering.filterer_connector.get()
-    fetcher = get_fetcher()
     deploy_driver = get_deployer()
 
     with get_loader(args, args) as loader:
@@ -259,7 +269,6 @@ def deploy(args: cli_args.DeployOptions):
             deployer=deployer,
             deploy_driver=deploy_driver,
             filterer=filterer,
-            fetcher=fetcher,
         )
 
 
