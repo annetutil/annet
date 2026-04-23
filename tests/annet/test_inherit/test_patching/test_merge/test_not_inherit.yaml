@@ -1,0 +1,74 @@
+test_case_1:
+  child: | 
+    %inherit_from=parent
+    
+    rule 1 %not_inherit
+    rule 2
+        sub rule 2
+  parent: |
+    rule 1
+        sub rule 1
+    rule 2
+        sub rule 1
+  expected: |
+    rule 2
+        sub rule 1
+        sub rule 2
+
+test_case_2:
+  child: |
+    %inherit_from=parent
+
+    rule 1 %not_inherit
+        child rule 1
+  parent: |
+    rule 1
+        parent rule 1
+  expected: |
+    rule 1
+        child rule 1
+
+test_case_3:
+  child: |
+    %inherit_from=parent
+
+    rule 1
+        sub rule 1 %not_inherit
+  parent: |
+    rule 1
+        sub rule 1
+        sub rule 2
+  expected: |
+    rule 1
+        sub rule 2
+
+test_case_4:
+  child: |
+    %inherit_from=parent
+
+    rule 2 %not_inherit
+    
+    rule 3
+  parent: |
+    rule 1
+  expected: |
+    rule 1
+
+    rule 3
+  
+test_case_5:
+  child: |
+    %inherit_from=parent
+
+    rule 2 %not_inherit
+        child rule 1
+    rule 3
+  parent: |
+    rule 1
+  expected: |
+    rule 1
+
+    rule 2
+        child rule 1
+
+    rule 3

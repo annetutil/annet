@@ -1,5 +1,3 @@
-from unittest import mock
-
 import pytest
 
 from annet.hardware import AnnetHardwareProvider, hardware_connector
