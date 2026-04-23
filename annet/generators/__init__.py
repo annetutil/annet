@@ -96,9 +96,10 @@ def build_generators(storage, gens: GenSelectOptions, device: Optional[Device] =
     ref_generators = _get_ref_generators(get_context()["generators"], storage, device)
     validate_genselect(gens, all_generators)
     classes = list(select_generators(gens, all_generators))
+    classes.sort(key=lambda x: x.__name__)
     partial = [obj for obj in classes if obj.TYPE == "PARTIAL"]
     entire = [obj for obj in classes if obj.TYPE == "ENTIRE"]
-    entire = list(sorted(entire, key=lambda x: x.prio, reverse=True))
+    entire.sort(key=lambda x: x.prio, reverse=True)
     json_fragment = [obj for obj in classes if obj.TYPE == "JSON_FRAGMENT"]
     return Generators(
         partial=partial,
