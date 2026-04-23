@@ -12,6 +12,10 @@
 # -----
 # Physical
 feature ~
+logging */(timestamp|cli|console|monitor)/
+logging logfile *
+logging level *
+logging remote */(server|facility|authpriv)/ ~  %logic=annet.rulebook.b4com.misc.undo_syslog
 clock *
 ntp ~
 sflow
