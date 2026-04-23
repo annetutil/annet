@@ -637,6 +637,7 @@ class _PatchRow(TypedDict):
     attrs: _PreAttrs
     direct: bool
     rules: tuple[str, ...]
+    sort_key: tuple[Any, ...]
 
 
 def _iterate_over_patch(
@@ -712,7 +713,7 @@ def _iterate_over_patch(
                         )
 
 
-def sort_patch_rows(orderer: Orderer, patch_rows: list[_PatchRow]) -> list[_PatchRow]:
+def sort_patch_rows(orderer: Orderer, patch_rows: list[_PatchRow]):
     """
     regular sorting will not work here
     consider this case:
@@ -767,7 +768,6 @@ def sort_patch_rows(orderer: Orderer, patch_rows: list[_PatchRow]) -> list[_Patc
     ```
     """
 
-    sort_keys = []
     string_idxs: dict[tuple[tuple[str, ...], ...], int] = {}
 
     for i, row in enumerate(patch_rows):
@@ -813,12 +813,8 @@ def sort_patch_rows(orderer: Orderer, patch_rows: list[_PatchRow]) -> list[_Patc
             )
         )
 
-        sort_keys.append((sort_key, direct, keys))
-
-    patch_rows__idxs = [(row, i) for i, row in enumerate(patch_rows)]
-    patch_rows__idxs.sort(key=lambda row__idx: sort_keys[row__idx[1]])
-
-    return [row for row, _ in patch_rows__idxs]
+        row["sort_key"] = (sort_key, direct, keys)
+    patch_rows.sort(key=operator.itemgetter("sort_key"))
 
 
 def make_patch(
@@ -840,7 +836,7 @@ def make_patch(
             do_commit=do_commit,
         )
     )
-    patch_rows = sort_patch_rows(orderer, patch_rows)
+    sort_patch_rows(orderer, patch_rows)
 
     tree = PatchTree()
     for patch_row in patch_rows:
@@ -851,16 +847,17 @@ def make_patch(
                     subtree = None
                 else:
                     subtree = PatchTree()
-                node.itms.append(PatchItem(x, subtree, patch_row["attrs"]["context"], ()))
+                node.itms.append(PatchItem(x, subtree, patch_row["attrs"]["context"], patch_row["sort_key"]))
 
                 if patch_row["attrs"].get("force_commit", False):
-                    node.itms.append(PatchItem("commit", None, patch_row["attrs"]["context"], ()))
+                    node.itms.append(PatchItem("commit", None, patch_row["attrs"]["context"], patch_row["sort_key"]))
 
             if i != len(patch_row["row"]) - 1:
                 if node.itms[-1].child is None:
                     node.itms[-1].child = PatchTree()
                 node = node.itms[-1].child
 
+    tree.sort()
     return tree
 
 
