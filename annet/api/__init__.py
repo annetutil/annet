@@ -823,13 +823,19 @@ def file_diff_worker(
     if isinstance(args.hw, str):
         hw = HardwareView(args.hw, "")
 
-    if os.path.isdir(old_path) and os.path.isdir(new_path):
+    if os.path.isdir(old_path) or os.path.isdir(new_path):
+        if os.path.exists(old_path) or not args.include_missing:
+            old_files = ann_gen.load_pc_config(old_path)
+        else:
+            old_files = {}
+        if os.path.exists(new_path) or not args.include_missing:
+            new_files = {
+                relative_cfg_path: (cfg_text, "")
+                for relative_cfg_path, cfg_text in ann_gen.load_pc_config(new_path).items()
+            }
+        else:
+            new_files = {}
         hostname = os.path.basename(new_path)
-        new_files = {
-            relative_cfg_path: (cfg_text, "")
-            for relative_cfg_path, cfg_text in ann_gen.load_pc_config(new_path).items()
-        }
-        old_files = ann_gen.load_pc_config(old_path)
         for diff_file in ann_diff.pc_diff(hw, hostname, old_files, new_files):
             diff_text = (
                 "\n".join(diff_file.diff_lines) if args.no_color else "\n".join(format_file_diff(diff_file.diff_lines))
