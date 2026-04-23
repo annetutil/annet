@@ -6,6 +6,7 @@
 # Фичи должны быть включены прежде всего
 feature %order_reverse
 clock ~
+logging
 ntp enable
 ntp server
 # Далее нужно будет указать команды и их порядок
