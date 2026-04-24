@@ -3,38 +3,13 @@ from __future__ import annotations
 import functools
 import re
 from collections.abc import Iterator
-from typing import Any, TypedDict
 
 from valkit.common import valid_bool, valid_string_list
 
+from annet.rulebook.types import CompiledTree, _CompiledOrderingAttrs
 from annet.vendors import registry_connector
 
 from . import syntax
-
-
-# =====
-# 'global' is a keyword, so we cant use normal TypedDict declaration
-_CompiledOrderingAttrs = TypedDict(
-    "_CompiledOrderingAttrs",
-    {
-        "direct_regexp": re.Pattern[str],
-        "reverse_regexp": re.Pattern[str],
-        "order_reverse": bool,
-        "global": bool,  # TODO: rename to something else so that it is not a keyword
-        "scope": list[str] | None,
-        "raw_rule": str,
-        "context": Any,
-        "split": bool,
-    },
-)
-
-
-class _CompiledOrderingItem(TypedDict):
-    attrs: _CompiledOrderingAttrs
-    children: CompiledTree
-
-
-CompiledTree = list[tuple[str, _CompiledOrderingItem]]
 
 
 @functools.lru_cache()

@@ -7,6 +7,7 @@ from collections.abc import Iterator
 from typing import Any, TypedDict, cast
 
 from annet.annlib import lib
+from annet.rulebook.types import RawParams, RawRow, Row
 from annet.vendors import tabparser
 
 
@@ -160,3 +161,20 @@ def match_context(ifcontext, context):
 def _parse_context(context, row):
     name, value = row.strip().split(":")
     return lib.merge_dicts(context, {name: value})
+
+
+def get_row_and_raw_params(raw_row: RawRow) -> tuple[Row, RawParams]:
+    """Parses a raw rule string, returning the rule string without params and the raw params"""
+    params = {}
+    row, *raw_params = re.split(r"(?:^|\s)%(?=[a-zA-Z_]\w*)", raw_row)
+    for param in raw_params:
+        name, _, value = param.partition("=")
+        params[name.strip()] = value.strip()
+    row = re.sub(r"\s+", " ", row.strip())
+    return row, params
+
+
+def get_row_with_params(row: Row, params: RawParams) -> RawRow:
+    """Joins a rule string without params and raw params, returning the raw rule string"""
+    params_line: str = " ".join([f"%{k}={v}" if v else f"%{k}" for k, v in params.items() if k != "not_inherit"])
+    return f"{row} {params_line}" if params_line else row

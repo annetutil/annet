@@ -1,0 +1,52 @@
+test_case_1:
+  child: |
+    %inherit_from=parent
+
+    %context=block:some
+    rule 1
+        sub rule 2
+
+    rule 2
+        sub rule 2
+  parent: |
+    %context=block:some
+    rule 1
+        sub rule 1
+
+    rule 2
+        sub rule 1
+  expected: |
+    %context=block:some
+    rule 1
+        sub rule 1
+        sub rule 2
+
+    rule 2
+        sub rule 1
+        sub rule 2
+test_case_2:
+  child: |
+    %inherit_from=parent
+
+    rule 1
+        sub rule 2
+    
+    %context=block:some
+    rule 2
+        sub rule 2
+  parent: |
+    rule 1
+        sub rule 1
+    
+    %context=block:some
+    rule 2
+        sub rule 1
+  expected: |
+    rule 1
+        sub rule 1
+        sub rule 2
+    
+    %context=block:some
+    rule 2
+        sub rule 1
+        sub rule 2

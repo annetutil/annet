@@ -1,0 +1,32 @@
+test_case_1:
+  child: |
+    %inherit_from=parent
+    !rule 1
+        sub rule 1
+  parent: |
+    rule 2
+        sub rule 1
+  expected: |
+    !rule 1
+        sub rule 1
+    rule 2
+        sub rule 1
+# Actually, '!rule 1' will have no children in the final rulebook because it's an 'ignore' type rule
+# If you specify in 'expected':
+#     !rule 1
+#         anything
+# The test will still pass
+# The result will be:
+#     !rule 1             {"attrs": {"parent": true, ...}, ...} 
+test_case_2:
+  child: |
+    %inherit_from=parent
+    !rule 1
+        sub rule 1
+  parent: |
+    !rule 1
+        sub rule 2
+  expected: |
+    !rule 1
+        sub rule 1
+        sub rule 2
