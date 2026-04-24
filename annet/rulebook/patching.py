@@ -434,7 +434,7 @@ def _validate_params_compatibility(params: Params, row: str, vendor) -> None:
         (MULTILINE, (used_default_diff_logic_path,), (DIFF_LOGIC,)),
     ]
     for param, checks, conflicting_params in conflicts:
-        if params[ORDERED] and not all(checks):
+        if params[param] and not all(checks):
             raise RulebookSyntaxError(
                 f"Compilation error for rule '{row}'. "
                 f"Param '%{param}' cannot be used together with params ({', '.join(conflicting_params)})."
@@ -450,7 +450,7 @@ def _validate_merged_params_compatibility(params: RawParams, row: str) -> None:
     ]
     for param, conflicting_params in conflicts:
         if param not in params:
-            return None
+            continue
         elif any(conflict_param in params for conflict_param in conflicting_params):
             raise RulebookSyntaxError(
                 f"Merge error for rule '{row}'. "

@@ -99,7 +99,7 @@ class DefaultRulebookProvider(RulebookProvider):
         }
         return self._rulebook_cache[hw]
 
-    def _get_rulebook_by_extension(self, rulebook_path: str, vendor: str, extension: Exception, hw) -> PatchRulebook:
+    def _get_rulebook_by_extension(self, rulebook_path: str, vendor: str, extension: Extension, hw) -> PatchRulebook:
         """Walks inheritance chain of rulebooks: gets texts → compiles → merges (if required)"""
         child_rulebook_text = self._get_rulebook_text(rulebook_path, extension, hw)
         inherit_from, child_rulebook_text = self._split_text_from_inherit_from_param(child_rulebook_text)
