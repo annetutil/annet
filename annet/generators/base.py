@@ -65,8 +65,12 @@ class BaseGenerator:
         return True
 
     @classmethod
+    def get_name(cls) -> str:
+        return cls.__name__
+
+    @classmethod
     def get_aliases(cls) -> set[str]:
-        return {cls.__name__, *cls.TAGS}
+        return {cls.get_name(), *cls.TAGS}
 
 
 class TreeGenerator(BaseGenerator):
