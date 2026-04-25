@@ -26,10 +26,9 @@ import tabulate
 from contextlog import get_logger
 
 from annet import generators, implicit, patching, rulebook, tracing
-from annet.annlib import jsontools
 from annet.annlib.rbparser.acl import compile_acl_text
-from annet.cli_args import DeployOptions, GenOptions, ShowGenOptions
-from annet.deploy import get_fetcher, scrub_config
+from annet.cli_args import GenOptions, ShowGenOptions
+from annet.deploy import get_fetcher
 from annet.filtering import Filterer
 from annet.generators import (
     BaseGenerator,
@@ -420,50 +419,6 @@ def old_new(
             raise GeneratorError from err
         if result is not None:
             yield result
-
-
-@tracing.function
-def old_raw(
-    args: GenOptions,
-    loader: Loader,
-    config: str,
-    current_state: "CurrentState",
-    stdin=None,
-) -> Iterable[Tuple[Device, Union[str, Dict[str, str]]]]:
-    device_gens = loader.resolve_gens(loader.devices)
-    if stdin is None:
-        stdin = args.stdin(filter_acl=args.filter_acl, config=config)
-    ctx = OldNewDeviceContext(
-        config=config,
-        args=args,
-        downloaded_files=split_downloaded_files_multi_device(
-            current_state.downloaded_files, device_gens, loader.devices
-        ),
-        failed_files=current_state.failed_files,
-        running=current_state.running,
-        failed_running=current_state.failed_running,
-        stdin=stdin,
-        do_files_download=True,
-        device_count=len(loader.devices),
-        no_new=True,
-        add_annotations=False,
-        add_implicit=False,
-        gens=DeviceGenerators(),
-        fetched_packages={},
-        failed_packages={},
-        do_print_perf=True,
-    )
-    for device in loader.devices:
-        if not device.is_pc():
-            config = _old_new_get_config_cli(ctx, device)
-            config = scrub_config(config, device.breed)
-            yield device, config
-        else:
-            files = _old_new_get_config_files(ctx, device)
-            if files.entire_files:
-                yield device, files.entire_files
-            if files.json_fragment_files:
-                yield device, {path: jsontools.format_json(data) for path, data in files.json_fragment_files.items()}
 
 
 @tracing.function
