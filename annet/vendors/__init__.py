@@ -18,6 +18,7 @@ from .library import (
     pc,
     ribbon,
     routeros,
+    snr,
 )
 from .registry import Registry, registry
 
