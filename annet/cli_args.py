@@ -103,6 +103,8 @@ opt_generators_context = Arg("--generators_context", type=str, default=None, hel
 
 opt_no_acl = Arg("--no-acl", default=False, help="Disable ACL for config generation")
 
+opt_acl = Arg("--acl", default=False, help="Apply generator ACL to filter output (implied by -g and -i)")
+
 opt_no_acl_exclusive = Arg(
     "--no-acl-exclusive", default=False, help="Check that ACLs of the executed generators do not intersect"
 )
@@ -415,6 +417,11 @@ class ShowGenOptions(GenOptions, FileOutOptions):
     indent = opt_indent
     annotate = opt_annotate
     show_hosts_progress = opt_show_hosts_progress
+
+
+class ShowCurrentOptions(ShowGenOptions):
+    config = opt_config
+    acl = opt_acl
 
 
 class ShowDiffOptions(DiffOptions, FileOutOptions):
