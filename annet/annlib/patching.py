@@ -6,7 +6,8 @@ import re
 import sys
 import textwrap
 from collections import OrderedDict as odict
-from collections.abc import Iterable
+from collections import defaultdict
+from collections.abc import Iterable, Sequence
 from typing import (
     Any,
     Callable,
@@ -556,6 +557,7 @@ def _filter_rows_by_rulebook_selector(config, rb, selector, ret, path=()):
 
 def make_pre(diff: Diff, _parent_match=None) -> dict[str, Any]:
     pre = odict()
+    reversals = defaultdict(set)
     for op, row, children, match in diff:
         if _parent_match and _parent_match["attrs"]["multiline"]:
             # Если родительское правило было мультилайном, то все внутренности станут его контентом.
@@ -573,6 +575,13 @@ def make_pre(diff: Diff, _parent_match=None) -> dict[str, Any]:
             }
         raw_rule = match["raw_rule"]
         key = match["key"]
+
+        # prevent generation of duplicate command when
+        # replacing "do" with "undo" command, or vise versa
+        if "reverse" in match["attrs"] and op in (Op.ADDED, Op.REMOVED):
+            if row in reversals[{Op.ADDED: Op.REMOVED, Op.REMOVED: Op.ADDED}[op]]:
+                continue
+            reversals[op].add(match["attrs"]["reverse"].format(*key))
 
         if raw_rule not in pre:
             pre[raw_rule] = {
