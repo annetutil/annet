@@ -1,3 +1,4 @@
+import re
 from collections import OrderedDict as odict
 from textwrap import dedent
 
@@ -26,8 +27,6 @@ def reversed_tree(config_tree):
 
 @pytest.fixture
 def rb(request):
-    import re
-
     return {
         "patching": {
             "local": odict(),
@@ -46,6 +45,7 @@ def rb(request):
                             },
                             "children": {"global": odict(), "local": odict()},
                             "type": "normal",
+                            "rule": "~",
                         },
                     ),
                 ]
@@ -88,6 +88,7 @@ def _make_match(rb, *key):
     return {
         "attrs": rb["patching"]["global"]["~"]["attrs"],
         "raw_rule": "~",
+        "rule": "~",
         "key": key,
     }
 

@@ -34,6 +34,7 @@ PatchRulebook = TypedDict(
 
 class PatchRule(TypedDict):
     type: "Type"
+    rule: str
     children: Union["PatchRulebook", None]
     attrs: "PatchRuleAttrs"
 

@@ -207,7 +207,7 @@ def str2diff(raw_diff: str) -> Diff:
             diff_ops[op],
             line,
             [],
-            {"raw_rule": line, "key": 33, "attrs": {"multiline": False}},
+            {"raw_rule": line, "rule": line, "key": 33, "attrs": {"multiline": False}},
         )
         if level == 0:
             res.append(diffline)

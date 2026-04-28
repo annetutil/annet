@@ -563,6 +563,7 @@ def make_pre(diff: Diff, _parent_match=None) -> dict[str, Any]:
             # правило __MULTILINE_BODY__.
             match = {
                 "raw_rule": "__MULTILINE_BODY__",
+                "rule": "__MULTILINE_BODY__",
                 "key": row,
                 "attrs": {
                     "comment": [],
@@ -576,6 +577,7 @@ def make_pre(diff: Diff, _parent_match=None) -> dict[str, Any]:
 
         if raw_rule not in pre:
             pre[raw_rule] = {
+                "rule": match["rule"],
                 "attrs": match["attrs"],
                 "items": odict(),
             }
@@ -627,6 +629,7 @@ class _DiffItem(TypedDict):
 
 
 class _Pre(TypedDict):
+    rule: str
     attrs: _PreAttrs
     items: odict[tuple[str, ...], dict[Op, list[_DiffItem]]]
 
@@ -680,7 +683,7 @@ def _iterate_over_patch(
                         keys=(key,),
                         attrs=attrs.copy(),
                         direct=direct,
-                        rules=(raw_rule,),
+                        rules=(content["rule"],),
                     )
 
                 else:
@@ -700,7 +703,7 @@ def _iterate_over_patch(
                             keys=(key,),
                             attrs=attrs.copy(),
                             direct=direct,
-                            rules=(raw_rule,),
+                            rules=(content["rule"],),
                         )
                     for sub_row in children:
                         # block, has children -> emit only children
@@ -709,7 +712,7 @@ def _iterate_over_patch(
                             keys=(key, *sub_row["keys"]),
                             attrs=sub_row["attrs"],
                             direct=sub_row["direct"],
-                            rules=(raw_rule, *sub_row["rules"]),
+                            rules=(content["rule"], *sub_row["rules"]),
                         )
 
 
@@ -883,10 +886,9 @@ def match_row_to_acl(row, rules, exclusive=False):
 
 
 def _match_row_to_rules(row, rules):
-    matches = _find_rules_matches(row, rules)
-    if matches:
+    if matches := _find_rules_matches(row, rules):
         return _select_match(matches, rules)
-    return (None, None)
+    return None, None
 
 
 def _find_acl_matches(row, rules):
@@ -925,12 +927,14 @@ def _find_acl_matches(row, rules):
 def _find_rules_matches(row, rules):
     matches = []
     for (raw_rule, rule), is_global in _rules_local_global(rules):
-        match = rule["attrs"]["regexp"].match(row)
-        if match:
+        if match := rule["attrs"]["regexp"].match(row):
             if rule["type"] == "ignore":
                 return []
-            matches.append(((rule, (not is_global)), {"raw_rule": raw_rule, "key": match.groups()}))
-            #                       ^^^ is_cr_allowed
+            matches.append(
+                ((rule, (not is_global)), {"raw_rule": raw_rule, "rule": rule["rule"], "key": match.groups()})
+                #       ^^^ is_cr_allowed
+            )
+
     return matches
 
 
