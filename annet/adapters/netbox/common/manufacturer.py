@@ -44,4 +44,6 @@ def get_breed(manufacturer: str, model: str):
         return "moxa"
     elif hw.PC:
         return "pc"
+    elif hw.Aruba:
+        return "aruos"
     return ""
