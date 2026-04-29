@@ -121,7 +121,28 @@ class Dumpable(abc.ABC):
         pass
 
 
-def print_as_json(data, fh=sys.stdout, highlight=True):
+class JsonEncoder(json.JSONEncoder):
+    def default(self, o):
+        # https://github.com/PyCQA/pylint/issues/3537
+        if isinstance(o, Pattern):  # pylint: disable=isinstance-second-argument-not-valid-type
+            return "(regex obj)/" + o.pattern + "/ (not a string)"
+        elif isinstance(o, Dumpable):
+            return o.dump()
+        elif dataclasses.is_dataclass(o):
+            return dataclasses.asdict(o)
+        elif isinstance(o, enum.Enum):
+            return o.value
+
+        raise TypeError("can't serialize %r to json" % o)
+
+    def encode(self, o):
+        try:
+            return super().encode(o)
+        except TypeError:
+            raise TypeError("can't serialize %r to json" % o)
+
+
+def print_as_json(data, sort_keys: bool = True, fh=sys.stdout, highlight=True):
     """
     В выводе dict ключи отсортированы по имени, кроме ключей в OrderedDict,
     которые сохраняют свой оригинальный порядок
@@ -162,32 +183,16 @@ def print_as_json(data, fh=sys.stdout, highlight=True):
                 data = UnsortableOdict(data)
             return data
 
-    class JsonEncoder(json.JSONEncoder):
-        def default(self, o):
-            # https://github.com/PyCQA/pylint/issues/3537
-            if isinstance(o, Pattern):  # pylint: disable=isinstance-second-argument-not-valid-type
-                return "(regex obj)/" + o.pattern + "/ (not a string)"
-            elif isinstance(o, Dumpable):
-                return o.dump()
-            elif dataclasses.is_dataclass(o):
-                return dataclasses.asdict(o)
-            elif isinstance(o, enum.Enum):
-                return o.value
+    if sort_keys:
+        dump_data = UnsortableOdict.convert_odicts(data)
+    else:
+        dump_data = data
 
-            raise TypeError("can't serialize %r to json" % o)
-
-        def encode(self, o):
-            try:
-                return super().encode(o)
-            except TypeError:
-                raise TypeError("can't serialize %r to json" % o)
-
-    dump_data = UnsortableOdict.convert_odicts(data)
     dump_kwargs = dict(cls=JsonEncoder, ensure_ascii=False)
 
     if fh.isatty() and highlight:
         pygments.highlight(
-            code=json.dumps(dump_data, indent=4, sort_keys=True, **dump_kwargs) + "\n",
+            code=json.dumps(dump_data, indent=4, **dump_kwargs) + "\n",
             lexer=pygments.lexers.data.JsonLexer(),
             formatter=pygments.formatters.TerminalFormatter(bg="dark"),
             outfile=fh,
