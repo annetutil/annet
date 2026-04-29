@@ -174,7 +174,25 @@ def get_row_and_raw_params(raw_row: RawRow) -> tuple[Row, RawParams]:
     return row, params
 
 
-def get_row_with_params(row: Row, params: RawParams) -> RawRow:
+def get_row_with_params(row: Row, params: RawParams, params_scheme) -> RawRow:
     """Joins a rule string without params and raw params, returning the raw rule string"""
-    params_line: str = " ".join([f"%{k}={v}" if v else f"%{k}" for k, v in params.items() if k != "not_inherit"])
+    params = clean_params_by_params_scheme(params, params_scheme)
+    params = strip_default_params_by_params_scheme(params, params_scheme)
+    params_line: str = " ".join([f"%{k}={v}" if v else f"%{k}" for k, v in params.items()])
     return f"{row} {params_line}" if params_line else row
+
+
+def clean_params_by_params_scheme(params: RawParams, params_scheme) -> RawParams:
+    """Remove parameters from 'params' not present in 'params_scheme'"""
+    return {name: value for name, value in params.items() if name in params_scheme}
+
+
+def strip_default_params_by_params_scheme(params: RawParams, params_scheme) -> RawParams:
+    """Remove parameters with default value from 'params'"""
+    result_params = {}
+    for name, value in params.items():
+        validator = params_scheme[name]["validator"]
+        default = params_scheme[name]["default"]
+        if validator(value if value != "" else "1") != default:
+            result_params[name] = value
+    return result_params

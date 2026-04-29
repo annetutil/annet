@@ -8,6 +8,7 @@ from valkit.common import valid_bool, valid_string_list
 from valkit.python import valid_object_path
 
 from annet.annlib.rbparser import platform, syntax
+from annet.rulebook.common import get_merged_params, validate_context_compatibility
 from annet.rulebook.exceptions import RulebookSyntaxError
 from annet.rulebook.types import (
     Params,
@@ -19,10 +20,10 @@ from annet.rulebook.types import (
     PatchRule,
     PatchRuleAttrs,
     PatchRulebook,
+    PatchScope,
     RawParams,
     RawRow,
     Row,
-    Scope,
     Type,
 )
 from annet.vendors import registry_connector
@@ -219,7 +220,7 @@ def merge_patch_rulebooks(parent_rulebook: PatchRulebook, child_rulebook: PatchR
 
     merged_rulebook = _create_empty_rulebook()
 
-    for row in uniq_local_global_rules(parent_pre_merge, child_pre_merge):
+    for row in _uniq_local_global_rules(parent_pre_merge, child_pre_merge):
         parent_data = parent_pre_merge.get(row, None)
         child_data = child_pre_merge.get(row, None)
 
@@ -239,13 +240,27 @@ def merge_patch_rulebooks(parent_rulebook: PatchRulebook, child_rulebook: PatchR
             parent_params = parent_data["params"]
             parent_scope = parent_data["scope"]
 
-            merged_scope = get_merged_scope(parent_scope, child_scope, child_params)
-            merged_row = get_merged_row(parent_params, child_params, row, vendor)
-            merged_rule = get_merged_rule(parent_rules, child_rules, child_params, merged_scope, row, vendor)
+            merged_scope = _get_merged_scope(parent_scope, child_scope, child_params)
+            merged_row = _get_merged_row(parent_params, child_params, row, vendor)
+            merged_rule = _get_merged_rule(parent_rules, child_rules, child_params, merged_scope, row, vendor)
 
             merged_rulebook[merged_scope][merged_row] = merged_rule
 
     return merged_rulebook
+
+
+def parse_patch_rulebook_to_text(rulebook: PatchRulebook, level=0) -> PatchingText:
+    """Parses the rulebook into a text format"""
+    lines = []
+    for scope in [rulebook[LOCAL], rulebook[GLOBAL]]:
+        for row, data in scope.items():
+            lines.append(f"{'    ' * level}{row}")
+            children = data.get(CHILDREN)
+            if children is not None and not _is_empty_rulebook(children):
+                children_lines = parse_patch_rulebook_to_text(children, level + 1)
+                if children_lines:
+                    lines.append(children_lines)
+    return "\n".join(lines)
 
 
 def _add_child_to_merge_rulebook(
@@ -264,8 +279,7 @@ def _add_child_to_merge_rulebook(
             vendor,
         )
 
-    cutted_params = cut_default_params(child_data[PARAMS], vendor)
-    row_with_params = syntax.get_row_with_params(row, cutted_params)
+    row_with_params = syntax.get_row_with_params(row, child_data[PARAMS], get_params_scheme(vendor))
 
     if child_data[RULES][TYPE] != IGNORE:
         child_data[RULES][ATTRS][PARENT] = not _is_empty_rulebook(child_data[RULES][CHILDREN])
@@ -289,8 +303,7 @@ def _apply_not_inherit_to_child_rules(child_rulebook: PatchRulebook, vendor) -> 
                     continue
                 del raw_params[NOT_INHERIT]
 
-            cutted_params = cut_default_params(raw_params, vendor)
-            raw_row = syntax.get_row_with_params(row, cutted_params)
+            raw_row = syntax.get_row_with_params(row, raw_params, get_params_scheme(vendor))
 
             rules[RULE] = raw_row
 
@@ -312,8 +325,7 @@ def _add_parent_to_merge_rulebook(
     merged_rulebook: PatchRulebook, parent_data: PatchPreMergeData, row: Row, vendor
 ) -> None:
     """Add parent rule to merged_rulebook"""
-    cutted_params = cut_default_params(parent_data[PARAMS], vendor)
-    row_with_params = syntax.get_row_with_params(row, cutted_params)
+    row_with_params = syntax.get_row_with_params(row, parent_data[PARAMS], get_params_scheme(vendor))
     merged_rulebook[parent_data[SCOPE]][row_with_params] = parent_data[RULES]
 
 
@@ -352,7 +364,7 @@ def _get_pre_merge(rulebook: PatchRulebook) -> PatchPreMerge:
     return PatchPreMerge(**pre_merge)
 
 
-def uniq_local_global_rules(
+def _uniq_local_global_rules(
     parent_pre_merge: PatchPreMerge, children_pre_merge: PatchPreMerge
 ) -> Generator[Row, None, None]:
     """Returns each rule from parent_pre_merge and children_pre_merge exactly once"""
@@ -364,46 +376,23 @@ def uniq_local_global_rules(
                 yield row
 
 
-def get_merged_params(parent_params: RawParams, child_params: RawParams) -> RawParams:
-    """Merges parent_params and child_params"""
-    params = parent_params.copy()
-    params.update(child_params)
-    return params
-
-
-def cut_default_params(params: RawParams, vendor) -> RawParams:
-    """Returns a copy params without params set to default values"""
-    result_param = {}
-    params_scheme = get_params_scheme(vendor)
-    for name, value in params.items():
-        if name not in params_scheme:
-            continue
-        validator = params_scheme[name]["validator"]
-        default = params_scheme[name]["default"]
-        if validator(value if value != "" else "1") == default:
-            continue
-        result_param[name] = value
-    return result_param
-
-
-def get_merged_row(parent_params: RawParams, child_params: RawParams, row: Row, vendor) -> RawRow:
+def _get_merged_row(parent_params: RawParams, child_params: RawParams, row: Row, vendor) -> RawRow:
     """Concatenates the rule string with the merged raw params"""
     merged_params = get_merged_params(
         parent_params,
         child_params,
     )
     _validate_merged_params_compatibility(merged_params, row)
-    cutted_params = cut_default_params(merged_params, vendor)
-    return syntax.get_row_with_params(row, cutted_params)
+    return syntax.get_row_with_params(row, merged_params, get_params_scheme(vendor))
 
 
-def get_merged_scope(parent_scope: Scope, child_scope: Scope, child_params: RawParams) -> Scope:
+def _get_merged_scope(parent_scope: PatchScope, child_scope: PatchScope, child_params: RawParams) -> PatchScope:
     """Merges parent_scope and child_scope"""
     return parent_scope if child_params.get(GLOBAL) is None else child_scope
 
 
-def get_merged_rule(
-    parent_rules: PatchRule, child_rules: PatchRule, child_params: RawParams, scope: Scope, row: Row, vendor
+def _get_merged_rule(
+    parent_rules: PatchRule, child_rules: PatchRule, child_params: RawParams, scope: PatchScope, row: Row, vendor
 ) -> PatchRule:
     """Merges parent_rules and child_rules"""
     merged_type = child_rules[TYPE]
@@ -450,7 +439,7 @@ def _merge_attrs(
     """Merges parent_attrs and child_attrs"""
     merged_attrs = parent_attrs.copy()
 
-    _validate_context_compatibility(parent_attrs, child_attrs, row)
+    validate_context_compatibility(parent_attrs, child_attrs, row)
 
     for param in child_params.keys():
         if param in child_attrs:
@@ -507,25 +496,3 @@ def _validate_merged_params_compatibility(params: RawParams, row: str) -> None:
                 f"Merge error for rule '{row}'. "
                 f"Param '%{param}' cannot be used together with params ({', '.join(conflicting_params)})."
             )
-
-
-def _validate_context_compatibility(parent_attrs: PatchRuleAttrs, child_attrs: PatchRuleAttrs, row: Row):
-    """Checks compatibility of rule contexts"""
-    if parent_attrs[CONTEXT] != child_attrs[CONTEXT]:
-        raise RulebookSyntaxError(
-            f"Merge error for rule '{row}'. Rule contexts must match in parent and child rulebooks."
-        )
-
-
-def parse_rulebook_to_text(rulebook: PatchRulebook, level=0) -> PatchingText:
-    """Parses the rulebook into a text format"""
-    lines = []
-    for scope in [rulebook[LOCAL], rulebook[GLOBAL]]:
-        for row, data in scope.items():
-            lines.append(f"{'    ' * level}{row}")
-            children = data.get(CHILDREN)
-            if children is not None and not _is_empty_rulebook(children):
-                children_lines = parse_rulebook_to_text(children, level + 1)
-                if children_lines:
-                    lines.append(children_lines)
-    return "\n".join(lines)

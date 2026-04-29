@@ -7,13 +7,21 @@ from typing import Callable
 from valkit.python import valid_object_path
 
 from annet.annlib.lib import mako_render
-from annet.annlib.rbparser.ordering import compile_ordering_text
+from annet.annlib.rbparser.ordering import compile_ordering_text, merge_order_rulebooks, parse_order_rulebook_to_text
 from annet.annlib.rbparser.platform import VENDOR_ALIASES
 from annet.connectors import CachedConnector
 from annet.rulebook.deploying import compile_deploying_text
 from annet.rulebook.exceptions import RulebookSyntaxError
-from annet.rulebook.patching import compile_patching_text, merge_patch_rulebooks, parse_rulebook_to_text
-from annet.rulebook.types import Extension, PatchingText, PatchRulebook, Rulebook
+from annet.rulebook.patching import compile_patching_text, merge_patch_rulebooks, parse_patch_rulebook_to_text
+from annet.rulebook.types import (
+    Extension,
+    OrderingText,
+    OrderRulebook,
+    PatchingText,
+    PatchRulebook,
+    Rulebook,
+    RulebookTexts,
+)
 from annet.vendors import registry_connector
 
 
@@ -46,9 +54,11 @@ class DefaultRulebookProvider(RulebookProvider):
     rulebook_module = "annet.rulebook.texts"
     merge_rulebooks = {
         "rul": merge_patch_rulebooks,
+        "order": merge_order_rulebooks,
     }
     compile_rulebooks: dict[Extension, Callable] = {
         "rul": compile_patching_text,
+        "order": compile_ordering_text,
     }
 
     def __init__(self):
@@ -72,13 +82,19 @@ class DefaultRulebookProvider(RulebookProvider):
             extension="rul",
             hw=hw,
         )
-        patching_text = parse_rulebook_to_text(patching)
+        patching_text = parse_patch_rulebook_to_text(patching)
 
         try:
-            ordering_text = self._render_rul(hw.vendor + ".order", hw)
+            ordering = self._get_rulebook_by_extension(
+                rulebook_path=".".join((self.rulebook_module, vendor)),
+                vendor=vendor,
+                extension="order",
+                hw=hw,
+            )
+            ordering_text = parse_order_rulebook_to_text(ordering)
         except FileNotFoundError:
-            ordering_text = ""
-        ordering = compile_ordering_text(ordering_text, hw.vendor)
+            ordering: OrderRulebook = []
+            ordering_text: OrderingText = ""
 
         try:
             deploying_text = self._render_rul(hw.vendor + ".deploy", hw)
@@ -87,16 +103,16 @@ class DefaultRulebookProvider(RulebookProvider):
 
         deploying = compile_deploying_text(deploying_text, hw.vendor)
 
-        self._rulebook_cache[hw] = {
-            "patching": patching,
-            "ordering": ordering,
-            "deploying": deploying,
-            "texts": {
-                "patching": patching_text,
-                "ordering": ordering_text,
-                "deploying": deploying_text,
-            },
-        }
+        self._rulebook_cache[hw] = Rulebook(
+            patching=patching,
+            ordering=ordering,
+            deploying=deploying,
+            texts=RulebookTexts(
+                patching=patching_text,
+                ordering=ordering_text,
+                deploying=deploying_text,
+            ),
+        )
         return self._rulebook_cache[hw]
 
     def _get_rulebook_by_extension(self, rulebook_path: str, vendor: str, extension: Extension, hw) -> PatchRulebook:
