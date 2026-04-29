@@ -59,6 +59,7 @@ NOT_INHERIT: Literal["not_inherit"] = "not_inherit"
 
 # ===RULE===
 RULES: Literal["rules"] = "rules"
+RULE: Literal["rule"] = "rule"
 TYPE: Literal["type"] = "type"
 NORMAL: Literal["normal"] = "normal"
 IGNORE: Literal["ignore"] = "ignore"
@@ -137,6 +138,7 @@ def _compile_patching(tree, reverse_prefix, vendor) -> PatchRulebook:
         if attrs[TYPE] == IGNORE:
             rule = PatchRule(
                 type=attrs[TYPE],
+                rule=attrs[ROW],
                 attrs=PatchIgnoreRuleAttrs(
                     regexp=regexp,
                     diff_logic=import_rulebook_function(attrs[PARAMS][DIFF_LOGIC]),
@@ -158,6 +160,7 @@ def _compile_patching(tree, reverse_prefix, vendor) -> PatchRulebook:
                 attrs[PARAMS][DIFF_LOGIC] = MULTILINE_DIFF_LOGIC
             rule = PatchRule(
                 type=attrs[TYPE],
+                rule=attrs[ROW],
                 attrs=PatchNormalRuleAttrs(
                     **{
                         "logic": import_rulebook_function(attrs[PARAMS][LOGIC]),
@@ -358,6 +361,7 @@ def get_merged_rule(
 ) -> PatchRule:
     """Merges parent_rules and child_rules"""
     merged_type = child_rules[TYPE]
+    merged_rule = child_rules[RULE]
 
     if scope == GLOBAL:
         merged_children = None
@@ -387,6 +391,7 @@ def get_merged_rule(
     return PatchRule(
         **{
             TYPE: merged_type,
+            RULE: merged_rule,
             CHILDREN: merged_children,
             ATTRS: merged_attrs,
         }

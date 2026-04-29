@@ -11,12 +11,12 @@ from annet.vendors.tabparser import JuniperFormatter
 def comment_processor(item: common.DiffItem):
     if item.op in (Op.REMOVED, Op.ADDED) and item.row.startswith(JuniperFormatter.Comment.begin):
         comment = JuniperFormatter.Comment.loads(item.row)
+        formatted_comment = f"{JuniperFormatter.Comment.begin} {comment.row} {JuniperFormatter.Comment.end}"
 
         item.diff_pre["attrs"]["context"]["comment"] = True
         item.diff_pre["attrs"]["context"]["row"] = comment.row
-        item.diff_pre["key"] = item.diff_pre["raw_rule"] = (
-            f"{JuniperFormatter.Comment.begin} {comment.row} {JuniperFormatter.Comment.end}"
-        )
+        item.diff_pre["raw_rule"] = item.diff_pre["rule"] = formatted_comment
+        item.diff_pre["key"] = (formatted_comment,)
 
         return common.DiffItem(
             item.op,
