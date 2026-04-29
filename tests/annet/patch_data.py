@@ -1,5 +1,6 @@
 import os
 from collections import OrderedDict
+from functools import partial
 
 import yaml
 
@@ -18,7 +19,8 @@ def get_configs(hw, data):
     if "diff" in data:
         before, after = expand_diff(data["diff"], splitter)
     else:
-        before, after = tuple(tabparser.parse_to_tree(text=data[k], splitter=splitter) for k in ["before", "after"])
+        before = tabparser.parse_to_tree(text=data["before"], splitter=splitter)
+        after = tabparser.parse_to_tree(text=data["after"], splitter=splitter)
     patch = data["patch"]
 
     return before, after, patch
