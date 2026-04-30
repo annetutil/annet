@@ -1,6 +1,7 @@
 """Support JSON patch (RFC 6902) and JSON Pointer (RFC 6901) with globs."""
 
 import copy
+import dataclasses
 import fnmatch
 import json
 from collections.abc import Mapping, Sequence
@@ -13,7 +14,21 @@ import jsonpointer
 from ordered_set import OrderedSet
 
 
-EVERYTHING_ACL: Final = "/*"
+@dataclasses.dataclass(frozen=True)
+class JsonFragmentAcl:
+    """ACL entry for a JSONFragment generator.
+
+    `pointer` is a JSON Pointer glob (see `resolve_json_pointers`).
+    `cant_delete=True` means: keys under this scope that are missing from the
+    new fragment must be preserved in the merged config (analogous to the
+    `%cant_delete` modifier on partial-generator ACLs).
+    """
+
+    pointer: str
+    cant_delete: bool = False
+
+
+EVERYTHING_ACL: Final = JsonFragmentAcl("/*")
 
 
 def format_json(data: Any, stable: bool = False) -> str:
@@ -25,7 +40,7 @@ def apply_json_fragment(
     old: Dict[str, Any],
     new_fragment: Dict[str, Any],
     *,
-    acl: Sequence[str] | None = None,
+    acl: Sequence[JsonFragmentAcl] | None = None,
     filters: Sequence[str] | None = None,
 ) -> Dict[str, Any]:
     """
@@ -38,15 +53,30 @@ def apply_json_fragment(
         acl = [EVERYTHING_ACL]
     full_new_config = copy.deepcopy(old)
     for acl_item in acl:
-        new_pointers = _resolve_json_pointers(acl_item, new_fragment)
-        old_pointers = _resolve_json_pointers(acl_item, full_new_config)
+        new_pointers = resolve_json_pointers(acl_item.pointer, new_fragment)
+        old_pointers = resolve_json_pointers(acl_item.pointer, full_new_config)
         if filters is not None:
             new_pointers = _apply_filters_to_json_pointers(new_pointers, filters, content=new_fragment)
             old_pointers = _apply_filters_to_json_pointers(old_pointers, filters, content=full_new_config)
 
         for pointer in new_pointers:
             new_value = pointer.get(new_fragment)
+            if acl_item.cant_delete and isinstance(new_value, dict):
+                # Under a cant_delete acl multiple generators can share the
+                # same pointer-target (e.g. different sub-fields of a VLAN).
+                # Shallow-update sub-keys so each generator's contribution
+                # is preserved; sub-keys that the generator owns are still
+                # fully replaced (no list merging etc).
+                try:
+                    existing = pointer.get(full_new_config)
+                except jsonpointer.JsonPointerException:
+                    existing = None
+                if isinstance(existing, dict):
+                    new_value = existing | new_value
             _pointer_set(pointer, full_new_config, new_value)
+
+        if acl_item.cant_delete:
+            continue
 
         # delete matched parts in old config whicn are not present in the new
         paths = {p.path for p in new_pointers}
@@ -133,7 +163,7 @@ def apply_patch(content: Optional[bytes], patch_bytes: bytes) -> bytes:
     return new_contents
 
 
-def _resolve_json_pointers(pattern: str, content: dict[str, Any]) -> list[jsonpointer.JsonPointer]:
+def resolve_json_pointers(pattern: str, content: dict[str, Any]) -> list[jsonpointer.JsonPointer]:
     """
     Resolve globbed json pointer pattern to a list of actual pointers, existing in the document.
 
@@ -236,7 +266,7 @@ def _apply_filters_to_json_pointers(
                 deeper_pattern = "".join(
                     (f"/{jsonpointer.escape(part)}" for part in filter_parts[len(pointer_parts) :])
                 )
-                ret.update(map(pointer.join, _resolve_json_pointers(deeper_pattern, deeper_doc)))
+                ret.update(map(pointer.join, resolve_json_pointers(deeper_pattern, deeper_doc)))
             else:
                 ret.add(pointer)
     return ret
