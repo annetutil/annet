@@ -20,7 +20,7 @@ def check_rulebook_equal(getting_rb, expected_rb):
         assert getting_data[row]["rules"]["attrs"] == expected_data[row]["rules"]["attrs"], (
             f"Rule '{row}': attrs do not match."
         )
-        inherited_children = expected_data[row]["rules"]["children"]
+        inherited_children = getting_data[row]["rules"]["children"]
         expected_children = expected_data[row]["rules"]["children"]
         assert type(inherited_children) == type(expected_children), f"Rule '{row}': children types do not match."
         if inherited_children is None:

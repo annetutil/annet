@@ -2,7 +2,7 @@ import functools
 import re
 import warnings
 from collections import OrderedDict as odict
-from typing import Generator, Literal
+from typing import Generator, Literal, cast
 
 from valkit.common import valid_bool, valid_string_list
 from valkit.python import valid_object_path
@@ -257,9 +257,55 @@ def _add_child_to_merge_rulebook(
             raise RulebookSyntaxError(r"Usage of %not_inherit param together with %global param is not allowed.")
         elif _is_empty_rulebook(child_data[RULES][CHILDREN]):
             return None
+
+    if not _is_empty_rulebook(child_data[RULES][CHILDREN]):
+        child_data[RULES][CHILDREN] = _apply_not_inherit_to_child_rules(
+            cast(PatchRulebook, child_data[RULES][CHILDREN]),
+            vendor,
+        )
+
     cutted_params = cut_default_params(child_data[PARAMS], vendor)
     row_with_params = syntax.get_row_with_params(row, cutted_params)
+
+    if child_data[RULES][TYPE] != IGNORE:
+        child_data[RULES][ATTRS][PARENT] = not _is_empty_rulebook(child_data[RULES][CHILDREN])
+
     merged_rulebook[child_data[SCOPE]][row_with_params] = child_data[RULES]
+
+
+def _apply_not_inherit_to_child_rules(child_rulebook: PatchRulebook, vendor) -> PatchRulebook:
+    """Applies the logic of the %not_inherit param to all rules in the child_rulebook"""
+    applied_rulebook = _create_empty_rulebook()
+    for scope in (LOCAL, GLOBAL):
+        for raw_row, rules in child_rulebook[scope].items():
+            row, raw_params = syntax.get_row_and_raw_params(raw_row)
+
+            if NOT_INHERIT in raw_params:
+                if GLOBAL in raw_params:
+                    raise RulebookSyntaxError(
+                        r"Usage of %not_inherit param together with %global param is not allowed."
+                    )
+                if _is_empty_rulebook(rules[CHILDREN]):
+                    continue
+                del raw_params[NOT_INHERIT]
+
+            cutted_params = cut_default_params(raw_params, vendor)
+            raw_row = syntax.get_row_with_params(row, cutted_params)
+
+            rules[RULE] = raw_row
+
+            if not _is_empty_rulebook(rules[CHILDREN]):
+                rules[CHILDREN] = _apply_not_inherit_to_child_rules(
+                    cast(PatchRulebook, rules[CHILDREN]),
+                    vendor,
+                )
+
+            if rules[TYPE] != IGNORE:
+                rules[ATTRS][PARENT] = not _is_empty_rulebook(rules[CHILDREN])
+
+            applied_rulebook[scope][raw_row] = rules
+
+    return applied_rulebook
 
 
 def _add_parent_to_merge_rulebook(

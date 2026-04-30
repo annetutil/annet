@@ -16,7 +16,7 @@ def test_merge(mock_rulebooks):
     hw = make_hw_stub("juniper")
     vendor = hw.vendor
     inherited_rb = rb_provider._get_rulebook_by_extension(rulebook_path="child", extension="rul", hw=hw, vendor=vendor)
-    expected_rb = inherited_rb = rb_provider._get_rulebook_by_extension(
+    expected_rb = rb_provider._get_rulebook_by_extension(
         rulebook_path="expected", extension="rul", hw=hw, vendor=vendor
     )
     check_rulebook_equal(inherited_rb, expected_rb)
