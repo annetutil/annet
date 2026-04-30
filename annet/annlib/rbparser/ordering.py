@@ -147,7 +147,7 @@ def merge_order_rulebooks(parent_rulebook: OrderRulebook, child_rulebook: OrderR
     start_group_rows, end_group_rows = _split_rows_by_insert_to_end_group_param(group_data[ROWS])
 
     for row, parent_data in parend_pre_merge:
-        if (group_anchor is None and not group_data) or row != group_anchor:
+        if (group_anchor is None and _is_empty_child_group_data(group_data)) or row != group_anchor:
             merged_rulebook.append((parent_data[RAW_RULE], parent_data[RULES]))
             continue
 
