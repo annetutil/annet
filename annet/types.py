@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from typing import Any, Dict, List, MutableMapping, NamedTuple, Optional, Tuple, TypeAlias, Union
 
+from annet.annlib.jsontools import JsonFragmentAcl
 from annet.annlib.types import Op  # pylint: disable=unused-import
 from annet.storage import Device, Storage
 
@@ -125,8 +126,8 @@ class GeneratorJSONFragmentResult:
         name: str,
         tags: List[str],
         path: str,
-        acl: List[str],
-        acl_safe: List[str],
+        acl: List[JsonFragmentAcl],
+        acl_safe: List[JsonFragmentAcl],
         config: Dict[str, Any],
         reload: str,
         perf: GeneratorPerf,

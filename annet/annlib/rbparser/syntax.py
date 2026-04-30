@@ -96,7 +96,7 @@ def _parse_tree_with_params(raw_tree: tabparser.SimpleTree, scheme, context: dic
     if context is None:
         context = {}
     for raw_rule, children in raw_tree:
-        (row, params) = _parse_raw_rule(raw_rule, scheme)
+        (row, params) = parse_raw_rule(raw_rule, scheme)
         row_type = "normal"
 
         if row.startswith("!"):
@@ -123,7 +123,7 @@ def _parse_tree_with_params(raw_tree: tabparser.SimpleTree, scheme, context: dic
     return tree
 
 
-def _parse_raw_rule(raw_rule: str, scheme) -> tuple[str, dict[str, str]]:
+def parse_raw_rule(raw_rule: str, scheme) -> tuple[str, dict[str, str]]:
     params: dict[str, str] = {}
 
     row, *params_raw = re.split(r"(?:^|\s)%(?=[a-zA-Z_]\w*)", raw_rule)
