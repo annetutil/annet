@@ -119,7 +119,7 @@ def get_params_scheme(vendor):
 
 
 @functools.lru_cache()
-def compile_patching_text(text: PatchingText, vendor) -> PatchRulebook:
+def compile_patching_text(text: PatchingText, vendor: str) -> PatchRulebook:
     return _compile_patching(
         tree=syntax.parse_text(
             text,

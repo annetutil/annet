@@ -81,7 +81,7 @@ def get_params_scheme():
 
 
 @functools.lru_cache()
-def compile_ordering_text(text: str, vendor: str) -> OrderRulebook:
+def compile_ordering_text(text: OrderingText, vendor: str) -> OrderRulebook:
     return _compile_ordering(
         tree=syntax.parse_text_multi(
             text,

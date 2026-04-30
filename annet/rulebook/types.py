@@ -4,6 +4,10 @@ from typing import Any, Callable, Literal, OrderedDict, Pattern, TypeAlias, Type
 # ===RULEBOOK===
 
 
+AnyRulebook: TypeAlias = Union["PatchRulebook", "OrderRulebook"]
+AnyRulebookText: TypeAlias = Union["PatchingText", "OrderingText"]
+
+
 class Rulebook(TypedDict):
     patching: "PatchRulebook"
     ordering: "OrderRulebook"

@@ -2,7 +2,7 @@ import re
 import sys
 from abc import ABC
 from importlib import resources
-from typing import Callable
+from typing import Literal
 
 from valkit.python import valid_object_path
 
@@ -14,6 +14,8 @@ from annet.rulebook.deploying import compile_deploying_text
 from annet.rulebook.exceptions import RulebookSyntaxError
 from annet.rulebook.patching import compile_patching_text, merge_patch_rulebooks, parse_patch_rulebook_to_text
 from annet.rulebook.types import (
+    AnyRulebook,
+    AnyRulebookText,
     Extension,
     OrderingText,
     OrderRulebook,
@@ -31,6 +33,10 @@ if sys.version_info >= (3, 12):
     RULEBOOK_READ_EXCEPTIONS = (FileNotFoundError, TraversalError)
 else:
     RULEBOOK_READ_EXCEPTIONS = (FileNotFoundError,)
+
+
+RUL: Literal["rul"] = "rul"
+ORDER: Literal["order"] = "order"
 
 
 class RulebookProvider(ABC):
@@ -53,12 +59,12 @@ def get_rulebook(hw) -> Rulebook:
 class DefaultRulebookProvider(RulebookProvider):
     rulebook_module = "annet.rulebook.texts"
     merge_rulebooks = {
-        "rul": merge_patch_rulebooks,
-        "order": merge_order_rulebooks,
+        RUL: merge_patch_rulebooks,
+        ORDER: merge_order_rulebooks,
     }
-    compile_rulebooks: dict[Extension, Callable] = {
-        "rul": compile_patching_text,
-        "order": compile_ordering_text,
+    compile_rulebooks = {
+        RUL: compile_patching_text,
+        ORDER: compile_ordering_text,
     }
 
     def __init__(self):
@@ -75,20 +81,20 @@ class DefaultRulebookProvider(RulebookProvider):
         assert vendor in registry_connector.get(), "Unknown vendor: %s" % (vendor)
         rul_vendor_name = VENDOR_ALIASES.get(vendor, vendor)
 
-        patching = self._get_rulebook_by_extension(
+        patching: PatchRulebook = self._get_rulebook_by_extension(
             # The first rulebook should be named exactly the same as hw.vendor
             rulebook_path=".".join((self.rulebook_module, rul_vendor_name)),
             vendor=rul_vendor_name,
-            extension="rul",
+            extension=RUL,
             hw=hw,
         )
-        patching_text = parse_patch_rulebook_to_text(patching)
+        patching_text: PatchingText = parse_patch_rulebook_to_text(patching)
 
         try:
-            ordering = self._get_rulebook_by_extension(
+            ordering: OrderRulebook = self._get_rulebook_by_extension(
                 rulebook_path=".".join((self.rulebook_module, vendor)),
                 vendor=vendor,
-                extension="order",
+                extension=ORDER,
                 hw=hw,
             )
             ordering_text = parse_order_rulebook_to_text(ordering)
@@ -115,7 +121,7 @@ class DefaultRulebookProvider(RulebookProvider):
         )
         return self._rulebook_cache[hw]
 
-    def _get_rulebook_by_extension(self, rulebook_path: str, vendor: str, extension: Extension, hw) -> PatchRulebook:
+    def _get_rulebook_by_extension(self, rulebook_path: str, vendor: str, extension: Extension, hw) -> AnyRulebook:
         """Walks inheritance chain of rulebooks: gets texts → compiles → merges (if required)"""
         child_rulebook_text = self._get_rulebook_text(rulebook_path, extension, hw)
         inherit_from, child_rulebook_text = self._split_text_from_inherit_from_param(child_rulebook_text)
@@ -134,7 +140,7 @@ class DefaultRulebookProvider(RulebookProvider):
 
         return self.merge_rulebooks[extension](parent_rulebook, child_rulebook, vendor)
 
-    def _split_text_from_inherit_from_param(self, rulebook_text: str) -> tuple[str | None, str]:
+    def _split_text_from_inherit_from_param(self, rulebook_text: AnyRulebookText) -> tuple[str | None, str]:
         """Split the %inherit_from param from the rulebook text"""
         count_inherit_from_param = len(re.findall(r"%inherit_from", rulebook_text))
         if count_inherit_from_param == 0:
@@ -148,7 +154,7 @@ class DefaultRulebookProvider(RulebookProvider):
             inherit_from, rulebook_text = lines[0], "\n".join(lines[1:])
         return inherit_from, rulebook_text
 
-    def _parse_inherit_from_param(self, param: str) -> tuple[str, str]:
+    def _parse_inherit_from_param(self, param: str) -> str:
         """Parses the %inherit_from param"""
         parts = param.split("=")
         if len(parts) != 2:
@@ -157,12 +163,12 @@ class DefaultRulebookProvider(RulebookProvider):
         self.check_rulebook_path(path)
         return path
 
-    def check_rulebook_path(self, rulebook_path):
+    def check_rulebook_path(self, rulebook_path: str) -> None:
         """Validates the Python path to a rulebook"""
         if not valid_object_path(rulebook_path):
             raise ValueError(f"Invalid rulebook path '{rulebook_path}'. The path must follow the 'module.name' format.")
 
-    def _get_rulebook_text(self, rulebook_path: str, extension: str, hw) -> PatchingText:
+    def _get_rulebook_text(self, rulebook_path: str, extension: Extension, hw) -> AnyRulebookText:
         """Gets the rulebook text"""
         key = (rulebook_path, extension, hw)
         if key not in self._rulebook_text_cache:
@@ -172,7 +178,7 @@ class DefaultRulebookProvider(RulebookProvider):
             self._rulebook_text_cache[key] = re.sub(r"\n+", "\n", rendered_text.strip("\n"))
         return self._rulebook_text_cache[key]
 
-    def _get_raw_rulebook_text(self, rulebook_path: str, extension: str):
+    def _get_raw_rulebook_text(self, rulebook_path: str, extension: Extension) -> AnyRulebookText:
         """Gets the raw rulebook text"""
         self.check_rulebook_path(rulebook_path)
         module, name = rulebook_path.rsplit(".", 1)
