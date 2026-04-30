@@ -225,7 +225,7 @@ def merge_patch_rulebooks(parent_rulebook: PatchRulebook, child_rulebook: PatchR
         child_data = child_pre_merge.get(row, None)
 
         if child_data is None:
-            # for mypy (In this case, parend_data cannot be None)
+            # for mypy (In this case, parent_data cannot be None)
             assert parent_data is not None
             _add_parent_to_merge_rulebook(merged_rulebook, parent_data, row, vendor)
 

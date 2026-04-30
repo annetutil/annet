@@ -126,11 +126,11 @@ def merge_order_rulebooks(parent_rulebook: OrderRulebook, child_rulebook: OrderR
     """Merges the parent rulebook with the child rulebook"""
     merged_rulebook: OrderRulebook = []
 
-    parend_pre_merge = _get_pre_merge(parent_rulebook)
+    parent_pre_merge = _get_pre_merge(parent_rulebook)
     child_pre_merge = _get_pre_merge(child_rulebook)
-    parend_pre_merge, child_pre_merge = _apply_not_inherit_logic(parend_pre_merge, child_pre_merge)
+    parent_pre_merge, child_pre_merge = _apply_not_inherit_logic(parent_pre_merge, child_pre_merge)
 
-    child_groups = _get_child_groups(parend_pre_merge, child_pre_merge)
+    child_groups = _get_child_groups(parent_pre_merge, child_pre_merge)
     group_anchor, group_data = _get_next_group(child_groups)
 
     # Stores rules with %insert_to_end_group and anchor, rules to be added before the next anchor
@@ -146,7 +146,7 @@ def merge_order_rulebooks(parent_rulebook: OrderRulebook, child_rulebook: OrderR
 
     start_group_rows, end_group_rows = _split_rows_by_insert_to_end_group_param(group_data[ROWS])
 
-    for row, parent_data in parend_pre_merge:
+    for row, parent_data in parent_pre_merge:
         if (group_anchor is None and _is_empty_child_group_data(group_data)) or row != group_anchor:
             merged_rulebook.append((parent_data[RAW_RULE], parent_data[RULES]))
             continue
