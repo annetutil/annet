@@ -72,3 +72,34 @@ test_case_5:
         child rule 1
 
     rule 3
+
+test_case_6:
+  child: |
+    %inherit_from=parent
+    rule 1 %not_inherit
+      subrule 1 %not_inherit
+        some 1 %not_inherit
+          some 2 %not_inherit
+            some 3 %not_inherit
+              some 4
+              some 5 %not_inherit
+      subrule 2 %not_inherit
+
+    rule 2
+  parent: |
+    rule 1
+      subrule 1
+        some 1
+          some 2
+            some 3
+              parent_rule
+    rule 3
+  expected: |
+    rule 1
+      subrule 1
+        some 1
+          some 2
+            some 3
+              some 4
+    rule 2
+    rule 3
