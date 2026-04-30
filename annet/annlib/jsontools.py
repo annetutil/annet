@@ -72,9 +72,7 @@ def apply_json_fragment(
                 except jsonpointer.JsonPointerException:
                     existing = None
                 if isinstance(existing, dict):
-                    merged = dict(existing)
-                    merged.update(new_value)
-                    new_value = merged
+                    new_value = existing | new_value
             _pointer_set(pointer, full_new_config, new_value)
 
         if acl_item.cant_delete:
