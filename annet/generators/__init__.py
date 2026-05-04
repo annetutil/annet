@@ -10,9 +10,12 @@ from collections import OrderedDict as odict
 from typing import FrozenSet, Iterable, List, Optional, Union
 
 from contextlog import get_logger
+from valkit.common import valid_string_list
 
 from annet import patching, tracing
+from annet.annlib.jsontools import JsonFragmentAcl
 from annet.annlib.rbparser.acl import compile_acl_text
+from annet.annlib.rbparser.syntax import parse_raw_rule
 from annet.cli_args import GenSelectOptions, ShowGeneratorsOptions
 from annet.lib import get_context
 from annet.storage import Device
@@ -334,6 +337,26 @@ def _make_generator_ctx(gen):
     return "%s.[%s]" % (gen.__module__, gen.__class__.__name__)
 
 
+_JSON_FRAGMENT_ACL_PARAMS_SCHEME = {
+    "cant_delete": {"validator": valid_string_list, "default": []},
+}
+
+
+def _normalize_json_fragment_acl(acl: str | list[str]) -> list[JsonFragmentAcl]:
+    if not isinstance(acl, list):
+        acl = [acl]
+    result: list[JsonFragmentAcl] = []
+    for raw in acl:
+        pointer, params = parse_raw_rule(raw, _JSON_FRAGMENT_ACL_PARAMS_SCHEME)
+        result.append(
+            JsonFragmentAcl(
+                pointer=pointer,
+                cant_delete=tuple(params["cant_delete"]),
+            )
+        )
+    return result
+
+
 def _run_json_fragment_generator(
     gen: "JSONFragment",
     device: "Device",
@@ -353,14 +376,8 @@ def _run_json_fragment_generator(
         safe_acl_item_or_list_of_items = gen.acl_safe(device)
         if not acl_item_or_list_of_items:
             raise RuntimeError("json fragment generator should return non-empty acl")
-        if isinstance(acl_item_or_list_of_items, list):
-            acl = acl_item_or_list_of_items
-        else:
-            acl = [acl_item_or_list_of_items]
-        if isinstance(safe_acl_item_or_list_of_items, list):
-            acl_safe = safe_acl_item_or_list_of_items
-        else:
-            acl_safe = [safe_acl_item_or_list_of_items]
+        acl = _normalize_json_fragment_acl(acl_item_or_list_of_items)
+        acl_safe = _normalize_json_fragment_acl(safe_acl_item_or_list_of_items)
 
         logger.info("Generating JSON_FRAGMENT ...")
 

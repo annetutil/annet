@@ -89,9 +89,7 @@ class RunGeneratorResult:
                 else:
                     files[filepath] = ({}, None)
             if use_acl:
-                result_acl = generator_result.acl
-                if safe:
-                    result_acl = generator_result.acl_safe
+                result_acl = generator_result.acl_safe if safe else generator_result.acl
             else:
                 result_acl = None
             previous_config: dict[str, Any] = files[filepath][0]
