@@ -1,0 +1,61 @@
+# Операторы:
+#   *  Один аргумент в undo
+#   ~  Несколько аргументов (минимум один) в undo
+#
+# Параметры:
+#   %global         Команда действует на любом уровне ниже
+#   %logic=...      Кастомная функция обработки правила
+#   %diff_logic=... Кастомная функция построения диффа.
+#                   данная функция работает для подблоков (в отличие от %logic)
+#   %comment=...    Добавить коммент после строки который будет видно с опцией patch --add-comments
+#                   Сделано в основном для того чтобы генерировать специальные команды для наливки
+# -----
+
+hostname *
+
+spanning-tree mode
+
+feature ~
+no feature ~
+
+no ip domain-lookup
+
+set lldp system-name *
+lldp ip address *
+
+snmp-server enable ~
+snmp-server ~
+snmp-server configuration
+    snmp-server view ~
+    snmp-server community ~
+
+username * role * password *
+
+vlan database
+    vlan ~ state enable
+
+interface * %logic=annet.rulebook.common.permanent
+    switchport mode
+    switchport trunk allowed vlan
+    switchport trunk native vlan
+    switchport access vlan
+    switchport hybrid native vlan
+    switchport hybrid allowed vlan ~
+    set lldp enable ~
+    lldp tlv ~
+    ip address ~
+    ipv6 enable
+    ipv6 address ~
+
+ip route ~
+ipv6 route ~
+
+line ~
+    login
+
+end
+
+no ~ %global
+~ %global
+
+# vim: set syntax=annrulebook:
