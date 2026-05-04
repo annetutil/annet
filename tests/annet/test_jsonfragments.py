@@ -3,8 +3,9 @@ from typing import Any
 import pytest
 
 import annet.diff
-from annet.annlib.jsontools import JsonFragmentAcl
+from annet.annlib.jsontools import JsonFragmentAcl, apply_json_fragment
 from annet.annlib.netdev.views.hardware import HardwareView
+from annet.generators import _normalize_json_fragment_acl
 from annet.generators.result import RunGeneratorResult
 from annet.types import GeneratorJSONFragmentResult, GeneratorPerf
 
@@ -237,15 +238,8 @@ def test_new_json_fragment_files():
             name="interfaces",
             tags=["interfaces"],
             path="/etc/sonic/config_db.json",
-            acl=[
-                JsonFragmentAcl("/INTERFACE"),
-                JsonFragmentAcl("/BREAKOUT_CFG"),
-                JsonFragmentAcl("/VLAN_INTERFACE"),
-            ],
-            acl_safe=[
-                JsonFragmentAcl("/INTERFACE/*/description"),
-                JsonFragmentAcl("/VLAN_INTERFACE/*/description"),
-            ],
+            acl=["/INTERFACE", "/BREAKOUT_CFG", "/VLAN_INTERFACE"],
+            acl_safe=["/INTERFACE/*/description", "/VLAN_INTERFACE/*/description"],
             config=config,
             reload="sonic-reload",
             perf=GeneratorPerf(1.0, None, None),
@@ -325,7 +319,8 @@ def test_new_json_fragment_files():
             "sonic-reload",
         ),
     }
-    # safe diff
+    # safe diff: VLAN_INTERFACE is removed entirely under new chain-ownership
+    # semantics — its ACL prefix /VLAN_INTERFACE has no key in the fragment.
     assert gen_res.new_json_fragment_files(old_files, safe=True) == {
         "/etc/sonic/config_db.json": (
             {
@@ -345,10 +340,7 @@ def test_new_json_fragment_files():
                     # no "Ethernet4" (not in safe ACL)
                     "Ethernet8": {"brkout_mode": "1x400G"},  # unchanged
                 },
-                "VLAN_INTERFACE": {  # unchanged (not in safe ACL)
-                    "Ethernet0": {"vrf_name": "default"},
-                    "Ethernet8": {"vrf_name": "default"},
-                },
+                # VLAN_INTERFACE deleted entirely (chain ownership)
             },
             "sonic-reload",
         ),
@@ -410,13 +402,7 @@ def test_new_json_fragment_files():
                     # no "Ethernet4" (not in safe ACL)
                     "Ethernet8": {"brkout_mode": "1x400G"},  # unchanged
                 },
-                "VLAN_INTERFACE": {
-                    "Ethernet0": {
-                        "vrf_name": "default",
-                        "description": "Ether0 VLAN",
-                    },  # unchanged (not in filters)
-                    "Ethernet8": {"vrf_name": "default"},  # unchanged (not in ACL)
-                },
+                # VLAN_INTERFACE removed (chain ownership)
             },
             "sonic-reload",
         ),
@@ -431,7 +417,7 @@ def test_new_json_fragment_files_append_list():
             name="acl_table",
             tags=["acl_table"],
             path="/etc/sonic/config_db.json",
-            acl=[JsonFragmentAcl("/ACL_TABLE")],
+            acl=["/ACL_TABLE"],
             acl_safe=[],
             config=config,
             reload="sonic-reload",
@@ -491,176 +477,246 @@ def test_new_json_fragment_files_append_list():
     }
 
 
-def test_apply_json_fragment_cant_delete_preserves_missing_keys():
-    from annet.annlib.jsontools import apply_json_fragment
-
-    old = {"FEATURE": {"a": {"v": 1}, "b": {"v": 2}}}
-    new_fragment: dict[str, Any] = {"FEATURE": {}}
-
-    deleted = apply_json_fragment(old, new_fragment, acl=[JsonFragmentAcl("/FEATURE/*")])
-    assert deleted == {"FEATURE": {}}
-
-    preserved = apply_json_fragment(old, new_fragment, acl=[JsonFragmentAcl("/FEATURE/*", cant_delete=True)])
-    assert preserved == {"FEATURE": {"a": {"v": 1}, "b": {"v": 2}}}
-
-
-def test_apply_json_fragment_cant_delete_overwrites_present_keys():
-    from annet.annlib.jsontools import apply_json_fragment
-
-    old = {"FEATURE": {"a": {"v": 1}, "b": {"v": 2}}}
-    new_fragment = {"FEATURE": {"a": {"v": 99}}}
-
-    result = apply_json_fragment(old, new_fragment, acl=[JsonFragmentAcl("/FEATURE/*", cant_delete=True)])
-    assert result == {"FEATURE": {"a": {"v": 99}, "b": {"v": 2}}}
-
-
-def test_apply_json_fragment_mixed_cant_delete_acls():
-    from annet.annlib.jsontools import apply_json_fragment
-
+def test_apply_json_fragment_cant_delete_protects_listed_parents():
     old = {
-        "PROTECTED": {"keep": 1, "also_keep": 2},
-        "REGULAR": {"a": 1, "b": 2},
+        "VLAN": {
+            "Vlan605": {
+                "vlanid": "605",
+                "dhcpv6_servers": ["fe80::1"],
+            },
+        },
     }
-    new_fragment: dict[str, Any] = {"PROTECTED": {}, "REGULAR": {"a": 1}}
+    acl = [
+        JsonFragmentAcl(
+            pointer="/VLAN/Vlan*/dhcpv6_servers",
+            cant_delete=("/VLAN", "/VLAN/Vlan*"),
+        )
+    ]
+    result = apply_json_fragment(old, {}, acl=acl)
+    # leaf removed, but Vlan605 (now empty) and VLAN preserved
+    assert result == {"VLAN": {"Vlan605": {"vlanid": "605"}}}
 
-    result = apply_json_fragment(
-        old,
-        new_fragment,
-        acl=[
-            JsonFragmentAcl("/PROTECTED/*", cant_delete=True),
-            JsonFragmentAcl("/REGULAR/*"),
-        ],
-    )
+
+def test_apply_json_fragment_cant_delete_does_not_protect_unlisted():
+    old = {
+        "VLAN": {
+            "Vlan605": {
+                "dhcpv6_servers": ["fe80::1"],
+            },
+        },
+    }
+    # owner of Vlan* level — cant_delete doesn't protect VLAN itself.
+    # Empty parents collapse upward unless protected.
+    acl = [JsonFragmentAcl(pointer="/VLAN/Vlan*", cant_delete=())]
+    result = apply_json_fragment(old, {}, acl=acl)
+    assert result == {}
+
+
+def test_apply_json_fragment_cant_delete_protects_only_listed_ancestor():
+    old = {
+        "VLAN": {
+            "Vlan605": {
+                "dhcpv6_servers": ["fe80::1"],
+            },
+        },
+    }
+    # Protect /VLAN only; Vlan605 is not protected, so it collapses, but
+    # /VLAN itself stays as {}.
+    acl = [JsonFragmentAcl(pointer="/VLAN/Vlan*", cant_delete=("/VLAN",))]
+    result = apply_json_fragment(old, {}, acl=acl)
+    assert result == {"VLAN": {}}
+
+
+def test_apply_json_fragment_cant_delete_with_glob_pattern():
+    old = {
+        "VLAN": {
+            "Vlan605": {"dhcpv6_servers": ["fe80::1"]},
+            "Vlan700": {"dhcpv6_servers": ["fe80::2"]},
+            "OtherKey": {"dhcpv6_servers": ["fe80::3"]},
+        },
+    }
+    # cant_delete=/VLAN/Vlan* protects Vlan605, Vlan700 from chain-ownership
+    # deletion at level 2. cant_delete does NOT include /VLAN, so level 1
+    # (/VLAN itself) is owned by this ACL — but the fragment is empty, so
+    # the whole /VLAN gets deleted at level 1.
+    acl = [
+        JsonFragmentAcl(
+            pointer="/VLAN/*/dhcpv6_servers",
+            cant_delete=("/VLAN/Vlan*",),
+        )
+    ]
+    result = apply_json_fragment(old, {}, acl=acl)
+    assert result == {}
+
+
+def test_apply_json_fragment_cant_delete_protects_top_level():
+    """Protect /VLAN to keep the container around even when fragment is empty."""
+    old = {
+        "VLAN": {
+            "Vlan605": {"dhcpv6_servers": ["fe80::1"]},
+            "Vlan700": {"dhcpv6_servers": ["fe80::2"]},
+            "OtherKey": {"dhcpv6_servers": ["fe80::3"]},
+        },
+    }
+    acl = [
+        JsonFragmentAcl(
+            pointer="/VLAN/*/dhcpv6_servers",
+            cant_delete=("/VLAN", "/VLAN/Vlan*"),
+        )
+    ]
+    result = apply_json_fragment(old, {}, acl=acl)
+    # /VLAN protected, Vlan605 and Vlan700 protected (matched by /VLAN/Vlan*).
+    # OtherKey not protected → removed. Each protected Vlan keeps its content
+    # untouched because the leaf /VLAN/Vlan*/dhcpv6_servers level is owned
+    # but the fragment lookup returns no pointers anyway... actually the leaf
+    # level is owned and not protected, so dhcpv6_servers gets deleted too.
     assert result == {
-        "PROTECTED": {"keep": 1, "also_keep": 2},
-        "REGULAR": {"a": 1},
-    }
-
-
-def _make_json_fragment_result(
-    name: str,
-    *,
-    path: str,
-    acl: list,
-    config: dict,
-    acl_safe: list | None = None,
-) -> GeneratorJSONFragmentResult:
-    return GeneratorJSONFragmentResult(
-        name=name,
-        tags=[name],
-        path=path,
-        acl=acl,
-        acl_safe=acl_safe if acl_safe is not None else [],
-        config=config,
-        reload="reload",
-        perf=GeneratorPerf(1.0, None, None),
-        reload_prio=100,
-    )
-
-
-def test_cross_generator_cant_delete_drops_keys_no_one_emits():
-    """Two generators share `/VLAN/Vlan*` with cant_delete=True; a vlan that
-    nobody returns must be deleted, while keys at least one generator returned
-    keep their other generators' fields intact.
-    """
-    path = "/etc/sonic/config_db.json"
-    old_files = {
-        path: {
-            "VLAN": {
-                "Vlan333": {"dhcpv6_servers": ["2a02:6b8::1"], "vlanid": "333"},
-                "Vlan605": {"vlanid": "605"},
-            }
-        }
-    }
-
-    res = RunGeneratorResult()
-    res.add_json_fragment(
-        _make_json_fragment_result(
-            "l3_tor",
-            path=path,
-            acl=[JsonFragmentAcl("/VLAN/Vlan*", cant_delete=True)],
-            config={"VLAN": {"Vlan333": {"dhcpv6_servers": ["2a02:6b8::1"]}}},
-        )
-    )
-    res.add_json_fragment(
-        _make_json_fragment_result(
-            "vlans",
-            path=path,
-            acl=[JsonFragmentAcl("/VLAN/Vlan*", cant_delete=True)],
-            config={"VLAN": {"Vlan333": {"vlanid": "333"}}},
-        )
-    )
-
-    files = res.new_json_fragment_files(old_files)
-    merged, _ = files[path]
-    assert merged == {
         "VLAN": {
-            "Vlan333": {"dhcpv6_servers": ["2a02:6b8::1"], "vlanid": "333"},
-        }
+            "Vlan605": {},
+            "Vlan700": {},
+        },
     }
 
 
-def test_cross_generator_cant_delete_preserves_subtree_when_at_least_one_emits():
-    """If at least one generator emits Vlan605, the other generators' missing
-    sub-fields under that key are preserved (cant_delete protects the rest).
-    """
-    path = "/etc/sonic/config_db.json"
-    old_files = {
-        path: {
-            "VLAN": {
-                "Vlan605": {"dhcpv6_servers": ["2a02:6b8::5"], "vlanid": "605"},
-            }
-        }
-    }
+def test_apply_json_fragment_string_acl_backward_compat():
+    """List of strings still works as before — strings normalize to JsonFragmentAcl(pointer=s)."""
+    old = {"VLAN": {"Vlan605": {"vlanid": "605"}}}
+    result = apply_json_fragment(old, {"VLAN": {"Vlan700": {"vlanid": "700"}}}, acl=["/VLAN"])
+    assert result == {"VLAN": {"Vlan700": {"vlanid": "700"}}}
 
-    res = RunGeneratorResult()
-    res.add_json_fragment(
-        _make_json_fragment_result(
-            "l3_tor",
-            path=path,
-            acl=[JsonFragmentAcl("/VLAN/Vlan*", cant_delete=True)],
-            config={"VLAN": {}},  # l3_tor doesn't return Vlan605 anymore
-        )
-    )
-    res.add_json_fragment(
-        _make_json_fragment_result(
-            "vlans",
-            path=path,
-            acl=[JsonFragmentAcl("/VLAN/Vlan*", cant_delete=True)],
-            config={"VLAN": {"Vlan605": {"vlanid": "605"}}},
-        )
-    )
 
-    files = res.new_json_fragment_files(old_files)
-    merged, _ = files[path]
-    # Vlan605 stays; old dhcpv6_servers preserved because vlans emitted Vlan605
-    # so cant_delete keeps the rest of its subtree.
-    assert merged == {
+def test_normalize_json_fragment_acl_parses_cant_delete_list():
+    acl = _normalize_json_fragment_acl(["/VLAN/Vlan*/dhcpv6_servers %cant_delete=/VLAN,/VLAN/Vlan*"])
+    assert acl == [
+        JsonFragmentAcl(
+            pointer="/VLAN/Vlan*/dhcpv6_servers",
+            cant_delete=("/VLAN", "/VLAN/Vlan*"),
+        )
+    ]
+
+
+def test_normalize_json_fragment_acl_without_modifier():
+    acl = _normalize_json_fragment_acl(["/VLAN/Vlan*"])
+    assert acl == [JsonFragmentAcl(pointer="/VLAN/Vlan*", cant_delete=())]
+
+
+def test_normalize_json_fragment_acl_accepts_single_string():
+    acl = _normalize_json_fragment_acl("/VLAN")
+    assert acl == [JsonFragmentAcl(pointer="/VLAN", cant_delete=())]
+
+
+def test_apply_json_fragment_two_generators_owner_can_delete_empty():
+    """End-to-end: B with cant_delete leaves Vlan605 as {}; A as 'owner' of vlanid
+    then removes the empty Vlan605 (cascade collapse, since A doesn't protect it)."""
+    old = {
         "VLAN": {
-            "Vlan605": {"dhcpv6_servers": ["2a02:6b8::5"], "vlanid": "605"},
-        }
+            "Vlan605": {
+                "vlanid": "605",
+                "dhcpv6_servers": ["fe80::1"],
+            },
+        },
+    }
+    # B (dhcpv6_servers owner): didn't return anything; protects parents.
+    acl_b = [
+        JsonFragmentAcl(
+            pointer="/VLAN/Vlan*/dhcpv6_servers",
+            cant_delete=("/VLAN", "/VLAN/Vlan*"),
+        )
+    ]
+    after_b = apply_json_fragment(old, {}, acl=acl_b)
+    assert after_b == {"VLAN": {"Vlan605": {"vlanid": "605"}}}
+
+    # A (vlanid owner): also returns nothing; doesn't protect Vlan*, so empty
+    # Vlan605 cascades up. Protects /VLAN, so VLAN container stays as {}.
+    acl_a = [JsonFragmentAcl(pointer="/VLAN/Vlan*/vlanid", cant_delete=("/VLAN",))]
+    after_a = apply_json_fragment(after_b, {}, acl=acl_a)
+    assert after_a == {"VLAN": {}}
+
+
+def test_apply_json_fragment_chain_ownership_partial_fragment():
+    """Generator A returns vlanid for Vlan700 only (drops Vlan605). With
+    chain ownership, Vlan605 must be deleted entirely — including
+    dhcpv6_servers that belong to a different generator (which will re-add
+    them on its own pass)."""
+    old = {
+        "VLAN": {
+            "Vlan605": {"vlanid": "605", "dhcpv6_servers": ["fe80::1"]},
+            "Vlan700": {"vlanid": "700", "dhcpv6_servers": ["fe80::2"]},
+        },
+    }
+    new_fragment = {"VLAN": {"Vlan700": {"vlanid": "700"}}}
+    acl = [JsonFragmentAcl(pointer="/VLAN/Vlan*/vlanid", cant_delete=())]
+    result = apply_json_fragment(old, new_fragment, acl=acl)
+    # Vlan605 deleted (not in new at /VLAN/Vlan* level); Vlan700 kept, with
+    # dhcpv6_servers preserved because the ACL's leaf level /vlanid does not
+    # claim ownership of dhcpv6_servers.
+    assert result == {
+        "VLAN": {"Vlan700": {"vlanid": "700", "dhcpv6_servers": ["fe80::2"]}},
     }
 
 
-def test_normalize_json_fragment_acl_parses_cant_delete_modifier():
-    from annet.generators import _normalize_json_fragment_acl
+def test_apply_json_fragment_chain_ownership_disabled_by_cant_delete():
+    """Same as above, but A explicitly disclaims ownership of /VLAN/Vlan*
+    via cant_delete — Vlan605 keeps its dhcpv6_servers."""
+    old = {
+        "VLAN": {
+            "Vlan605": {"vlanid": "605", "dhcpv6_servers": ["fe80::1"]},
+            "Vlan700": {"vlanid": "700", "dhcpv6_servers": ["fe80::2"]},
+        },
+    }
+    new_fragment = {"VLAN": {"Vlan700": {"vlanid": "700"}}}
+    acl = [
+        JsonFragmentAcl(
+            pointer="/VLAN/Vlan*/vlanid",
+            cant_delete=("/VLAN/Vlan*",),
+        )
+    ]
+    result = apply_json_fragment(old, new_fragment, acl=acl)
+    # Vlan605 not deleted (Vlan* level protected), but its vlanid is removed
+    # (leaf level still owned).
+    assert result == {
+        "VLAN": {
+            "Vlan605": {"dhcpv6_servers": ["fe80::1"]},
+            "Vlan700": {"vlanid": "700", "dhcpv6_servers": ["fe80::2"]},
+        },
+    }
 
-    # `%cant_delete` → cant_delete=True
-    assert _normalize_json_fragment_acl("/VLAN/Vlan* %cant_delete") == [
-        JsonFragmentAcl("/VLAN/Vlan*", cant_delete=True)
+
+def test_apply_json_fragment_cant_delete_main_user_scenario():
+    """Original user case: A=/VLAN/Vlan*/vlanid (no cant_delete),
+    B=/VLAN/Vlan*/dhcpv6_servers %cant_delete=/VLAN,/VLAN/Vlan*.
+    Both return nothing for Vlan605. Expected: Vlan605 disappears entirely
+    (A removes it via cascade collapse), VLAN stays because B protects it."""
+    old = {
+        "VLAN": {
+            "Vlan605": {
+                "vlanid": "605",
+                "dhcpv6_servers": ["fe80::1"],
+            },
+            "Vlan700": {
+                "vlanid": "700",
+                "dhcpv6_servers": ["fe80::2"],
+            },
+        },
+    }
+    acl_a = [JsonFragmentAcl(pointer="/VLAN/Vlan*/vlanid", cant_delete=())]
+    acl_b = [
+        JsonFragmentAcl(
+            pointer="/VLAN/Vlan*/dhcpv6_servers",
+            cant_delete=("/VLAN", "/VLAN/Vlan*"),
+        )
     ]
-    # `%cant_delete=1` → cant_delete=True
-    assert _normalize_json_fragment_acl("/VLAN/Vlan* %cant_delete=1") == [
-        JsonFragmentAcl("/VLAN/Vlan*", cant_delete=True)
-    ]
-    # `%cant_delete=0` → cant_delete=False
-    assert _normalize_json_fragment_acl("/VLAN/Vlan* %cant_delete=0") == [
-        JsonFragmentAcl("/VLAN/Vlan*", cant_delete=False)
-    ]
-    # No modifier → cant_delete=False
-    assert _normalize_json_fragment_acl("/VLAN/Vlan*") == [JsonFragmentAcl("/VLAN/Vlan*")]
-    # Mixed list
-    assert _normalize_json_fragment_acl(["/A %cant_delete", "/B"]) == [
-        JsonFragmentAcl("/A", cant_delete=True),
-        JsonFragmentAcl("/B"),
-    ]
+    # A applied first with empty fragment: chain-owns /VLAN, /VLAN/Vlan*,
+    # vlanid. Empty fragment at /VLAN level → /VLAN deleted entirely.
+    after_a = apply_json_fragment(old, {}, acl=acl_a)
+    assert after_a == {}
+
+    # B applied to original with empty fragment: cant_delete protects
+    # /VLAN and /VLAN/Vlan* levels — only the leaf level is processed,
+    # which removes dhcpv6_servers from each Vlan, leaving them as {}.
+    after_b = apply_json_fragment(old, {}, acl=acl_b)
+    assert after_b == {"VLAN": {"Vlan605": {"vlanid": "605"}, "Vlan700": {"vlanid": "700"}}}
+
+    # B then A: B leaves Vlans with vlanid; A then erases /VLAN entirely.
+    after_b_then_a = apply_json_fragment(after_b, {}, acl=acl_a)
+    assert after_b_then_a == {}

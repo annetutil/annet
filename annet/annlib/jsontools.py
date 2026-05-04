@@ -1,5 +1,7 @@
 """Support JSON patch (RFC 6902) and JSON Pointer (RFC 6901) with globs."""
 
+from __future__ import annotations
+
 import copy
 import dataclasses
 import fnmatch
@@ -19,16 +21,44 @@ class JsonFragmentAcl:
     """ACL entry for a JSONFragment generator.
 
     `pointer` is a JSON Pointer glob (see `resolve_json_pointers`).
-    `cant_delete=True` means: keys under this scope that are missing from the
-    new fragment must be preserved in the merged config (analogous to the
-    `%cant_delete` modifier on partial-generator ACLs).
+    `cant_delete` is a tuple of JSON Pointer glob patterns naming paths that
+    must not be removed when applying this ACL, even if they would otherwise
+    be resolved as `old_pointers` matching the main `pointer`. The intent is
+    to express "I own only this leaf; do not touch the listed parent paths."
     """
 
     pointer: str
-    cant_delete: bool = False
+    cant_delete: tuple[str, ...] = ()
 
 
 EVERYTHING_ACL: Final = JsonFragmentAcl("/*")
+
+
+def _normalize_acl(
+    acl: Sequence[str | JsonFragmentAcl] | None,
+) -> list[JsonFragmentAcl] | None:
+    if acl is None:
+        return None
+    result: list[JsonFragmentAcl] = []
+    for item in acl:
+        if isinstance(item, JsonFragmentAcl):
+            result.append(item)
+        else:
+            result.append(JsonFragmentAcl(pointer=item))
+    return result
+
+
+def _path_matches_protected(path: str, protected_patterns: tuple[str, ...]) -> bool:
+    if not protected_patterns:
+        return False
+    target_parts = jsonpointer.JsonPointer(path).parts
+    for pattern in protected_patterns:
+        pattern_parts = jsonpointer.JsonPointer(pattern).parts
+        if len(pattern_parts) != len(target_parts):
+            continue
+        if all(starmap(fnmatch.fnmatchcase, zip(target_parts, pattern_parts))):
+            return True
+    return False
 
 
 def format_json(data: Any, stable: bool = False) -> str:
@@ -40,7 +70,7 @@ def apply_json_fragment(
     old: Dict[str, Any],
     new_fragment: Dict[str, Any],
     *,
-    acl: Sequence[JsonFragmentAcl] | None = None,
+    acl: Sequence[str | JsonFragmentAcl] | None = None,
     filters: Sequence[str] | None = None,
 ) -> Dict[str, Any]:
     """
@@ -48,45 +78,65 @@ def apply_json_fragment(
     If `acl` is not `None`, replacement will only be made within specified keys.
     If `filter` is not `None`, only those parts which also matches at least one filter
     from the list will be modified (updated or deleted).
+
+    ACL entries may be plain strings (treated as `JsonFragmentAcl(pointer=...)`)
+    or `JsonFragmentAcl` instances. The `cant_delete` attribute lists JSON
+    Pointer glob patterns whose matching old pointers must be preserved when
+    applying this ACL.
     """
-    if acl is None:
-        acl = [EVERYTHING_ACL]
+    normalized_acl = _normalize_acl(acl)
+    if normalized_acl is None:
+        normalized_acl = [EVERYTHING_ACL]
     full_new_config = copy.deepcopy(old)
-    for acl_item in acl:
+    for acl_item in normalized_acl:
         new_pointers = resolve_json_pointers(acl_item.pointer, new_fragment)
-        old_pointers = resolve_json_pointers(acl_item.pointer, full_new_config)
         if filters is not None:
             new_pointers = _apply_filters_to_json_pointers(new_pointers, filters, content=new_fragment)
-            old_pointers = _apply_filters_to_json_pointers(old_pointers, filters, content=full_new_config)
 
         for pointer in new_pointers:
             new_value = pointer.get(new_fragment)
-            if acl_item.cant_delete and isinstance(new_value, dict):
-                # Under a cant_delete acl multiple generators can share the
-                # same pointer-target (e.g. different sub-fields of a VLAN).
-                # Shallow-update sub-keys so each generator's contribution
-                # is preserved; sub-keys that the generator owns are still
-                # fully replaced (no list merging etc).
-                try:
-                    existing = pointer.get(full_new_config)
-                except jsonpointer.JsonPointerException:
-                    existing = None
-                if isinstance(existing, dict):
-                    new_value = existing | new_value
             _pointer_set(pointer, full_new_config, new_value)
 
-        if acl_item.cant_delete:
-            continue
-
-        # delete matched parts in old config whicn are not present in the new
-        paths = {p.path for p in new_pointers}
-        to_delete = [p for p in old_pointers if p.path not in paths]
-        for pointer in to_delete:
-            doc, part = pointer.to_last(full_new_config)
-            if isinstance(doc, dict) and isinstance(part, str):
-                doc.pop(part, None)
+        # An ACL pointer like /VLAN/Vlan*/vlanid expresses ownership of every
+        # level on its path: the generator owns /VLAN, every /VLAN/Vlan*, and
+        # the vlanid leaf. If a level's key is missing from new_fragment, the
+        # whole subtree at that key is removed from full_new_config — even if
+        # it contains other generators' data (which they will re-add later).
+        # %cant_delete excludes a level from this ownership.
+        pointer_parts = jsonpointer.JsonPointer(acl_item.pointer).parts
+        for depth in range(1, len(pointer_parts) + 1):
+            prefix_pattern = jsonpointer.JsonPointer.from_parts(pointer_parts[:depth]).path
+            if _pattern_matches_protected(prefix_pattern, acl_item.cant_delete):
+                continue
+            level_new = resolve_json_pointers(prefix_pattern, new_fragment)
+            level_old = resolve_json_pointers(prefix_pattern, full_new_config)
+            if filters is not None and depth == len(pointer_parts):
+                # Filters historically apply only at the deepest ACL level.
+                level_new = _apply_filters_to_json_pointers(level_new, filters, content=new_fragment)
+                level_old = _apply_filters_to_json_pointers(level_old, filters, content=full_new_config)
+            new_paths = {p.path for p in level_new}
+            for ptr in level_old:
+                if ptr.path in new_paths:
+                    continue
+                if _path_matches_protected(ptr.path, acl_item.cant_delete):
+                    continue
+                container, last = ptr.to_last(full_new_config)
+                if isinstance(container, dict) and isinstance(last, str):
+                    container.pop(last, None)
 
     return full_new_config
+
+
+def _pattern_matches_protected(pattern: str, protected_patterns: tuple[str, ...]) -> bool:
+    """True if `pattern` itself appears (textually, after segment-normalisation)
+    in `protected_patterns`. Used to skip an entire ACL prefix level."""
+    if not protected_patterns:
+        return False
+    target_parts = jsonpointer.JsonPointer(pattern).parts
+    for prot in protected_patterns:
+        if jsonpointer.JsonPointer(prot).parts == target_parts:
+            return True
+    return False
 
 
 def _pointer_set(pointer: jsonpointer.JsonPointer, doc: Any, value: Any) -> None:

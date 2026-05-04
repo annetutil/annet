@@ -10,7 +10,7 @@ from collections import OrderedDict as odict
 from typing import FrozenSet, Iterable, List, Optional, Union
 
 from contextlog import get_logger
-from valkit.common import valid_bool
+from valkit.common import valid_string_list
 
 from annet import patching, tracing
 from annet.annlib.jsontools import JsonFragmentAcl
@@ -338,7 +338,7 @@ def _make_generator_ctx(gen):
 
 
 _JSON_FRAGMENT_ACL_PARAMS_SCHEME = {
-    "cant_delete": {"validator": valid_bool, "default": False},
+    "cant_delete": {"validator": valid_string_list, "default": []},
 }
 
 
@@ -348,7 +348,12 @@ def _normalize_json_fragment_acl(acl: str | list[str]) -> list[JsonFragmentAcl]:
     result: list[JsonFragmentAcl] = []
     for raw in acl:
         pointer, params = parse_raw_rule(raw, _JSON_FRAGMENT_ACL_PARAMS_SCHEME)
-        result.append(JsonFragmentAcl(pointer=pointer, cant_delete=params["cant_delete"]))
+        result.append(
+            JsonFragmentAcl(
+                pointer=pointer,
+                cant_delete=tuple(params["cant_delete"]),
+            )
+        )
     return result
 
 
