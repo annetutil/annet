@@ -642,6 +642,113 @@ def test_cross_generator_cant_delete_preserves_subtree_when_at_least_one_emits()
     }
 
 
+def test_cross_generator_cant_delete_does_not_delete_paths_owned_by_other_acl():
+    """Regression: a cant_delete ACL on a broad scope must not delete keys
+    that another generator's narrower ACL legitimately owns and emitted."""
+    path = "/etc/sonic/config_db.json"
+    old_files = {
+        path: {
+            "VLAN": {
+                "Vlan333": {"dhcpv6_servers": ["2a02:6b8:0:3400::199"], "vlanid": "333"},
+                "Vlan605": {"vlanid": "605"},
+            }
+        }
+    }
+
+    res = RunGeneratorResult()
+    res.add_json_fragment(
+        _make_json_fragment_result(
+            "vlans",
+            path=path,
+            acl=[JsonFragmentAcl("/VLAN/Vlan*/*", cant_delete=True)],
+            config={"VLAN": {"Vlan333": {"vlanid": "333"}, "Vlan605": {"vlanid": "605"}}},
+        )
+    )
+    res.add_json_fragment(
+        _make_json_fragment_result(
+            "dhcp_relay",
+            path=path,
+            acl=[JsonFragmentAcl("/VLAN/Vlan*/dhcpv6_servers")],
+            config={"VLAN": {"Vlan333": {"dhcpv6_servers": ["2a02:6b8:0:3400::199"]}}},
+        )
+    )
+
+    files = res.new_json_fragment_files(old_files)
+    merged, _ = files[path]
+    assert merged == {
+        "VLAN": {
+            "Vlan333": {"dhcpv6_servers": ["2a02:6b8:0:3400::199"], "vlanid": "333"},
+            "Vlan605": {"vlanid": "605"},
+        }
+    }
+
+
+def test_cross_generator_non_cant_delete_acl_still_owns_deletion():
+    """A cant_delete ACL must NOT shield a path that another generator's
+    non-cant_delete ACL covers when that other generator drops it."""
+    path = "/cfg.json"
+    old_files = {path: {"VLAN": {"Vlan333": {"dhcpv6_servers": ["x"], "vlanid": "333"}}}}
+    res = RunGeneratorResult()
+    res.add_json_fragment(
+        _make_json_fragment_result(
+            "vlans",
+            path=path,
+            acl=[JsonFragmentAcl("/VLAN/Vlan*/*", cant_delete=True)],
+            config={"VLAN": {"Vlan333": {"vlanid": "333"}}},
+        )
+    )
+    res.add_json_fragment(
+        _make_json_fragment_result(
+            "dhcp_relay",
+            path=path,
+            acl=[JsonFragmentAcl("/VLAN/Vlan*/dhcpv6_servers")],
+            config={"VLAN": {}},
+        )
+    )
+    merged, _ = res.new_json_fragment_files(old_files)[path]
+    assert merged == {"VLAN": {"Vlan333": {"vlanid": "333"}}}
+
+
+def test_cross_generator_cant_delete_deletes_vlan_no_one_emits():
+    """Vlan, который не отдал ни один генератор, должен быть удалён целиком,
+    даже если cant_delete-ACL покрывает его, — потому что внутри него ничего
+    не эмиттят и других ACL, владеющих этими путями, нет на верхнем уровне."""
+    path = "/cfg.json"
+    old_files = {
+        path: {
+            "VLAN": {
+                "Vlan333": {"dhcpv6_servers": ["2a02:6b8::1"], "vlanid": "333"},
+                "Vlan605": {"vlanid": "605"},
+                "Vlan999": {"vlanid": "999"},
+            }
+        }
+    }
+    res = RunGeneratorResult()
+    res.add_json_fragment(
+        _make_json_fragment_result(
+            "vlans",
+            path=path,
+            acl=[JsonFragmentAcl("/VLAN/Vlan*", cant_delete=True)],
+            config={"VLAN": {"Vlan333": {"vlanid": "333"}, "Vlan605": {"vlanid": "605"}}},
+        )
+    )
+    res.add_json_fragment(
+        _make_json_fragment_result(
+            "dhcp_relay",
+            path=path,
+            acl=[JsonFragmentAcl("/VLAN/Vlan*/dhcpv6_servers")],
+            config={"VLAN": {"Vlan333": {"dhcpv6_servers": ["2a02:6b8::1"]}}},
+        )
+    )
+    merged, _ = res.new_json_fragment_files(old_files)[path]
+    assert merged == {
+        "VLAN": {
+            "Vlan333": {"dhcpv6_servers": ["2a02:6b8::1"], "vlanid": "333"},
+            "Vlan605": {"vlanid": "605"},
+        }
+    }
+
+
 def test_normalize_json_fragment_acl_parses_cant_delete_modifier():
     from annet.generators import _normalize_json_fragment_acl
 

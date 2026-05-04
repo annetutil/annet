@@ -85,7 +85,11 @@ class RunGeneratorResult:
         # Pass 1: per-generator merge. apply_json_fragment skips deletions for
         # cant_delete acl items — those are resolved in Pass 2 after we've seen
         # every generator that touches the file.
-        cant_delete_state: dict[str, tuple[Any, list[tuple[JsonFragmentAcl, dict[str, Any]]]]] = {}
+        # Per filepath: (old_config, [(generator_acl, new_fragment), ...]).
+        # We record contributions from ALL generators with an ACL, not just
+        # cant_delete ones, so Pass 2 can tell whether a path under a
+        # cant_delete acl is owned (covered) by another generator's ACL.
+        file_contributions: dict[str, tuple[Any, list[tuple[Sequence[JsonFragmentAcl], dict[str, Any]]]]] = {}
         for generator_result in self.json_fragment_results.values():
             filepath = generator_result.path
             if filepath not in files:
@@ -93,7 +97,7 @@ class RunGeneratorResult:
                     files[filepath] = (old_files[filepath], None)
                 else:
                     files[filepath] = ({}, None)
-                cant_delete_state.setdefault(filepath, (files[filepath][0], []))
+                file_contributions.setdefault(filepath, (files[filepath][0], []))
             if use_acl:
                 result_acl = generator_result.acl_safe if safe else generator_result.acl
             else:
@@ -107,10 +111,8 @@ class RunGeneratorResult:
                 filters=filters,
             )
             if result_acl is not None:
-                _, contributions = cant_delete_state[filepath]
-                for acl_item in result_acl:
-                    if acl_item.cant_delete:
-                        contributions.append((acl_item, new_fragment))
+                _, contributions = file_contributions[filepath]
+                contributions.append((result_acl, new_fragment))
             if jsontools.format_json(new_config) == jsontools.format_json(previous_config):
                 # config is not changed, deprioritize reload_cmd
                 reload_prio = 0
@@ -124,21 +126,33 @@ class RunGeneratorResult:
                 reload_prios[filepath] = reload_prio
             files[filepath] = (new_config, reload_cmd)
 
-        # Pass 2: under each cant_delete acl, drop pointers that no generator
-        # for this file emitted in its new fragment.
-        for filepath, (old_config, contributions) in cant_delete_state.items():
+        # Pass 2: under each cant_delete acl, drop pointers that:
+        #   - no generator for this file emitted in its new fragment under that acl, AND
+        #   - aren't covered by some other (non-cant_delete) ACL of any generator
+        #     for this file (because that ACL already owns deletion in Pass 1).
+        for filepath, (old_config, contributions) in file_contributions.items():
             if not contributions or not isinstance(old_config, dict):
                 continue
+            cant_delete_acls = [
+                acl_item for acl_list, _ in contributions for acl_item in acl_list if acl_item.cant_delete
+            ]
+            if not cant_delete_acls:
+                continue
+            non_cant_delete_patterns = [
+                acl_item.pointer for acl_list, _ in contributions for acl_item in acl_list if not acl_item.cant_delete
+            ]
             merged_config, reload_cmd = files[filepath]
-            for acl_item, _ in contributions:
+            for acl_item in cant_delete_acls:
                 emitted: set[str] = set()
-                for other_acl, other_fragment in contributions:
-                    if other_acl != acl_item:
-                        continue
+                for _, other_fragment in contributions:
                     for ptr in jsontools.resolve_json_pointers(acl_item.pointer, other_fragment):
                         emitted.add(ptr.path)
                 for old_ptr in jsontools.resolve_json_pointers(acl_item.pointer, old_config):
                     if old_ptr.path in emitted:
+                        continue
+                    if any(
+                        jsontools.acl_covers_pointer(pattern, old_ptr.parts) for pattern in non_cant_delete_patterns
+                    ):
                         continue
                     parent, key = old_ptr.to_last(merged_config)
                     if isinstance(parent, dict) and isinstance(key, str):

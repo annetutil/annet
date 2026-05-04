@@ -163,6 +163,14 @@ def apply_patch(content: Optional[bytes], patch_bytes: bytes) -> bytes:
     return new_contents
 
 
+def acl_covers_pointer(acl_pattern: str, ptr_parts: tuple[str, ...]) -> bool:
+    """True, if ACL glob covers (is a prefix of, or equal to) the given pointer parts."""
+    pattern_parts = jsonpointer.JsonPointer(acl_pattern).parts
+    if len(pattern_parts) > len(ptr_parts):
+        return False
+    return all(fnmatch.fnmatchcase(p, pat) for p, pat in zip(ptr_parts, pattern_parts))
+
+
 def resolve_json_pointers(pattern: str, content: dict[str, Any]) -> list[jsonpointer.JsonPointer]:
     """
     Resolve globbed json pointer pattern to a list of actual pointers, existing in the document.
