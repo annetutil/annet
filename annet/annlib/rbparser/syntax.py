@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from typing import Any, TypedDict, cast
 
 from annet.annlib import lib
-from annet.rulebook.types import RawParams, RawRow, Row
+from annet.rulebook.types import ParamsScheme, RawParams, RawRow, Row
 from annet.vendors import tabparser
 
 
@@ -174,7 +174,7 @@ def get_row_and_raw_params(raw_row: RawRow) -> tuple[Row, RawParams]:
     return row, params
 
 
-def get_row_with_params(row: Row, params: RawParams, params_scheme) -> RawRow:
+def get_row_with_params(row: Row, params: RawParams, params_scheme: ParamsScheme) -> RawRow:
     """Joins a rule string without params and raw params, returning the raw rule string"""
     params = clean_params_by_params_scheme(params, params_scheme)
     params = strip_default_params_by_params_scheme(params, params_scheme)
@@ -182,12 +182,12 @@ def get_row_with_params(row: Row, params: RawParams, params_scheme) -> RawRow:
     return f"{row} {params_line}" if params_line else row
 
 
-def clean_params_by_params_scheme(params: RawParams, params_scheme) -> RawParams:
+def clean_params_by_params_scheme(params: RawParams, params_scheme: ParamsScheme) -> RawParams:
     """Remove parameters from 'params' not present in 'params_scheme'"""
     return {name: value for name, value in params.items() if name in params_scheme}
 
 
-def strip_default_params_by_params_scheme(params: RawParams, params_scheme) -> RawParams:
+def strip_default_params_by_params_scheme(params: RawParams, params_scheme: ParamsScheme) -> RawParams:
     """Remove parameters with default value from 'params'"""
     result_params = {}
     for name, value in params.items():

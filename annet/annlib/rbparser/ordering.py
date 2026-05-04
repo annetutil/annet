@@ -19,6 +19,7 @@ from annet.rulebook.types import (
     OrderPreMergeData,
     OrderRuleAttrs,
     OrderRulebook,
+    ParamsScheme,
     RawParams,
     RawRow,
     Row,
@@ -55,7 +56,7 @@ ANCHOR: Literal["anchor"] = "anchor"
 COUNT: Literal["count"] = "count"
 
 
-def get_params_scheme():
+def get_params_scheme() -> ParamsScheme:
     return {
         ORDER_REVERSE: {
             "validator": valid_bool,
@@ -196,12 +197,12 @@ def merge_order_rulebooks(parent_rulebook: OrderRulebook, child_rulebook: OrderR
     return merged_rulebook
 
 
-def parse_order_rulebook_to_text(rulebook: OrderRulebook, level: int = 0) -> OrderingText:
+def dump_order_rulebook(rulebook: OrderRulebook, level: int = 0) -> OrderingText:
     """Parses the rulebook into a text format"""
     lines = []
     for row, data in rulebook:
         lines.append(f"{'    ' * level}{row}")
-        children_lines = parse_order_rulebook_to_text(data[CHILDREN], level + 1)
+        children_lines = dump_order_rulebook(data[CHILDREN], level + 1)
         if children_lines:
             lines.append(children_lines)
     return "\n".join(lines)
@@ -340,10 +341,6 @@ def _is_empty_child_group_data(group_data: GroupData) -> bool:
 def _get_child_groups(parent_pre_merge: OrderPreMerge, child_pre_merge: OrderPreMerge) -> Generator[Group, None, None]:
     """
     Collects rules from `child_pre_merge` into groups based on `parent_pre_merge`
-
-    Returns:
-        'anchor': the anchor the group's rules are attached to
-        'group_data': group data (anchor rules, rules included in the group)
     """
     group_data = _get_empty_child_group_data()
     anchor = None
@@ -388,7 +385,7 @@ def _get_anchors_data(parent_pre_merge: OrderPreMerge) -> AnchorsData:
             raise RulebookSyntaxError(
                 f"Rule '{row}' has no %split parameter but is listed multiple times in the parent rulebook."
             )
-    return AnchorsData(**anchors_data)
+    return anchors_data
 
 
 def _add_group_to_merged_rulebook(merged_rulebook: OrderRulebook, rows: GroupRows) -> None:

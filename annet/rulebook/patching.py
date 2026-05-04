@@ -12,6 +12,7 @@ from annet.rulebook.common import get_merged_params, validate_context_compatibil
 from annet.rulebook.exceptions import RulebookSyntaxError
 from annet.rulebook.types import (
     Params,
+    ParamsScheme,
     PatchIgnoreRuleAttrs,
     PatchingText,
     PatchNormalRuleAttrs,
@@ -24,7 +25,7 @@ from annet.rulebook.types import (
     RawParams,
     RawRow,
     Row,
-    Type,
+    RuleType,
 )
 from annet.vendors import registry_connector
 
@@ -68,7 +69,7 @@ ATTRS: Literal["attrs"] = "attrs"
 CHILDREN: Literal["children"] = "children"
 
 
-def get_params_scheme(vendor):
+def get_params_scheme(vendor) -> ParamsScheme:
     """Returning the params scheme"""
     return {
         GLOBAL: {
@@ -249,7 +250,7 @@ def merge_patch_rulebooks(parent_rulebook: PatchRulebook, child_rulebook: PatchR
     return merged_rulebook
 
 
-def parse_patch_rulebook_to_text(rulebook: PatchRulebook, level=0) -> PatchingText:
+def dump_patch_rulebook(rulebook: PatchRulebook, level=0) -> PatchingText:
     """Parses the rulebook into a text format"""
     lines = []
     for scope in [rulebook[LOCAL], rulebook[GLOBAL]]:
@@ -257,7 +258,7 @@ def parse_patch_rulebook_to_text(rulebook: PatchRulebook, level=0) -> PatchingTe
             lines.append(f"{'    ' * level}{row}")
             children = data.get(CHILDREN)
             if children is not None and not _is_empty_rulebook(children):
-                children_lines = parse_patch_rulebook_to_text(children, level + 1)
+                children_lines = dump_patch_rulebook(children, level + 1)
                 if children_lines:
                     lines.append(children_lines)
     return "\n".join(lines)
@@ -434,7 +435,7 @@ def _get_merged_rule(
 
 
 def _merge_attrs(
-    parent_attrs: PatchRuleAttrs, child_attrs: PatchRuleAttrs, child_params: RawParams, row: Row, rule_type: Type
+    parent_attrs: PatchRuleAttrs, child_attrs: PatchRuleAttrs, child_params: RawParams, row: Row, rule_type: RuleType
 ) -> PatchRuleAttrs:
     """Merges parent_attrs and child_attrs"""
     merged_attrs = parent_attrs.copy()

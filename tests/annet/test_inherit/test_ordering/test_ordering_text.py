@@ -1,4 +1,4 @@
-from annet.annlib.rbparser.ordering import compile_ordering_text, parse_order_rulebook_to_text
+from annet.annlib.rbparser.ordering import compile_ordering_text, dump_order_rulebook
 from annet.rulebook import DefaultRulebookProvider
 from tests import make_hw_stub
 
@@ -15,6 +15,6 @@ def test_text():
         hw=hw,
         vendor=vendor,
     )
-    rulebook_text = parse_order_rulebook_to_text(expected_rb)
+    rulebook_text = dump_order_rulebook(expected_rb)
     compiled_rb = compile_ordering_text(rulebook_text, vendor)
     assert expected_rb == compiled_rb

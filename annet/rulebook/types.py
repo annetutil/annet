@@ -37,6 +37,13 @@ Params: TypeAlias = dict[str, Any]
 RawParams: TypeAlias = dict[str, str]
 
 
+class ParamScheme(TypedDict):
+    validator: Callable[[Any], Any]
+    default: Any | Callable[[Any], Any]
+
+
+ParamsScheme: TypeAlias = dict[str, ParamScheme]
+
 # ===PATCH_RULEBOOK===
 
 
@@ -50,7 +57,7 @@ PatchRulebook = TypedDict(
 
 
 class PatchRule(TypedDict):
-    type: "Type"
+    type: "RuleType"
     rule: str
     children: Union["PatchRulebook", None]
     attrs: "PatchRuleAttrs"
@@ -83,7 +90,7 @@ PatchingText: TypeAlias = str
 
 PatchScope: TypeAlias = Literal["local", "global"]
 
-Type: TypeAlias = Literal["normal", "ignore"]
+RuleType: TypeAlias = Literal["normal", "ignore"]
 
 PatchPreMerge: TypeAlias = dict[Row, "PatchPreMergeData"]
 

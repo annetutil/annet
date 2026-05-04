@@ -7,12 +7,12 @@ from typing import Literal
 from valkit.python import valid_object_path
 
 from annet.annlib.lib import mako_render
-from annet.annlib.rbparser.ordering import compile_ordering_text, merge_order_rulebooks, parse_order_rulebook_to_text
+from annet.annlib.rbparser.ordering import compile_ordering_text, dump_order_rulebook, merge_order_rulebooks
 from annet.annlib.rbparser.platform import VENDOR_ALIASES
 from annet.connectors import CachedConnector
 from annet.rulebook.deploying import compile_deploying_text
 from annet.rulebook.exceptions import RulebookSyntaxError
-from annet.rulebook.patching import compile_patching_text, merge_patch_rulebooks, parse_patch_rulebook_to_text
+from annet.rulebook.patching import compile_patching_text, dump_patch_rulebook, merge_patch_rulebooks
 from annet.rulebook.types import (
     AnyRulebook,
     AnyRulebookText,
@@ -88,7 +88,7 @@ class DefaultRulebookProvider(RulebookProvider):
             extension=RUL,
             hw=hw,
         )
-        patching_text: PatchingText = parse_patch_rulebook_to_text(patching)
+        patching_text: PatchingText = dump_patch_rulebook(patching)
 
         try:
             ordering: OrderRulebook = self._get_rulebook_by_extension(
@@ -97,7 +97,7 @@ class DefaultRulebookProvider(RulebookProvider):
                 extension=ORDER,
                 hw=hw,
             )
-            ordering_text = parse_order_rulebook_to_text(ordering)
+            ordering_text = dump_order_rulebook(ordering)
         except FileNotFoundError:
             ordering: OrderRulebook = []
             ordering_text: OrderingText = ""
