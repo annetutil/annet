@@ -3,7 +3,6 @@ from typing import Any
 import pytest
 
 import annet.diff
-from annet.annlib.jsontools import JsonFragmentAcl
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.generators.result import RunGeneratorResult
 from annet.types import GeneratorJSONFragmentResult, GeneratorPerf
@@ -237,15 +236,8 @@ def test_new_json_fragment_files():
             name="interfaces",
             tags=["interfaces"],
             path="/etc/sonic/config_db.json",
-            acl=[
-                JsonFragmentAcl("/INTERFACE"),
-                JsonFragmentAcl("/BREAKOUT_CFG"),
-                JsonFragmentAcl("/VLAN_INTERFACE"),
-            ],
-            acl_safe=[
-                JsonFragmentAcl("/INTERFACE/*/description"),
-                JsonFragmentAcl("/VLAN_INTERFACE/*/description"),
-            ],
+            acl=["/INTERFACE", "/BREAKOUT_CFG", "/VLAN_INTERFACE"],
+            acl_safe=["/INTERFACE/*/description", "/VLAN_INTERFACE/*/description"],
             config=config,
             reload="sonic-reload",
             perf=GeneratorPerf(1.0, None, None),
@@ -431,7 +423,7 @@ def test_new_json_fragment_files_append_list():
             name="acl_table",
             tags=["acl_table"],
             path="/etc/sonic/config_db.json",
-            acl=[JsonFragmentAcl("/ACL_TABLE")],
+            acl=["/ACL_TABLE"],
             acl_safe=[],
             config=config,
             reload="sonic-reload",
@@ -489,178 +481,3 @@ def test_new_json_fragment_files_append_list():
             "sonic-reload",
         ),
     }
-
-
-def test_apply_json_fragment_cant_delete_preserves_missing_keys():
-    from annet.annlib.jsontools import apply_json_fragment
-
-    old = {"FEATURE": {"a": {"v": 1}, "b": {"v": 2}}}
-    new_fragment: dict[str, Any] = {"FEATURE": {}}
-
-    deleted = apply_json_fragment(old, new_fragment, acl=[JsonFragmentAcl("/FEATURE/*")])
-    assert deleted == {"FEATURE": {}}
-
-    preserved = apply_json_fragment(old, new_fragment, acl=[JsonFragmentAcl("/FEATURE/*", cant_delete=True)])
-    assert preserved == {"FEATURE": {"a": {"v": 1}, "b": {"v": 2}}}
-
-
-def test_apply_json_fragment_cant_delete_overwrites_present_keys():
-    from annet.annlib.jsontools import apply_json_fragment
-
-    old = {"FEATURE": {"a": {"v": 1}, "b": {"v": 2}}}
-    new_fragment = {"FEATURE": {"a": {"v": 99}}}
-
-    result = apply_json_fragment(old, new_fragment, acl=[JsonFragmentAcl("/FEATURE/*", cant_delete=True)])
-    assert result == {"FEATURE": {"a": {"v": 99}, "b": {"v": 2}}}
-
-
-def test_apply_json_fragment_mixed_cant_delete_acls():
-    from annet.annlib.jsontools import apply_json_fragment
-
-    old = {
-        "PROTECTED": {"keep": 1, "also_keep": 2},
-        "REGULAR": {"a": 1, "b": 2},
-    }
-    new_fragment: dict[str, Any] = {"PROTECTED": {}, "REGULAR": {"a": 1}}
-
-    result = apply_json_fragment(
-        old,
-        new_fragment,
-        acl=[
-            JsonFragmentAcl("/PROTECTED/*", cant_delete=True),
-            JsonFragmentAcl("/REGULAR/*"),
-        ],
-    )
-    assert result == {
-        "PROTECTED": {"keep": 1, "also_keep": 2},
-        "REGULAR": {"a": 1},
-    }
-
-
-def _make_json_fragment_result(
-    name: str,
-    *,
-    path: str,
-    acl: list,
-    config: dict,
-    acl_safe: list | None = None,
-) -> GeneratorJSONFragmentResult:
-    return GeneratorJSONFragmentResult(
-        name=name,
-        tags=[name],
-        path=path,
-        acl=acl,
-        acl_safe=acl_safe if acl_safe is not None else [],
-        config=config,
-        reload="reload",
-        perf=GeneratorPerf(1.0, None, None),
-        reload_prio=100,
-    )
-
-
-def test_cross_generator_cant_delete_drops_keys_no_one_emits():
-    """Two generators share `/VLAN/Vlan*` with cant_delete=True; a vlan that
-    nobody returns must be deleted, while keys at least one generator returned
-    keep their other generators' fields intact.
-    """
-    path = "/etc/sonic/config_db.json"
-    old_files = {
-        path: {
-            "VLAN": {
-                "Vlan333": {"dhcpv6_servers": ["2a02:6b8::1"], "vlanid": "333"},
-                "Vlan605": {"vlanid": "605"},
-            }
-        }
-    }
-
-    res = RunGeneratorResult()
-    res.add_json_fragment(
-        _make_json_fragment_result(
-            "l3_tor",
-            path=path,
-            acl=[JsonFragmentAcl("/VLAN/Vlan*", cant_delete=True)],
-            config={"VLAN": {"Vlan333": {"dhcpv6_servers": ["2a02:6b8::1"]}}},
-        )
-    )
-    res.add_json_fragment(
-        _make_json_fragment_result(
-            "vlans",
-            path=path,
-            acl=[JsonFragmentAcl("/VLAN/Vlan*", cant_delete=True)],
-            config={"VLAN": {"Vlan333": {"vlanid": "333"}}},
-        )
-    )
-
-    files = res.new_json_fragment_files(old_files)
-    merged, _ = files[path]
-    assert merged == {
-        "VLAN": {
-            "Vlan333": {"dhcpv6_servers": ["2a02:6b8::1"], "vlanid": "333"},
-        }
-    }
-
-
-def test_cross_generator_cant_delete_preserves_subtree_when_at_least_one_emits():
-    """If at least one generator emits Vlan605, the other generators' missing
-    sub-fields under that key are preserved (cant_delete protects the rest).
-    """
-    path = "/etc/sonic/config_db.json"
-    old_files = {
-        path: {
-            "VLAN": {
-                "Vlan605": {"dhcpv6_servers": ["2a02:6b8::5"], "vlanid": "605"},
-            }
-        }
-    }
-
-    res = RunGeneratorResult()
-    res.add_json_fragment(
-        _make_json_fragment_result(
-            "l3_tor",
-            path=path,
-            acl=[JsonFragmentAcl("/VLAN/Vlan*", cant_delete=True)],
-            config={"VLAN": {}},  # l3_tor doesn't return Vlan605 anymore
-        )
-    )
-    res.add_json_fragment(
-        _make_json_fragment_result(
-            "vlans",
-            path=path,
-            acl=[JsonFragmentAcl("/VLAN/Vlan*", cant_delete=True)],
-            config={"VLAN": {"Vlan605": {"vlanid": "605"}}},
-        )
-    )
-
-    files = res.new_json_fragment_files(old_files)
-    merged, _ = files[path]
-    # Vlan605 stays; old dhcpv6_servers preserved because vlans emitted Vlan605
-    # so cant_delete keeps the rest of its subtree.
-    assert merged == {
-        "VLAN": {
-            "Vlan605": {"dhcpv6_servers": ["2a02:6b8::5"], "vlanid": "605"},
-        }
-    }
-
-
-def test_normalize_json_fragment_acl_parses_cant_delete_modifier():
-    from annet.generators import _normalize_json_fragment_acl
-
-    # `%cant_delete` → cant_delete=True
-    assert _normalize_json_fragment_acl("/VLAN/Vlan* %cant_delete") == [
-        JsonFragmentAcl("/VLAN/Vlan*", cant_delete=True)
-    ]
-    # `%cant_delete=1` → cant_delete=True
-    assert _normalize_json_fragment_acl("/VLAN/Vlan* %cant_delete=1") == [
-        JsonFragmentAcl("/VLAN/Vlan*", cant_delete=True)
-    ]
-    # `%cant_delete=0` → cant_delete=False
-    assert _normalize_json_fragment_acl("/VLAN/Vlan* %cant_delete=0") == [
-        JsonFragmentAcl("/VLAN/Vlan*", cant_delete=False)
-    ]
-    # No modifier → cant_delete=False
-    assert _normalize_json_fragment_acl("/VLAN/Vlan*") == [JsonFragmentAcl("/VLAN/Vlan*")]
-    # Mixed list
-    assert _normalize_json_fragment_acl(["/A %cant_delete", "/B"]) == [
-        JsonFragmentAcl("/A", cant_delete=True),
-        JsonFragmentAcl("/B"),
-    ]

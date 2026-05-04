@@ -5,7 +5,6 @@ from collections import OrderedDict as odict
 from typing import Any, Callable, Optional, Sequence
 
 from annet.annlib import jsontools
-from annet.annlib.jsontools import JsonFragmentAcl
 from annet.lib import merge_dicts
 from annet.reference import RefMatcher, RefTracker
 from annet.types import (
@@ -82,10 +81,6 @@ class RunGeneratorResult:
         # TODO: safe
         files: dict[str, tuple[Any, Optional[str]]] = {}
         reload_prios: dict[str, int] = {}
-        # Pass 1: per-generator merge. apply_json_fragment skips deletions for
-        # cant_delete acl items — those are resolved in Pass 2 after we've seen
-        # every generator that touches the file.
-        cant_delete_state: dict[str, tuple[Any, list[tuple[JsonFragmentAcl, dict[str, Any]]]]] = {}
         for generator_result in self.json_fragment_results.values():
             filepath = generator_result.path
             if filepath not in files:
@@ -93,9 +88,10 @@ class RunGeneratorResult:
                     files[filepath] = (old_files[filepath], None)
                 else:
                     files[filepath] = ({}, None)
-                cant_delete_state.setdefault(filepath, (files[filepath][0], []))
             if use_acl:
-                result_acl = generator_result.acl_safe if safe else generator_result.acl
+                result_acl = generator_result.acl
+                if safe:
+                    result_acl = generator_result.acl_safe
             else:
                 result_acl = None
             previous_config: dict[str, Any] = files[filepath][0]
@@ -106,11 +102,6 @@ class RunGeneratorResult:
                 acl=result_acl,
                 filters=filters,
             )
-            if result_acl is not None:
-                _, contributions = cant_delete_state[filepath]
-                for acl_item in result_acl:
-                    if acl_item.cant_delete:
-                        contributions.append((acl_item, new_fragment))
             if jsontools.format_json(new_config) == jsontools.format_json(previous_config):
                 # config is not changed, deprioritize reload_cmd
                 reload_prio = 0
@@ -123,27 +114,6 @@ class RunGeneratorResult:
                 reload_cmd = generator_result.reload
                 reload_prios[filepath] = reload_prio
             files[filepath] = (new_config, reload_cmd)
-
-        # Pass 2: under each cant_delete acl, drop pointers that no generator
-        # for this file emitted in its new fragment.
-        for filepath, (old_config, contributions) in cant_delete_state.items():
-            if not contributions or not isinstance(old_config, dict):
-                continue
-            merged_config, reload_cmd = files[filepath]
-            for acl_item, _ in contributions:
-                emitted: set[str] = set()
-                for other_acl, other_fragment in contributions:
-                    if other_acl != acl_item:
-                        continue
-                    for ptr in jsontools.resolve_json_pointers(acl_item.pointer, other_fragment):
-                        emitted.add(ptr.path)
-                for old_ptr in jsontools.resolve_json_pointers(acl_item.pointer, old_config):
-                    if old_ptr.path in emitted:
-                        continue
-                    parent, key = old_ptr.to_last(merged_config)
-                    if isinstance(parent, dict) and isinstance(key, str):
-                        parent.pop(key, None)
-            files[filepath] = (merged_config, reload_cmd)
         return files
 
     def perf_mesures(self) -> dict[str, dict[str, int]]:
