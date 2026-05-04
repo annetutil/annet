@@ -128,7 +128,7 @@ def merge_order_rulebooks(parent_rulebook: OrderRulebook, child_rulebook: OrderR
 
     parent_pre_merge = _get_pre_merge(parent_rulebook)
     child_pre_merge = _get_pre_merge(child_rulebook)
-    parent_pre_merge, child_pre_merge = _apply_not_inherit_logic(parent_pre_merge, child_pre_merge)
+    parent_pre_merge, child_pre_merge = _apply_not_inherit_to_pre_merges(parent_pre_merge, child_pre_merge)
 
     child_groups = _get_child_groups(parent_pre_merge, child_pre_merge)
     group_anchor, group_data = _get_next_group(child_groups)
@@ -207,7 +207,7 @@ def parse_order_rulebook_to_text(rulebook: OrderRulebook, level: int = 0) -> Ord
     return "\n".join(lines)
 
 
-def _apply_not_inherit_logic(
+def _apply_not_inherit_to_pre_merges(
     parent_pre_merge: OrderPreMerge, child_pre_merge: OrderPreMerge
 ) -> tuple[OrderPreMerge, OrderPreMerge]:
     """Applies the not_inherit logic to parent_pre_merge and child_pre_merge"""
@@ -229,6 +229,25 @@ def _apply_not_inherit_logic(
             continue
         applied_parent_pre_merge.append((parent_row, parent_data))
     return applied_parent_pre_merge, applied_child_pre_merge
+
+
+def _apply_not_inherit_to_rulebook(rulebook: OrderRulebook) -> OrderRulebook:
+    """Applies the not_inherit logic to the rulebook"""
+    applied_rulebook: OrderRulebook = []
+    for raw_row, data in rulebook:
+        row, raw_params = syntax.get_row_and_raw_params(raw_row)
+        not_inherit = raw_params.pop(NOT_INHERIT, None)
+        raw_row = syntax.get_row_with_params(row, raw_params, get_params_scheme())
+        data[ATTRS][RAW_RULE] = raw_row
+        if not_inherit is None:
+            pass
+        elif not valid_bool(not_inherit if not_inherit != "" else "1"):
+            pass
+        elif not data[CHILDREN]:
+            continue
+        data[CHILDREN] = _apply_not_inherit_to_rulebook(data[CHILDREN])
+        applied_rulebook.append((raw_row, data))
+    return applied_rulebook
 
 
 def _split_rows_by_insert_to_end_group_param(rows: GroupRows) -> tuple[GroupRows, GroupRows]:
@@ -374,9 +393,6 @@ def _get_anchors_data(parent_pre_merge: OrderPreMerge) -> AnchorsData:
 
 def _add_group_to_merged_rulebook(merged_rulebook: OrderRulebook, rows: GroupRows) -> None:
     """Adds rules from the group to merged_rulebook"""
-    for row_data in rows:
-        row, raw_params = syntax.get_row_and_raw_params(row_data[RAW_RULE])
-        raw_row = syntax.get_row_with_params(row, raw_params, get_params_scheme())
-        rules = row_data[RULES]
-        rules[ATTRS][RAW_RULE] = raw_row
-        merged_rulebook.append((raw_row, rules))
+    rulebook: OrderRulebook = [(row_data[RAW_RULE], row_data[RULES]) for row_data in rows]
+    appied_rulebook = _apply_not_inherit_to_rulebook(rulebook)
+    merged_rulebook.extend(appied_rulebook)
