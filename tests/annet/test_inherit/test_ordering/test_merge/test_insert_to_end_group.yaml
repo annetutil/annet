@@ -1,0 +1,90 @@
+test_case_1:
+  child: |
+    %inherit_from=parent
+    rule 1 %insert_to_end_group
+    rule 2 %insert_to_end_group
+    rule 3
+    rule 4 %insert_to_end_group
+    rule 5
+    rule 6
+    rule 7 %insert_to_end_group
+    rule 8
+    rule 9 %insert_to_end_group
+  parent: |
+    rule 1
+  expected: |
+    rule 1
+    rule 3
+    rule 5
+    rule 6
+    rule 8
+    rule 2
+    rule 4
+    rule 7
+    rule 9
+
+test_case_2:
+  child: |
+    %inherit_from=parent
+    rule 1
+      subrule 1
+        some 1
+        some 3
+      subrule 2 %insert_to_end_group
+    rule 2
+  parent: |
+    rule 0
+      subrule 1
+    rule 1
+      subrule 1
+        some 1
+        some 2
+      subrule 3
+      subrule 4
+    rule 3
+  expected: |
+    rule 0
+      subrule 1
+    rule 1
+      subrule 1
+        some 1
+        some 3
+        some 2
+      subrule 3
+      subrule 4
+      subrule 2
+    rule 2
+    rule 3
+
+test_case_3:
+  child: |
+    %inherit_from=parent
+
+    rule 1
+    rule 2 %insert_to_end_group
+    rule 3
+    rule 4 %insert_to_end_group
+  parent: |
+    rule 1
+    rule 5
+    rule 6
+    rule 7
+  expected: |
+    rule 1
+    rule 3
+    rule 5
+    rule 6
+    rule 7
+    rule 2
+    rule 4
+
+test_case_4:
+  child: |
+    %inherit_from=parent
+
+    rule 2 %insert_to_end_group
+  parent: |
+    rule 1
+  expected: |
+    rule 1
+    rule 2

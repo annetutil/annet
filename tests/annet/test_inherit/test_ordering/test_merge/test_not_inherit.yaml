@@ -1,0 +1,106 @@
+test_case_1:
+  child: |
+    %inherit_from=parent
+    rule 1 %not_inherit
+    rule 2
+  parent: |
+    rule 4
+    rule 3
+    rule 1
+  expected: |
+    rule 2
+    rule 4
+    rule 3
+
+test_case_2:
+  child: |
+    %inherit_from=parent
+    rule 1 %not_inherit
+      subrule 1
+    rule 2
+  parent: |
+    rule 4
+    rule 3
+    rule 1
+  expected: |
+    rule 1
+      subrule 1
+    rule 2
+    rule 4
+    rule 3
+
+test_case_3:
+  child: |
+    %inherit_from=parent
+
+    rule 2
+    rule 1 %not_inherit
+      some 1 %not_inherit
+        some 2 %not_inherit
+          some 3
+          some 4 %not_inherit
+  parent: |
+    rule 1
+    rule 2
+  expected: |
+    rule 2
+    rule 1 
+      some 1 
+        some 2 
+          some 3
+
+test_case_4:
+  child: |
+    %inherit_from=parent
+
+    rule 1 %not_inherit
+      some 1
+  parent: |
+    rule 1
+    rule 2
+  expected: |
+    rule 1 
+      some 1
+    rule 2
+
+test_case_5:
+  child: |
+    %inherit_from=parent
+
+    rule 1 %not_inherit
+      some 1
+        some 2 %not_inherit
+          some 3 %split %not_inherit
+            some 4
+          some 5
+          some 3 %split
+  parent: |
+    rule 1
+  expected: |
+    rule 1 
+      some 1
+        some 2
+          some 3 %split
+            some 4
+          some 5
+          some 3 %split
+
+test_case_6:
+  child: |
+    %inherit_from=parent
+
+    rule 1
+      some 1
+        some 3 %not_inherit
+  parent: |
+    rule 1
+      some 1
+        some 3 %split
+        some 5
+        some 3 %split
+        some 6
+  expected: |
+    rule 1 
+      some 1
+        some 5
+        some 6
