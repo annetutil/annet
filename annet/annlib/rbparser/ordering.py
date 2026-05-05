@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import functools
 import re
-from typing import Generator, Literal
+from collections import defaultdict
+from typing import Any, Generator, Literal
 
 from valkit.common import valid_bool, valid_string_list
 
@@ -130,6 +131,8 @@ def merge_order_rulebooks(parent_rulebook: OrderRulebook, child_rulebook: OrderR
     parent_pre_merge = _get_pre_merge(parent_rulebook)
     child_pre_merge = _get_pre_merge(child_rulebook)
     parent_pre_merge, child_pre_merge = _apply_not_inherit_to_pre_merges(parent_pre_merge, child_pre_merge)
+    _check_pre_merge_for_duplicate_rules(child_pre_merge, "children")
+    _check_pre_merge_for_duplicate_rules(parent_pre_merge, "parent")
 
     child_groups = _get_child_groups(parent_pre_merge, child_pre_merge)
     group_anchor, group_data = _get_next_group(child_groups)
@@ -319,7 +322,6 @@ def _get_next_group(child_groups: Generator[Group, None, None]) -> Group:
     try:
         return next(child_groups)
     except StopIteration:
-        # anchor, group_data
         return None, _get_empty_child_group_data()
 
 
@@ -352,8 +354,15 @@ def _get_child_groups(parent_pre_merge: OrderPreMerge, child_pre_merge: OrderPre
 
         count = anchors_data[row][COUNT]
         split = anchors_data[row][SPLIT]
+        child_split = data[RULES][ATTRS][SPLIT]
+
+        if child_split != split and split:
+            raise RulebookSyntaxError(
+                f"Rule '{row}' has different %split parameters in the parent and children rulebooks. "
+                f"In parent rulebook: {split}, in children rulebook: {data[RULES][ATTRS][SPLIT]}."
+            )
         if count == 0:
-            if not split:
+            if not split and not child_split:
                 raise RulebookSyntaxError(
                     f"Rule '{row}' has no %split parameter but is listed multiple times in the children rulebook."
                 )
@@ -393,3 +402,26 @@ def _add_group_to_merged_rulebook(merged_rulebook: OrderRulebook, rows: GroupRow
     rulebook: OrderRulebook = [(row_data[RAW_RULE], row_data[RULES]) for row_data in rows]
     appied_rulebook = _apply_not_inherit_to_rulebook(rulebook)
     merged_rulebook.extend(appied_rulebook)
+
+
+def _check_pre_merge_for_duplicate_rules(pre_merge: OrderPreMerge, context: Literal["children", "parent"]) -> None:
+    """
+    Checks pre_merge for duplicate rules
+
+    Rules without the %split parameter may appear only once
+    Rules with the %split parameter may appear multiple times
+    Identical rules at the same level cannot exist with different %split values
+    context (Literal["children", "parent"]): Used to format the error message
+    """
+    count: defaultdict[str, Any] = defaultdict(dict)
+    for row, data in pre_merge:
+        split = data[RULES][ATTRS][SPLIT]
+        count[row][COUNT] = count[row].get(COUNT, 0) + 1
+        if count[row].get(SPLIT) is None:
+            count[row][SPLIT] = split
+        elif count[row][SPLIT] != split:
+            raise RulebookSyntaxError(f"Rule '{row}' has different %split parameters in the {context} rulebook.")
+        if not split and count[row][COUNT] > 1:
+            raise RulebookSyntaxError(
+                f"Rule '{row}' has no %split parameter but is listed multiple times in the {context} rulebook."
+            )

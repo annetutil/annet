@@ -1,9 +1,9 @@
 test_case_1:
   child: |
     %inherit_from=parent
-    rule 1
+    rule 1 %split
     rule 3
-    rule 1
+    rule 1 %split
     rule 4
   parent: |
     rule 1 %split
@@ -52,7 +52,7 @@ test_case_2:
 test_case_3:
   child: |
     %inherit_from=parent
-    rule 2 %not_inherit
+    rule 2 %split %not_inherit
     rule 1
     rule 3
   parent: |
@@ -69,7 +69,7 @@ test_case_3:
 test_case_4:
   child: |
     %inherit_from=parent
-    rule 1
+    rule 1 %split
       subrule 1 %not_inherit
       some
   parent: |
@@ -88,9 +88,9 @@ test_case_4:
 test_case_5:
   child: |
     %inherit_from=parent
-    rule 1
+    rule 1 %split
     rule 2
-    rule 1
+    rule 1 %split
       subrule 1 %not_inherit
       some
   parent: |
@@ -156,3 +156,21 @@ test_case_7:
     rule 3
     rule 1 %split
       3
+
+test_case_8:
+  child: |
+    %inherit_from=parent
+
+    rule 1 %split
+        sub rule 2
+    rule 2
+    rule 1 %split
+  parent: |
+    rule 1
+        sub rule 1
+  expected: |
+    rule 1 %split
+        sub rule 2
+        sub rule 1
+    rule 2
+    rule 1 %split
