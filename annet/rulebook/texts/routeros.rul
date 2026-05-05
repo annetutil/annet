@@ -13,14 +13,69 @@
 
 
 user
-    add ~ %diff_logic=annet.rulebook.routeros.user.diff
     ~
     group
+        add ~
+    ssh_key
         add ~
 
 file
     print file=*
     set * %logic=annet.rulebook.routeros.file.change
+
+interface
+    gre
+        add ~ %logic=annet.rulebook.routeros.remove_by_key.change
+    l2tp-client
+        add ~ %logic=annet.rulebook.routeros.remove_by_key.change
+    list
+        add ~ %logic=annet.rulebook.routeros.remove_by_key.change
+        member
+            add ~ %logic=annet.rulebook.routeros.remove_by_key.change
+
+ip
+    address
+        add ~ %logic=annet.rulebook.routeros.remove_by_key.change
+    route
+        add ~ %logic=annet.rulebook.routeros.remove_by_key.change %diff_logic=annet.rulebook.routeros.ignore_by_key.dhcpclient_change
+    dhcp-server
+        add ~ %logic=annet.rulebook.routeros.remove_by_key.change
+        network
+            add ~ %logic=annet.rulebook.routeros.remove_by_key.change
+    firewall
+        filter
+            add ~ %logic=annet.rulebook.routeros.sequence.erase_before
+        nat
+            add ~ %logic=annet.rulebook.routeros.sequence.erase_before
+    ipsec
+        peer
+            add ~ %logic=annet.rulebook.routeros.remove_by_key.change %diff_logic=annet.rulebook.routeros.ignore_by_key.dhcpclient_change
+        identity
+            add ~ %logic=annet.rulebook.routeros.remove_by_key.change
+    service
+        set ~ %logic=annet.rulebook.routeros.remove_by_key.change
+
+ipv6
+    address
+        add ~ %logic=annet.rulebook.routeros.remove_by_key.change
+    route
+        add ~ %logic=annet.rulebook.routeros.remove_by_key.change
+    firewall
+        filter
+            add ~ %logic=annet.rulebook.routeros.sequence.erase_before
+        nat
+            add ~ %logic=annet.rulebook.routeros.sequence.erase_before
+
+routing
+    bgp
+        connection
+            add ~ %logic=annet.rulebook.routeros.remove_by_key.change
+    rule
+        add ~ %diff_logic=annet.rulebook.routeros.ignore_by_key.dhcpclient_change
+
+queue
+    simple
+        add ~ %logic=annet.rulebook.routeros.sequence.erase_before
 
 system
     logging
@@ -28,19 +83,16 @@ system
             set ~
             add ~
         set ~
-        add ~
+        add ~ %logic=annet.rulebook.routeros.remove_by_key.change
+    note
+        set ~ %logic=annet.rulebook.routeros.remove_by_key.change
+    script
+        add ~ %logic=annet.rulebook.routeros.remove_by_key.change
+    scheduler
+        add ~ %logic=annet.rulebook.routeros.remove_by_key.change
 
-interface
-    gre
-        add
-
-interface
-    list
-        member
-            add
-
-ip
-    address
-        add ~
+tool
+    netwatch
+            add ~ %logic=annet.rulebook.routeros.remove_by_key.change
 
 ~ %global
