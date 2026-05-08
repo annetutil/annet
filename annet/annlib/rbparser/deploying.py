@@ -49,7 +49,7 @@ class MakeMessageMatcher:
         return self._fn(intext)
 
     def __eq__(self, other):
-        return type(other) is type(self) and self.__text == other.text  # pylint: disable=protected-access
+        return type(other) is type(self) and self.__text == other.text
 
     def __hash__(self):
         return hash("%s_%s" % (self.__class__.__name__, self.__text))
