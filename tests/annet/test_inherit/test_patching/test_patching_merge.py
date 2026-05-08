@@ -2,7 +2,7 @@ import pytest
 
 from annet.rulebook import DefaultRulebookProvider
 from tests import make_hw_stub
-from tests.annet.test_inherit import check_rulebook_equal, get_tests_data
+from tests.annet.test_inherit import check_patch_rulebook_equal, get_tests_data
 
 
 @pytest.mark.parametrize(
@@ -19,4 +19,4 @@ def test_merge(mock_rulebooks):
     expected_rb = rb_provider._get_rulebook_by_extension(
         rulebook_path="expected", extension="rul", hw=hw, vendor=vendor
     )
-    check_rulebook_equal(inherited_rb, expected_rb)
+    check_patch_rulebook_equal(inherited_rb, expected_rb)

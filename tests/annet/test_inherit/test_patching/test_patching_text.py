@@ -1,7 +1,7 @@
 from annet.rulebook import DefaultRulebookProvider
 from annet.rulebook.patching import compile_patching_text, dump_patch_rulebook
 from tests import make_hw_stub
-from tests.annet.test_inherit import check_rulebook_equal
+from tests.annet.test_inherit import check_patch_rulebook_equal
 
 
 def test_text():
@@ -18,4 +18,4 @@ def test_text():
     )
     rulebook_text = dump_patch_rulebook(expected_rb)
     compiled_rb = compile_patching_text(rulebook_text, vendor)
-    check_rulebook_equal(expected_rb, compiled_rb)
+    check_patch_rulebook_equal(expected_rb, compiled_rb)

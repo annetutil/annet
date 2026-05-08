@@ -34,7 +34,6 @@ def test_compile_deploying_text_cisco_2_dialogs(ann_connectors):
                             ]
                         ),
                         "ifcontext": [],
-                        "ignore": [],
                         "regexp": re.compile("^crypto\\s+key\\s+generate\\s+rsa(?:\\s|$)"),
                     },
                     "children": OrderedDict(),

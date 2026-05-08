@@ -1,6 +1,7 @@
 import re
 import sys
 from abc import ABC
+from collections import OrderedDict
 from importlib import resources
 from typing import Literal
 
@@ -10,12 +11,14 @@ from annet.annlib.lib import mako_render
 from annet.annlib.rbparser.ordering import compile_ordering_text, dump_order_rulebook, merge_order_rulebooks
 from annet.annlib.rbparser.platform import VENDOR_ALIASES
 from annet.connectors import CachedConnector
-from annet.rulebook.deploying import compile_deploying_text
+from annet.rulebook.deploying import compile_deploying_text, dump_deploy_rulebook, merge_deploy_rulebooks
 from annet.rulebook.exceptions import RulebookSyntaxError
 from annet.rulebook.patching import compile_patching_text, dump_patch_rulebook, merge_patch_rulebooks
 from annet.rulebook.types import (
     AnyRulebook,
     AnyRulebookText,
+    DeployingText,
+    DeployRulebook,
     Extension,
     OrderingText,
     OrderRulebook,
@@ -37,6 +40,7 @@ else:
 
 RUL: Literal["rul"] = "rul"
 ORDER: Literal["order"] = "order"
+DEPLOY: Literal["deploy"] = "deploy"
 
 
 class RulebookProvider(ABC):
@@ -61,16 +65,16 @@ class DefaultRulebookProvider(RulebookProvider):
     merge_rulebooks = {
         RUL: merge_patch_rulebooks,
         ORDER: merge_order_rulebooks,
+        DEPLOY: merge_deploy_rulebooks,
     }
     compile_rulebooks = {
         RUL: compile_patching_text,
         ORDER: compile_ordering_text,
+        DEPLOY: compile_deploying_text,
     }
 
     def __init__(self):
         self._rulebook_cache = {}
-        self._render_rul_cache = {}
-        self._escaped_rul_cache = {}
         self._rulebook_text_cache = {}
 
     def get_rulebook(self, hw) -> Rulebook:
@@ -103,11 +107,16 @@ class DefaultRulebookProvider(RulebookProvider):
             ordering_text: OrderingText = ""
 
         try:
-            deploying_text = self._render_rul(hw.vendor + ".deploy", hw)
+            deploying = self._get_rulebook_by_extension(
+                rulebook_path=".".join((self.rulebook_module, vendor)),
+                vendor=vendor,
+                extension=DEPLOY,
+                hw=hw,
+            )
+            deploying_text = dump_deploy_rulebook(deploying)
         except FileNotFoundError:
-            deploying_text = ""
-
-        deploying = compile_deploying_text(deploying_text, hw.vendor)
+            deploying: DeployRulebook = OrderedDict()
+            deploying_text: DeployingText = ""
 
         self._rulebook_cache[hw] = Rulebook(
             patching=patching,
@@ -186,22 +195,6 @@ class DefaultRulebookProvider(RulebookProvider):
             return resources.files(module).joinpath(f"{name}.{extension}").read_text(encoding="utf-8")
         except RULEBOOK_READ_EXCEPTIONS as err:
             raise FileNotFoundError(f'Unable to find rulebook "{name}" in "{self.rulebook_module}" module') from err
-
-    def _render_rul(self, name, hw):
-        key = (name, hw)
-        if key not in self._render_rul_cache:
-            self._render_rul_cache[key] = mako_render(self._read_escaped_rul(name), hw=hw)
-        return self._render_rul_cache[key]
-
-    def _read_escaped_rul(self, name):
-        if name in self._escaped_rul_cache:
-            return self._escaped_rul_cache[name]
-        try:
-            text = resources.files(self.rulebook_module).joinpath(name).read_text(encoding="utf-8")
-            self._escaped_rul_cache[name] = self._escape_mako(text)
-            return self._escaped_rul_cache[name]
-        except RULEBOOK_READ_EXCEPTIONS as err:
-            raise FileNotFoundError(f"Unable to find rul: {name}") from err
 
     @staticmethod
     def _escape_mako(text):

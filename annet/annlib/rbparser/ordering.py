@@ -7,7 +7,8 @@ from typing import Any, Generator, Literal
 
 from valkit.common import valid_bool, valid_string_list
 
-from annet.rulebook.common import get_merged_params, validate_context_compatibility
+from annet.annlib.rbparser import syntax
+from annet.rulebook.common import get_merged_params, raw_param_to_bool, validate_context_compatibility
 from annet.rulebook.exceptions import RulebookSyntaxError
 from annet.rulebook.types import (
     AnchorData,
@@ -26,8 +27,6 @@ from annet.rulebook.types import (
     Row,
 )
 from annet.vendors import registry_connector
-
-from . import syntax
 
 
 # ===RULE===
@@ -218,8 +217,7 @@ def _apply_not_inherit_to_pre_merges(
     ignored_rules = set()
     applied_child_pre_merge = []
     for child_row, child_data in child_pre_merge:
-        not_inherit = child_data[PARAMS].get(NOT_INHERIT)
-        if not_inherit is None or not valid_bool(not_inherit if not_inherit != "" else "1"):
+        if not raw_param_to_bool(child_data[PARAMS].get(NOT_INHERIT)):
             applied_child_pre_merge.append((child_row, child_data))
             continue
 
@@ -243,9 +241,7 @@ def _apply_not_inherit_to_rulebook(rulebook: OrderRulebook) -> OrderRulebook:
         not_inherit = raw_params.pop(NOT_INHERIT, None)
         raw_row = syntax.get_row_with_params(row, raw_params, get_params_scheme())
         data[ATTRS][RAW_RULE] = raw_row
-        if not_inherit is None:
-            pass
-        elif not valid_bool(not_inherit if not_inherit != "" else "1"):
+        if not raw_param_to_bool(not_inherit):
             pass
         elif not data[CHILDREN]:
             continue
@@ -303,12 +299,12 @@ def _get_pre_merge(rulebook: OrderRulebook) -> OrderPreMerge:
     pre_merge = []
     for raw_row, rules in rulebook:
         row, raw_params = syntax.get_row_and_raw_params(raw_row)
-        insert_to_end_group = raw_params.pop(INSERT_TO_END_GROUP, "0")
+        insert_to_end_group = raw_params.pop(INSERT_TO_END_GROUP, None)
         data = OrderPreMergeData(
             params=raw_params,
             rules=rules,
             raw_rule=raw_row,
-            insert_to_end_group=valid_bool(insert_to_end_group if insert_to_end_group else "1"),
+            insert_to_end_group=raw_param_to_bool(insert_to_end_group),
         )
         pre_merge.append((row, data))
     return pre_merge
