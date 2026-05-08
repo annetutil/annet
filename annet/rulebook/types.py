@@ -1,24 +1,26 @@
 from typing import Any, Callable, Literal, OrderedDict, Pattern, TypeAlias, TypedDict, Union
 
+from annet.annlib.rbparser.deploying import Answer, MakeMessageMatcher
+
 
 # ===RULEBOOK===
 
 
-AnyRulebook: TypeAlias = Union["PatchRulebook", "OrderRulebook"]
-AnyRulebookText: TypeAlias = Union["PatchingText", "OrderingText"]
+AnyRulebook: TypeAlias = Union["PatchRulebook", "OrderRulebook", "DeployRulebook"]
+AnyRulebookText: TypeAlias = Union["PatchingText", "OrderingText", "DeployingText"]
 
 
 class Rulebook(TypedDict):
     patching: "PatchRulebook"
     ordering: "OrderRulebook"
-    deploying: OrderedDict[str, Any]
+    deploying: "DeployRulebook"
     texts: "RulebookTexts"
 
 
 class RulebookTexts(TypedDict):
     patching: "PatchingText"
     ordering: "OrderingText"
-    deploying: str
+    deploying: "DeployingText"
 
 
 Extension: TypeAlias = Literal["rul", "order", "deploy"]
@@ -158,3 +160,45 @@ AnchorsData: TypeAlias = dict[Row, "AnchorData"]
 class AnchorData(TypedDict):
     count: int
     split: bool
+
+
+# ===DEPLOY_RULEBOOK===
+
+
+DeployRulebook: TypeAlias = OrderedDict[RawRow, "DeployRule"]
+
+
+class DeployRule(TypedDict):
+    attrs: "DeployRuleAttrs"
+    children: "DeployRulebook"
+
+
+class DeployRuleAttrs(TypedDict):
+    regexp: Pattern[str]
+    timeout: int
+    apply_logic: Callable
+    apply_logic_name: str
+    dialogs: "Dialogs"
+    ifcontext: list[str]
+
+
+DeployingText: TypeAlias = str
+
+
+DeployPreMerge: TypeAlias = OrderedDict[Row, "DeployPreMergeData"]
+
+
+class DeployPreMergeData(TypedDict):
+    rules: DeployRule
+    params: RawParams
+
+
+Dialogs: TypeAlias = OrderedDict[MakeMessageMatcher, Answer]
+
+
+DialogPreMerge: TypeAlias = OrderedDict[MakeMessageMatcher, "DialogPreMergeData"]
+
+
+class DialogPreMergeData(TypedDict):
+    message: MakeMessageMatcher
+    answer: Answer

@@ -8,7 +8,12 @@ from valkit.common import valid_bool, valid_string_list
 from valkit.python import valid_object_path
 
 from annet.annlib.rbparser import platform, syntax
-from annet.rulebook.common import get_merged_params, validate_context_compatibility
+from annet.rulebook.common import (
+    get_merged_params,
+    import_rulebook_function,
+    raw_param_to_bool,
+    validate_context_compatibility,
+)
 from annet.rulebook.exceptions import RulebookSyntaxError
 from annet.rulebook.types import (
     Params,
@@ -28,8 +33,6 @@ from annet.rulebook.types import (
     RuleType,
 )
 from annet.vendors import registry_connector
-
-from .common import import_rulebook_function
 
 
 # ===LOGIC_PATHS===
@@ -229,8 +232,7 @@ def merge_patch_rulebooks(parent_rulebook: PatchRulebook, child_rulebook: PatchR
             # for mypy (In this case, parent_data cannot be None)
             assert parent_data is not None
             _add_parent_to_merge_rulebook(merged_rulebook, parent_data, row, vendor)
-
-        elif NOT_INHERIT in child_data[PARAMS] or parent_data is None:
+        elif raw_param_to_bool(child_data[PARAMS].get(NOT_INHERIT)) or parent_data is None:
             _add_child_to_merge_rulebook(merged_rulebook, child_data, row, vendor)
 
         else:
@@ -268,7 +270,7 @@ def _add_child_to_merge_rulebook(
     merged_rulebook: PatchRulebook, child_data: PatchPreMergeData, row: Row, vendor
 ) -> None:
     """Add child rule to merged_rulebook"""
-    if NOT_INHERIT in child_data[PARAMS]:
+    if raw_param_to_bool(child_data[PARAMS].get(NOT_INHERIT)):
         if GLOBAL in child_data[PARAMS]:
             raise RulebookSyntaxError(r"Usage of %not_inherit param together with %global param is not allowed.")
         elif _is_empty_rulebook(child_data[RULES][CHILDREN]):
@@ -295,7 +297,7 @@ def _apply_not_inherit_to_child_rules(child_rulebook: PatchRulebook, vendor) -> 
         for raw_row, rules in child_rulebook[scope].items():
             row, raw_params = syntax.get_row_and_raw_params(raw_row)
 
-            if NOT_INHERIT in raw_params:
+            if raw_param_to_bool(raw_params.get(NOT_INHERIT)):
                 if GLOBAL in raw_params:
                     raise RulebookSyntaxError(
                         r"Usage of %not_inherit param together with %global param is not allowed."
