@@ -1,0 +1,86 @@
+test_case_1:
+    child: |
+        %inherit_from=parent
+        rule 1
+            subrule 1 %apply_logic=tests.annet.test_inherit.fake_logic.fake_apply_logic1
+    parent: |
+        rule 1
+            subrule 1 %apply_logic=tests.annet.test_inherit.fake_logic.fake_apply_logic2
+    expected: |
+        rule 1
+            subrule 1 %apply_logic=tests.annet.test_inherit.fake_logic.fake_apply_logic1
+
+test_case_2:
+    child: |
+        %inherit_from=parent
+        rule 1 %timeout=120
+    parent: |
+        rule 1 %timeout=60
+    expected: |
+        rule 1 %timeout=120
+
+test_case_3:
+    child: |
+        %inherit_from=parent
+        rule 1 %ifcontext=some:context
+    parent: |
+        rule 1 %ifcontext=some:context2
+    expected: |
+        rule 1 %ifcontext=some:context
+        rule 1 %ifcontext=some:context2
+
+test_case_4:
+    child: |
+        %inherit_from=parent
+        rule 1 %ifcontext=some:context
+            subrule 1
+    parent: |
+        rule 1 %ifcontext=some:context
+            subrule 2
+    expected: |
+        rule 1 %ifcontext=some:context
+            subrule 1
+            subrule 2
+
+test_case_5:
+    child: |
+        %inherit_from=parent
+        rule 1 %ifcontext=some:context
+    parent: |
+        rule 2 %ifcontext=some:context
+    expected: |
+        rule 1 %ifcontext=some:context
+        rule 2 %ifcontext=some:context
+
+test_case_6:
+    child: |
+        %inherit_from=parent
+        rule 1
+            dialog: Message ::: Answer %send_nl
+    parent: |
+        rule 1
+            dialog: Message ::: Answer %send_nl=0
+    expected: |
+        rule 1
+            dialog: Message ::: Answer %send_nl
+
+test_case_7:
+    child: |
+        %inherit_from=parent
+        rule 1
+            dialog: Message ::: Answer %send_nl=0
+    parent: |
+        rule 1
+            dialog: Message ::: Answer %send_nl
+    expected: |
+        rule 1
+            dialog: Message ::: Answer %send_nl=0
+
+test_case_8:
+    child: |
+        %inherit_from=parent
+        rule 1 %apply_logic=tests.annet.test_inherit.fake_logic.fake_apply_logic1 %ifcontext=some:context
+    parent: |
+        rule 1 %apply_logic=tests.annet.test_inherit.fake_logic.fake_apply_logic2 %ifcontext=some:context
+    expected: |
+        rule 1 %apply_logic=tests.annet.test_inherit.fake_logic.fake_apply_logic1 %ifcontext=some:context

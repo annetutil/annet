@@ -1,24 +1,50 @@
 from typing import Any, Callable, Literal, OrderedDict, Pattern, TypeAlias, TypedDict, Union
 
+from annet.annlib.rbparser.deploying import Answer, MakeMessageMatcher
+
 
 # ===RULEBOOK===
 
 
+AnyRulebook: TypeAlias = Union["PatchRulebook", "OrderRulebook", "DeployRulebook"]
+AnyRulebookText: TypeAlias = Union["PatchingText", "OrderingText", "DeployingText"]
+
+
 class Rulebook(TypedDict):
     patching: "PatchRulebook"
-    ordering: "CompiledTree"
-    deploying: OrderedDict[str, Any]
+    ordering: "OrderRulebook"
+    deploying: "DeployRulebook"
     texts: "RulebookTexts"
 
 
 class RulebookTexts(TypedDict):
     patching: "PatchingText"
-    ordering: str
-    deploying: str
+    ordering: "OrderingText"
+    deploying: "DeployingText"
 
 
 Extension: TypeAlias = Literal["rul", "order", "deploy"]
 
+
+# ===COMMON===
+
+
+# Rule row without params
+Row: TypeAlias = str
+# Rule row with params
+RawRow: TypeAlias = str
+# Rule params validated and converted to required types
+Params: TypeAlias = dict[str, Any]
+# Rule params not validated and not converted to required types
+RawParams: TypeAlias = dict[str, str]
+
+
+class ParamScheme(TypedDict):
+    validator: Callable[[Any], Any]
+    default: Any | Callable[[Any], Any]
+
+
+ParamsScheme: TypeAlias = dict[str, ParamScheme]
 
 # ===PATCH_RULEBOOK===
 
@@ -33,7 +59,7 @@ PatchRulebook = TypedDict(
 
 
 class PatchRule(TypedDict):
-    type: "Type"
+    type: "RuleType"
     rule: str
     children: Union["PatchRulebook", None]
     attrs: "PatchRuleAttrs"
@@ -62,23 +88,11 @@ class PatchNormalRuleAttrs(TypedDict):
 
 PatchRuleAttrs: TypeAlias = PatchNormalRuleAttrs | PatchIgnoreRuleAttrs
 
-
 PatchingText: TypeAlias = str
 
+PatchScope: TypeAlias = Literal["local", "global"]
 
-# Rule row without params
-Row: TypeAlias = str
-# Rule row with params
-RawRow: TypeAlias = str
-Scope: TypeAlias = Literal["local", "global"]
-Type: TypeAlias = Literal["normal", "ignore"]
-# Rule params validated and converted to required types
-Params: TypeAlias = dict[str, Any]
-# Rule params not validated and not converted to required types
-RawParams: TypeAlias = dict[str, str]
-
-ParamsScheme: TypeAlias = dict[str, dict[str, Any]]
-
+RuleType: TypeAlias = Literal["normal", "ignore"]
 
 PatchPreMerge: TypeAlias = dict[Row, "PatchPreMergeData"]
 
@@ -86,31 +100,105 @@ PatchPreMerge: TypeAlias = dict[Row, "PatchPreMergeData"]
 class PatchPreMergeData(TypedDict):
     rules: PatchRule
     params: RawParams
-    scope: Scope
+    scope: PatchScope
 
 
 # ===ORDER_RULEBOOK===
 
+OrderRulebook: TypeAlias = list[tuple[RawRow, "OrderRule"]]
 
-CompiledTree: TypeAlias = list[tuple[str, "_CompiledOrderingItem"]]
 
-
-class _CompiledOrderingItem(TypedDict):
-    attrs: "_CompiledOrderingAttrs"
-    children: "CompiledTree"
+class OrderRule(TypedDict):
+    attrs: "OrderRuleAttrs"
+    children: "OrderRulebook"
 
 
 # 'global' is a keyword, so we cant use normal TypedDict declaration
-_CompiledOrderingAttrs = TypedDict(
-    "_CompiledOrderingAttrs",
+OrderRuleAttrs = TypedDict(
+    "OrderRuleAttrs",
     {
         "direct_regexp": Pattern[str],
         "reverse_regexp": Pattern[str],
         "order_reverse": bool,
         "global": bool,  # TODO: rename to something else so that it is not a keyword
-        "scope": list[str] | None,
-        "raw_rule": str,
-        "context": Any,
+        "scope": "OrderScope",
+        "raw_rule": RawRow,
+        "context": dict[str, str],
         "split": bool,
     },
 )
+
+OrderingText: TypeAlias = str
+
+OrderScope: TypeAlias = list[str] | None
+
+OrderPreMerge: TypeAlias = list[tuple[Row, "OrderPreMergeData"]]
+
+
+class OrderPreMergeData(TypedDict):
+    params: RawParams
+    rules: OrderRule
+    raw_rule: RawRow
+    insert_to_end_group: bool
+
+
+Anchor: TypeAlias = Row | None
+
+Group: TypeAlias = tuple[Anchor, "GroupData"]
+
+GroupRows: TypeAlias = list[OrderPreMergeData]
+
+
+class GroupData(TypedDict):
+    anchor: OrderPreMergeData | None
+    rows: GroupRows
+
+
+AnchorsData: TypeAlias = dict[Row, "AnchorData"]
+
+
+class AnchorData(TypedDict):
+    count: int
+    split: bool
+
+
+# ===DEPLOY_RULEBOOK===
+
+
+DeployRulebook: TypeAlias = OrderedDict[RawRow, "DeployRule"]
+
+
+class DeployRule(TypedDict):
+    attrs: "DeployRuleAttrs"
+    children: "DeployRulebook"
+
+
+class DeployRuleAttrs(TypedDict):
+    regexp: Pattern[str]
+    timeout: int
+    apply_logic: Callable
+    apply_logic_name: str
+    dialogs: "Dialogs"
+    ifcontext: list[str]
+
+
+DeployingText: TypeAlias = str
+
+
+DeployPreMerge: TypeAlias = OrderedDict[Row, "DeployPreMergeData"]
+
+
+class DeployPreMergeData(TypedDict):
+    rules: DeployRule
+    params: RawParams
+
+
+Dialogs: TypeAlias = OrderedDict[MakeMessageMatcher, Answer]
+
+
+DialogPreMerge: TypeAlias = OrderedDict[MakeMessageMatcher, "DialogPreMergeData"]
+
+
+class DialogPreMergeData(TypedDict):
+    message: MakeMessageMatcher
+    answer: Answer

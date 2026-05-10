@@ -2,7 +2,7 @@
 import abc
 import itertools
 from collections import namedtuple
-from typing import Any, Dict, List, Optional, OrderedDict, Tuple, Type
+from typing import Any, Dict, List, Optional, OrderedDict, Type
 
 from contextlog import get_logger
 
@@ -164,7 +164,7 @@ class RulebookQuestionHandler:
 
 
 def rb_question_to_question(q: MakeMessageMatcher, a: Answer) -> Question:  # TODO: drop MakeMessageMatcher
-    text: str = q._text  # pylint: disable=protected-access
+    text: str = q.text
     answer: str = a.text
     is_regexp = False
     if text.startswith("/") and text.endswith("/"):

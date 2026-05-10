@@ -21,12 +21,13 @@ if sys.version_info >= (3, 11):
 else:
     from typing import Union as NotRequired
 
+from annet.rulebook.types import OrderRulebook
 from annet.vendors.tabparser import CommonFormatter
 
 from ..types import Diff, Op
 from ..vendors import registry_connector
 from .lib import jun_activate, merge_dicts, strip_annotation, uniq
-from .rbparser.ordering import CompiledTree, compile_ordering_text
+from .rbparser.ordering import compile_ordering_text
 from .rulebook.common import call_diff_logic
 from .rulebook.common import default as common_default
 
@@ -210,7 +211,7 @@ PatchRowSortKey: TypeAlias = tuple[
 
 
 class Orderer:
-    def __init__(self, rb: CompiledTree, vendor: str) -> None:
+    def __init__(self, rb: OrderRulebook, vendor: str) -> None:
         self.rb = rb
         self.vendor = vendor
 
@@ -256,7 +257,7 @@ class Orderer:
                 tuple[str, ...],  # row suffix
                 tuple[tuple[str, ...], ...],  # keys suffix
                 #
-                CompiledTree,  # children
+                OrderRulebook,  # children
             ]
         ] = [
             (
@@ -274,7 +275,7 @@ class Orderer:
             # shared instance that will be stored in the queue several times and mutated simultaneously,
             # this is done this way to avoid walking over children twice: we do only one pass both collecting children
             # and filling the queue
-            sub_children: CompiledTree = []
+            sub_children: OrderRulebook = []
 
             for rb_idx, (raw_rule, rule) in enumerate(children, start=0):
                 rb_attrs = rule["attrs"]
@@ -822,7 +823,7 @@ def sort_patch_rows(orderer: Orderer, patch_rows: list[_PatchRow]):
 
 def make_patch(
     pre: odict[str, _Pre],
-    rb: dict[str, CompiledTree],  # not correct, but good enough for now; TODO: make typeddict for this
+    rb: dict[str, OrderRulebook],  # not correct, but good enough for now; TODO: make typeddict for this
     hw,
     add_comments: bool,
     orderer: Orderer | None = None,

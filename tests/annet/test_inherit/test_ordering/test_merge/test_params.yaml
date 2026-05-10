@@ -1,0 +1,18 @@
+test_case_1:
+  child: |
+    %inherit_from=parent
+
+    rule 1 %order_reverse=0
+  parent: |
+    rule 1 %order_reverse
+  expected: |
+    rule 1
+
+test_case_2:
+  child: |
+    %inherit_from=parent
+    rule 1 %scope=patch,deploy
+  parent: |
+    rule 1 %scope=order
+  expected: |
+    rule 1 %scope=patch,deploy

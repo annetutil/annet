@@ -1,0 +1,114 @@
+
+test_case_1:
+    child: |
+        %inherit_from=parent
+        rule 1 %ifcontext=some:app1
+            dialog: Child1: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+        rule 2
+        rule 1 %ifcontext=some:app2,some:app3
+            dialog: Child2: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+        rule 3
+        rule 1 %ifcontext=some:app1
+            dialog: Child3: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+    parent: |
+        rule 1 %ifcontext=some:app2,some:app3
+            dialog: Parent1: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+        rule 3
+        rule 1 %ifcontext=some:app1
+            dialog: Parent2: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+    expected: |
+        rule 1 %ifcontext=some:app2,some:app3
+            dialog: Parent1: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+            dialog: Child2: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+        rule 3
+        rule 1 %ifcontext=some:app1
+            dialog: Parent2: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+            dialog: Child1: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+            dialog: Child3: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+        rule 2
+
+test_case_2:
+    child: |
+        %inherit_from=parent
+        rule 1 %ifcontext=some:context
+            some 1
+        rule 1 %ifcontext=some:context
+            some 2
+    parent: |
+        rule 1 %ifcontext=some:context
+            some 3
+        rule 1 %ifcontext=some:context
+            some 4
+    expected: |
+        rule 1 %ifcontext=some:context
+            some 3
+            some 4
+            some 1
+            some 2
+
+test_case_3:
+    child: |
+        %inherit_from=parent
+        rule 1 %ifcontext=some:context1
+            some 1
+        rule 1 %ifcontext=some:context2
+            some 2
+    parent: |
+        rule 1 %ifcontext=some:context1
+            some 3
+        rule 1 %ifcontext=some:context2
+            some 4
+    expected: |
+        rule 1 %ifcontext=some:context1
+            some 3
+            some 1
+        rule 1 %ifcontext=some:context2
+            some 4
+            some 2
+test_case_4:
+    child: |
+        %inherit_from=parent
+        rule 1 %ifcontext=some:context
+            some 1
+        rule 2 %ifcontext=some:context
+            some 2
+    parent: |
+        rule 1 %ifcontext=some:context
+            some 3
+        rule 2 %ifcontext=some:context
+            some 4
+    expected: |
+        rule 1 %ifcontext=some:context
+            some 3
+            some 1
+        rule 2 %ifcontext=some:context
+            some 4
+            some 2
+test_case_5:
+    child: |
+        %inherit_from=parent
+        rule 1 %ifcontext=some:context %not_inherit
+        rule 2 %ifcontext=some:context
+            some 2
+        rule 1 %ifcontext=some:context1
+            some 3
+        rule 2 %ifcontext=some:context1 %not_inherit
+            some 4
+    parent: |
+        rule 1 %ifcontext=some:context
+            some 5
+        rule 2 %ifcontext=some:context
+            some 6
+        rule 1 %ifcontext=some:context1
+            some 7
+        rule 2 %ifcontext=some:context1
+            some 8
+    expected: |
+        rule 2 %ifcontext=some:context
+            some 6
+            some 2
+        rule 1 %ifcontext=some:context1
+            some 7
+            some 3
+        rule 2 %ifcontext=some:context1
+            some 4

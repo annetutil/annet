@@ -1,0 +1,157 @@
+test_case_1:
+    child: |
+      %inherit_from=parent
+      rule 1
+          dialog: ChildSome1 ::: Answer
+      rule 2
+          dialog: ChildSome2 ::: Answer
+    parent: |
+      rule 1
+        dialog: ParentSome1 ::: Answer
+      rule 3
+        dialog: ParentSome2 ::: Answer
+    expected: |
+      rule 1
+        dialog: ParentSome1 ::: Answer
+        dialog: ChildSome1 ::: Answer
+      rule 2
+        dialog: ChildSome2 ::: Answer
+      rule 3
+        dialog: ParentSome2 ::: Answer
+
+test_case_2:
+  child: |
+    %inherit_from=parent
+
+    some 1
+        dialog: Warning: The BGP process will be deleted. Continue? [Y/N]: ::: Y
+        sub some 1
+          dialog: Warning: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+    some 2 %apply_logic=tests.annet.test_inherit.fake_logic.fake_apply_logic1
+        dialog: Warning: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+    some 3 %timeout=120
+        dialog: Warning: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+    some 4 %ifcontext=some:app,some2:app,some:app2
+        dialog: Warning: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+    some 5
+        dialog: Warning1111: This operation will reset the peer session. Continue? [Y/N]: ::: Y %send_nl=0
+    undo peer *
+        dialog: Warning: All the configurations related to the BGP peer will be deleted. Continue? [Y/N]: ::: Y
+        dialog: Warning: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+    peer * enable
+        dialog: Warning: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+    peer * timer
+        dialog: Warning: Changing the parameter in this command resets the peer session. Continue? [Y/N]: ::: Y
+    undo route-distinguisher *
+        dialog: Warning: RTs of VPN instance and IPv6 related configurations under BGP will be deleted. Continue? [Y/N]: ::: Y
+        dialog: Warning: All the VPN targets in the VPN instance IPv6 address family will be deleted. Continue? [Y/N]: ::: Y
+        dialog: Warning: All VPN targets of this EVPN instance and all EVPN address family-related configurations under BGP will be deleted. Continue? [Y/N]: ::: Y
+  parent: |
+    save
+        dialog: /Warning: The current configuration will be written to the device. Continue\? \[Y/N\]:?/ ::: Y
+        dialog: Warning: The current configuration will be written to the device. Are you sure to continue? [Y/N]: ::: Y
+        dialog: Are you sure to continue?[Y/N] ::: Y
+        dialog: Are you sure to continue? [Y/N] ::: Y
+        dialog: Please input the file name(*.cfg, *.zip, *.dat): ::: vrpcfg.zip
+    undo rsa peer-public-key
+        dialog: /Do you want to remove the public key named .*\? \[Y/N\]:/ ::: Y
+        dialog: /% Do you really want to remove the public key named .*\? \[y/n\]:/ ::: y
+  expected: |
+    save
+        dialog: /Warning: The current configuration will be written to the device. Continue\? \[Y/N\]:?/ ::: Y
+        dialog: Warning: The current configuration will be written to the device. Are you sure to continue? [Y/N]: ::: Y
+        dialog: Are you sure to continue?[Y/N] ::: Y
+        dialog: Are you sure to continue? [Y/N] ::: Y
+        dialog: Please input the file name(*.cfg, *.zip, *.dat): ::: vrpcfg.zip
+    undo rsa peer-public-key
+        dialog: /Do you want to remove the public key named .*\? \[Y/N\]:/ ::: Y
+        dialog: /% Do you really want to remove the public key named .*\? \[y/n\]:/ ::: y
+    some 1
+        dialog: Warning: The BGP process will be deleted. Continue? [Y/N]: ::: Y
+        sub some 1
+          dialog: Warning: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+    some 2 %apply_logic=tests.annet.test_inherit.fake_logic.fake_apply_logic1
+        dialog: Warning: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+    some 3 %timeout=120
+        dialog: Warning: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+    some 4 %ifcontext=some:app,some2:app,some:app2
+        dialog: Warning: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+    some 5
+        dialog: Warning1111: This operation will reset the peer session. Continue? [Y/N]: ::: Y %send_nl=0
+    undo peer *
+        dialog: Warning: All the configurations related to the BGP peer will be deleted. Continue? [Y/N]: ::: Y
+        dialog: Warning: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+    peer * enable
+        dialog: Warning: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+    peer * timer
+        dialog: Warning: Changing the parameter in this command resets the peer session. Continue? [Y/N]: ::: Y
+    undo route-distinguisher *
+        dialog: Warning: RTs of VPN instance and IPv6 related configurations under BGP will be deleted. Continue? [Y/N]: ::: Y
+        dialog: Warning: All the VPN targets in the VPN instance IPv6 address family will be deleted. Continue? [Y/N]: ::: Y
+        dialog: Warning: All VPN targets of this EVPN instance and all EVPN address family-related configurations under BGP will be deleted. Continue? [Y/N]: ::: Y
+
+
+test_case_3:
+    child: |
+        %inherit_from=parent
+        some 1
+            dialog: Child1: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+            dialog: Common: This operation will reset the peer session. Continue? [Y/N]: ::: Y %send_nl=0
+        some 2
+            dialog: Child2: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+
+    parent: |
+        some 1
+            dialog: Parent1: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+            dialog: Common: This operation will reset the peer session. Continue? [Y/N]: ::: N %send_nl
+        some 3
+            dialog: Parent2: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+    
+    expected: |
+        some 1
+            dialog: Parent1: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+            dialog: Child1: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+            dialog: Common: This operation will reset the peer session. Continue? [Y/N]: ::: Y %send_nl=0
+        some 3
+            dialog: Parent2: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+        some 2
+            dialog: Child2: This operation will reset the peer session. Continue? [Y/N]: ::: Y
+
+test_case_4:
+    child: |
+        %inherit_from=parent
+        rule 1
+            dialog: Child11 ::: Answer
+            rule 2
+                dialog: Child12 ::: Answer
+                rule 3
+                    dialog: Child13 ::: Answer
+                    rule 4
+                        dialog: Child14 ::: Answer
+                        rule 5
+                            dialog: Child15 ::: Answer
+        rule 2
+            dialog: Child21 ::: Answer
+            dialog: Child22 ::: Answer
+    parent: |
+        rule 1
+            rule 2
+                rule 3
+                    rule 4
+                        rule 5
+                            dialog: Parent1 ::: Answer
+    expected: |
+        rule 1
+            dialog: Child11 ::: Answer
+            rule 2
+                dialog: Child12 ::: Answer
+                rule 3
+                    dialog: Child13 ::: Answer
+                    rule 4
+                        dialog: Child14 ::: Answer
+                        rule 5
+                            dialog: Parent1 ::: Answer
+                            dialog: Child15 ::: Answer
+        rule 2
+            dialog: Child21 ::: Answer
+            dialog: Child22 ::: Answer
