@@ -21,7 +21,7 @@ interface
             remove
         port %split
             remove
-        remove
+        remove %order_reverse
         add
         port %split
             add
