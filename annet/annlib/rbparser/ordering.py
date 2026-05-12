@@ -155,7 +155,7 @@ def merge_order_rulebooks(
     for row, parent_data in parent_pre_merge:
         if (group_anchor is None and _is_empty_child_group_data(group_data)) or row != group_anchor:
             node = (parent_data[RAW_RULE], parent_data[RULES])
-            check_scope_compatibility([node], parent_scopes)
+            check_rulebook_scope_compatibility([node], parent_scopes)
             merged_rulebook.append(node)
             continue
 
@@ -170,17 +170,19 @@ def merge_order_rulebooks(
         merged_attrs = _merge_attrs(
             parent_data[RULES][ATTRS], anchor_data[RULES][ATTRS], anchor_data[PARAMS], merged_row
         )
-        if merged_attrs[SCOPE] is None:
-            scopes = parent_scopes
-        else:
-            scopes = merged_attrs[SCOPE]
+
+        curr_scopes = merged_attrs[SCOPE]
+        if parent_scopes is not None and curr_scopes is not None:
+            check_scope_compatibility(curr_scopes, parent_scopes, merged_row)
 
         merged_children = merge_order_rulebooks(
-            parent_data[RULES][CHILDREN], anchor_data[RULES][CHILDREN], vendor, scopes
+            parent_data[RULES][CHILDREN],
+            anchor_data[RULES][CHILDREN],
+            vendor,
+            get_effective_scopes(curr_scopes, parent_scopes),
         )
-        node = (merged_row, {ATTRS: merged_attrs, CHILDREN: merged_children})
-        check_scope_compatibility([node], parent_scopes)
-        merged_rulebook.append(node)
+
+        merged_rulebook.append((merged_row, {ATTRS: merged_attrs, CHILDREN: merged_children}))
 
         _add_group_to_merged_rulebook(merged_rulebook, start_group_rows, parent_scopes)
 
@@ -417,28 +419,32 @@ def _add_group_to_merged_rulebook(
 ) -> None:
     """Adds rules from the group to merged_rulebook"""
     rulebook: OrderRulebook = [(row_data[RAW_RULE], row_data[RULES]) for row_data in rows]
-    appied_rulebook = _apply_not_inherit_to_rulebook(rulebook)
-    check_scope_compatibility(appied_rulebook, parent_scopes)
-    merged_rulebook.extend(appied_rulebook)
+    applied_rulebook = _apply_not_inherit_to_rulebook(rulebook)
+    check_rulebook_scope_compatibility(applied_rulebook, parent_scopes)
+    merged_rulebook.extend(applied_rulebook)
 
 
-def check_scope_compatibility(rulebook: OrderRulebook, parent_scopes: list[str] | None) -> None:
-    """Checks compatibility of rules scope"""
+def check_rulebook_scope_compatibility(rulebook: OrderRulebook, parent_scopes: list[str] | None) -> None:
+    """Checks compatibility of rulebook scope"""
     for row, rules in rulebook:
         curr_scopes = rules[ATTRS][SCOPE]
-        if parent_scopes is None:
-            check_scope_compatibility(rules[CHILDREN], curr_scopes)
-            continue
-        elif curr_scopes is None:
-            check_scope_compatibility(rules[CHILDREN], parent_scopes)
-            continue
-        not_allowed_scopes = set(curr_scopes) - set(parent_scopes)
-        if not_allowed_scopes:
-            raise RulebookSyntaxError(
-                f"The rule {row} specifies a %scope not present in the parent rules. "
-                f"Current rule %scope: {curr_scopes}, parent rules %scope: {parent_scopes}."
-            )
-        check_scope_compatibility(rules[CHILDREN], curr_scopes)
+        if curr_scopes is not None and parent_scopes is not None:
+            check_scope_compatibility(curr_scopes, parent_scopes, row)
+        check_rulebook_scope_compatibility(rules[CHILDREN], get_effective_scopes(curr_scopes, parent_scopes))
+
+
+def get_effective_scopes(curr_scopes: list[str] | None, parent_scopes: list[str] | None) -> list[str] | None:
+    """Returns current scope if curr_scopes is not None, otherwise returns parent_scopes"""
+    return curr_scopes if curr_scopes is not None else parent_scopes
+
+
+def check_scope_compatibility(curr_scopes: list[str], parent_scopes: list[str], row: RawRow) -> None:
+    """Checks compatibility of rule scope"""
+    if set(curr_scopes) - set(parent_scopes):
+        raise RulebookSyntaxError(
+            f"The rule {row} specifies a %scope not present in the parent rules. "
+            f"Current rule %scope: {curr_scopes}, parent rules %scope: {parent_scopes}."
+        )
 
 
 def _check_pre_merge_for_duplicate_rules(pre_merge: OrderPreMerge, context: Literal["children", "parent"]) -> None:

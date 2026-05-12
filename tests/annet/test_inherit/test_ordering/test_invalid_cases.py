@@ -14,7 +14,7 @@ from tests.annet.test_inherit import IncorrectErrorMessage, get_tests_data
     ids=lambda val: f"file={val[0]}, case={val[1]}",
     indirect=True,
 )
-def test_invelid_cases(mock_rulebooks):
+def test_invalid_cases(mock_rulebooks):
     rb_provider = DefaultRulebookProvider()
     hw = make_hw_stub("juniper")
     vendor = hw.vendor
