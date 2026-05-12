@@ -1,3 +1,5 @@
+from annet.annlib.rbparser.ordering import _get_pre_merge as get_order_data
+from annet.annlib.rbparser.syntax import get_row_and_raw_params
 from annet.lib import uniq
 from annet.rulebook.deploying import _get_rule_pre_merge as get_deploy_data
 from annet.rulebook.patching import _get_pre_merge as get_patch_data
@@ -5,6 +7,10 @@ from tests.annet.patch_data import get_samples
 
 
 class TestRulebookNotFoundError(Exception):
+    pass
+
+
+class IncorrectErrorMessage(Exception):
     pass
 
 
@@ -27,6 +33,29 @@ def check_patch_rulebook_equal(getting_rb, expected_rb):
         if inherited_children is None:
             continue
         check_patch_rulebook_equal(inherited_children, expected_children)
+
+
+def check_order_rulebook_equal(getting_rb, expected_rb):
+    for getting_pre_merge, expected_pre_merge in zip(get_order_data(getting_rb), get_order_data(expected_rb)):
+        getting_row, getting_data = getting_pre_merge
+        expected_row, expected_data = expected_pre_merge
+        assert getting_row == expected_row, (
+            f"The wrong position of the rule {getting_row}. Expected rule {expected_row}"
+        )
+        assert getting_data["params"] == expected_data["params"], f"Rule '{getting_row}': params do not match."
+        getting_attrs = getting_data["rules"]["attrs"]
+        expected_attrs = expected_data["rules"]["attrs"]
+        for getting_attr, expected_attr in zip(getting_attrs.items(), expected_attrs.items()):
+            getting_name, getting_value = getting_attr
+            _, expected_value = expected_attr
+            if getting_name == "raw_rule":
+                g_row, g_params = get_row_and_raw_params(getting_value)
+                e_row, e_params = get_row_and_raw_params(expected_value)
+                assert g_row == e_row, f"Rule '{getting_row}': raw_rule attr do not match."
+                assert g_params == e_params, f"Rule '{getting_row}': raw_rule attr do not match."
+            else:
+                assert getting_value == expected_value, f"Rule '{getting_row}': attrs do not match."
+        check_order_rulebook_equal(getting_data["rules"]["children"], expected_data["rules"]["children"])
 
 
 def check_deploy_rulebook_equal(getting_rb, expected_rb):
