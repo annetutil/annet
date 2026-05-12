@@ -200,10 +200,8 @@ class CommonFormatter:
 
 
 class BlockExitFormatter(CommonFormatter):
-    def __init__(self, block_exit, no_block_exit=(), indent="  "):
-        super().__init__(indent)
-        self._block_exit = block_exit
-        self._no_block_exit = tuple(no_block_exit)
+    block_exit_command = "exit"
+    no_block_exit = ()
 
     def split_remove_spaces(self, text):
         # эта регулярка заменяет 2 и более пробела на один, но оставляет пробелы в начале линии
@@ -213,8 +211,8 @@ class BlockExitFormatter(CommonFormatter):
 
     def block_exit(self, context: Optional[FormatterContext]) -> Iterable[Any]:
         current = context and context.row
-        if current and not current.startswith(self._no_block_exit):
-            yield from block_wrapper(self._block_exit)
+        if current and not current.startswith(self.no_block_exit):
+            yield from block_wrapper(self.block_exit_command)
 
     def blocks_and_context(self, tree, is_patch, context: Optional[FormatterContext] = None):
         if context is None:
@@ -252,17 +250,12 @@ class HuaweiPatch(NotUniquePatch):
 
 class HuaweiFormatter(BlockExitFormatter):
     cmd_path_cls = HuaweiPatch
-
-    def __init__(self, indent="  "):
-        super().__init__(
-            block_exit="quit",
-            no_block_exit=[
-                "rsa peer-public-key",
-                "dsa peer-public-key",
-                "public-key-code begin",
-            ],
-            indent=indent,
-        )
+    block_exit_command = "quit"
+    no_block_exit = (
+        "rsa peer-public-key",
+        "dsa peer-public-key",
+        "public-key-code begin",
+    )
 
     def split(self, text):
         # на старых прошивка наблюдается баг с двумя пробелами в этом месте в конфиге
@@ -301,9 +294,6 @@ class OptixtransFormatter(CommonFormatter):
 
 
 class CiscoFormatter(BlockExitFormatter):
-    def __init__(self, indent="  "):
-        super().__init__("exit", indent)
-
     def _split_indent(self, line: str, indent: int, block_exit_strings: List[str]) -> Tuple[List[str], int]:
         """
         The small helper calculates indent shift based on block exit string.
@@ -331,7 +321,7 @@ class CiscoFormatter(BlockExitFormatter):
             return block_exit_strings, indent
         if not isinstance(block_exit_wrapped[1], str):
             return block_exit_strings, indent
-        if block_exit_wrapped[1] == self._block_exit:
+        if block_exit_wrapped[1] == self.block_exit_command:
             return block_exit_strings, indent
 
         indent += 1
@@ -340,7 +330,7 @@ class CiscoFormatter(BlockExitFormatter):
 
     def split(self, text):
         additional_indent = 0
-        block_exit_strings = [self._block_exit]
+        block_exit_strings = [self.block_exit_command]
 
         # hide banner content
         pattern = re.compile(r"((^banner [a-z-]+) \^C.*?\^C)", flags=re.MULTILINE | re.DOTALL)
@@ -378,17 +368,11 @@ class CiscoFormatter(BlockExitFormatter):
 
 
 class NexusFormatter(BlockExitFormatter):
-    def __init__(self, indent="  "):
-        super().__init__("exit", indent)
-
     def split(self, text):
         return self.split_remove_spaces(text)
 
 
 class B4comFormatter(BlockExitFormatter):
-    def __init__(self, indent="  "):
-        super().__init__("exit", indent)
-
     def _fix_af_indentation(self, text: str) -> str:
         """Fixes the indentation of address-family blocks in B4COM configuration.
         This method ensures that lines within address-family blocks are indented correctly.
@@ -445,25 +429,16 @@ class B4comFormatter(BlockExitFormatter):
 
 
 class ArubaFormatter(BlockExitFormatter):
-    def __init__(self, indent="  "):
-        super().__init__("exit", indent)
-
     def split(self, text):
         return self.split_remove_spaces(text)
 
 
 class AristaFormatter(BlockExitFormatter):
-    def __init__(self, indent="  "):
-        super().__init__("exit", indent)
-
     def split(self, text):
         return self.split_remove_spaces(text)
 
 
 class AsrFormatter(BlockExitFormatter):
-    def __init__(self, indent="  "):
-        super().__init__("exit", indent)
-
     def split(self, text):
         policy_end_blocks = ("end-set", "endif", "end-policy")
         tree = self.split_remove_spaces(text)
@@ -848,9 +823,6 @@ class RosFormatter(CommonFormatter):
 
 
 class SNRFormatter(BlockExitFormatter):
-    def __init__(self, indent="  "):
-        super().__init__("exit", indent)
-
     def split(self, text):
         return self.split_remove_spaces(text)
 
