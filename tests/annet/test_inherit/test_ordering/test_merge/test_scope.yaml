@@ -1,0 +1,134 @@
+test_case_1:
+    child: |
+        %inherit_from=parent
+        rule 1 %scope=scope2,scope3
+            child 2
+        rule 1 %scope=scope1
+            child 1
+            child 3
+        rule 2
+        rule 3
+    parent: |
+        rule 1 %scope=scope2,scope3
+            parent 2
+        rule 1 %scope=scope1
+            parent 2
+        rule 3
+    expected: |
+        rule 1 %scope=scope2,scope3
+            child 2
+            parent 2
+        rule 1 %scope=scope1
+            child 1
+            child 3
+            parent 2
+        rule 2
+        rule 3
+
+test_case_2:
+    child: |
+        %inherit_from=parent
+        rule 1 %scope=scope
+            some 1
+        rule 1 %scope=scope
+            some 2
+    parent: |
+        rule 1 %scope=scope
+            some 3
+        rule 1 %scope=scope
+            some 4
+    expected: |
+        rule 1 %scope=scope
+            some 1
+            some 2
+            some 3
+            some 4
+
+test_case_3:
+    child: |
+        %inherit_from=parent
+        rule 1 %scope=scope1
+            some 1
+        rule 1 %scope=scope2
+            some 2
+    parent: |
+        rule 1 %scope=scope1
+            some 3
+        rule 1 %scope=scope2
+            some 4
+    expected: |
+        rule 1 %scope=scope1
+            some 1
+            some 3
+        rule 1 %scope=scope2
+            some 2
+            some 4
+test_case_4:
+    child: |
+        %inherit_from=parent
+        rule 1 %scope=scope
+            some 1
+        rule 2 %scope=scope
+            some 2
+    parent: |
+        rule 1 %scope=scope
+            some 3
+        rule 2 %scope=scope
+            some 4
+    expected: |
+        rule 1 %scope=scope
+            some 1
+            some 3
+        rule 2 %scope=scope
+            some 2
+            some 4
+test_case_5:
+    child: |
+        %inherit_from=parent
+        rule 1 %scope=scope %not_inherit
+        rule 2 %scope=scope
+            some 2
+        rule 1 %scope=scope1
+            some 3
+        rule 2 %scope=scope1 %not_inherit
+            some 4
+    parent: |
+        rule 1 %scope=scope
+            some 5
+        rule 2 %scope=scope
+            some 6
+        rule 1 %scope=scope1
+            some 7
+        rule 2 %scope=scope1
+            some 8
+    expected: |
+        rule 2 %scope=scope
+            some 2
+            some 6
+        rule 1 %scope=scope1
+            some 3
+            some 7
+        rule 2 %scope=scope1
+            some 4
+
+test_case_6:
+    child: |
+        %inherit_from=parent
+        rule 1 %scope=scope1,scope2
+            rule 2 %scope=scope1
+            rule 2 %scope=scope2
+            rule 2 %scope=scope1,scope2
+    parent: |
+        rule 1 %scope=scope3,scope4
+            rule 2 %scope=scope3
+            rule 2 %scope=scope4
+            rule 2 %scope=scope3,scope4
+    expected: |
+        rule 1 %scope=scope1,scope2
+            rule 2 %scope=scope1
+            rule 2 %scope=scope2
+            rule 2 %scope=scope1,scope2
+        rule 1 %scope=scope3,scope4
+            rule 2 %scope=scope3
+            rule 2 %scope=scope4
+            rule 2 %scope=scope3,scope4

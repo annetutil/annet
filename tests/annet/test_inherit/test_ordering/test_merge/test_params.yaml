@@ -16,3 +16,4 @@ test_case_2:
     rule 1 %scope=order
   expected: |
     rule 1 %scope=patch,deploy
+    rule 1 %scope=order
