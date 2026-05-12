@@ -4,25 +4,16 @@
 #   обратной, но занимает место между прямыми там, где указано (т.е. undo vlan batch
 #   будет стоять после блоков interface).
 
+
+user
+    group
+        add
+    ssh_key
+        add
+
 file
     print
     set
-
-snmp
-    community
-        set
-        add
-
-snmp
-    set
-
-system
-    logging
-        action
-            set
-            add
-        set
-        add
 
 interface
     bridge
@@ -36,16 +27,193 @@ interface
             add
         vlan %split
             add
-
-interface
+    vlan
+        add
     gre
         add
-
-interface
+    l2tp-client
+        add
+    pppoe-client
+        add
+    wireless
+        cap
+            set
     list
-        member
+        member %split
+            remove
+        set
+        remove
+        add
+        member %split
+            add
+
+routing
+    rule %split
+        remove
+    table %split
+        remove
+    table %split
+        add
+    rule %split
+        add
+    filter
+        rule
+            add
+    bgp
+        template
+            set
+            add
+        connection
             add
 
 ip
     address
+        remove
         add
+    route
+        add
+    dhcp-server %split
+        remove
+    pool
+        add
+    dns
+        set
+        static
+            add
+    dhcp-server %split
+        add
+        network
+            remove
+            add
+        config
+            set
+    firewall
+        address-list
+            add
+        filter
+            add
+        nat
+            add
+    dhcp-client
+        add
+    ipsec
+        mode-config
+            set
+            add
+        profile
+            set
+            add
+        peer
+            add
+        proposal
+            set
+            add
+        policy
+            group
+                set
+                add
+            set
+            add
+        settings
+            set
+        identity
+            add
+
+    neighbor
+        discovery-settings
+            set
+    service
+        set
+    ssh
+        set
+
+ipv6
+    address
+        remove
+        add
+    route
+        add
+    firewall
+        address-list
+            add
+        filter
+            add
+        nat
+            add
+
+caps-man
+    channel
+        add
+    datapath
+        add
+    security
+        add
+    configuration
+        add
+    provisioning
+        add
+    manager
+        set
+        interface
+            set
+            add
+
+queue
+    simple
+        add
+
+snmp
+    community
+        set
+        add
+    set
+
+system
+    clock
+        set
+        manual
+            set
+    identity
+        set
+    logging
+        remove
+        action
+            set
+            add
+        set
+        add
+    note
+        set
+    ntp
+        server
+            set
+        client
+            set
+            servers
+                add
+    routerboard
+        settings
+            set
+    script
+        remove
+        add
+    scheduler
+        remove
+        add
+
+tool
+    bandwidth-server
+        set
+    mac-server
+        set
+        mac-winbox
+            set
+        ping
+            set
+    netwatch
+        add
+    romon
+        set
+        port
+            set
+            add

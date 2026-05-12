@@ -3,10 +3,10 @@
   vendor: routeros
   before: |
   after: |
-    /ipv6 firewall
-     add action=accept chain=input
     /ip firewall
      add action=accept chain=input
+    /ipv6 firewall
+     add action=accept chain=input
   patch: |
-    /ipv6 firewall add action=accept chain=input
     /ip firewall add action=accept chain=input
+    /ipv6 firewall add action=accept chain=input
