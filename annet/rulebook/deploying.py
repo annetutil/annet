@@ -159,11 +159,11 @@ def merge_deploy_rulebooks(
 
     merged_rulebook: DeployRulebook = odict()
 
-    parend_pre_merge = _get_rule_pre_merge(parent_rulebook)
+    parent_pre_merge = _get_rule_pre_merge(parent_rulebook)
     child_pre_merge = _get_rule_pre_merge(child_rulebook)
 
-    for row in uniq(parend_pre_merge, child_pre_merge):
-        parent_data = parend_pre_merge.get(row)
+    for row in uniq(parent_pre_merge, child_pre_merge):
+        parent_data = parent_pre_merge.get(row)
         child_data = child_pre_merge.get(row)
 
         if child_data is None:

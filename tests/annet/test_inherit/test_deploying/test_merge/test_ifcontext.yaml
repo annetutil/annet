@@ -64,6 +64,7 @@ test_case_3:
         rule 1 %ifcontext=some:context2
             some 4
             some 2
+
 test_case_4:
     child: |
         %inherit_from=parent
