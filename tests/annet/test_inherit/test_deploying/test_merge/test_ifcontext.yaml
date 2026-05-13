@@ -1,4 +1,3 @@
-
 test_case_1:
     child: |
         %inherit_from=parent
