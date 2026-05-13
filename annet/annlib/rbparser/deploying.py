@@ -4,6 +4,8 @@ from collections import OrderedDict as odict
 from collections import namedtuple
 from typing import Callable
 
+from annet.rulebook.exceptions import RulebookSyntaxError
+
 
 Answer = namedtuple("Answer", ("text", "send_nl"))
 
@@ -22,7 +24,7 @@ def compile_messages(tree):
                     )
 
                 else:
-                    raise Exception(f"invalid deploy rulebook row: {row!r}")
+                    raise RulebookSyntaxError(f"invalid deploy rulebook row: {row!r}")
 
     return dialogs
 
