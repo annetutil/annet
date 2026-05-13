@@ -9,6 +9,7 @@ from annet.annlib.lib import uniq
 from annet.annlib.rbparser import syntax
 from annet.annlib.rbparser.deploying import Answer, MakeMessageMatcher, compile_messages
 from annet.rulebook.common import import_rulebook_function, raw_param_to_bool
+from annet.rulebook.exceptions import RulebookSyntaxError
 from annet.rulebook.types import (
     DeployingText,
     DeployPreMerge,
@@ -147,32 +148,38 @@ def match_deploy_rule(rules, cmd_path, context):
 
 
 def merge_deploy_rulebooks(
-    parent_rulebook: DeployRulebook, child_rulebook: DeployRulebook, vendor: str
+    parent_rulebook: DeployRulebook,
+    child_rulebook: DeployRulebook,
+    vendor: str,
+    parent_ifcontext: list[str] | None = None,
 ) -> DeployRulebook:
     """Merges the parent rulebook with the child rulebook"""
+    if parent_ifcontext is None:
+        parent_ifcontext = []
+
     merged_rulebook: DeployRulebook = odict()
 
-    parend_pre_merge = _get_rule_pre_merge(parent_rulebook)
+    parent_pre_merge = _get_rule_pre_merge(parent_rulebook)
     child_pre_merge = _get_rule_pre_merge(child_rulebook)
 
-    for row in uniq(parend_pre_merge, child_pre_merge):
-        parent_data = parend_pre_merge.get(row)
+    for row in uniq(parent_pre_merge, child_pre_merge):
+        parent_data = parent_pre_merge.get(row)
         child_data = child_pre_merge.get(row)
 
         if child_data is None:
             # for mypy: In this situation, parent_data cannot be None.
             assert parent_data is not None
-            add_parent_to_merge_rulebook(merged_rulebook, parent_data, row)
+            add_parent_to_merge_rulebook(merged_rulebook, parent_data, row, parent_ifcontext)
             continue
         elif parent_data is None or raw_param_to_bool(child_data[PARAMS].get(NOT_INHERIT)):
-            add_child_to_merge_rulebook(merged_rulebook, child_data, row)
+            add_child_to_merge_rulebook(merged_rulebook, child_data, row, parent_ifcontext)
             continue
         parent_params = parent_data[PARAMS]
         parent_rules = parent_data[RULES]
         child_params = child_data[PARAMS]
         child_rules = child_data[RULES]
         merged_row = get_merged_row(row, parent_params, child_params)
-        merged_rule = get_merged_rule(parent_rules, child_rules, child_params, vendor)
+        merged_rule = get_merged_rule(parent_rules, child_rules, child_params, vendor, merged_row, parent_ifcontext)
         merged_rulebook[merged_row] = merged_rule
     return merged_rulebook
 
@@ -209,7 +216,12 @@ def get_merged_row(row: Row, parent_params: RawParams, child_params: RawParams) 
 
 
 def get_merged_rule(
-    parent_rules: DeployRule, child_rules: DeployRule, child_params: RawParams, vendor: str
+    parent_rules: DeployRule,
+    child_rules: DeployRule,
+    child_params: RawParams,
+    vendor: str,
+    row: RawRow,
+    parent_ifcontext: list[str],
 ) -> DeployRule:
     """Merges parent_rules and child_rules"""
     parent_attrs = parent_rules[ATTRS]
@@ -218,7 +230,12 @@ def get_merged_rule(
     child_children = child_rules[CHILDREN]
 
     merged_attrs = get_merged_attrs(parent_attrs, child_attrs, child_params)
-    merged_children = merge_deploy_rulebooks(parent_children, child_children, vendor)
+    curr_ifcontext = merged_attrs[IFCONTEXT]
+    if curr_ifcontext and parent_ifcontext:
+        check_ifcontext_compatibility(curr_ifcontext, parent_ifcontext, row)
+    merged_children = merge_deploy_rulebooks(
+        parent_children, child_children, vendor, get_effective_ifcontext(curr_ifcontext, parent_ifcontext)
+    )
     return {ATTRS: merged_attrs, CHILDREN: merged_children}
 
 
@@ -303,13 +320,18 @@ def get_dialog_pre_merge(dialogs: Dialogs) -> DialogPreMerge:
     return pre_merge
 
 
-def add_parent_to_merge_rulebook(merged_rulebook: DeployRulebook, parent_data: DeployPreMergeData, row: Row) -> None:
+def add_parent_to_merge_rulebook(
+    merged_rulebook: DeployRulebook, parent_data: DeployPreMergeData, row: Row, parent_ifcontext: list[str]
+) -> None:
     """Add parent rule to merged_rulebook"""
     raw_row = syntax.get_row_with_params(row, parent_data[PARAMS], get_params_scheme())
+    check_rulebook_ifcontext_compatibility(odict({raw_row: parent_data[RULES]}), parent_ifcontext)
     merged_rulebook[raw_row] = parent_data[RULES]
 
 
-def add_child_to_merge_rulebook(merged_rulebook: DeployRulebook, child_data: DeployPreMergeData, row: Row) -> None:
+def add_child_to_merge_rulebook(
+    merged_rulebook: DeployRulebook, child_data: DeployPreMergeData, row: Row, parent_ifcontext: list[str]
+) -> None:
     """Add child rule to merged_rulebook"""
     not_inherit = raw_param_to_bool(child_data[PARAMS].get(NOT_INHERIT))
     children = child_data[RULES][CHILDREN]
@@ -324,6 +346,7 @@ def add_child_to_merge_rulebook(merged_rulebook: DeployRulebook, child_data: Dep
         child_data[RULES][ATTRS][DIALOGS] = _apply_not_inherit_to_dialogs(dialogs)
 
     row_with_params = syntax.get_row_with_params(row, child_data[PARAMS], get_params_scheme())
+    check_rulebook_ifcontext_compatibility(odict({row_with_params: child_data[RULES]}), parent_ifcontext)
     merged_rulebook[row_with_params] = child_data[RULES]
 
 
@@ -354,6 +377,31 @@ def _apply_not_inherit_to_dialogs(dialogs: Dialogs) -> Dialogs:
             continue
         applied_dialogs[message] = answer
     return applied_dialogs
+
+
+def check_rulebook_ifcontext_compatibility(rulebook: DeployRulebook, parent_ifcontext: list[str]) -> None:
+    """Checks compatibility of rulebook ifcontext"""
+    for row, rules in rulebook.items():
+        curr_ifcontext = rules[ATTRS][IFCONTEXT]
+        if curr_ifcontext and parent_ifcontext:
+            check_ifcontext_compatibility(curr_ifcontext, parent_ifcontext, row)
+        check_rulebook_ifcontext_compatibility(
+            rules[CHILDREN], get_effective_ifcontext(curr_ifcontext, parent_ifcontext)
+        )
+
+
+def get_effective_ifcontext(curr_ifcontext: list[str], parent_ifcontext: list[str]) -> list[str]:
+    """Returns current ifcontext if curr_ifcontext is not empty, otherwise returns parent_ifcontext"""
+    return curr_ifcontext or parent_ifcontext
+
+
+def check_ifcontext_compatibility(curr_ifcontext: list[str], parent_ifcontext: list[str], row: RawRow) -> None:
+    """Checks compatibility of rule ifcontext"""
+    if set(curr_ifcontext) - set(parent_ifcontext):
+        raise RulebookSyntaxError(
+            f"The rule {row} specifies a %ifcontext not present in the parent rules. "
+            f"Current rule %ifcontext: {curr_ifcontext}, parent rules %ifcontext: {parent_ifcontext}."
+        )
 
 
 def _get_rule_pre_merge(rulebook: DeployRulebook) -> DeployPreMerge:

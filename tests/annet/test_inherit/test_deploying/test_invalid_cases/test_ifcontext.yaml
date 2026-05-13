@@ -1,0 +1,45 @@
+test_case_1:
+  child: |
+    %inherit_from=parent
+    rule 1 %ifcontext=context:1,context:2
+      some 1 %ifcontext=context:3
+  parent: |
+    rule 1 %ifcontext=context:1,context:2
+      some 1 %ifcontext=context:4
+  error_message: The rule some 1 %ifcontext=context:4 specifies a %ifcontext not present in the parent rules.
+
+test_case_2:
+  child: |
+    %inherit_from=parent
+    rule 1 %ifcontext=context:1,context:2
+      some 1
+  parent: |
+    rule 1 %ifcontext=context:1,context:2
+      some 2 %ifcontext=context:3
+  error_message: The rule some 2 %ifcontext=context:3 specifies a %ifcontext not present in the parent rules.
+
+test_case_3:
+  child: |
+    %inherit_from=parent
+    rule 1 %ifcontext=context:1,context:2
+      some 1 %ifcontext=context:3
+  parent: |
+    rule 1 %ifcontext=context:1,context:2
+      some 2
+  error_message: The rule some 1 %ifcontext=context:3 specifies a %ifcontext not present in the parent rules.
+
+test_case_4:
+  child: |
+    %inherit_from=parent
+    rule 1 %ifcontext=context:1,context:2
+      some 1 %ifcontext=context:3
+  parent: |
+  error_message: The rule some 1 %ifcontext=context:3 specifies a %ifcontext not present in the parent rules.
+
+test_case_5:
+  child: |
+    %inherit_from=parent
+  parent: |
+    rule 1 %ifcontext=context:1,context:2
+      some 1 %ifcontext=context:3
+  error_message: The rule some 1 %ifcontext=context:3 specifies a %ifcontext not present in the parent rules.
