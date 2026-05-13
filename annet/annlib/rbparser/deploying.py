@@ -12,12 +12,18 @@ def compile_messages(tree):
     dialogs = odict()
     for attrs in tree.values():
         if attrs["type"] == "normal":
-            match = re.match(r"^dialog:(.+):::(.+)$", attrs["row"])
-            if match:
-                dialogs[MakeMessageMatcher(match.group(1), attrs["raw_rule"])] = Answer(
-                    text=match.group(2).strip(),
-                    send_nl=attrs["params"]["send_nl"],
-                )
+            row: str = attrs["row"]
+
+            if row.startswith("dialog:"):
+                if match := re.match(r"^dialog:(.+):::(.+)$", row):
+                    dialogs[MakeMessageMatcher(match.group(1), attrs["raw_rule"])] = Answer(
+                        text=match.group(2).strip(),
+                        send_nl=attrs["params"]["send_nl"],
+                    )
+
+                else:
+                    raise Exception(f"invalid deploy rulebook row: {row!r}")
+
     return dialogs
 
 
