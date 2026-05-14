@@ -5,6 +5,7 @@ from tests import make_hw_stub
 from tests.annet.test_inherit import check_patch_rulebook_equal, get_tests_data
 
 
+@pytest.mark.filterwarnings("ignore:Global rule")
 @pytest.mark.parametrize(
     "mock_rulebooks",
     get_tests_data("annet/test_inherit/test_patching/test_merge"),
