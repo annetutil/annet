@@ -404,7 +404,7 @@ class B4comFormatter(BlockExitFormatter):
                 continue
 
             if exit_af_re.match(line):
-                result.append(" " + line)
+                result.append(line)
                 inside_af = False
                 continue
 
