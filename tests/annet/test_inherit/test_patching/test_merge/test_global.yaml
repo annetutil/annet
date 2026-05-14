@@ -16,6 +16,7 @@ test_case_2:
     rule 1 %global
   parent: |
     rule 1 %diff_logic=tests.annet.test_inherit.fake_logic.fake_diff_logic2
+        sub rule 1
   expected: |
     rule 1 %diff_logic=tests.annet.test_inherit.fake_logic.fake_diff_logic2 %global
 
@@ -24,6 +25,7 @@ test_case_3:
     %inherit_from=parent
 
     rule 1
+        sub rule 1
   parent: |
     rule 1 %global
   expected: |
@@ -35,5 +37,6 @@ test_case_4:
     rule 1 %global
   parent: |
     rule 1
+        sub rule 1
   expected: |
     rule 1 %global
