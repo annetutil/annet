@@ -389,7 +389,7 @@ class B4comFormatter(BlockExitFormatter):
         To this:
         address-family ipv6 unicast
          max-paths ebgp 48
-         exit-address-family
+        exit-address-family
         exit
         """
         result = []
