@@ -389,7 +389,7 @@ class B4comFormatter(BlockExitFormatter):
         To this:
         address-family ipv6 unicast
          max-paths ebgp 48
-         exit-address-family
+        exit-address-family
         exit
         """
         result = []
@@ -404,7 +404,7 @@ class B4comFormatter(BlockExitFormatter):
                 continue
 
             if exit_af_re.match(line):
-                result.append(" " + line)
+                result.append(line)
                 inside_af = False
                 continue
 
