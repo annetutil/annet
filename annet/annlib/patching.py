@@ -932,11 +932,15 @@ def _find_rules_matches(row, rules):
             if rule["type"] == "ignore":
                 return []
             matches.append(
-                ((rule, (not is_global)), {"raw_rule": raw_rule, "rule": rule["rule"], "key": match.groups()})
-                #       ^^^ is_cr_allowed
+                (
+                    (rule, (not is_global)),
+                    #       ^^^ is_cr_allowed
+                    {"raw_rule": raw_rule, "rule": rule["rule"], "key": match.groups()},
+                    string_similarity(row, rule["attrs"]["regexp"].pattern),
+                )
             )
-
-    return matches
+    matches.sort(key=lambda item: item[2], reverse=True)
+    return [(item[0], item[1]) for item in matches]
 
 
 def _select_match(matches, rules):

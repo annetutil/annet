@@ -6,6 +6,7 @@ from valkit.common import valid_bool, valid_number, valid_string_list
 from valkit.python import valid_object_path
 
 from annet.annlib.lib import uniq
+from annet.annlib.patching import string_similarity
 from annet.annlib.rbparser import syntax
 from annet.annlib.rbparser.deploying import Answer, MakeMessageMatcher, compile_messages
 from annet.annlib.rbparser.exceptions import RulebookSyntaxError
@@ -122,29 +123,53 @@ def _compile_deploying(tree, reverse_prefix) -> DeployRulebook:
     return deploying
 
 
-def match_deploy_rule(rules, cmd_path, context):
-    for depth, row in enumerate(cmd_path):
+def match_deploy_rule(rules: DeployRulebook, cmd_path: tuple[str], context: dict[str, str]) -> DeployRule:
+    """Matches cmd_path against rules from the deploy rulebook"""
+
+    def _match_deploy_rule(
+        rules: DeployRulebook, depth: int, cmd_path: tuple[str], context: dict[str, str]
+    ) -> DeployRule | None:
+        """Recursively traverses children of the matched rule"""
+        row = cmd_path[depth]
+        matches = []
         for rule in rules.values():
-            if rule[ATTRS][REGEXP].match(row):
-                ifcontext = rule[ATTRS][IFCONTEXT]
-                if syntax.match_context(ifcontext, context):
-                    if depth == len(cmd_path) - 1:
-                        return rule
-                    else:
-                        rules = rule[CHILDREN]
-                        if len(rules) == 0:
-                            break
-    # default match
-    return {
+            regexp = rule[ATTRS][REGEXP]
+            ifcontext = rule[ATTRS][IFCONTEXT]
+            if regexp.match(row) and syntax.match_context(ifcontext, context):
+                matches.append((rule, string_similarity(row, regexp.pattern)))
+
+        if not matches:
+            return None
+
+        matches.sort(key=lambda item: item[1], reverse=True)
+        biggest_match = matches[0][0]
+
+        if depth == len(cmd_path) - 1:
+            return biggest_match
+
+        return _match_deploy_rule(rules=biggest_match[CHILDREN], depth=depth + 1, cmd_path=cmd_path, context=context)
+
+    default_match: DeployRule = {
         ATTRS: {
             REGEXP: syntax.compile_row_regexp("~"),
             TIMEOUT: DEFAULT_TIMEOUT,
             APPLY_LOGIC: import_rulebook_function(DEFAULT_APPLY_LOGIC),
             APPLY_LOGIC_NAME: DEFAULT_APPLY_LOGIC,
             DIALOGS: odict(),
+            IFCONTEXT: [],
         },
         CHILDREN: odict(),
     }
+
+    if len(cmd_path) == 0:
+        return default_match
+
+    for depth in range(len(cmd_path)):
+        match = _match_deploy_rule(rules=rules, depth=depth, cmd_path=cmd_path, context=context)
+        if match is not None:
+            return match
+
+    return default_match
 
 
 def merge_deploy_rulebooks(
