@@ -1,0 +1,21 @@
+- vendor: Aruba
+  before: |
+    arm
+
+  after: |
+    arm
+      no 80mhz-support
+      no 160mhz-support
+
+  patch: ""
+
+- vendor: Aruba
+  before: |
+    arm
+      no 80mhz-support
+      no 160mhz-support
+
+  after: |
+    arm
+
+  patch: ""

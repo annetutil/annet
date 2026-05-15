@@ -72,6 +72,11 @@ wlan ssid-profile ~
     radius-reauth-interval
     dtim-period
 
+wlan auth-server ~
+    ip
+    deadtime
+    key
+
 ntp-server
 rf-band
 name
