@@ -31,6 +31,10 @@ force-wrap-aliases = false
 split-on-trailing-comma = true
 
 [tool.flake8]
+exclude = [
+    # generated code:
+    "annet/annlib/netdev/devdb/generated/__init__.py"
+]
 ignore = [
     "W503", # line break before binary operator
     "W504", # line break after binary operator
