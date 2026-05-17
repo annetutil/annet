@@ -2,8 +2,8 @@ import re
 
 import pytest
 
+from annet.annlib.rbparser.exceptions import RulebookSyntaxError
 from annet.rulebook import DefaultRulebookProvider
-from annet.rulebook.exceptions import RulebookSyntaxError
 from tests import make_hw_stub
 from tests.annet.test_inherit import IncorrectErrorMessage, get_tests_data
 
