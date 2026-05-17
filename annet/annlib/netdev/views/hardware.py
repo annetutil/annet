@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import functools
 from collections.abc import Collection
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from annet.annlib.netdev.devdb import parse_hw_model
 
@@ -60,7 +60,16 @@ class HardwareLeaf(DumpableView):
         return ret
 
 
-class HardwareView(HardwareLeaf):
+if TYPE_CHECKING:
+    from annet.annlib.netdev.devdb.generated import FakeHardwareView
+
+    _HardwareViewBase = FakeHardwareView
+
+else:
+    _HardwareViewBase = HardwareLeaf
+
+
+class HardwareView(_HardwareViewBase):
     def __init__(self, hw_model: Optional[str], sw_version: Optional[str] = None) -> None:
         true_sequences, false_sequences = parse_hw_model(hw_model or "")
         super().__init__((), true_sequences, false_sequences)

@@ -1,6 +1,13 @@
 [tool.ruff]
 line-length = 120
-exclude = ['.tox', '.venv', 'venv']
+exclude = [
+    '.tox',
+    '.venv',
+    'venv',
+
+    # generated code:
+    "annet/annlib/netdev/devdb/generated/__init__.py"
+]
 target-version = "py310"
 
 [tool.ruff.format]
