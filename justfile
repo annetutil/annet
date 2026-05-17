@@ -17,5 +17,6 @@ test-pytest *args:
 test-fmt:
     ruff format --check .
     ruff check --select I .
+    flake8 annet annet_generators
 
 test: test-pytest test-fmt
