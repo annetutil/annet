@@ -19,4 +19,7 @@ test-fmt:
     ruff check --select I .
     flake8 annet annet_generators
 
-test: test-pytest test-fmt
+test-types:
+    mypy .
+
+test: test-pytest test-types test-fmt

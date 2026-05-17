@@ -410,7 +410,7 @@ def _get_rule_pre_merge(rulebook: DeployRulebook) -> DeployPreMerge:
     for raw_row, rules in rulebook.items():
         row, raw_params = syntax.get_row_and_raw_params(raw_row)
         raw_params.pop(IFCONTEXT, None)
-        raw_ifcontext_value = ",".join(rules[ATTRS].get(IFCONTEXT))
+        raw_ifcontext_value = ",".join(rules[ATTRS][IFCONTEXT])
         if raw_ifcontext_value:
             row = f"{row} %{IFCONTEXT}={raw_ifcontext_value}"
         pre_merge[row] = {

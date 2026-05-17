@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 class _Node:
-    def __bool__(self) -> bool: ...
-    def dump(self, prefix, **kwargs) -> list[str]: ...
+    def __bool__(self) -> bool: return False
+    def dump(self, prefix, **kwargs) -> list[str]: return []
 
 class Arista(_Node):
     A7050: Arista_A7050
