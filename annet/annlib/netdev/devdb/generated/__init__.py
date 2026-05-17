@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 class _Node:
-    def __bool__(self) -> bool: ...
-    def dump(self, prefix, **kwargs) -> list[str]: ...
+    def __bool__(self) -> bool: return False
+    def dump(self, prefix, **kwargs) -> list[str]: return []
 
 class Arista(_Node):
     A7050: Arista_A7050
@@ -183,6 +183,7 @@ class Cisco_Catalyst(_Node):
     C3700: Cisco_Catalyst_C3700
     C4900: Cisco_Catalyst_C4900
     C6500: Cisco_Catalyst_C6500
+    C9300: Cisco_Catalyst_C9300
 
 class Cisco_Catalyst_C2900(_Node):
     C2950: Cisco_Catalyst_C2900_C2950
@@ -222,6 +223,9 @@ class Cisco_Catalyst_C4900(_Node):
     ...
 
 class Cisco_Catalyst_C6500(_Node):
+    ...
+
+class Cisco_Catalyst_C9300(_Node):
     ...
 
 class Cisco_IE(_Node):
@@ -278,11 +282,19 @@ class Cisco_Nexus_N7x_N7700(_Node):
     ...
 
 class Cisco_Nexus_N9x(_Node):
+    C93240: Cisco_Nexus_N9x_C93240
     N9316: Cisco_Nexus_N9x_N9316
+    N9336: Cisco_Nexus_N9x_N9336
     N9364: Cisco_Nexus_N9x_N9364
     N9500: Cisco_Nexus_N9x_N9500
 
+class Cisco_Nexus_N9x_C93240(_Node):
+    ...
+
 class Cisco_Nexus_N9x_N9316(_Node):
+    ...
+
+class Cisco_Nexus_N9x_N9336(_Node):
     ...
 
 class Cisco_Nexus_N9x_N9364(_Node):
@@ -445,10 +457,18 @@ class Huawei_Quidway_S5300_S5352(_Node):
     ...
 
 class Huawei_Quidway_S5700(_Node):
+    S5720: Huawei_Quidway_S5700_S5720
+    S5720I: Huawei_Quidway_S5700_S5720I
     S5731: Huawei_Quidway_S5700_S5731
     S5735: Huawei_Quidway_S5700_S5735
     S5735I: Huawei_Quidway_S5700_S5735I
     S5755: Huawei_Quidway_S5700_S5755
+
+class Huawei_Quidway_S5700_S5720(_Node):
+    ...
+
+class Huawei_Quidway_S5700_S5720I(_Node):
+    ...
 
 class Huawei_Quidway_S5700_S5731(_Node):
     ...
@@ -533,6 +553,7 @@ class PC(_Node):
     Avocent: PC_Avocent
     Moxa: PC_Moxa
     Nebius: PC_Nebius
+    Opengear: PC_Opengear
     Whitebox: PC_Whitebox
 
 class PC_Avocent(_Node):
@@ -554,6 +575,12 @@ class PC_Nebius(_Node):
     Octoport: PC_Nebius_Octoport
 
 class PC_Nebius_Octoport(_Node):
+    ...
+
+class PC_Opengear(_Node):
+    CM8100: PC_Opengear_CM8100
+
+class PC_Opengear_CM8100(_Node):
     ...
 
 class PC_Whitebox(_Node):
@@ -653,8 +680,12 @@ class PC_Whitebox_NADDOD_N_N9200_N9200_64DC(_Node):
 
 class PC_Whitebox_NADDOD_N_N9500(_Node):
     N9500_64OC: PC_Whitebox_NADDOD_N_N9500_N9500_64OC
+    N9520O_64OC: PC_Whitebox_NADDOD_N_N9500_N9520O_64OC
 
 class PC_Whitebox_NADDOD_N_N9500_N9500_64OC(_Node):
+    ...
+
+class PC_Whitebox_NADDOD_N_N9500_N9520O_64OC(_Node):
     ...
 
 class PC_Whitebox_NVIDIA(_Node):
@@ -719,6 +750,20 @@ class SNR_S5210G(_Node):
 class SNR_S5310G(_Node):
     ...
 
+class Sitonica(_Node):
+    SW5560: Sitonica_SW5560
+    SW6850: Sitonica_SW6850
+    SW9850: Sitonica_SW9850
+
+class Sitonica_SW5560(_Node):
+    ...
+
+class Sitonica_SW6850(_Node):
+    ...
+
+class Sitonica_SW9850(_Node):
+    ...
+
 class FakeHardwareView:
     """
     NOT TO BE USED AT RUNTIME
@@ -737,4 +782,5 @@ class FakeHardwareView:
     Ribbon: Ribbon
     RouterOS: RouterOS
     SNR: SNR
+    Sitonica: Sitonica
 

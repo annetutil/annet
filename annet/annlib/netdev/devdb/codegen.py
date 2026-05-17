@@ -26,8 +26,8 @@ def codegen(devdb: dict[str, str]) -> str:
     code += "from __future__ import annotations\n"
     code += "\n"
     code += "class _Node:\n"
-    code += "    def __bool__(self) -> bool: ...\n"
-    code += "    def dump(self, prefix, **kwargs) -> list[str]: ...\n"
+    code += "    def __bool__(self) -> bool: return False\n"
+    code += "    def dump(self, prefix, **kwargs) -> list[str]: return []\n"
     code += "\n"
 
     for node in sorted(devdb.keys()):
