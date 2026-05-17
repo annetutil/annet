@@ -1,8 +1,11 @@
 import keyword
+import pathlib
 
 import pytest
 
-from annet.annlib.netdev.devdb import _prepare_db
+import annet.annlib.netdev.devdb.generated
+from annet.annlib.netdev.devdb import prepare_db, prepare_raw_db
+from annet.annlib.netdev.devdb.codegen import codegen
 from annet.annlib.netdev.views.hardware import HardwareView
 
 
@@ -725,7 +728,7 @@ def test_devdb(model, expected):
 
 def test_devdb_valid_identifiers():
     invalid_keys = []
-    for key in _prepare_db().keys():
+    for key in prepare_db().keys():
         for part in key:
             if not part.isidentifier() or keyword.iskeyword(part):
                 invalid_keys.append(f"{'.'.join(key)} (offending part: {part!r})")  # fmt: skip
@@ -733,4 +736,17 @@ def test_devdb_valid_identifiers():
         pytest.fail(
             "Every part in `devdb.json` key must be a valid Python identifier. "
             "Found invalid keys:\n" + "\n".join((f' * {key}' for key in invalid_keys))
+        )  # fmt: skip
+
+
+def test_devdb_annotations_no_diff() -> None:
+    raw_db = prepare_raw_db()
+
+    actual_content = pathlib.Path(annet.annlib.netdev.devdb.generated.__file__).read_text()
+    expected_content = codegen(raw_db)
+
+    if actual_content != expected_content:
+        pytest.fail(
+            "Generated annotations for device.hw are outdated. \n"
+            "Please run `just gen` to regenerate them."
         )  # fmt: skip
