@@ -4,7 +4,7 @@ from collections import OrderedDict as odict
 from collections import namedtuple
 from typing import Callable
 
-from annet.rulebook.exceptions import RulebookSyntaxError
+from annet.annlib.rbparser.exceptions import RulebookSyntaxError
 
 
 Answer = namedtuple("Answer", ("text", "send_nl"))
