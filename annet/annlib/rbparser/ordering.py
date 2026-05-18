@@ -8,8 +8,8 @@ from typing import Any, Generator, Literal
 from valkit.common import valid_bool, valid_string_list
 
 from annet.annlib.rbparser import syntax
+from annet.annlib.rbparser.exceptions import RulebookSyntaxError
 from annet.rulebook.common import get_merged_params, raw_param_to_bool, validate_context_compatibility
-from annet.rulebook.exceptions import RulebookSyntaxError
 from annet.rulebook.types import (
     AnchorData,
     AnchorsData,

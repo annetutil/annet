@@ -4,9 +4,9 @@ from typing import Literal
 
 from valkit.common import valid_bool
 
+from annet.annlib.rbparser.exceptions import RulebookSyntaxError
 from annet.annlib.rulebook import common  # pylint: disable=unused-import # noqa: F401,F403
 from annet.annlib.rulebook.common import *  # pylint: disable=wildcard-import,unused-wildcard-import # noqa: F401,F403
-from annet.rulebook.exceptions import RulebookSyntaxError
 from annet.rulebook.types import OrderRuleAttrs, PatchRuleAttrs, RawParams, Row
 
 

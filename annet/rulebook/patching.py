@@ -8,13 +8,13 @@ from valkit.common import valid_bool, valid_string_list
 from valkit.python import valid_object_path
 
 from annet.annlib.rbparser import platform, syntax
+from annet.annlib.rbparser.exceptions import RulebookSyntaxError
 from annet.rulebook.common import (
     get_merged_params,
     import_rulebook_function,
     raw_param_to_bool,
     validate_context_compatibility,
 )
-from annet.rulebook.exceptions import RulebookSyntaxError
 from annet.rulebook.types import (
     Params,
     ParamsScheme,

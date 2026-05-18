@@ -8,8 +8,8 @@ from valkit.python import valid_object_path
 from annet.annlib.lib import uniq
 from annet.annlib.rbparser import syntax
 from annet.annlib.rbparser.deploying import Answer, MakeMessageMatcher, compile_messages
+from annet.annlib.rbparser.exceptions import RulebookSyntaxError
 from annet.rulebook.common import import_rulebook_function, raw_param_to_bool
-from annet.rulebook.exceptions import RulebookSyntaxError
 from annet.rulebook.types import (
     DeployingText,
     DeployPreMerge,
