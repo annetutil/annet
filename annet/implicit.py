@@ -208,6 +208,12 @@ def _implicit_tree(device):
                     ping
                         set enabled=yes %regexp=set enabled=.*
         """
+    elif device.hw.Aruba:
+        text = """
+            !arm
+                no 80mhz-support
+                no 160mhz-support
+        """
 
     return parse_text(text)
 

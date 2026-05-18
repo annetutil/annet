@@ -51,16 +51,22 @@ arm
     g-channels
     min-tx-power
     max-tx-power
+    free-channel-index
+    band-steering-mode
 
 rf dot11g-radio-profile
     max-distance
     max-tx-power
     min-tx-power
+    free-channel-index
+    interference-immunity
 
 rf dot11a-radio-profile
     max-distance
     max-tx-power
     min-tx-power
+    free-channel-index
+    interference-immunity
 
 wlan access-rule ~
     rule ~          %ordered
@@ -72,6 +78,12 @@ wlan ssid-profile ~
     radius-reauth-interval
     dtim-period
 
+wlan auth-server ~
+    ip
+    deadtime
+    key
+
+hash-mgmt-user
 ntp-server
 rf-band
 name

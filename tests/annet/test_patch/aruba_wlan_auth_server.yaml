@@ -1,0 +1,20 @@
+- vendor: Aruba
+  diff: |
+    wlan auth-server test
+      - ip 192.168.255.1
+      + ip 192.168.254.1
+      - deadtime 2
+      + deadtime 3
+      - key KEY1
+      + key KEY2
+
+  patch: |
+    conf t
+    wlan auth-server test
+      deadtime 3
+      ip 192.168.254.1
+      key KEY2
+      exit
+    end
+    commit apply
+    write memory
