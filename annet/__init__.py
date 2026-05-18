@@ -29,7 +29,7 @@ def fill_base_args(parser: annet.argparse.ArgParser, pkg_name: str, logging_conf
         "--log-level",
         default="WARN",
         type=valid_logging_level,
-        help="Уровень детализации логов (DEBUG, DEBUG2 (with comocutor debug), INFO, WARN, CRITICAL)",
+        help="Уровень детализации логов (DEBUG, DEBUG2 (with transport debug), INFO, WARN, CRITICAL)",
     )
     parser.add_argument("--pkg_name", default=pkg_name, help=SUPPRESS)
     parser.add_argument("--logging_config", default=logging_config, help=SUPPRESS)
