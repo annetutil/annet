@@ -28,8 +28,8 @@ def undo_snmp_cmnt(rule, key, diff, **kwargs):
         community = parts[0]
         vrf = parts[-1]
         if "vrf" in key[0]:
-            yield(False, f"no snmp-server community {community} vrf {vrf}", None)
+            yield (False, f"no snmp-server community {community} vrf {vrf}", None)
         else:
-            yield(False, f"no snmp-server community {community}", None)
+            yield (False, f"no snmp-server community {community}", None)
     else:
         yield from common.default(rule, key, diff, **kwargs)
