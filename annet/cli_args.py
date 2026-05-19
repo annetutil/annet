@@ -362,7 +362,7 @@ class GenOptions(QueryOptions, GenSelectOptions, CacheOptions, ParallelOptions):
     fail_on_empty_config = opt_fail_on_empty_config
 
 
-class ComocutorOptions(ArgGroup):
+class TransportOptions(ArgGroup):
     ask_pass = opt_ask_pass
     max_slots = opt_max_slots
     no_progress = opt_no_progress
@@ -375,7 +375,7 @@ class CliLoggingOptions(ArgGroup):
     log_nogroup = opt_log_nogroup
 
 
-class DeviceCliOptions(ComocutorOptions, CliLoggingOptions):
+class DeviceCliOptions(TransportOptions, CliLoggingOptions):
     no_ask_deploy = opt_no_ask_deploy
     dont_commit = opt_dont_commit
 
@@ -393,7 +393,7 @@ class FileOutOptions(ArgGroup):
             self.no_color = True
 
 
-class DiffOptions(GenOptions, ComocutorOptions):
+class DiffOptions(GenOptions, TransportOptions):
     clear = opt_clear
     config = opt_config
     show_hosts_progress = opt_show_hosts_progress
