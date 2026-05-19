@@ -18,6 +18,9 @@ logging level *
 logging remote */(server|facility|authpriv)/ ~  %logic=annet.rulebook.b4com.misc.undo_syslog
 clock *
 ntp ~
+snmp-server enable ~
+snmp-server view ~
+snmp-server community ~           %logic=annet.rulebook.b4com.misc.undo_snmp_cmnt
 sflow
 ip vrf
     ~

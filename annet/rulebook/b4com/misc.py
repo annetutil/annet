@@ -20,3 +20,16 @@ def undo_syslog(rule, key, diff, **kwargs):
             yield (False, f"no logging remote server {ip}", None)
     else:
         yield from common.default(rule, key, diff, **kwargs)
+
+
+def undo_snmp_cmnt(rule, key, diff, **kwargs):
+    if diff[Op.REMOVED]:
+        parts = key[0].split()
+        community = parts[0]
+        vrf = parts[-1]
+        if "vrf" in key[0]:
+            yield (False, f"no snmp-server community {community} vrf {vrf}", None)
+        else:
+            yield (False, f"no snmp-server community {community}", None)
+    else:
+        yield from common.default(rule, key, diff, **kwargs)

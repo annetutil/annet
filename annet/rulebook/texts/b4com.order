@@ -10,6 +10,9 @@ logging
 ntp enable
 ntp server
 # Далее нужно будет указать команды и их порядок
+snmp-server enable
+snmp-server view
+snmp-server community
 sflow
 ip prefix-list
 ipv6 prefix-list
