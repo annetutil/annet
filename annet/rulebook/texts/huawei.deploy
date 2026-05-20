@@ -48,23 +48,16 @@ undo stelnet * server enable
     dialog: Warning: The operation will stop the STelnet server. Do you want to continue? [Y/N]: ::: Y
 telnet ipv6 server-source all-interface
     dialog: Warning: Telnet server source configuration will take effect in the next login. Do you want to continue? [Y/N]: ::: Y
+    dialog: Warning: The IPv6 Telnet server source configuration will take effect in the next login. Continue? [Y/N]: ::: Y
 telnet server-source all-interface
     dialog: Warning: Telnet server source configuration will take effect in the next login. Do you want to continue? [Y/N]: ::: Y
     dialog: Warning: Telnet server source configuration will take effect in the next login. Continue? [Y/N]: ::: Y
-telnet ipv6 server-source all-interface
-    dialog: Warning: The IPv6 Telnet server source configuration will take effect in the next login. Continue? [Y/N]: ::: Y
 undo telnet server-source ~
     dialog: Warning: The operation will delete the Telnet server source configuration and may cause the service to be unavailable. Do you want to continue? [Y/N]: ::: Y
     dialog: Warning: The operation will delete the Telnet server source configuration and may cause the service to be unavailable. Continue? [Y/N]: ::: Y
 undo telnet ipv6 server-source ~
     dialog: Warning: The operation will delete the Telnet server source configuration and may cause the service to be unavailable. Do you want to continue? [Y/N]: ::: Y
     dialog: Warning: The operation will delete the Telnet server source configuration and may cause the service to be unavailable. Continue? [Y/N]: ::: Y
-telnet ipv6 server disable
-    dialog: Warning: The operation will stop the IPv6 Telnet server. Do you want to continue? [Y/N]: ::: Y
-    dialog: Warning: The operation will stop the IPv6 Telnet server. Continue? [Y/N]: ::: Y
-telnet server disable
-    dialog: Warning: The operation will stop the Telnet server. Do you want to continue? [Y/N]: ::: Y
-    dialog: Warning: The operation will stop the Telnet server. Continue? [Y/N]: ::: Y
 ssh ipv6 server-source all-interface
     dialog: Warning: SSH server source configuration will take effect in the next login. Do you want to continue? [Y/N]: ::: Y
     dialog: Warning: SSH server source configuration will take effect in the next login. Continue? [Y/N]: ::: Y
@@ -113,23 +106,27 @@ stp *
     dialog: Warning: The global STP state will be changed. Continue? [Y/N] ::: Y
 
 ntp server disable
-    dialog: /.*Continue\?/ ::: Y
+    dialog: /(?i).*continue\?\s?\[y\/n\]:?/ ::: Y
 ntp * server disable
-    dialog: /.*Continue\?/ ::: Y
+    dialog: /(?i).*continue\?\s?\[y\/n\]:?/ ::: Y
 
 ntp-service server disable
-    dialog: /.*Continue\?/ ::: Y
+    dialog: /(?i).*continue\?\s?\[y\/n\]:?/ ::: Y
 ntp-service * server disable
-    dialog: /.*Continue\?/ ::: Y
+    dialog: /(?i).*continue\?\s?\[y\/n\]:?/ ::: Y
 
 undo telnet server-source all-interface
-    dialog: /.*continue\?/ ::: Y
+    dialog: /(?i).*continue\?.?\[y\/n\]:?/ ::: Y
 undo telnet ipv6 server-source all-interface
-    dialog: /.*continue\?/ ::: Y
+    dialog: /(?i).*continue\?.?\[y\/n\]:?/ ::: Y
 telnet server disable
-    dialog: /.*continue\?/ ::: Y
+    dialog: /(?i).*continue\?.?\[y\/n\]:?/ ::: Y
+    dialog: Warning: The operation will stop the Telnet server. Do you want to continue? [Y/N]: ::: Y
+    dialog: Warning: The operation will stop the Telnet server. Continue? [Y/N]: ::: Y
 telnet ipv6 server disable
-    dialog: /.*continue\?/ ::: Y
+    dialog: /(?i).*continue\?.?\[y\/n\]:?/ ::: Y
+    dialog: Warning: The operation will stop the IPv6 Telnet server. Do you want to continue? [Y/N]: ::: Y
+    dialog: Warning: The operation will stop the IPv6 Telnet server. Continue? [Y/N]: ::: Y
 
 undo vlan
     dialog: Warning: The configurations of the VLAN will be deleted. Continue? [Y/N]: ::: Y

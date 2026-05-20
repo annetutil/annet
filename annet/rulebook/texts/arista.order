@@ -39,9 +39,6 @@ snmp-server
 spanning-tree
 
 
-service
-
-
 username *
 username * ssh-key
 

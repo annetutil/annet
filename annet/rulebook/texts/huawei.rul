@@ -35,13 +35,7 @@ rsa local-key-pair create
 ecc local-key-pair create
 
 port split mode mode3 slot 1
-%if not hw.Huawei.NE:
-port split dimension interface %logic=annet.rulebook.huawei.misc.port_split
-port split refresh
-%else:
-port split dimension interface
-%endif
-
+port split dimension interface ~ %diff_logic=annet.rulebook.huawei.portsplit.port_split_diff %logic=annet.rulebook.huawei.portsplit.port_split
 
 assign forward ipv6 longer-mask resource *
 
@@ -214,8 +208,10 @@ hwtacacs server template *
 !radius-server template default
 
 radius-server template *
+    %if not hw.Huawei.Quidway.S2x.S2300:
     radius-server accounting * *
     radius-server authentication * *
+    %endif
 
 ssh authentication-type default password
 
@@ -259,7 +255,7 @@ sflow collector *
 */(ip|ipv6)/ netstream timeout active
 */(ip|ipv6)/ netstream timeout inactive
 */(ip|ipv6)/ netstream export index-switch
-*/(ip|ipv6)/ netstream mpls-aware
+ipv6 netstream mpls-aware
 */(ip|ipv6)/ netstream sampler ~		%logic=annet.rulebook.huawei.misc.netstream_undo
 */(ip|ipv6)/ netstream export source ipv6
 */(ip|ipv6)/ netstream export source
@@ -268,7 +264,7 @@ sflow collector *
 */(ip|ipv6)/ netstream export template option timeout-rate
 
 
-!interface */(Vlanif1$|NULL)/
+!interface */NULL/
 interface */Tunnel.+/
     mpls te igp metric
     ip address unnumbered
@@ -315,7 +311,9 @@ interface *                             %logic=annet.rulebook.huawei.iface.perma
     port hybrid pvid vlan
     port hybrid tagged vlan %logic=annet.rulebook.huawei.vlandb.multi_all
     port hybrid untagged vlan %logic=annet.rulebook.huawei.vlandb.multi_all
+    %if not hw.Huawei.Quidway.S2x.S2700 or not hw.Huawei.Quidway.S5300.S5352:
     undo port hybrid vlan ~
+    %endif
     port mode *
     eth-trunk                  %logic=annet.rulebook.huawei.misc.undo_redo
     mode
@@ -457,7 +455,9 @@ snmp-agent sys-info *
 snmp-agent mib-view ~
 snmp-agent community complexity-check ~
 snmp-agent community * cipher *
+%if hw.Huawei.Quidway.S2x:
 snmp-agent community read ~
+%endif
 
 snmp-agent target-host host-name *
 snmp-agent target-host trap address udp-domain * params securityname cipher *

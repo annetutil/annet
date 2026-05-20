@@ -117,8 +117,6 @@ local-user ~
     service-type ~   
     ~ %global
 
-ssh user
-
 user-interface
 drop-profile
 
@@ -276,10 +274,6 @@ undo route-policy */VRF_.*/ %order_reverse
 undo ip community-filter %order_reverse
 undo ip extcommunity-filter %order_reverse
 undo ip as-path-filter %order_reverse
-
-# Вырубаем bfd после bgp
-undo bfd * %order_reverse
-undo bfd %order_reverse
 
 info-center
 

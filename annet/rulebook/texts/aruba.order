@@ -38,7 +38,7 @@ allow-new-aps
 allowed-ap *
 
 
-snmp-server
+snmp-server ~
 
 
 arm

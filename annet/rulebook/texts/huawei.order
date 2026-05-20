@@ -125,14 +125,10 @@ aaa
     undo local-user * %order_reverse
     ~
 
+domain
 
 user-interface
 drop-profile
-
-interface */(?i)meth[\d\/]+/
-FTP client
-ftp client
-sflow
 
 # SR глобально -> MPLS -> IS-IS -> IS-IS и SID на интерфейсах
 segment-routing
@@ -156,6 +152,14 @@ route-policy EXPORT_ISIS
 # должно идти перед интерфейсами, иначе невозможен 'isis enable 1'
 isis
 
+undo interface */Vlanif\d+/ %order_reverse
+interface */(?i)meth[\d\/]+/
+interface */Vlanif\d+/
+
+FTP client
+ftp client
+sflow
+
 bridge-domain *
     vxlan
     evpn
@@ -164,6 +168,9 @@ bridge-domain *
 
 # Должно идти перед interface, т.к. на уровне interface идет ссылка на diffserv domain
 diffserv domain *
+
+undo interface */Vbdif\d+/ %order_reverse
+undo interface */.*[.]\d+/ %order_reverse
 
 interface */Vbdif\d+/
 interface */Eth-Trunk\d+/
@@ -226,19 +233,6 @@ interface *
 # Нужно чтобы subif'ы портов шли после конфигурации самих портов, иначе свитч ругнется на то что порт l2
 interface */\S+\.\d+/
 
-# Некоторые команды требуют сначала определить конфигурацию на L2 интерфейсах, а потом уже на vlanif
-interface */Vlanif\d+/
-
-# Должны быть после interface потому что в нем ссылается traffic-policy
-# И именно в данном порядке
-# policy ссылаются на behavior и classifier, они на acl'и
-undo qos group          %order_reverse
-undo qos schedule-profile	%order_reverse
-undo traffic policy     %order_reverse
-undo traffic behavior   %order_reverse
-undo traffic classifier %order_reverse
-
-# Должен быть после interface потому что в нем ссылается на diffserv domain
 undo diffserv domain * 	%order_reverse
 
 # маршруты идут после интерфейсов
@@ -293,10 +287,6 @@ undo route-policy */VRF_.*/ %order_reverse
 undo ip community-filter %order_reverse
 undo ip extcommunity-filter %order_reverse
 undo ip as-path-filter %order_reverse
-
-# Вырубаем bfd после bgp
-undo bfd * %order_reverse
-undo bfd %order_reverse
 
 info-center
 
@@ -357,25 +347,11 @@ telnet ipv6 server-source all-interface
 #user-interface maximum-vty
 #user-interface
 
-domain
 default-domain
 telemetry
     sensor-group *
     destination-group *
     subscription *
-
-diffserv domain *
-    ip-dscp-inbound ~
-
-#Удаляем acl в самом конце
-undo acl                %order_reverse
-
-# Удаляем iface совсем в конце
-# сначала subif
-undo interface */.*[.]\d+/ %order_reverse
-# vlanif
-undo interface */Vlanif\d+/ %order_reverse
-undo interface */Vbdif\d+/ %order_reverse
 
 # удалять eth-trunk можно только после того, как вычистим member interfaces
 undo interface */Eth-Trunk\d+/  %order_reverse
@@ -392,6 +368,18 @@ undo drop-profile %order_reverse
 undo vlan %order_reverse
 undo vlan batch %order_reverse
 undo observe-port %order_reverse
+
+# Должны быть после interface потому что в нем ссылается traffic-policy
+# И именно в данном порядке
+# policy ссылаются на behavior и classifier, они на acl'и
+undo qos group          %order_reverse
+undo qos schedule-profile	%order_reverse
+undo traffic policy     %order_reverse
+undo traffic behavior   %order_reverse
+undo traffic classifier %order_reverse
+
+#Удаляем acl в самом конце
+undo acl                %order_reverse
 
 #sflow может висеть а subif/eth-trunk
 undo sflow %order_reverse
