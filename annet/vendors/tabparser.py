@@ -4,10 +4,9 @@ import dataclasses
 import itertools
 import json
 import re
-import textwrap
 from collections import OrderedDict as odict
-from collections.abc import Callable, Iterator
-from typing import TYPE_CHECKING, Any, Dict, Generic, Iterable, List, Optional, Tuple, TypeAlias
+from collections.abc import Callable, Iterator, Sequence
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, TypeAlias
 
 from annet.annlib.types import Op
 
@@ -69,26 +68,26 @@ class FormatterContext:
 
 
 class NotUniquePatch:
-    def __init__(self):
-        """In the case of comments, odict is not suitable: there may be several identical edit and exit"""
-        self._items = []
-        self._keys = set()
+    def __init__(self) -> None:
+        """Plain odict is not suitable: there may be several block enters and exits"""
+        self._items = list[tuple[str, FormatterContext]]()
+        self._keys = set[str]()
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: FormatterContext) -> None:
         self._keys.add(key)
         self._items.append((key, value))
 
-    def keys(self):
+    def keys(self) -> list[str]:
         return list(self)
 
-    def items(self):
+    def items(self) -> Sequence[tuple[str, FormatterContext]]:
         return self._items
 
-    def __contains__(self, item):
+    def __contains__(self, item: str) -> bool:
         return item in self._keys
 
-    def __iter__(self):
-        return iter(item[0] for item in self._items)
+    def __iter__(self) -> Iterable[str]:
+        return iter(k for k, _ in self._items)
 
     def __bool__(self) -> bool:
         return bool(self._items)
@@ -96,7 +95,7 @@ class NotUniquePatch:
 
 # =====
 class CommonFormatter:
-    cmd_path_cls = odict
+    cmd_path_cls = NotUniquePatch
 
     def __init__(self, indent="  "):
         self._indent = indent
@@ -116,10 +115,10 @@ class CommonFormatter:
     def diff(self, diff):
         return list(self.diff_generator(diff))
 
-    def patch(self, patch: "PatchTree") -> str:
+    def patch(self, patch: PatchTree) -> str:
         return "\n".join(_filtered_block_marks(self._indent_blocks(self._blocks(patch, is_patch=True))))
 
-    def cmd_paths(self, patch: "PatchTree") -> odict:
+    def cmd_paths(self, patch: PatchTree) -> NotUniquePatch:
         ret = self.cmd_path_cls()
         path = []
         for row, context in self.blocks_and_context(patch, is_patch=True):
@@ -168,7 +167,7 @@ class CommonFormatter:
                 row = self._indent * _level + row
             yield row
 
-    def blocks_and_context(self, tree: "PatchTree", is_patch: bool, context: Optional[FormatterContext] = None):
+    def blocks_and_context(self, tree: PatchTree, is_patch: bool, context: Optional[FormatterContext] = None):
         if context is None:
             context = FormatterContext()
 
@@ -194,7 +193,7 @@ class CommonFormatter:
                 yield from self.blocks_and_context(sub_config, is_patch, context=FormatterContext(parent=context))
                 yield BlockEnd, None
 
-    def _blocks(self, tree: "PatchTree", is_patch: bool):
+    def _blocks(self, tree: PatchTree, is_patch: bool):
         for row, _context in self.blocks_and_context(tree, is_patch):
             yield row
 
@@ -237,31 +236,20 @@ class BlockExitFormatter(CommonFormatter):
                     yield exit_statement, last_row_context
 
 
-class HuaweiPatch(NotUniquePatch):
-    policy_end_blocks = ("end-list", "endif", "end-filter")
-
-    def __setitem__(self, key, value):
-        if not key:
-            return
-
-        if key not in self or (key[0].startswith("xpl") and key[-1] in self.policy_end_blocks):
-            super().__setitem__(key, value)
-
-
 class HuaweiFormatter(BlockExitFormatter):
-    cmd_path_cls = HuaweiPatch
     block_exit_command = "quit"
     no_block_exit = (
         "rsa peer-public-key",
         "dsa peer-public-key",
         "public-key-code begin",
     )
+    policy_end_blocks = ("end-list", "endif", "end-filter")
 
     def split(self, text):
         # на старых прошивка наблюдается баг с двумя пробелами в этом месте в конфиге
         # например на VRP V100R006C00SPC500 + V100R006SPH003
         tree = self.split_remove_spaces(text)
-        tree[:] = filter(lambda x: not str(x).strip().startswith(HuaweiPatch.policy_end_blocks), tree)
+        tree[:] = filter(lambda x: not str(x).strip().startswith(self.policy_end_blocks), tree)
         return tree
 
     def block_exit(self, context: Optional[FormatterContext]):
@@ -339,6 +327,7 @@ class CiscoFormatter(BlockExitFormatter):
             text = text.replace(banner, replace_str)
 
         tree = self.split_remove_spaces(text)
+        result: list[str] = []
         for i, item in enumerate(tree):
             # fix incorrect indent for "exit-address-family"
             if item == " exit-address-family":
@@ -347,18 +336,25 @@ class CiscoFormatter(BlockExitFormatter):
             if i and tree[i - 1].startswith("class-map match"):
                 if item.startswith("  description"):
                     item = item[1:]
+            stripped = item.strip()
+            is_block_exit = stripped in block_exit_strings
             block_exit_strings, new_indent = self._split_indent(item, additional_indent, block_exit_strings)
-            tree[i] = f"{' ' * additional_indent}{item}"
+            # Drop block-exit marker lines from the parsed tree: they are syntactic
+            # block delimiters (already used above to compute indent), not body rows.
+            # Keeping them caused the formatter to later inject a second block-exit,
+            # producing duplicates like "exit-address-family\nexit-address-family".
+            if not is_block_exit:
+                result.append(f"{' ' * additional_indent}{item}")
             additional_indent = new_indent
 
-        # restore banner content in the `tree`
-        for i, item in enumerate(tree):
+        # restore banner content
+        for i, item in enumerate(result):
             if item in repl_map:
-                tree[i] = repl_map[item]
+                result[i] = repl_map[item]
 
-        return tree
+        return result
 
-    def block_exit(self, context: Optional[FormatterContext]) -> str:
+    def block_exit(self, context: Optional[FormatterContext]):
         current = context and context.row or ""
 
         if current.startswith(("address-family")):
@@ -373,6 +369,11 @@ class NexusFormatter(BlockExitFormatter):
 
 
 class B4comFormatter(BlockExitFormatter):
+    # Syntactic block-end markers that appear inline in B4COM configs. They are
+    # used as delimiters and must not enter the parsed tree as body rows,
+    # otherwise the formatter would emit a duplicate exit at format time.
+    block_end_markers = ("exit", "exit-address-family")
+
     def _fix_af_indentation(self, text: str) -> str:
         """Fixes the indentation of address-family blocks in B4COM configuration.
         This method ensures that lines within address-family blocks are indented correctly.
@@ -417,9 +418,15 @@ class B4comFormatter(BlockExitFormatter):
 
     def split(self, text):
         text = self._fix_af_indentation(text)
-        return self.split_remove_spaces(text)
+        tree = self.split_remove_spaces(text)
+        # Drop syntactic block-end markers (see ``block_end_markers``): they are
+        # delimiters in the on-device text, not body rows. Keeping them would
+        # make ``BlockExitFormatter`` inject a second exit at format time and
+        # produce duplicates like "exit\nexit".
+        tree[:] = [row for row in tree if row.strip() not in self.block_end_markers]
+        return tree
 
-    def block_exit(self, context: Optional[FormatterContext]) -> str:
+    def block_exit(self, context: Optional[FormatterContext]):
         current = context and context.row or ""
 
         if current.startswith(("address-family")):
@@ -445,7 +452,7 @@ class AsrFormatter(BlockExitFormatter):
         tree[:] = filter(lambda x: not x.endswith(policy_end_blocks), tree)
         return tree
 
-    def block_exit(self, context: Optional[FormatterContext]) -> str:
+    def block_exit(self, context: Optional[FormatterContext]):
         current = context and context.row or ""
 
         if current.startswith(("prefix-set", "as-path-set", "community-set")):
@@ -460,7 +467,6 @@ class AsrFormatter(BlockExitFormatter):
 
 class JuniperFormatter(CommonFormatter):
     patch_set_prefix = "set"
-    cmd_path_cls = NotUniquePatch
 
     @dataclasses.dataclass
     class Comment:
@@ -524,7 +530,7 @@ class JuniperFormatter(CommonFormatter):
     def patch_plain(self, patch):
         return list(self.cmd_paths(patch).keys())
 
-    def _blocks(self, tree: "PatchTree", is_patch: bool):
+    def _blocks(self, tree: PatchTree, is_patch: bool):
         for row in super()._blocks(tree, is_patch):
             if isinstance(row, str) and row.startswith(self.Comment.begin):
                 yield f"{self.Comment.begin} {self.Comment.loads(row).comment} {self.Comment.end}"
@@ -550,7 +556,7 @@ class JuniperFormatter(CommonFormatter):
         if isinstance(line, str):
             yield line + self._statement_end
 
-    def cmd_paths(self, patch, _prev=tuple()):
+    def cmd_paths(self, patch, _prev=tuple()) -> NotUniquePatch:
         commands = self.cmd_path_cls()
 
         for item in patch.itms:
@@ -643,8 +649,8 @@ class NokiaFormatter(JuniperFormatter):
         finish = finish if finish is not None else len(ret)
         return ret[start:finish]
 
-    def cmd_paths(self, patch, _prev=tuple()):
-        commands = odict()
+    def cmd_paths(self, patch, _prev=tuple()) -> NotUniquePatch:
+        commands = self.cmd_path_cls()
         for item in patch.itms:
             key, childs, context = item.row, item.child, item.context
             if childs:
@@ -683,7 +689,7 @@ class RosFormatter(CommonFormatter):
     def patch_plain(self, patch):
         return list(self.cmd_paths(patch).keys())
 
-    def blocks_and_context(self, tree: "PatchTree", is_patch: bool, context: Optional[FormatterContext] = None):
+    def blocks_and_context(self, tree: PatchTree, is_patch: bool, context: Optional[FormatterContext] = None):
         if is_patch:
             raise RuntimeError("Ros not supported blocks in patch")
 
@@ -797,18 +803,19 @@ class RosFormatter(CommonFormatter):
                 split.append(self._indent * level + row)
         return list(filter(None, split))
 
-    def cmd_paths(self, patch, _prev=""):
+    def cmd_paths(self, patch, _prev="") -> NotUniquePatch:
         rm_regexs = (
             (re.compile(r"^add "), ""),
             (re.compile(r"^print file="), "name="),
         )
 
-        commands = odict()
+        commands = self.cmd_path_cls()
         for item in patch.itms:
             key, childs, context = item.row, item.child, item.context
             if childs:
                 childs_prev = f"{_prev} {key.strip()}".lstrip()
-                commands.update(self.cmd_paths(childs, _prev=childs_prev))
+                for cmd, subcmds in self.cmd_paths(childs, _prev=childs_prev).items():
+                    commands[cmd] = subcmds
             else:
                 if key.startswith("remove"):
                     find_cmd = key.removeprefix("remove").strip()

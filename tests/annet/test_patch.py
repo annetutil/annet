@@ -43,4 +43,4 @@ def test_patch(name, sample, ann_connectors):
     for cmd in cmds:
         generated.append("%s%s\n" % ("  " * cmd.level, str(cmd)))
 
-    assert expected_patch == "".join(generated), "Wrong patch in %s" % name
+    assert "".join(generated) == expected_patch, "Wrong patch in %s" % name

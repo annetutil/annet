@@ -182,11 +182,11 @@
       + no shutdown
   patch: |
     conf t
-    vlan 191
-      no shutdown
-      exit
     vlan 190
       name DEV
+      exit
+    vlan 191
+      no shutdown
       exit
     exit
     copy running-config startup-config
@@ -245,11 +245,11 @@
   patch: |
     conf t
     no vlan 300-305,310
-    vlan 299
-      no shutdown
-      exit
     vlan 321
       name TRANSIT
+      exit
+    vlan 299
+      no shutdown
       exit
     vlan 320-321
       exit
