@@ -123,13 +123,7 @@ policy-options
             then             %logic=annet.rulebook.common.undo_redo
                 community ~  %ordered
                 ~
-            to
-                ~
-            then ~
             ~                %global
-        then ~
-        then
-            community ~ %ordered
         ~                    %global
 
 
@@ -142,8 +136,6 @@ firewall
                 then   %logic=annet.rulebook.common.undo_redo
                     ~
                 ~      %global
-            ~           %ordered
-                ~       %global
 
 
 forwarding-options
