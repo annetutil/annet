@@ -94,8 +94,8 @@ dhcp
 
 vlan reserved
 vlan batch
-vlan pool
 vlan
+vlan pool
 
 hwtacacs-server
 hwtacacs server
