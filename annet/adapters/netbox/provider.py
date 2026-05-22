@@ -8,7 +8,6 @@ from annet.storage import Storage, StorageProvider
 from .common.query import NetboxQuery
 from .common.status_client import NetboxStatusClient
 from .common.storage_opts import NetboxStorageOpts
-from .v24.storage import NetboxStorageV24
 from .v37.storage import NetboxStorageV37
 from .v41.storage import NetboxStorageV41
 from .v42.storage import NetboxStorageV42
@@ -37,10 +36,7 @@ def storage_factory(opts: NetboxStorageOpts) -> Storage:
                 return storage_class(opts)
 
     except ClientError as e:
-        if e.status_code == 404:
-            return NetboxStorageV24(opts)
-        else:
-            raise ValueError(f"Unsupported version: {status.netbox_version}")
+        raise ValueError(f"Unsupported version: {status.netbox_version}")
     except ClientLibraryError:
         raise ValueError(f"Connection error: Unable to reach Netbox at URL: {opts.url}")
     raise Exception(f"Unsupported version: {status.netbox_version}")
