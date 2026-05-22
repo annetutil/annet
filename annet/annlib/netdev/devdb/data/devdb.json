@@ -116,7 +116,7 @@
     "Nokia.NS7750": " 7750",
     "Nokia.SR_1s": "SR-1s",
 
-    "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa|NVIDIA|Nebius|[Aa]sterfusion CX|[Uu]fi[Ss]pace|NADDOD|FSCOM|(VERTIV )?[Aa]vocent)",
+    "PC": "^(PC|pc|[Mm]ellanox SN|[Ee]dge-?[Cc]ore|[Mm]oxa|NVIDIA|Nebius|[Aa]sterfusion CX|[Uu]fi[Ss]pace|NADDOD|FSCOM|(VERTIV )?[Aa]vocent|[Oo]pen[Gg]ear)",
 
     "PC.Whitebox": "([Mm]ellanox SN|[Ee]dge-?[Cc]ore|NVIDIA|[Aa]sterfusion CX|[Uu]fi[Ss]pace|NADDOD|FSCOM)",
     "PC.Whitebox.Mellanox": "[Mm]ellanox",
@@ -165,6 +165,8 @@
     "PC.Nebius.Octoport": " NB-D-M-CSM-R",
     "PC.Avocent": " [Aa]vocent",
     "PC.Avocent.ACS8000": " (ACS|acs)8000",
+    "PC.Opengear": "^[Oo]pen[Gg]ear",
+    "PC.Opengear.CM8100": " CM81\\d\\d",
 
     "RouterOS": "^([Rr]outer[Oo][Ss]|[Mm]ikro[Tt]ik)",
 
