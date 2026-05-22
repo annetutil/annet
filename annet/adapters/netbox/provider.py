@@ -36,7 +36,7 @@ def storage_factory(opts: NetboxStorageOpts) -> Storage:
                 return storage_class(opts)
 
     except ClientError as e:
-        raise ValueError(f"Unsupported version: {status.netbox_version}")
+        raise ValueError(f"API error: Unexpected response from Netbox at URL: {opts.url}/api/status, Code: {e}")
     except ClientLibraryError:
         raise ValueError(f"Connection error: Unable to reach Netbox at URL: {opts.url}")
     raise Exception(f"Unsupported version: {status.netbox_version}")
