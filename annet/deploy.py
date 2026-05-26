@@ -183,6 +183,7 @@ def make_cmd_params(rule: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "questions": qa_list,
             "timeout": rule["attrs"]["timeout"],
+            "suppress_errors": rule["attrs"]["suppress_errors"],
         }
     return {
         "timeout": 30,
@@ -204,6 +205,8 @@ def fill_cmd_params(rules: OrderedDict, cmd: Command):
             cmd.timeout = cmd_params["timeout"]
         if cmd.read_timeout is None:
             cmd.read_timeout = cmd.timeout
+        if "suppress_errors" in cmd_params:
+            cmd.suppress_errors |= cmd_params["suppress_errors"]
 
 
 def apply_deploy_rulebook(hw: HardwareView, cmd_paths, do_finalize=True, do_commit=True):

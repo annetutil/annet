@@ -20,7 +20,6 @@ def test_compile_deploying_text_cisco_2_dialogs(ann_connectors):
                     "attrs": {
                         "apply_logic": mock.ANY,
                         "apply_logic_name": "annet.rulebook.common.apply",
-                        "timeout": 30,
                         "dialogs": OrderedDict(
                             [
                                 (
@@ -35,6 +34,8 @@ def test_compile_deploying_text_cisco_2_dialogs(ann_connectors):
                         ),
                         "ifcontext": [],
                         "regexp": re.compile("^crypto\\s+key\\s+generate\\s+rsa(?:\\s|$)"),
+                        "suppress_errors": False,
+                        "timeout": 30,
                     },
                     "children": OrderedDict(),
                 },

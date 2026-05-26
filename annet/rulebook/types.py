@@ -180,6 +180,7 @@ class DeployRuleAttrs(TypedDict):
     apply_logic_name: str
     dialogs: "Dialogs"
     ifcontext: list[str]
+    suppress_errors: bool
 
 
 DeployingText: TypeAlias = str
