@@ -23,6 +23,7 @@ class Command:
     read_timeout: Optional[int] = None  # timeout between consecutive reads
     suppress_nonzero: bool = False
     suppress_eof: bool = False
+    suppress_errors: bool = False
 
     def __str__(self) -> str:
         if isinstance(self.cmd, bytes):

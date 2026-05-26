@@ -43,6 +43,7 @@ IFCONTEXT: Literal["ifcontext"] = "ifcontext"
 REGEXP: Literal["regexp"] = "regexp"
 APPLY_LOGIC_NAME: Literal["apply_logic_name"] = "apply_logic_name"
 NOT_INHERIT: Literal["not_inherit"] = "not_inherit"
+SUPPRESS_ERRORS: Literal["suppress_errors"] = "suppress_errors"
 
 # ===RULE===
 RULES: Literal["rules"] = "rules"
@@ -78,6 +79,10 @@ def get_params_scheme() -> ParamsScheme:
         IFCONTEXT: {
             VALIDATOR: valid_string_list,
             DEFAULT: [],
+        },
+        SUPPRESS_ERRORS: {
+            VALIDATOR: valid_bool,
+            DEFAULT: False,
         },
     }
 
@@ -117,6 +122,7 @@ def _compile_deploying(tree, reverse_prefix) -> DeployRulebook:
                     APPLY_LOGIC_NAME: attrs[PARAMS][APPLY_LOGIC],
                     DIALOGS: dialogs,
                     IFCONTEXT: attrs[PARAMS][IFCONTEXT],
+                    SUPPRESS_ERRORS: attrs[PARAMS][SUPPRESS_ERRORS],
                 },
                 CHILDREN: _compile_deploying(attrs[CHILDREN], reverse_prefix),
             }
@@ -157,6 +163,7 @@ def match_deploy_rule(rules: DeployRulebook, cmd_path: tuple[str], context: dict
             APPLY_LOGIC_NAME: DEFAULT_APPLY_LOGIC,
             DIALOGS: odict(),
             IFCONTEXT: [],
+            SUPPRESS_ERRORS: False,
         },
         CHILDREN: odict(),
     }

@@ -311,6 +311,7 @@ If you are describing custom logic (``%logic=`` or ``%diff_logic=``), it is advi
 In the deploy rulebook (``<vendor>.deploy``), you can use:
 - ``%timeout=`` - command execution timeout in seconds (default is ``30``);
 - ``%send_nl`` - whether to send a newline after the response (default is ``true``).
+- ``%suppress_errors=`` - whether the command execution error should be suppressed or not (default is ``false``);
 
 Additionally, rulebooks can use `Mako template <https://www.makotemplates.org>`_ expressions, where the ``hw`` object is available. For example:
 
