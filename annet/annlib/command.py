@@ -32,21 +32,21 @@ class Command:
 
 @dataclass
 class CommandList:
-    cmss: List[Command] = field(default_factory=list)
+    cmds: List[Command] = field(default_factory=list)
 
     def __post_init__(self):
-        if not self.cmss:
-            self.cmss = []
+        if not self.cmds:
+            self.cmds = []
 
     def __iter__(self):
-        return iter(self.cmss)
+        return iter(self.cmds)
 
     def __len__(self) -> int:
-        return len(self.cmss)
+        return len(self.cmds)
 
     def add_cmd(self, cmd: Command) -> None:
         assert isinstance(cmd, Command)
-        self.cmss.append(cmd)
+        self.cmds.append(cmd)
 
     def as_list(self) -> List[Command]:  # TODO: delete
-        return self.cmss
+        return self.cmds
