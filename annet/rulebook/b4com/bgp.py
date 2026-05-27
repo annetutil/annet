@@ -12,7 +12,7 @@ def is_ipaddress(address: str) -> bool:
         return False
 
 
-def undo_peer(rule, key, diff, **kwargs):
+def undo_peer(rule, key, diff, hw, **kwargs):
     """
     If we remove a neighbor, we just remove configuration with remote-as command
     (+ peer-group if it's a group) but if we remove specific neighbor's options,
@@ -48,6 +48,12 @@ def undo_peer(rule, key, diff, **kwargs):
                         is_neighbor_removing = True
                         break
             if not is_neighbor_removing:
-                yield from common.default(rule, key, diff, **kwargs)
+                if hw.B4com.CS2148P:
+                    removed_row = diff[Op.REMOVED][0]["row"]
+                    if "peer-group" in removed_row:
+                        neighbor = removed_row.split()[1]
+                        yield (False, f"no neighbor {neighbor} peer-group", None)
+                else:
+                    yield from common.default(rule, key, diff, **kwargs)
     else:
         yield from common.default(rule, key, diff, **kwargs)

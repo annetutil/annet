@@ -34,6 +34,9 @@ aaa group server tacacs\+ *
     description *
     seq * */(deny|permit)/ *
 route-map ~
+    %if hw.B4com.CS2148P:
+    set community
+    %endif
     ~                             %global
 ip community-list ~
 interface */(ce|xe|po|eth(-0-)?|vlan1\.)[0-9\/]+$/     %logic=annet.rulebook.common.permanent %diff_logic=annet.rulebook.b4com.iface.diff
