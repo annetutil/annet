@@ -1,0 +1,27 @@
+# Full removal of a peer declared inside a vpn-instance block. `undo peer
+# <ip>` wipes every row for that peer, so the family-level per-option undos
+# are redundant (and would error against a nonexistent peer). The patch
+# collapses to a single `undo peer <ip>`. A sibling peer in the same block is
+# untouched.
+- vendor: huawei
+  before: |
+    bgp 65536
+     ipv4-family vpn-instance EXAMPLE
+      peer 192.0.2.1 as-number 12345
+      peer 192.0.2.1 route-policy DENY_ALL import
+      peer 192.0.2.2 as-number 5
+      peer 192.0.2.2 route-policy KEEP import
+  after: |
+    bgp 65536
+     ipv4-family vpn-instance EXAMPLE
+      peer 192.0.2.2 as-number 5
+      peer 192.0.2.2 route-policy KEEP import
+  patch: |
+    system-view
+    bgp 65536
+      ipv4-family vpn-instance EXAMPLE
+        undo peer 192.0.2.1
+        quit
+      quit
+    q
+    save

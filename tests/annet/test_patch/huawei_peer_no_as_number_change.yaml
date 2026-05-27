@@ -1,0 +1,24 @@
+- vendor: huawei
+  name: route-policy rename with as-number unchanged produces no undo peer and no re-emit
+  before: |
+    bgp 65536
+     peer 192.0.2.1 as-number 12345
+     ipv4-family unicast
+      peer 192.0.2.1 enable
+      peer 192.0.2.1 route-policy DENY_ALL import
+  after: |
+    bgp 65536
+     peer 192.0.2.1 as-number 12345
+     ipv4-family unicast
+      peer 192.0.2.1 enable
+      peer 192.0.2.1 route-policy PERMIT_ALL import
+  patch: |
+    system-view
+    bgp 65536
+      ipv4-family unicast
+        undo peer 192.0.2.1 route-policy DENY_ALL import
+        peer 192.0.2.1 route-policy PERMIT_ALL import
+        quit
+      quit
+    q
+    save
