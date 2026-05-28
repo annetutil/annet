@@ -346,7 +346,7 @@ def split_downloaded_files(
 
                     except json.decoder.JSONDecodeError as exc:
                         raise GeneratorError(
-                            f"failed to parse file {filepath!r} from generator {gen.__class__.__name__}"
+                            f"failed to parse file {filepath!r} from generator {gen.get_name()}"
                         ) from exc
 
                 else:
