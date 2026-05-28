@@ -338,9 +338,17 @@ def split_downloaded_files(
         if filepath in device_flat_files:
             if isinstance(gen, Entire):
                 ret.entire_files[filepath] = device_flat_files[filepath]
+
             elif isinstance(gen, JSONFragment):
                 if device_flat_files[filepath] is not None:  # file exists
-                    ret.json_fragment_files[filepath] = json.loads(device_flat_files[filepath])
+                    try:
+                        ret.json_fragment_files[filepath] = json.loads(device_flat_files[filepath])
+
+                    except json.decoder.JSONDecodeError as exc:
+                        raise GeneratorError(
+                            f"failed to parse file {filepath!r} from generator {gen.__class__.__name__}"
+                        ) from exc
+
                 else:
                     ret.json_fragment_files[filepath] = None
 
