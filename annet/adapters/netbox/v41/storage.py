@@ -90,6 +90,12 @@ class NetboxV41Adapter(
     def get_device(self, device_id: int) -> NetboxDeviceV41:
         return self.convert_device(self.netbox.dcim_device(device_id))
 
+    def get_site(self, site_id: int) -> api_models.Site:
+        return self.netbox.dcim_site(site_id)
+
+    def list_sites(self, **filters) -> list[api_models.Site]:
+        return self.netbox.dcim_all_sites(**filters).results
+
     def list_interfaces_by_devices(self, device_ids: list[int]) -> list[InterfaceV41]:
         return self.convert_interfaces(self.netbox.dcim_all_interfaces(device_id=device_ids).results)
 

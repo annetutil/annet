@@ -205,6 +205,18 @@ class BaseNetboxStorage(
         self._record_device(device)
         return device
 
+    def get_site(self, site_id: int):
+        """Return the full Site object (with custom_fields) for site_id.
+
+        Available on adapters whose annetbox version exposes ``dcim_site``
+        (v37, v41, v42). Older adapters (v24) will raise AttributeError.
+        """
+        return self.netbox.get_site(site_id)
+
+    def list_sites(self, **filters):
+        """List Site objects. Same availability caveat as :meth:`get_site`."""
+        return self.netbox.list_sites(**filters)
+
     def flush_perf(self):
         pass
 
