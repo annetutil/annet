@@ -21,32 +21,6 @@ class Filter(TypedDict, total=False):
     platform: list[str]
 
 
-class SiteFilter(TypedDict, total=False):
-    id: list[int]
-    name: list[str]
-    slug: list[str]
-    region: list[str]
-    group: list[str]
-    status: list[str]
-    tenant: list[str]
-    tag: list[str]
-
-
-# The set of fields a caller may pass to storage.list_sites(). Mirrors the
-# device-side ALLOWED_GLOB_GROUPS allowlist so unknown keys fail loudly instead
-# of being forwarded to the netbox API as-is.
-ALLOWED_SITE_FILTERS = frozenset(SiteFilter.__annotations__)
-
-
-def validate_site_filter(query: SiteFilter) -> SiteFilter:
-    unknown = set(query) - ALLOWED_SITE_FILTERS
-    if unknown:
-        raise ValueError(
-            "unknown site filter field(s): " + ", ".join(sorted(unknown))
-        )
-    return query
-
-
 @dataclass
 class NetboxQuery(Query):
     query: List[str]

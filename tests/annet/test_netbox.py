@@ -8,7 +8,6 @@ from annetbox.v37 import models as v37_api_models
 from annetbox.v41 import models as v41_api_models
 from annetbox.v42 import models as v42_api_models
 
-from annet.adapters.netbox.common import storage_base
 from annet.adapters.netbox.common.query import NetboxQuery
 from annet.adapters.netbox.common.storage_base import parse_glob
 from annet.adapters.netbox.v37 import storage as v37_storage
@@ -51,24 +50,7 @@ def test_adapter_get_site_passthrough(adapter_cls, api_mod):
 
 
 @pytest.mark.parametrize("adapter_cls,api_mod", ADAPTERS)
-def test_adapter_list_sites_passthrough(adapter_cls, api_mod):
-    adapter = adapter_cls.__new__(adapter_cls)
-    adapter.netbox = MagicMock()
-    adapter.netbox.dcim_all_sites.return_value = PagingResponse(
-        count=1,
-        next=None,
-        previous=None,
-        results=[_make_site(api_mod)],
-    )
-
-    sites = adapter.list_sites({"slug": ["site-a"]})
-
-    adapter.netbox.dcim_all_sites.assert_called_once_with(slug=["site-a"])
-    assert [s.id for s in sites] == [1]
-
-
-@pytest.mark.parametrize("adapter_cls,api_mod", ADAPTERS)
-def test_adapter_list_sites_no_query(adapter_cls, api_mod):
+def test_adapter_list_sites(adapter_cls, api_mod):
     adapter = adapter_cls.__new__(adapter_cls)
     adapter.netbox = MagicMock()
     adapter.netbox.dcim_all_sites.return_value = PagingResponse(
@@ -82,48 +64,6 @@ def test_adapter_list_sites_no_query(adapter_cls, api_mod):
 
     adapter.netbox.dcim_all_sites.assert_called_once_with()
     assert [s.id for s in sites] == [1]
-
-
-def test_storage_get_site_facade():
-    storage = storage_base.BaseNetboxStorage.__new__(storage_base.BaseNetboxStorage)
-    storage.netbox = MagicMock()
-    storage.netbox.get_site.return_value = _make_site(v42_api_models)
-
-    site = storage.get_site(1)
-
-    storage.netbox.get_site.assert_called_once_with(1)
-    assert site.custom_fields["tacacs_state"] == "on"
-
-
-def test_storage_list_sites_facade_validates_and_forwards():
-    storage = storage_base.BaseNetboxStorage.__new__(storage_base.BaseNetboxStorage)
-    storage.netbox = MagicMock()
-    storage.netbox.list_sites.return_value = [_make_site(v42_api_models)]
-
-    sites = storage.list_sites({"slug": ["site-a"]})
-
-    storage.netbox.list_sites.assert_called_once_with({"slug": ["site-a"]})
-    assert [s.id for s in sites] == [1]
-
-
-def test_storage_list_sites_facade_defaults_to_empty_filter():
-    storage = storage_base.BaseNetboxStorage.__new__(storage_base.BaseNetboxStorage)
-    storage.netbox = MagicMock()
-    storage.netbox.list_sites.return_value = []
-
-    storage.list_sites()
-
-    storage.netbox.list_sites.assert_called_once_with({})
-
-
-def test_storage_list_sites_facade_rejects_unknown_field():
-    storage = storage_base.BaseNetboxStorage.__new__(storage_base.BaseNetboxStorage)
-    storage.netbox = MagicMock()
-
-    with pytest.raises(ValueError, match="unknown site filter field"):
-        storage.list_sites({"bogus": ["x"]})
-
-    storage.netbox.list_sites.assert_not_called()
 
 
 @pytest.mark.parametrize(

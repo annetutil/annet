@@ -7,12 +7,7 @@ from annetbox.v37 import models as api_models
 from requests import Session
 from requests_cache import CachedSession, SQLiteCache
 
-from annet.adapters.netbox.common.query import (
-    FIELD_VALUE_SEPARATOR,
-    NetboxQuery,
-    SiteFilter,
-    validate_site_filter,
-)
+from annet.adapters.netbox.common.query import FIELD_VALUE_SEPARATOR, NetboxQuery
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
 from annet.storage import Storage
 
@@ -209,13 +204,6 @@ class BaseNetboxStorage(
         self._fill_device_interfaces([device])
         self._record_device(device)
         return device
-
-    def get_site(self, site_id: int):
-        """Return the full Site object (with custom_fields) for site_id."""
-        return self.netbox.get_site(site_id)
-
-    def list_sites(self, query: Optional[SiteFilter] = None):
-        return self.netbox.list_sites(validate_site_filter(query or {}))
 
     def flush_perf(self):
         pass
