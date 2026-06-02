@@ -8,6 +8,7 @@ from annetbox.v41 import models as api_models
 from requests import Session
 
 from annet.adapters.netbox.common.adapter import NetboxAdapter, get_device_breed, get_device_hw
+from annet.adapters.netbox.common.query import SiteFilter
 from annet.adapters.netbox.common.storage_base import BaseNetboxStorage
 from annet.adapters.netbox.v41.models import (
     FHRPGroupAssignmentV41,
@@ -93,8 +94,8 @@ class NetboxV41Adapter(
     def get_site(self, site_id: int) -> api_models.Site:
         return self.netbox.dcim_site(site_id)
 
-    def list_sites(self, **filters) -> list[api_models.Site]:
-        return self.netbox.dcim_all_sites(**filters).results
+    def list_sites(self, query: SiteFilter | None = None) -> list[api_models.Site]:
+        return self.netbox.dcim_all_sites(**(query or {})).results
 
     def list_interfaces_by_devices(self, device_ids: list[int]) -> list[InterfaceV41]:
         return self.convert_interfaces(self.netbox.dcim_all_interfaces(device_id=device_ids).results)
