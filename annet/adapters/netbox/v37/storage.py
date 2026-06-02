@@ -123,6 +123,15 @@ class NetboxV37Adapter(
         raw_groups = self.netbox.ipam_all_fhrp_groups_by_id(id=list(ids))
         return self.convert_fhrp_groups(raw_groups.results)
 
+    def get_circuit(self, circuit_id: int) -> api_models.Circuit:
+        return self.netbox.circuit(circuit_id)
+
+    def list_circuits(self, query: dict[str, list[str]]) -> list[api_models.Circuit]:
+        return self.netbox.circuits_all(**query).results
+
+    def trace_interface(self, iface_id: int) -> list[api_models.TraceTuple]:
+        return self.netbox.dcim_interface_trace(iface_id)
+
 
 class NetboxStorageV37(
     BaseNetboxStorage[
