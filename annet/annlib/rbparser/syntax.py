@@ -63,6 +63,24 @@ def compile_row_regexp(row, flags=0):
         row = row.replace("(?i)", "")
         flags |= re.IGNORECASE
 
+    # ?/{regex}/ -> (?:{regex}), a non-capturing match against an arbitrary regexp.
+    # Unlike */{regex}/ (which captures a single word) and ~/{regex}/, nothing is
+    # captured into a group. The regexp is protected from the placeholder
+    # substitutions below, i.e. *, (...) inside it stay part of the regexp instead
+    # of being treated as placeholders. The ? prefix is glued to the /, so this
+    # form does not clash with literal slashes (e.g. in interface names like
+    # Eth0/0/1) nor with the */{regex}/ and ~/{regex}/ forms.
+    protected: list[str] = []
+
+    def _protect(match: re.Match) -> str:
+        # Turn the default groups inside the regexp into non-capturing ones, so the
+        # ?/{regex}/ form only matches and captures nothing.
+        regexp = re.sub(r"\(([^\?])", r"(?:\1", match.group(1))
+        protected.append(regexp)
+        return f"\x00{len(protected) - 1}\x00"
+
+    row = re.sub(r"(?:^|(?<=\s))\?/(((?!\?/).)+)/", _protect, row)
+
     if "*" in row:
         row = re.sub(r"\(([^\?])", r"(?:\1", row)  # Все дефолтные группы превратить в non-captured
         row = re.sub(r"\*/(\S+)/", r"(\1)", row)  # */{regex_one_word}/ -> ({regex_one_word})
@@ -82,6 +100,8 @@ def compile_row_regexp(row, flags=0):
     else:
         row += r"(?:\s|$)"
     row = re.sub(r"\s+", r"\\s+", row)
+    if protected:
+        row = re.sub(r"\x00(\d+)\x00", lambda m: f"(?:{protected[int(m.group(1))]})", row)
     return re.compile("^" + row, flags=flags)
 
 

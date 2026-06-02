@@ -46,6 +46,26 @@ Placeholders can match by regular expressions:
     ip routing vrf ~/(?!MEth|MGMT)/
 
 
+There are three regular-expression forms:
+
+- ``*/{regex}/`` matches a single word and captures it into a group;
+- ``~/{regex}/`` matches without capturing, but is ignored when the row ends
+  with the ``~`` or ``...`` placeholder, and its contents are still subject to
+  placeholder substitution;
+- ``?/{regex}/`` matches without capturing, and unlike ``~/{regex}/`` can be
+  combined with a trailing ``~`` placeholder; any ``*`` or ``(...)`` inside the
+  regex stay part of the regex instead of being treated as placeholders.
+
+For example, to match ``0 permit udp any 10.212.32.224 0.0.0.31``:
+
+.. code-block:: text
+
+    ?/(.*)/permit ~
+
+The ``?`` is attached to the ``/``, so this form does not clash with literal
+slashes (for example in interface names such as ``Eth0/0/1``).
+
+
 If you want a case-insensitive match, you can specify it with the ``(?i)`` prefix, for example:
 
 .. code-block:: text
