@@ -69,7 +69,8 @@ def compile_row_regexp(row, flags=0):
     # substitutions below, i.e. *, (...) inside it stay part of the regexp instead
     # of being treated as placeholders. The ? prefix is glued to the /, so this
     # form does not clash with literal slashes (e.g. in interface names like
-    # Eth0/0/1) nor with the */{regex}/ and ~/{regex}/ forms.
+    # Eth0/0/1) nor with the */{regex}/ and ~/{regex}/ forms. The first / after
+    # ?/ closes the placeholder, so the regexp itself cannot contain a literal /.
     protected: list[str] = []
 
     def _protect(match: re.Match) -> str:
@@ -79,7 +80,7 @@ def compile_row_regexp(row, flags=0):
         protected.append(regexp)
         return f"\x00{len(protected) - 1}\x00"
 
-    row = re.sub(r"(?:^|(?<=\s))\?/(((?!\?/).)+)/", _protect, row)
+    row = re.sub(r"(?:^|(?<=\s))\?/([^/]+)/", _protect, row)
 
     if "*" in row:
         row = re.sub(r"\(([^\?])", r"(?:\1", row)  # Все дефолтные группы превратить в non-captured
@@ -95,8 +96,11 @@ def compile_row_regexp(row, flags=0):
     elif row.endswith("..."):
         row = row[:-3]
     elif "~/" in row:
-        # ~/{regex}/ -> {regex}, () не нужны поскольку уже (?:) - non-captured
-        row = re.sub(r"~/(((?!~/).)+)/", r"\1", row)
+        # ~/{regex}/ -> (?:{regex}), a non-capturing match. The first / after ~/
+        # closes the placeholder (so the regexp cannot contain a literal /), and the
+        # (?:) wrap keeps a top-level alternation (a|b) from leaking into the rest of
+        # the row.
+        row = re.sub(r"~/([^/]+)/", r"(?:\1)", row)
     else:
         row += r"(?:\s|$)"
     row = re.sub(r"\s+", r"\\s+", row)
