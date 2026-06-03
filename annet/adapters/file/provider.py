@@ -150,11 +150,18 @@ class Devices:
     def __post_init__(self):
         if isinstance(self.devices, list):
             devices = []
-            for dev in self.devices:
-                try:
-                    devices.append(Device(dev=DeviceStorage(**dev)))
-                except Exception as e:
-                    raise Exception("unable to parse %s as Device: %s" % (dev, e))
+
+            for dev_params in self.devices:
+                if isinstance(dev_params, Device):
+                    dev = dev_params
+                else:
+                    try:
+                        dev = Device(dev=DeviceStorage(**dev_params))
+                    except Exception as e:
+                        raise Exception(f"unable to parse {dev!r} as Device") from e
+
+                devices.append(dev)
+
             self.devices = devices
 
 
