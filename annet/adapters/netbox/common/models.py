@@ -57,8 +57,8 @@ class DeviceIp(DumpableView):
 
 @dataclass
 class Vrf(Entity):
-    description: str
     rd: str | None  # netbox get null if not present
+    description: str | None = None  # netbox v37 does not include this field in VrfBrief
 
 
 @dataclass

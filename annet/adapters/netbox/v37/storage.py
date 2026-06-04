@@ -2,12 +2,13 @@ import ssl
 from typing import Callable
 
 from adaptix import P
-from adaptix.conversion import get_converter, link, link_constant, link_function
+from adaptix.conversion import allow_unlinked_optional, get_converter, link, link_constant, link_function
 from annetbox.v37 import client_sync
 from annetbox.v37 import models as api_models
 from requests import Session
 
 from annet.adapters.netbox.common.adapter import NetboxAdapter, get_device_breed, get_device_hw
+from annet.adapters.netbox.common.models import Vrf
 from annet.adapters.netbox.common.storage_base import BaseNetboxStorage
 from annet.storage import Storage
 
@@ -62,6 +63,7 @@ class NetboxV37Adapter(
                 link_constant(P[InterfaceV37].ip_addresses, factory=list),
                 link_constant(P[InterfaceV37].fhrp_groups, factory=list),
                 link_constant(P[InterfaceV37].lag_min_links, value=None),
+                allow_unlinked_optional(P[Vrf].description),
             ],
         )
         self.convert_ip_addresses = get_converter(
@@ -69,11 +71,11 @@ class NetboxV37Adapter(
             list[IpAddressV37],
             recipe=[
                 link_constant(P[IpAddressV37].prefix, value=None),
+                allow_unlinked_optional(P[Vrf].description),
             ],
         )
         self.convert_ip_prefixes = get_converter(
-            list[api_models.Prefix],
-            list[PrefixV37],
+            list[api_models.Prefix], list[PrefixV37], recipe=[allow_unlinked_optional(P[Vrf].description)]
         )
         self.convert_fhrp_group_assignments = get_converter(
             list[api_models.FHRPGroupAssignmentBrief],
