@@ -14,6 +14,7 @@ from annet.adapters.netbox.common.models import (
     Label,
     NetboxDevice,
     Prefix,
+    Vrf,
 )
 
 
@@ -45,7 +46,7 @@ class FHRPGroupAssignmentV37(FHRPGroupAssignment[FHRPGroupV37]):
 
 @dataclass
 class InterfaceV37(Interface[IpAddressV37, FHRPGroupAssignmentV37]):
-    def _add_new_addr(self, address_mask: str, vrf: Entity | None, family: IpFamily) -> None:
+    def _add_new_addr(self, address_mask: str, vrf: Vrf | None, family: IpFamily) -> None:
         self.ip_addresses.append(
             IpAddressV37(
                 id=0,
