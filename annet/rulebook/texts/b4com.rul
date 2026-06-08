@@ -61,3 +61,5 @@ router bgp *
         network *
         max-paths ebgp
         neighbor ~                              %logic=annet.rulebook.b4com.bgp.undo_peer
+line ~
+    ~                             %global

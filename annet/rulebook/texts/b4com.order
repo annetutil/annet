@@ -44,3 +44,4 @@ router bgp *
         neighbor * peer-group
         neighbor * activate
         ~
+line
