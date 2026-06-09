@@ -191,7 +191,7 @@ def class_methods(arg=None, /, **outer_kwargs):
         has_enter, has_exit = False, False
 
         for name, attr in inspect.getmembers(
-            cls, lambda x: (inspect.isroutine(x) and not inspect.ismethoddescriptor(x) and not inspect.isbuiltin(x))
+            cls, lambda x: inspect.isroutine(x) and not inspect.ismethoddescriptor(x) and not inspect.isbuiltin(x)
         ):
             if getattr(attr, "_disable_class_methods", False):
                 continue
