@@ -100,6 +100,8 @@ def sflow(rule, key, diff, **kwargs):
             yield (False, "no sflow sampling-rate direction ingress", None)
         elif "egress" in diff[Op.REMOVED][0]["row"]:
             yield (False, "no sflow sampling-rate direction egress", None)
+        elif "poll-interval" in diff[Op.REMOVED][0]["row"]:
+            yield (False, "no sflow poll-interval", None)
     else:
         yield from common.default(rule, key, diff, **kwargs)
 
