@@ -253,24 +253,26 @@ class HuaweiFormatter(BlockExitFormatter):
         return tree
 
     def block_exit(self, context: Optional[FormatterContext]):
-        row = context and context.row or ""
-        row_next = context and context.row_next
+        current = context and context.row or ""
+        next_row = context and context.row_next
         parent_row = context and context.parent and context.parent.row or ""
 
-        if row.startswith("xpl route-filter"):
+        if current.startswith("xpl route-filter"):
             yield from block_wrapper("end-filter")
             return
 
-        if row.startswith("xpl"):
+        if current.startswith("xpl"):
             yield from block_wrapper("end-list")
             return
 
         if parent_row.startswith("xpl route-filter"):
-            if (row.startswith(("if", "elseif")) and row.endswith("then")) and (
-                not row_next or not row_next.startswith(("elseif", "else"))
+            if (
+                current.startswith(("if", "elseif"))
+                and current.endswith("then")
+                and (not next_row or not next_row.startswith(("elseif", "else")))
             ):
                 yield "endif"
-            elif row == "else":
+            elif current == "else":
                 yield "endif"
             return
 
@@ -454,15 +456,29 @@ class AsrFormatter(BlockExitFormatter):
 
     def block_exit(self, context: Optional[FormatterContext]):
         current = context and context.row or ""
+        next_row = context and context.row_next
+        parent_row = context and context.parent and context.parent.row or ""
 
         if current.startswith(("prefix-set", "as-path-set", "community-set")):
             yield from block_wrapper("end-set")
-        elif current.startswith("if") and current.endswith("then"):
-            yield from block_wrapper("endif")
-        elif current.startswith("route-policy"):
+            return
+
+        if parent_row.startswith("route-policy "):
+            if (
+                current.startswith(("if", "elseif"))
+                and current.endswith("then")
+                and (not next_row or not next_row.startswith(("elseif", "else")))
+            ):
+                yield from block_wrapper("endif")
+            elif current == "else":
+                yield from block_wrapper("endif")
+            return
+
+        if current.startswith("route-policy"):
             yield from block_wrapper("end-policy")
-        else:
-            yield from super().block_exit(context)
+            return
+
+        yield from super().block_exit(context)
 
 
 class JuniperFormatter(CommonFormatter):
