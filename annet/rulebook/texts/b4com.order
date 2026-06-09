@@ -42,6 +42,8 @@ router bgp *
     address-family ~
         max-paths ebgp *
         neighbor * peer-group
-        neighbor * activate
+        neighbor * remote-as *
+        neighbor * local-as *
         ~
+        neighbor * activate
 line
