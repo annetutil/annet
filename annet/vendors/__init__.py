@@ -19,6 +19,7 @@ from .library import (
     ribbon,
     routeros,
     snr,
+    sitonica,
 )
 from .registry import Registry, registry
 

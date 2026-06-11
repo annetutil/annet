@@ -59,6 +59,7 @@ def make_hw_stub(vendor):
             "b4com": "B4com",
             "h3c": "H3C",
             "snr": "SNR",
+            "sitonica": "Sitonica",
         }[vendor],
         None,
     )

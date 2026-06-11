@@ -46,4 +46,6 @@ def get_breed(manufacturer: str, model: str):
         return "pc"
     elif hw.Aruba:
         return "aruos"
+    elif hw.Sitonica:
+        return "ipn"
     return ""
