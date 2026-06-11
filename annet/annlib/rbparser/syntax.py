@@ -63,24 +63,25 @@ def compile_row_regexp(row, flags=0):
         row = row.replace("(?i)", "")
         flags |= re.IGNORECASE
 
-    # ?/{regex}/ -> (?:{regex}), a non-capturing match against an arbitrary regexp.
-    # Unlike */{regex}/ (which captures a single word) and ~/{regex}/, nothing is
-    # captured into a group. The regexp is protected from the placeholder
-    # substitutions below, i.e. *, (...) inside it stay part of the regexp instead
-    # of being treated as placeholders. The ? prefix is glued to the /, so this
-    # form does not clash with literal slashes (e.g. in interface names like
-    # Eth0/0/1) nor with the */{regex}/ and ~/{regex}/ forms. The first / after
-    # ?/ closes the placeholder, so the regexp itself cannot contain a literal /.
-    protected: list[str] = []
+    # ?/{regex}/ and ~/{regex}/ both match an arbitrary regexp. ?/{regex}/ is a
+    # non-capturing match (nothing reaches a group), while ~/{regex}/ captures its
+    # whole matched span into a single group (like */{regex}/ but spanning more than
+    # one word). Both are pulled out before the placeholder substitutions below so
+    # that *, (...) inside the user's own regexp stay part of the regexp instead of
+    # being reinterpreted, and so any groups the user wrote inside collapse to
+    # non-capturing -- only the ~/ wrapper itself captures. The ? / ~ prefix is glued
+    # to the /, so neither form clashes with literal slashes (e.g. interface names
+    # like Eth0/0/1). The first / after the prefix closes the placeholder, so the
+    # regexp itself cannot contain a literal / (hence [^/]+).
+    protected: list[tuple[str, bool]] = []  # (regexp, captures)
 
     def _protect(match: re.Match) -> str:
-        # Turn the default groups inside the regexp into non-capturing ones, so the
-        # ?/{regex}/ form only matches and captures nothing.
-        regexp = re.sub(r"\(([^\?])", r"(?:\1", match.group(1))
-        protected.append(regexp)
+        captures = match.group(1) == "~"
+        regexp = re.sub(r"\(([^\?])", r"(?:\1", match.group(2))
+        protected.append((regexp, captures))
         return f"\x00{len(protected) - 1}\x00"
 
-    row = re.sub(r"(?:^|(?<=\s))\?/([^/]+)/", _protect, row)
+    row = re.sub(r"(?:^|(?<=\s))([?~])/([^/]+)/", _protect, row)
 
     if "*" in row:
         row = re.sub(r"\(([^\?])", r"(?:\1", row)  # Все дефолтные группы превратить в non-captured
@@ -95,17 +96,16 @@ def compile_row_regexp(row, flags=0):
         row = row[:-1] + "(.+)"
     elif row.endswith("..."):
         row = row[:-3]
-    elif "~/" in row:
-        # ~/{regex}/ -> (?:{regex}), a non-capturing match. The first / after ~/
-        # closes the placeholder (so the regexp cannot contain a literal /), and the
-        # (?:) wrap keeps a top-level alternation (a|b) from leaking into the rest of
-        # the row.
-        row = re.sub(r"~/([^/]+)/", r"(?:\1)", row)
     else:
         row += r"(?:\s|$)"
     row = re.sub(r"\s+", r"\\s+", row)
     if protected:
-        row = re.sub(r"\x00(\d+)\x00", lambda m: f"(?:{protected[int(m.group(1))]})", row)
+
+        def _restore(match: re.Match) -> str:
+            regexp, captures = protected[int(match.group(1))]
+            return f"({regexp})" if captures else f"(?:{regexp})"
+
+        row = re.sub(r"\x00(\d+)\x00", _restore, row)
     return re.compile("^" + row, flags=flags)
 
 

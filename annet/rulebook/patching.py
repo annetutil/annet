@@ -199,9 +199,18 @@ def _make_reverse(row, reverse_prefix, flags=0):
     if row[-1] == "~":
         row = row[:-1] + "{}"
 
+    # Handle the arbitrary-regexp placeholders before the * substitution below, so any
+    # *, (...) inside the user's own regexp is not mistaken for a capturing placeholder.
+    # Mirroring compile_row_regexp: ~/{regex}/ captures, so it becomes a {}; ?/{regex}/
+    # captures nothing, so it is dropped entirely (no {}). The first / after ?/ or ~/
+    # closes the placeholder, so the regexp cannot itself contain a literal / (hence
+    # [^/]+). Surrounding whitespace of the dropped ?/.../ collapses to keep words
+    # separated whether the placeholder is leading, trailing, or in the middle.
+    row = re.sub(r"~/[^/]+/", "{}", row, flags=flags)
+    row = re.sub(r"\s*\?/[^/]+/\s*", " ", row, flags=flags)
+
     row = re.sub(r"\*(/\S+/)?", "{}", row, flags=flags)
-    row = re.sub(r"\s*~(/\S+/)?", "", row, flags=flags)
-    return row
+    return row.strip()
 
 
 def _attrs_to_regexp(attrs):
