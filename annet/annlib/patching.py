@@ -874,6 +874,19 @@ def make_patch(
     return tree
 
 
+def _aggregate_cant_delete(matches):
+    """Combine cant_delete across ALL rules that matched the row, not just the selected one.
+
+    The row is protected (cant_delete=1) only if *every* matching generator
+    asked to protect it; if at least one matching generator has no %cant_delete,
+    the row stays deletable (cant_delete=0).
+    """
+    flags = [flag for (rule, _is_cr_allowed), _other in matches for flag in rule["attrs"]["cant_delete"]]
+    if not flags:
+        return None
+    return [all(flags)]
+
+
 def match_row_to_acl(row, rules, exclusive=False):
     matches = _find_acl_matches(row, rules)
     if matches:
@@ -891,7 +904,14 @@ def match_row_to_acl(row, rules, exclusive=False):
             if len(can_delete) > 1:
                 generator_names = ", ".join(can_delete.keys())
                 raise AclNotExclusiveError("generators: '%s'" % generator_names)
-        return _select_match(matches, rules)
+        match, children_rules = _select_match(matches, rules)
+        if match is not None:
+            aggregated = _aggregate_cant_delete(matches)
+            if aggregated is not None:
+                match = match.copy()
+                match["attrs"] = match["attrs"].copy()
+                match["attrs"]["cant_delete"] = aggregated
+        return match, children_rules
     return (None, None)  # (match, children_rules)
 
 
