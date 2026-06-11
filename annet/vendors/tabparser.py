@@ -375,7 +375,7 @@ class B4comFormatter(BlockExitFormatter):
     # used as delimiters and must not enter the parsed tree as body rows,
     # otherwise the formatter would emit a duplicate exit at format time.
     block_end_markers = ("exit", "exit-address-family")
-    no_block_exit = ("rsa key")
+    no_block_exit = "rsa key"
 
     def _fix_af_indentation(self, text: str) -> str:
         """Fixes the indentation of address-family blocks in B4COM configuration.
