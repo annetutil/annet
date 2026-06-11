@@ -40,6 +40,7 @@
     "Cisco.Nexus.N9x.N9316": "9316",
     "Cisco.Nexus.N9x.N9500": "95\\d\\d",
     "Cisco.Nexus.N9x.N9364": "9364",
+    "Cisco.Nexus.N9x.N9336": "9336",
 
     "Huawei": "^[Hh]uawei",
     "Huawei.CE": " (CE|XH)\\d+",
