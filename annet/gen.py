@@ -7,6 +7,7 @@ import os
 import sys
 import textwrap
 import time
+import yaml
 from collections import OrderedDict as odict
 from operator import itemgetter
 from typing import (
@@ -143,6 +144,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
     old_json_fragment_files: Dict[str, Dict[str, Any]] = {}
     new_json_fragment_files: Dict[str, Dict[str, Any]] = {}
     json_fragment_results: Dict[str, generators.GeneratorJSONFragmentResult] = {}
+    old_json_fragment_files_is_list: Dict[str, bool] = {}
 
     if not device.is_pc():
         try:
@@ -268,6 +270,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
             filters = filters_text.removesuffix("\n").split("\n")
 
         old_json_fragment_files = old_files.json_fragment_files.copy()
+        old_json_fragment_files_is_list = old_files.json_fragment_files_is_list.copy()
         new_json_fragment_files = res.new_json_fragment_files(
             old_json_fragment_files,
             use_acl=not ctx.args.no_acl,
@@ -302,6 +305,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
         old_json_fragment_files=old_json_fragment_files,
         new_json_fragment_files=new_json_fragment_files,
         json_fragment_result=json_fragment_results,
+        json_fragment_files_is_list=old_json_fragment_files_is_list,
         implicit_rules=implicit_rules,
         perf=combined_perf,
         acl_safe_rules=acl_safe_rules,
@@ -312,7 +316,6 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
         filter_acl_rules=filter_acl_rules,
     )
 
-
 @dataclasses.dataclass
 class DeviceDownloadedFiles:
     # map file path to file content for entire generators
@@ -321,8 +324,46 @@ class DeviceDownloadedFiles:
     # map file path to file content for json fragment generators
     json_fragment_files: Dict[str, Dict[str, Any]] = dataclasses.field(default_factory=dict)
 
+    # map file path to bool, True if original yaml file had root list
+    json_fragment_files_is_list: Dict[str, bool] = dataclasses.field(default_factory=dict)
+
     def is_empty(self) -> bool:
         return not self.entire_files and not self.json_fragment_files
+
+
+def _yaml_load_normalized(content: str) -> tuple[dict, bool]:
+    """
+    Load YAML and normalize root list to dict.
+
+    Converts:
+    [{"header": {...}}, {"set": {...}}]
+    to:
+    {"header": {...}, "set": {...}}
+
+    Returns (normalized_dict, was_list).
+    """
+    data = yaml.safe_load(content)
+    if isinstance(data, list):
+        result = {}
+        for item in data:
+            if isinstance(item, dict):
+                result.update(item)
+        return result, True
+    return data, False
+
+
+def _yaml_dump_normalized(data: dict, is_list: bool) -> str:
+    """
+    Serialize back to YAML, restoring root list if original was a list.
+
+    Converts:
+    {"header": {...}, "set": {...}}
+    back to:
+    [{"header": {...}}, {"set": {...}}]
+    """
+    if is_list:
+        data = [{k: v} for k, v in data.items()]
+    return yaml.dump(data, allow_unicode=True, default_flow_style=False, sort_keys=False)
 
 
 def split_downloaded_files(
@@ -342,13 +383,16 @@ def split_downloaded_files(
             elif isinstance(gen, JSONFragment):
                 if device_flat_files[filepath] is not None:  # file exists
                     try:
-                        ret.json_fragment_files[filepath] = json.loads(device_flat_files[filepath])
-
-                    except json.decoder.JSONDecodeError as exc:
+                        if filepath.endswith((".yaml", ".yml")):
+                            data, is_list = _yaml_load_normalized(device_flat_files[filepath])
+                            ret.json_fragment_files[filepath] = data
+                            ret.json_fragment_files_is_list[filepath] = is_list
+                        else:
+                            ret.json_fragment_files[filepath] = json.loads(device_flat_files[filepath])
+                    except (json.decoder.JSONDecodeError, yaml.YAMLError) as exc:
                         raise GeneratorError(
                             f"failed to parse file {filepath!r} from generator {gen.get_name()}"
                         ) from exc
-
                 else:
                     ret.json_fragment_files[filepath] = None
 
@@ -471,7 +515,14 @@ def old_raw(
             if files.entire_files:
                 yield device, files.entire_files
             if files.json_fragment_files:
-                yield device, {path: jsontools.format_json(data) for path, data in files.json_fragment_files.items()}
+                result = {}
+                for path, data in files.json_fragment_files.items():
+                    if path.endswith((".yaml", ".yml")):
+                        is_list = files.json_fragment_files_is_list.get(path, False)
+                        result[path] = _yaml_dump_normalized(data, is_list)
+                    else:
+                        result[path] = jsontools.format_json(data)
+                yield device, result
 
 
 @tracing.function
@@ -504,7 +555,11 @@ def worker(
             yield (output_driver.entire_config_dest_path(device, entire_path), entire_data, False)
 
         for path, (data, _) in sorted(new_file_fragments.items(), key=itemgetter(0)):
-            dumped_data = json.dumps(data, indent=4, sort_keys=True, ensure_ascii=False)
+            if path.endswith((".yaml", ".yml")):
+                is_list = res.json_fragment_files_is_list.get(path, False)
+                dumped_data = _yaml_dump_normalized(data, is_list)
+            else:
+                dumped_data = json.dumps(data, indent=4, sort_keys=True, ensure_ascii=False)
             yield (output_driver.entire_config_dest_path(device, path), dumped_data, False)
         # Consider result of partial run empty and create an empty dest file
         # only if there are some acl rules that has been matched.

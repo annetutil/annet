@@ -165,6 +165,7 @@ class OldNewResult:
         old_json_fragment_files=None,
         new_json_fragment_files=None,
         json_fragment_result=None,
+        json_fragment_files_is_list=None,
         implicit_rules=None,
         perf=None,
         acl_safe_rules=None,
@@ -186,6 +187,7 @@ class OldNewResult:
         self.old_json_fragment_files: Dict[str, Any] = old_json_fragment_files or {}
         self.new_json_fragment_files: Dict[str, Tuple[Any, Optional[str]]] = new_json_fragment_files or {}
         self.json_fragment_results: Dict[str, GeneratorJSONFragmentResult] = json_fragment_result or {}
+        self.json_fragment_files_is_list: Dict[str, bool] = json_fragment_files_is_list or {}
         self.implicit_rules: Dict[str, Any] = implicit_rules or OrderedDict()
         self.perf: Dict[str, Dict[str, float]] = perf or {}
 
