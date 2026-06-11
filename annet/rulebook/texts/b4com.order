@@ -32,23 +32,23 @@ interface *
 ip community-list
 router bgp *
     bgp ~
-    neighbor * description *
     neighbor * fall-over bfd
     neighbor * advertisement-interval *
     neighbor */[\da-f\.\:]+/ peer-group
     neighbor */[\da-f\.\:]+/ remote-as
     neighbor */(\w+_?-?)+/ peer-group
     neighbor */(\w+_?-?)+/ remote-as
+    neighbor * description *
     network *
     address-family ~
         max-paths ebgp *
-        neighbor * description *
         neighbor * fall-over bfd
         neighbor * advertisement-interval *
         neighbor */[\da-f\.\:]+/ peer-group
         neighbor */[\da-f\.\:]+/ remote-as
         neighbor */(\w+_?-?)+/ peer-group
         neighbor */(\w+_?-?)+/ remote-as
+        neighbor * description *
         neighbor * activate
         network *
 line

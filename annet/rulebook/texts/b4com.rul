@@ -15,7 +15,11 @@ feature ~
 logging */(timestamp|cli|console|monitor)/
 logging logfile *
 logging level *
+%if hw.B4com.CS2148P:
+logging server address *
+%else:
 logging remote */(server|facility|authpriv)/ ~  %logic=annet.rulebook.b4com.misc.undo_syslog
+%endif
 clock *
 ntp ~
 snmp-server enable ~
@@ -83,4 +87,5 @@ router bgp *
         max-paths ebgp
         neighbor ~                              %logic=annet.rulebook.b4com.bgp.undo_peer
 line ~
+    exec-timeout
     ~                             %global
