@@ -4,8 +4,10 @@ from textwrap import dedent
 
 import pytest
 
+from annet.annlib.rbparser import syntax
 from annet.patching import PatchTree, make_diff
 from annet.rulebook.common import default, default_diff, ordered_diff
+from annet.rulebook.patching import _make_reverse
 from annet.types import Op
 from annet.vendors.tabparser import CommonFormatter
 
@@ -125,3 +127,32 @@ def test_patch_class_to_from_json():
 
     json = tree.to_json()
     assert json == PatchTree.from_json(json).to_json()
+
+
+@pytest.mark.parametrize(
+    ("row", "expected"),
+    [
+        # plain word/tail captures keep one {} each
+        ("snmp-agent sys-info *", "no snmp-agent sys-info {}"),
+        ("* permit ~", "no {} permit {}"),
+        # */{regex}/ and ~/{regex}/ are both capturing -> one {} each
+        ("*/(.*)/permit ~", "no {}permit {}"),
+        ("*/syslog-level/ ~/(emergency|alert|info)/ *", "no {} {} {}"),
+        ("~/(a|b)/ permit", "no {} permit"),
+        ("~/(a|b)/ permit ~", "no {} permit {}"),
+        # ?/{regex}/ is non-capturing -> no {}, and the * inside it must not leak out
+        ("?/(.*)/permit ~", "no permit {}"),
+        # the * inside a ~/{regex}/ regexp must not leak out as an extra {}
+        ("~/(a*)/permit ~", "no {}permit {}"),
+        # a mix of all placeholder kinds in one row
+        ("?/a/ */b/ ~/c/ *", "no {} {} {}"),
+        # an existing reverse prefix is stripped rather than doubled
+        ("no permit *", "permit {}"),
+    ],
+)
+def test_make_reverse(row, expected):
+    reverse = _make_reverse(row, "no")
+    assert reverse == expected
+    # the number of {} must match the number of capturing groups produced for the
+    # row, since reverse.format(*match.groups()) relies on that invariant
+    assert reverse.count("{}") == syntax.compile_row_regexp(row).groups

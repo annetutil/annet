@@ -96,24 +96,28 @@ def test_parse_text(raw_rule, expected) -> None:
         ("?/(.*)/permit", r"^(?:(?:.*))permit(?:\s|$)", "permit", True),
         ("?/(.*)/permit", r"^(?:(?:.*))permit(?:\s|$)", "deny", False),
         # --- ~/{regex}/ ---------------------------------------------------------
-        # ~/{regex}/ is wrapped in (?:...) so a top-level alternation does not leak
-        # into the rest of the row.
-        ("~/a|b/ x", r"^(?:a|b)\s+x", "a x", True),
-        ("~/a|b/ x", r"^(?:a|b)\s+x", "b x", True),
-        ("~/a|b/ x", r"^(?:a|b)\s+x", "c x", False),
+        # ~/{regex}/ captures its whole matched span into a single group (any inner
+        # group the user wrote collapses to non-capturing -- only the wrapper captures),
+        # so a top-level alternation does not leak into the rest of the row either.
+        ("~/a|b/ x", r"^(a|b)\s+x(?:\s|$)", "a x", True),
+        ("~/a|b/ x", r"^(a|b)\s+x(?:\s|$)", "b x", True),
+        ("~/a|b/ x", r"^(a|b)\s+x(?:\s|$)", "c x", False),
         # the regexp ends at its own first /, so literal slashes after it stay intact
-        ("~/interface|if/ eth0/1/2", r"^(?:interface|if)\s+eth0/1/2", "if eth0/1/2", True),
-        ("~/interface|if/ eth0/1/2", r"^(?:interface|if)\s+eth0/1/2", "if eth0X1X2", False),
-        # several ~/.../ on one row do not bleed into each other
-        ("~/a|b/ x ~/c|d/", r"^(?:a|b)\s+x\s+(?:c|d)", "a x d", True),
-        ("~/a|b/ x ~/c|d/", r"^(?:a|b)\s+x\s+(?:c|d)", "a x e", False),
+        ("~/interface|if/ eth0/1/2", r"^(interface|if)\s+eth0/1/2(?:\s|$)", "if eth0/1/2", True),
+        ("~/interface|if/ eth0/1/2", r"^(interface|if)\s+eth0/1/2(?:\s|$)", "if eth0X1X2", False),
+        # several ~/.../ on one row do not bleed into each other; each captures
+        ("~/a|b/ x ~/c|d/", r"^(a|b)\s+x\s+(c|d)(?:\s|$)", "a x d", True),
+        ("~/a|b/ x ~/c|d/", r"^(a|b)\s+x\s+(c|d)(?:\s|$)", "a x e", False),
+        # ~/{regex}/ also works when combined with a trailing ~
+        ("~/(a|b)/ permit ~", r"^((?:a|b))\s+permit\s+(.+)", "a permit foo bar", True),
+        ("~/(a|b)/ permit ~", r"^((?:a|b))\s+permit\s+(.+)", "c permit foo", False),
         # --- ?/{regex}/ and ~/{regex}/ mixed ------------------------------------
         # several placeholders on one row do not bleed into each other: each one
-        # ends at its own first /, and the ~/x/ in between stays intact.
-        ("?/a|b/ ~/x/ ?/y|z/", r"^(?:a|b)\s+(?:x)\s+(?:y|z)", "a x y", True),
-        ("?/a|b/ ~/x/ ?/y|z/", r"^(?:a|b)\s+(?:x)\s+(?:y|z)", "b x z", True),
-        ("?/a|b/ ~/x/ ?/y|z/", r"^(?:a|b)\s+(?:x)\s+(?:y|z)", "a q y", False),
-        ("?/a|b/ ~/x/ ?/y|z/", r"^(?:a|b)\s+(?:x)\s+(?:y|z)", "a x q", False),
+        # ends at its own first /. The ?/.../ stay non-capturing, the ~/x/ captures.
+        ("?/a|b/ ~/x/ ?/y|z/", r"^(?:a|b)\s+(x)\s+(?:y|z)(?:\s|$)", "a x y", True),
+        ("?/a|b/ ~/x/ ?/y|z/", r"^(?:a|b)\s+(x)\s+(?:y|z)(?:\s|$)", "b x z", True),
+        ("?/a|b/ ~/x/ ?/y|z/", r"^(?:a|b)\s+(x)\s+(?:y|z)(?:\s|$)", "a q y", False),
+        ("?/a|b/ ~/x/ ?/y|z/", r"^(?:a|b)\s+(x)\s+(?:y|z)(?:\s|$)", "a x q", False),
     ],
 )
 def test_compile_row_regexp(row, expected_pattern, line, should_match) -> None:
@@ -122,7 +126,12 @@ def test_compile_row_regexp(row, expected_pattern, line, should_match) -> None:
     assert bool(compiled.match(line)) is should_match
 
 
-def test_compile_row_regexp_noncapturing_has_no_extra_groups() -> None:
-    # Only the trailing `~` contributes a capture group; ?/(.*)/ captures nothing.
+def test_compile_row_regexp_capturing_groups() -> None:
+    # ?/{regex}/ captures nothing; ~/{regex}/ captures one group regardless of any
+    # * elsewhere in the row; only the trailing `~` adds its own group.
     assert compile_row_regexp("?/(.*)/permit ~").groups == 1
     assert compile_row_regexp("?/(.*)/permit").groups == 0
+    assert compile_row_regexp("~/(a|b)/ permit").groups == 1
+    assert compile_row_regexp("~/(a|b)/ permit ~").groups == 2
+    # the * that previously de-capturing-ized inner groups no longer affects ~/.../
+    assert compile_row_regexp("*/x/ ~/(a|b)/ *").groups == 3
