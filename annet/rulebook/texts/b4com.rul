@@ -31,6 +31,9 @@ ip vrf *
     ~
 username * */(sshkey|role)/       %logic=annet.rulebook.b4com.misc.undo_username
 rsa key *
+    %if hw.B4com.CS2148P:
+    ~                             %diff_logic=annet.rulebook.b4com.aaa.rsa_key_diff
+    %endif
     ~                             %global
 key chain *
 aaa group server tacacs\+ *
