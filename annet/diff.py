@@ -59,13 +59,13 @@ def json_fragment_diff(
     vendor = registry_connector.get().match(hw)
 
     def jsonify_multi(files):
-        return {path: vendor.serialize_json_fragment(hw, cfg) for path, cfg in files.items()}
+        return {path: vendor.serialize_json_fragment(hw, path, cfg) for path, cfg in files.items()}
 
     def jsonify_multi_with_cmd(files):
         ret = {}
         for path, cfg_reload_cmd in files.items():
             cfg, reload_cmd = cfg_reload_cmd
-            ret[path] = (vendor.serialize_json_fragment(hw, cfg), reload_cmd)
+            ret[path] = (vendor.serialize_json_fragment(hw, path, cfg), reload_cmd)
         return ret
 
     jold, jnew = jsonify_multi(old_files), jsonify_multi_with_cmd(new_files)

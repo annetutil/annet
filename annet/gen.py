@@ -342,7 +342,7 @@ def split_downloaded_files(
                 if device_flat_files[filepath] is not None:  # file exists
                     try:
                         ret.json_fragment_files[filepath] = vendor.deserialize_json_fragment(
-                            device.hw, device_flat_files[filepath]
+                            device.hw, filepath, device_flat_files[filepath]
                         )
 
                     except Exception as exc:
@@ -476,7 +476,7 @@ def old_raw(
                 yield (
                     device,
                     {
-                        path: vendor.serialize_json_fragment(device.hw, data)
+                        path: vendor.serialize_json_fragment(device.hw, path, data)
                         for path, data in files.json_fragment_files.items()
                     },
                 )
@@ -513,7 +513,7 @@ def worker(
 
         vendor = registry_connector.get().match(device.hw)
         for path, (data, _) in sorted(new_file_fragments.items(), key=itemgetter(0)):
-            dumped_data = vendor.serialize_json_fragment(device.hw, data)
+            dumped_data = vendor.serialize_json_fragment(device.hw, path, data)
             yield (output_driver.entire_config_dest_path(device, path), dumped_data, False)
         # Consider result of partial run empty and create an empty dest file
         # only if there are some acl rules that has been matched.

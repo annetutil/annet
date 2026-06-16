@@ -525,8 +525,8 @@ class PCDeployerJob(DeployerJob):
                     old_json_cfg = old_json_fragment_files[file]
                     json_patch = jsontools.make_patch(old_json_cfg, file_content_or_json_cfg)
                     file_content = jsontools.format_json(json_patch)
-                    old_text = vendor.serialize_json_fragment(res.device.hw, old_json_cfg)
-                    new_text = vendor.serialize_json_fragment(res.device.hw, file_content_or_json_cfg)
+                    old_text = vendor.serialize_json_fragment(res.device.hw, file, old_json_cfg)
+                    new_text = vendor.serialize_json_fragment(res.device.hw, file, file_content_or_json_cfg)
                     diff_content = "\n".join(differ.diff_file(res.device.hw, file, old_text, new_text))
 
                 if diff_content or force_reload:

@@ -6,13 +6,12 @@ list-of-single-key-maps codec on PCVendor.
 
 from collections import OrderedDict
 
-import pytest
-
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.vendors.library.pc import PCVendor, dict_to_nvos_yaml, nvos_yaml_to_dict
 
 
 HW = HardwareView("PC", "")
+NVOS_HW = HardwareView("PC", "nvos")
 
 
 # Example NVOS config: top-level YAML list of single-key maps.
@@ -62,19 +61,34 @@ def test_nvos_round_trip_preserves_content_and_order():
     assert list(restored.keys()) == list(cfg.keys())
 
 
-def test_pc_vendor_defaults_to_json():
+def test_json_path_uses_json_codec():
     vendor = PCVendor()
-    text = vendor.serialize_json_fragment(HW, {"set": {"interface": {"eth0": None}}})
-    # default codec is JSON, so it round-trips through the JSON deserializer
-    assert vendor.deserialize_json_fragment(HW, text) == {"set": {"interface": {"eth0": None}}}
-    # ...and the rendered form is JSON, not YAML
+    cfg = {"set": {"interface": {"eth0": None}}}
+    text = vendor.serialize_json_fragment(HW, "config.json", cfg)
+    assert text.lstrip().startswith("{")  # JSON, not YAML
+    assert vendor.deserialize_json_fragment(HW, "config.json", text) == cfg
+
+
+def test_yaml_path_non_nvos_uses_plain_yaml():
+    vendor = PCVendor()
+    cfg = {"set": {"interface": {"eth0": None}}}
+    text = vendor.serialize_json_fragment(HW, "config.yaml", cfg)
+    # plain YAML mapping at the top level, NOT the NVOS list-of-maps form
+    assert not text.lstrip().startswith("- ")
+    assert vendor.deserialize_json_fragment(HW, "config.yaml", text) == cfg
+
+
+def test_nvos_yaml_path_uses_nvos_codec():
+    vendor = PCVendor()
+    text = vendor.serialize_json_fragment(NVOS_HW, "startup.yaml", NVOS_DICT)
+    assert text.lstrip().startswith("- ")  # NVOS top-level list of maps
+    assert vendor.deserialize_json_fragment(NVOS_HW, "startup.yaml", text) == NVOS_DICT
+
+
+def test_nvos_json_path_still_uses_json_codec():
+    # NVOS only changes YAML handling; a .json file on an NVOS box is still JSON.
+    vendor = PCVendor()
+    cfg = {"set": {"interface": {"eth0": None}}}
+    text = vendor.serialize_json_fragment(NVOS_HW, "config.json", cfg)
     assert text.lstrip().startswith("{")
-
-
-def test_pc_vendor_uses_nvos_codec_when_matched(monkeypatch):
-    vendor = PCVendor()
-    monkeypatch.setattr(PCVendor, "_is_nvos", lambda self, hw: True)
-
-    text = vendor.serialize_json_fragment(HW, NVOS_DICT)
-    assert text.lstrip().startswith("- ")  # YAML list
-    assert vendor.deserialize_json_fragment(HW, text) == NVOS_DICT
+    assert vendor.deserialize_json_fragment(NVOS_HW, "config.json", text) == cfg

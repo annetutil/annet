@@ -6,7 +6,7 @@ import yaml
 
 from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.vendors.base import AbstractVendor
+from annet.vendors.base import AbstractVendor, is_yaml_path
 from annet.vendors.registry import registry
 from annet.vendors.tabparser import CommonFormatter
 
@@ -21,15 +21,15 @@ class PCVendor(AbstractVendor):
     def _is_nvos(self, hw: HardwareView) -> bool:
         return hw.soft.startswith("nvos")
 
-    def deserialize_json_fragment(self, hw: HardwareView, text: str) -> dict[str, Any]:
-        if self._is_nvos(hw):
+    def deserialize_json_fragment(self, hw: HardwareView, path: str, text: str) -> dict[str, Any]:
+        if self._is_nvos(hw) and is_yaml_path(path):
             return nvos_yaml_to_dict(text)
-        return super().deserialize_json_fragment(hw, text)
+        return super().deserialize_json_fragment(hw, path, text)
 
-    def serialize_json_fragment(self, hw: HardwareView, config: dict[str, Any]) -> str:
-        if self._is_nvos(hw):
+    def serialize_json_fragment(self, hw: HardwareView, path: str, config: dict[str, Any]) -> str:
+        if self._is_nvos(hw) and is_yaml_path(path):
             return dict_to_nvos_yaml(config)
-        return super().serialize_json_fragment(hw, config)
+        return super().serialize_json_fragment(hw, path, config)
 
     @property
     def reverse(self) -> str:
