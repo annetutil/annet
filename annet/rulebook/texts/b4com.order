@@ -10,6 +10,9 @@ logging
 ntp enable
 ntp server
 # Далее нужно будет указать команды и их порядок
+no key %order_reverse
+no username %order_reverse
+no rsa %order_reverse
 snmp-server enable
 snmp-server view
 snmp-server community

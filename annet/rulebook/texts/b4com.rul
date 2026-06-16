@@ -29,9 +29,11 @@ sflow collector *
 sflow agent-ip
 ip vrf *
     ~
-username * */(sshkey|role)/       %logic=annet.rulebook.b4com.misc.undo_username
+username * */(sshkey|role|privilege|assign)/       %logic=annet.rulebook.b4com.misc.undo_username
+%if hw.B4com.CS2148P:
 rsa key *
-    ~                             %global
+    ~ %global                     %diff_logic=annet.rulebook.b4com.aaa.rsa_key_diff
+%endif
 key chain *
 aaa group server tacacs\+ *
     ~                             %global
