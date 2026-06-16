@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List, Mapping, Optional, Protocol, Tuple, Union
 
 from annet import cli_args, filtering, patching, rulebook
-from annet.annlib import jsontools
 from annet.annlib.diff import (  # pylint: disable=unused-import
     colorize_line,
     diff_cmp,
@@ -57,14 +56,16 @@ def json_fragment_diff(
     old_files: Dict[str, Any],
     new_files: Dict[str, Tuple[Any, Optional[str]]],
 ) -> Generator[PCDiffFile, None, None]:
+    vendor = registry_connector.get().match(hw)
+
     def jsonify_multi(files):
-        return {path: jsontools.format_json(cfg) for path, cfg in files.items()}
+        return {path: vendor.serialize_json_fragment(hw, path, cfg) for path, cfg in files.items()}
 
     def jsonify_multi_with_cmd(files):
         ret = {}
         for path, cfg_reload_cmd in files.items():
             cfg, reload_cmd = cfg_reload_cmd
-            ret[path] = (jsontools.format_json(cfg), reload_cmd)
+            ret[path] = (vendor.serialize_json_fragment(hw, path, cfg), reload_cmd)
         return ret
 
     jold, jnew = jsonify_multi(old_files), jsonify_multi_with_cmd(new_files)

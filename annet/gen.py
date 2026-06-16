@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import dataclasses
 import itertools
-import json
 import os
 import sys
 import textwrap
@@ -26,7 +25,6 @@ import tabulate
 from contextlog import get_logger
 
 from annet import generators, implicit, patching, rulebook, tracing
-from annet.annlib import jsontools
 from annet.annlib.rbparser.acl import compile_acl_text
 from annet.cli_args import DeployOptions, GenOptions, ShowGenOptions
 from annet.deploy import get_fetcher, scrub_config
@@ -332,6 +330,7 @@ def split_downloaded_files(
 ) -> DeviceDownloadedFiles:
     """Split downloaded files per generator type: entire/json_fragment."""
     ret = DeviceDownloadedFiles()
+    vendor = registry_connector.get().match(device.hw)
 
     for gen in gens.file_gens(device):
         filepath = gen.path(device)
@@ -342,9 +341,11 @@ def split_downloaded_files(
             elif isinstance(gen, JSONFragment):
                 if device_flat_files[filepath] is not None:  # file exists
                     try:
-                        ret.json_fragment_files[filepath] = json.loads(device_flat_files[filepath])
+                        ret.json_fragment_files[filepath] = vendor.deserialize_json_fragment(
+                            device.hw, filepath, device_flat_files[filepath]
+                        )
 
-                    except json.decoder.JSONDecodeError as exc:
+                    except Exception as exc:
                         raise GeneratorError(
                             f"failed to parse file {filepath!r} from generator {gen.get_name()}"
                         ) from exc
@@ -471,7 +472,14 @@ def old_raw(
             if files.entire_files:
                 yield device, files.entire_files
             if files.json_fragment_files:
-                yield device, {path: jsontools.format_json(data) for path, data in files.json_fragment_files.items()}
+                vendor = registry_connector.get().match(device.hw)
+                yield (
+                    device,
+                    {
+                        path: vendor.serialize_json_fragment(device.hw, path, data)
+                        for path, data in files.json_fragment_files.items()
+                    },
+                )
 
 
 @tracing.function
@@ -503,8 +511,9 @@ def worker(
         for entire_path, (entire_data, _) in sorted(new_files.items(), key=itemgetter(0)):
             yield (output_driver.entire_config_dest_path(device, entire_path), entire_data, False)
 
+        vendor = registry_connector.get().match(device.hw)
         for path, (data, _) in sorted(new_file_fragments.items(), key=itemgetter(0)):
-            dumped_data = json.dumps(data, indent=4, sort_keys=True, ensure_ascii=False)
+            dumped_data = vendor.serialize_json_fragment(device.hw, path, data)
             yield (output_driver.entire_config_dest_path(device, path), dumped_data, False)
         # Consider result of partial run empty and create an empty dest file
         # only if there are some acl rules that has been matched.
