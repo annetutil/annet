@@ -5,6 +5,7 @@
 
 # Фичи должны быть включены прежде всего
 feature %order_reverse
+hostname
 clock ~
 logging
 ntp enable
@@ -21,6 +22,9 @@ ip prefix-list
 ipv6 prefix-list
 route-map
 ip vrf
+ip domain-lookup
+ip route
+ipv6 route
 interface *
     description
     ip vrf forwarding
