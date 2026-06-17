@@ -12,6 +12,7 @@
 # -----
 # Physical
 feature ~
+hostname
 logging */(timestamp|cli|console|monitor)/
 logging logfile *
 logging level *
@@ -27,6 +28,7 @@ snmp-server view ~
 snmp-server community ~           %logic=annet.rulebook.b4com.misc.undo_snmp_cmnt
 sflow collector *
 sflow agent-ip
+ip domain-lookup ~
 ip vrf *
     ~
 username * */(sshkey|role|privilege|assign)/       %logic=annet.rulebook.b4com.misc.undo_username
@@ -48,6 +50,8 @@ route-map ~
 ip community-list ~
 ip dhcp relay address *
 ipv6 dhcp relay address *
+ip route ~
+ipv6 route ~
 interface */vlan1\.[0-9\/]+$/    %diff_logic=annet.rulebook.b4com.iface.diff
     description
     ip vrf forwarding *
