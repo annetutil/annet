@@ -13,6 +13,11 @@ bgp
     router-id
     group ~
     peer * as-number
+    peer * group *
+    peer * bfd
+    peer * description *
+    peer * fake-as
+    peer * route-update-interval
     peer ~
     address-family ~
         balance ~

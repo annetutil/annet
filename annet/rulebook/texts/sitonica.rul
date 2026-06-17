@@ -17,18 +17,13 @@ bgp
     graceful-restart
     non-stop-routing
     router-id
-    group ~
-    peer * bfd
-    peer * fake-as
-    peer * route-update-interval
-    peer * description
-    peer ~ %logic=annet.rulebook.sitonica.bgp.undo_peer
+    group ~                                         %logic=annet.rulebook.sitonica.bgp.undo_peer
+    peer ~                                          %logic=annet.rulebook.sitonica.bgp.undo_peer
     address-family ~
         balance
         balance as-path-relax
         forwarding-conversational-learning
         import-route *
-        network ~ %logic=annet.rulebook.sitonica.undo.two
-        aggregate ~ %logic=annet.rulebook.sitonica.undo.two
-        peer ~
-        peer * enable
+        network ~                                   %logic=annet.rulebook.sitonica.undo.two
+        aggregate ~                                 %logic=annet.rulebook.sitonica.undo.two
+        peer ~                                      %logic=annet.rulebook.sitonica.bgp.undo_peer 
