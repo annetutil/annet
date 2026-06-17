@@ -71,8 +71,15 @@ def compile_row_regexp(row, flags=0):
     # being reinterpreted, and so any groups the user wrote inside collapse to
     # non-capturing -- only the ~/ wrapper itself captures. The ? / ~ prefix is glued
     # to the /, so neither form clashes with literal slashes (e.g. interface names
-    # like Eth0/0/1). The first / after the prefix closes the placeholder, so the
-    # regexp itself cannot contain a literal / (hence [^/]+).
+    # like Eth0/0/1).
+    #
+    # The placeholder closes at the FIRST / that is followed by whitespace/end-of-row
+    # (a token boundary) or that is the last / on the row. This lets the regexp itself
+    # contain literal slashes -- e.g. ~/(GE.+?/[12](\.|$))/ for interface names like
+    # GE1/0/2 -- while a placeholder followed by literal text (~/interface|if/ eth0/1/2
+    # or the glued ?/(.*)/permit) still closes at its own boundary / and leaves that
+    # text intact. A leading (?:^|(?<=\s)) and the (?![?~]/)-style boundary keep
+    # several placeholders on one row from bleeding into each other.
     protected: list[tuple[str, bool]] = []  # (regexp, captures)
 
     def _protect(match: re.Match) -> str:
@@ -81,7 +88,7 @@ def compile_row_regexp(row, flags=0):
         protected.append((regexp, captures))
         return f"\x00{len(protected) - 1}\x00"
 
-    row = re.sub(r"(?:^|(?<=\s))([?~])/([^/]+)/", _protect, row)
+    row = re.sub(r"(?:^|(?<=\s))([?~])/(.+?)/(?=\s|[^/]*$)", _protect, row)
 
     if "*" in row:
         row = re.sub(r"\(([^\?])", r"(?:\1", row)  # Все дефолтные группы превратить в non-captured
