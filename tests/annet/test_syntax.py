@@ -102,9 +102,40 @@ def test_parse_text(raw_rule, expected) -> None:
         ("~/a|b/ x", r"^(a|b)\s+x(?:\s|$)", "a x", True),
         ("~/a|b/ x", r"^(a|b)\s+x(?:\s|$)", "b x", True),
         ("~/a|b/ x", r"^(a|b)\s+x(?:\s|$)", "c x", False),
-        # the regexp ends at its own first /, so literal slashes after it stay intact
+        # a placeholder followed by literal text closes at its own boundary / (the one
+        # followed by whitespace), so literal slashes after it stay intact
         ("~/interface|if/ eth0/1/2", r"^(interface|if)\s+eth0/1/2(?:\s|$)", "if eth0/1/2", True),
         ("~/interface|if/ eth0/1/2", r"^(interface|if)\s+eth0/1/2(?:\s|$)", "if eth0X1X2", False),
+        # the regexp may itself contain literal slashes: it closes at the last / when no
+        # earlier / sits on a token boundary. Used by ACLs like
+        # `interface ~/(GE.+?/[12](\.|$))/` matching interface names such as GE1/0/2.
+        (
+            r"interface ~/(GE.+?/[12](\.|$))/",
+            r"^interface\s+((?:GE.+?/[12](?:\.|$)))(?:\s|$)",
+            "interface GE1/0/2",
+            True,
+        ),
+        (
+            r"interface ~/(GE.+?/[12](\.|$))/",
+            r"^interface\s+((?:GE.+?/[12](?:\.|$)))(?:\s|$)",
+            "interface GE1/0/1",
+            True,
+        ),
+        (
+            r"interface ~/(GE.+?/[12](\.|$))/",
+            r"^interface\s+((?:GE.+?/[12](?:\.|$)))(?:\s|$)",
+            "interface GE1/0/3",
+            False,
+        ),
+        (
+            r"interface ~/(GE.+?/[12](\.|$))/",
+            r"^interface\s+((?:GE.+?/[12](?:\.|$)))(?:\s|$)",
+            "interface XE1/0/2",
+            False,
+        ),
+        # a slash-containing regexp still does not bleed into a following placeholder
+        (r"~/a/b/ ~/c/d/", r"^(a/b)\s+(c/d)(?:\s|$)", "a/b c/d", True),
+        (r"~/a/b/ ~/c/d/", r"^(a/b)\s+(c/d)(?:\s|$)", "a/b c/e", False),
         # several ~/.../ on one row do not bleed into each other; each captures
         ("~/a|b/ x ~/c|d/", r"^(a|b)\s+x\s+(c|d)(?:\s|$)", "a x d", True),
         ("~/a|b/ x ~/c|d/", r"^(a|b)\s+x\s+(c|d)(?:\s|$)", "a x e", False),
