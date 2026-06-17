@@ -91,11 +91,28 @@ def compile_row_regexp(row, flags=0):
     # Заменяем <someting> на named-группы
     row = re.sub(r"<(\w+)>", r"(?P<\1>\\w+)", row)
 
+    # A trailing ?/{regex}/ or ~/{regex}/ whose regexp can match the empty string
+    # (e.g. a bare negative lookahead like ~/(?!foo)/) defines its own right
+    # boundary. Appending the (?:\s|$) anchor after a zero-width match can never
+    # succeed -- the anchor would have to match at the very start of the token --
+    # so such a placeholder must not be anchored, matching the pre-?/{regex}/
+    # behaviour where ~/{regex}/ was never anchored.
+    trailing_empty = False
+    trailing_match = re.search(r"\x00(\d+)\x00\s*$", row)
+    if trailing_match:
+        trailing_regexp = protected[int(trailing_match.group(1))][0]
+        try:
+            trailing_empty = re.compile(trailing_regexp).match("") is not None
+        except re.error:
+            trailing_empty = False
+
     if row.endswith("~"):
         # We determine the most specific regex for the row at matching in match_row_to_acls
         row = row[:-1] + "(.+)"
     elif row.endswith("..."):
         row = row[:-3]
+    elif trailing_empty:
+        pass
     else:
         row += r"(?:\s|$)"
     row = re.sub(r"\s+", r"\\s+", row)

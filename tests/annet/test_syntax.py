@@ -118,6 +118,21 @@ def test_parse_text(raw_rule, expected) -> None:
         ("?/a|b/ ~/x/ ?/y|z/", r"^(?:a|b)\s+(x)\s+(?:y|z)(?:\s|$)", "b x z", True),
         ("?/a|b/ ~/x/ ?/y|z/", r"^(?:a|b)\s+(x)\s+(?:y|z)(?:\s|$)", "a q y", False),
         ("?/a|b/ ~/x/ ?/y|z/", r"^(?:a|b)\s+(x)\s+(?:y|z)(?:\s|$)", "a x q", False),
+        # --- trailing zero-width placeholder ------------------------------------
+        # A trailing ~/{regex}/ or ?/{regex}/ whose regexp matches an empty span
+        # (a bare negative lookahead) is NOT anchored with (?:\s|$): the anchor
+        # would have to match at the start of the token and could never succeed.
+        # Used by ACLs like `forwarding-options ~/(?!(sampling|port-mirroring))/`.
+        ("~/(?!(sampling|port-mirroring))/", r"^((?!(?:sampling|port-mirroring)))", "enhanced-hash-key", True),
+        ("~/(?!(sampling|port-mirroring))/", r"^((?!(?:sampling|port-mirroring)))", "sampling", False),
+        ("~/(?!(sampling|port-mirroring))/", r"^((?!(?:sampling|port-mirroring)))", "port-mirroring", False),
+        ("user ~/(?!RO|SU)/", r"^user\s+((?!RO|SU))", "user admin", True),
+        ("user ~/(?!RO|SU)/", r"^user\s+((?!RO|SU))", "user RO", False),
+        ("interface ?/(?!Tunnel)/", r"^interface\s+(?:(?!Tunnel))", "interface Eth0", True),
+        ("interface ?/(?!Tunnel)/", r"^interface\s+(?:(?!Tunnel))", "interface Tunnel0", False),
+        # a trailing placeholder that still consumes input keeps the (?:\s|$) anchor
+        ("~/c|d/", r"^(c|d)(?:\s|$)", "d", True),
+        ("~/c|d/", r"^(c|d)(?:\s|$)", "e", False),
     ],
 )
 def test_compile_row_regexp(row, expected_pattern, line, should_match) -> None:
