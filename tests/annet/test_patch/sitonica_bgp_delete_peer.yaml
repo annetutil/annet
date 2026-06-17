@@ -1,0 +1,38 @@
+vendor: sitonica
+before: |
+  bgp 4200000000
+    router-id 192.0.2.69
+    peer 2001:DB8:1::99 as-number 4200000099
+    peer 2001:DB8:1::99 description TEST_DESC
+    peer 2001:DB8:1::99 fake-as 4200000066
+    peer 2001:DB8:1::99 route-update-interval 0
+    peer 2001:DB8:1::99 bfd single-hop
+    address-family ipv6 unicast
+      balance as-path-relax
+      peer 2001:DB8:1::99 enable
+      peer 2001:DB8:1::99 route-policy RM6_TOZOK import
+      peer 2001:DB8:1::99 route-policy RM6_BEISH export
+      peer 2001:DB8:1::99 advertise-community
+      peer 2001:DB8:1::99 public-as-only
+after: |
+  bgp 4200000000
+    router-id 192.0.2.69
+    address-family ipv6 unicast
+      balance as-path-relax
+patch: |
+  system-view
+  bgp 4200000000
+    undo peer 2001:DB8:1::99 bfd
+    undo peer 2001:DB8:1::99 description
+    undo peer 2001:DB8:1::99 fake-as
+    undo peer 2001:DB8:1::99 route-update-interval
+    undo peer 2001:DB8:1::99
+    address-family ipv6 unicast
+      undo peer 2001:DB8:1::99 route-policy RM6_TOZOK import
+      undo peer 2001:DB8:1::99 route-policy RM6_BEISH export
+      undo peer 2001:DB8:1::99 advertise-community
+      undo peer 2001:DB8:1::99 public-as-only
+      undo peer 2001:DB8:1::99 enable
+      quit
+    quit
+  save force
