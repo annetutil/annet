@@ -4,47 +4,32 @@ before: |
     router-id 192.0.2.69
     peer 2001:DB8:1::99 as-number 4200000099
     peer 2001:DB8:1::99 description PEER_TO_DEL
-    peer 2001:DB8:1::99 fake-as 4200000066
-    peer 2001:DB8:1::99 route-update-interval 0
-    peer 2001:DB8:1::99 bfd single-hop
     address-family ipv6 unicast
       balance as-path-relax
       peer 2001:DB8:1::99 enable
       peer 2001:DB8:1::99 route-policy RM6_TOZOK import
       peer 2001:DB8:1::99 route-policy RM6_BEISH export
-      peer 2001:DB8:1::99 advertise-community
-      peer 2001:DB8:1::99 public-as-only
 after: |
   bgp 4200000000
     router-id 192.0.2.69
     peer 2001:DB8:1::1 as-number 4200000001
-    peer 2001:DB8:1::1 bfd single-hop
     peer 2001:DB8:1::1 description PEER_TO_ADD
-    peer 2001:DB8:1::1 fake-as 4200000066
-    peer 2001:DB8:1::1 route-update-interval 0
     address-family ipv6 unicast
       balance as-path-relax
       peer 2001:DB8:1::1 enable
       peer 2001:DB8:1::1 route-policy RM6_TOZOK import
       peer 2001:DB8:1::1 route-policy RM6_BEISH export
-      peer 2001:DB8:1::1 advertise-community
-      peer 2001:DB8:1::1 public-as-only
 patch: |
   system-view
   bgp 4200000000
     undo peer 2001:DB8:1::99
     peer 2001:DB8:1::1 as-number 4200000001
-    peer 2001:DB8:1::1 bfd single-hop
     peer 2001:DB8:1::1 description PEER_TO_ADD
-    peer 2001:DB8:1::1 fake-as 4200000066
-    peer 2001:DB8:1::1 route-update-interval 0
     address-family ipv6 unicast
       undo peer 2001:DB8:1::99 enable
       peer 2001:DB8:1::1 enable
       peer 2001:DB8:1::1 route-policy RM6_TOZOK import
       peer 2001:DB8:1::1 route-policy RM6_BEISH export
-      peer 2001:DB8:1::1 advertise-community
-      peer 2001:DB8:1::1 public-as-only
       quit
     quit
   save force

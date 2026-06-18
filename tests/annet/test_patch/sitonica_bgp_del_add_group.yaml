@@ -4,29 +4,25 @@ before: |
     router-id 192.0.2.69
     group DELETE_GROUP external
     peer DELETE_GROUP as-number 4200000001
-    peer DELETE_GROUP route-update-interval 0
-    peer DELETE_GROUP bfd single-hop
     peer 2001:DB8:1::1 group DELETE_GROUP
     peer 2001:DB8:1::1 description ADYR
     address-family ipv6 unicast
+      balance as-path-relax
       peer DELETE_GROUP enable
       peer DELETE_GROUP route-policy RM6_TOZOK import
       peer DELETE_GROUP route-policy RM6_BEISH export
-      peer DELETE_GROUP advertise-community
 after: |
   bgp 4200000000
     router-id 192.0.2.69
     group NEW_GROUP external
     peer NEW_GROUP as-number 4200000001
-    peer NEW_GROUP route-update-interval 0
-    peer NEW_GROUP bfd single-hop
     peer 2001:DB8:1::99 group NEW_GROUP
     peer 2001:DB8:1::99 description TOO
     address-family ipv6 unicast
+      balance as-path-relax
       peer NEW_GROUP enable
       peer NEW_GROUP route-policy RM6_TOZOK import
       peer NEW_GROUP route-policy RM6_BEISH export
-      peer NEW_GROUP advertise-community
 patch: |
   system-view
   bgp 4200000000
@@ -35,15 +31,12 @@ patch: |
     group NEW_GROUP external
     peer NEW_GROUP as-number 4200000001
     peer 2001:DB8:1::99 group NEW_GROUP
-    peer NEW_GROUP bfd single-hop
     peer 2001:DB8:1::99 description TOO
-    peer NEW_GROUP route-update-interval 0
     address-family ipv6 unicast
       undo peer DELETE_GROUP enable
       peer NEW_GROUP enable
       peer NEW_GROUP route-policy RM6_TOZOK import
       peer NEW_GROUP route-policy RM6_BEISH export
-      peer NEW_GROUP advertise-community
       quit
     quit
   save force

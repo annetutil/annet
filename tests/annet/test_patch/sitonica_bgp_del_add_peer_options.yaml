@@ -1,0 +1,72 @@
+vendor: sitonica
+before: |
+  bgp 4200000000
+    bmp server 1 monitor all-vpn-instance route-mode adj-rib-in both
+    router-id 192.0.2.69
+    peer 2001:DB8:1::99 as-number 4200000099
+    peer 2001:DB8:1::99 description DEL_OPTIONS
+    peer 2001:DB8:1::99 connect-interface Twenty-FiveGigE1/0/19
+    peer 2001:DB8:1::99 fake-as 4200000066
+    peer 2001:DB8:1::99 route-update-interval 0
+    peer 2001:DB8:1::99 bfd single-hop
+    peer 2001:DB8:1::99 bmp server 1
+    address-family ipv6 unicast
+      balance as-path-relax
+      peer 2001:DB8:1::99 enable
+      peer 2001:DB8:1::99 route-policy RM6_TOZOK import
+      peer 2001:DB8:1::99 route-policy RM6_BEISH export
+      peer 2001:DB8:1::99 advertise-community
+      peer 2001:DB8:1::99 public-as-only
+      peer 2001:DB8:1::99 route-limit 150 discard
+after: |
+  bgp 4200000000
+    bmp server 1 monitor all-vpn-instance route-mode adj-rib-in both
+    router-id 192.0.2.69
+    peer 2001:DB8:1::99 as-number 4200000099
+    peer 2001:DB8:1::1 as-number 4200000001
+    peer 2001:DB8:1::1 description DEL_OPTIONS
+    peer 2001:DB8:1::1 connect-interface Twenty-FiveGigE1/0/1
+    peer 2001:DB8:1::1 fake-as 4200000066
+    peer 2001:DB8:1::1 route-update-interval 0
+    peer 2001:DB8:1::1 bfd single-hop
+    peer 2001:DB8:1::1 bmp server 1
+    address-family ipv6 unicast
+      balance as-path-relax
+      peer 2001:DB8:1::99 enable
+      peer 2001:DB8:1::1 enable
+      peer 2001:DB8:1::1 route-policy RM6_TOZOK import
+      peer 2001:DB8:1::1 route-policy RM6_BEISH export
+      peer 2001:DB8:1::1 advertise-community
+      peer 2001:DB8:1::1 public-as-only
+      peer 2001:DB8:1::1 route-limit 150 discard
+patch: |
+  system-view
+  bgp 4200000000
+    undo peer 2001:DB8:1::99 description
+    undo peer 2001:DB8:1::99 connect-interface
+    undo peer 2001:DB8:1::99 fake-as
+    undo peer 2001:DB8:1::99 route-update-interval
+    undo peer 2001:DB8:1::99 bfd
+    undo peer 2001:DB8:1::99 bmp server
+    peer 2001:DB8:1::1 as-number 4200000001
+    peer 2001:DB8:1::1 description DEL_OPTIONS
+    peer 2001:DB8:1::1 connect-interface Twenty-FiveGigE1/0/1
+    peer 2001:DB8:1::1 fake-as 4200000066
+    peer 2001:DB8:1::1 route-update-interval 0
+    peer 2001:DB8:1::1 bfd single-hop
+    peer 2001:DB8:1::1 bmp server 1
+    address-family ipv6 unicast
+      undo peer 2001:DB8:1::99 route-policy RM6_TOZOK import
+      undo peer 2001:DB8:1::99 route-policy RM6_BEISH export
+      undo peer 2001:DB8:1::99 advertise-community
+      undo peer 2001:DB8:1::99 public-as-only
+      undo peer 2001:DB8:1::99 route-limit
+      peer 2001:DB8:1::1 enable
+      peer 2001:DB8:1::1 route-policy RM6_TOZOK import
+      peer 2001:DB8:1::1 route-policy RM6_BEISH export
+      peer 2001:DB8:1::1 advertise-community
+      peer 2001:DB8:1::1 public-as-only
+      peer 2001:DB8:1::1 route-limit 150 discard
+      quit
+    quit
+  save force

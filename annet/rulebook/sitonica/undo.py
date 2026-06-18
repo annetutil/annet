@@ -20,3 +20,23 @@ def two(rule, key, diff, **kwargs):
         yield (False, "undo " + " ".join(diff[Op.REMOVED][0]["row"].split()[:3]), None)
     else:
         yield from common.default(rule, key, diff, **kwargs)
+
+
+def strange(rule, key, diff, **kwargs):
+    """Undo strange commands
+
+    This list of commands can't be undone with standart methods:
+    command -> undo command
+    balance 64             -> undo balance
+    balance as-path-relax  -> undo balance as-path-relax
+    balance ebgp 4         -> undo balance ebgp
+    """
+    if diff[Op.REMOVED]:
+        cmd = diff[Op.REMOVED][0]["row"]
+        if cmd.startswith("balance "):
+            if cmd.split()[1].isdigit():
+                yield (False, "undo balance", None)
+            else:
+                yield (False, "undo " + " ".join(cmd.split()[:2]), None)
+    else:
+        yield from common.default(rule, key, diff, **kwargs)

@@ -14,16 +14,23 @@
 ntp ~
 
 bgp
+    bmp ~
     graceful-restart
     non-stop-routing
     router-id
     group ~                                         %logic=annet.rulebook.sitonica.bgp.undo_peer
     peer ~                                          %logic=annet.rulebook.sitonica.bgp.undo_peer
     address-family ~
-        balance
-        balance as-path-relax
+        balance *                                   %logic=annet.rulebook.sitonica.undo.strange
         forwarding-conversational-learning
         import-route *
         network ~                                   %logic=annet.rulebook.sitonica.undo.two
         aggregate ~                                 %logic=annet.rulebook.sitonica.undo.two
-        peer ~                                      %logic=annet.rulebook.sitonica.bgp.undo_peer 
+        peer ~                                      %logic=annet.rulebook.sitonica.bgp.undo_peer
+    ip vpn-instance *
+        bmp ~
+        graceful-restart
+        non-stop-routing
+        router-id
+        group ~                                     %logic=annet.rulebook.sitonica.bgp.undo_peer
+        peer ~                                      %logic=annet.rulebook.sitonica.bgp.undo_peer

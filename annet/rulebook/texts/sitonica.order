@@ -5,25 +5,15 @@
 #   обратной, но занимает место между прямыми там, где указано (т.е. undo vlan batch
 #   будет стоять после блоков interface).
 
+interface
 ntp ~
-
+bmp server
 bgp
-    graceful-restart
-    non-stop-routing
-    router-id
+    bmp ~
     group ~
     peer * as-number
     peer * group *
-    peer * bfd
-    peer * description *
-    peer * fake-as
-    peer * route-update-interval
     peer ~
     address-family ~
-        balance ~
-        forwarding-conversational-learning
-        import-route *
-        network ~
-        aggregate ~
         peer * enable
         peer ~
