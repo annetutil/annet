@@ -7,7 +7,7 @@ from annet.rulebook import common
 
 def two(rule, key, diff, **kwargs):
     """Undo commands that require two first parameters
-    
+
     This command can't be undone with * or ~:
     network 2001:DB8:1:: 64 route-policy TO_HELL
     doesn't work:

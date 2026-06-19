@@ -16,7 +16,7 @@ def undo_peer(rule, key, diff, **kwargs):
     if diff[Op.REMOVED]:
         current_row = diff[Op.REMOVED][0]["row"]
         peer = current_row.split()[1]
-        
+
         is_peer_deleted = False
         is_peer_disabled = False
         for item in kwargs["rule_pre"]["items"].values():
@@ -57,9 +57,7 @@ def undo_peer(rule, key, diff, **kwargs):
                 or " route-limit " in current_row
             ):
                 yield (False, f"undo {' '.join(current_row.split()[:3])}", None)
-            elif (
-                " bmp server " in current_row
-            ):
+            elif " bmp server " in current_row:
                 yield (False, f"undo {' '.join(current_row.split()[:4])}", None)
             else:
                 yield from common.default(rule, key, diff, **kwargs)

@@ -18,8 +18,8 @@ from .library import (
     pc,
     ribbon,
     routeros,
-    snr,
     sitonica,
+    snr,
 )
 from .registry import Registry, registry
 
