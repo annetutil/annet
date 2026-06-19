@@ -875,11 +875,15 @@ def make_patch(
 
 
 def _aggregate_cant_delete(matches):
-    """Combine cant_delete across ALL rules that matched the row, not just the selected one.
+    """Combine cant_delete across the rules that matched the row, not just the selected one.
 
     The row is protected (cant_delete=1) only if *every* matching generator
     asked to protect it; if at least one matching generator has no %cant_delete,
     the row stays deletable (cant_delete=0).
+
+    Caller must pass only the best matches (rules that share the top metric),
+    otherwise a less specific generic rule like `diffserv domain *` would
+    override a specific one like `diffserv domain default %cant_delete`.
     """
     flags = [flag for (rule, _is_cr_allowed), _other in matches for flag in rule["attrs"]["cant_delete"]]
     if not flags:
@@ -887,14 +891,33 @@ def _aggregate_cant_delete(matches):
     return [all(flags)]
 
 
+def _best_matches(matches_with_metric):
+    """Pick the matches that share the top metric (prio, string_similarity).
+
+    `_find_acl_matches` already sorts matches by metric in descending order, so
+    the best metric is at the head of the list.
+    """
+    if not matches_with_metric:
+        return []
+    top_metric = matches_with_metric[0][0]
+    return [item for metric, item in matches_with_metric if metric == top_metric]
+
+
 def match_row_to_acl(row, rules, exclusive=False):
-    matches = _find_acl_matches(row, rules)
-    if matches:
+    matches_with_metric = _find_acl_matches(row, rules)
+    if matches_with_metric:
+        matches = [item for _metric, item in matches_with_metric]
+        # cant_delete and exclusivity must only consider rules that matched the
+        # row equally well (same %prio and same string_similarity).  Otherwise
+        # a generic catch-all like `diffserv domain *` would drop the
+        # `%cant_delete` flag set by a more specific `diffserv domain default
+        # %cant_delete` and the row would be wrongly deleted.
+        best_matches = _best_matches(matches_with_metric)
         if exclusive:
             gen_cant_delete = {}
-            for match in matches:
-                names = match[0][0]["attrs"]["generator_names"]
-                flags = match[0][0]["attrs"]["cant_delete"]
+            for match in best_matches:
+                names = match[0]["attrs"]["generator_names"]
+                flags = match[0]["attrs"]["cant_delete"]
                 for name, flag in zip(names, flags):
                     if name not in gen_cant_delete:
                         gen_cant_delete[name] = flag
@@ -906,7 +929,7 @@ def match_row_to_acl(row, rules, exclusive=False):
                 raise AclNotExclusiveError("generators: '%s'" % generator_names)
         match, children_rules = _select_match(matches, rules)
         if match is not None:
-            aggregated = _aggregate_cant_delete(matches)
+            aggregated = _aggregate_cant_delete(best_matches)
             if aggregated is not None:
                 match = match.copy()
                 match["attrs"] = match["attrs"].copy()
@@ -951,7 +974,9 @@ def _find_acl_matches(row, rules):
                 )
                 res.append(item)
     res.sort(key=operator.itemgetter(0), reverse=True)
-    return [item[1] for item in res]
+    # Return (metric, item) pairs so callers can tell apart best matches from
+    # less specific ones (see `match_row_to_acl` / `_aggregate_cant_delete`).
+    return res
 
 
 def _find_rules_matches(row, rules):

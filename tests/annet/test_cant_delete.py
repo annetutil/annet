@@ -46,6 +46,30 @@ def test_cant_delete_subblock(config, acl, device):
     assert patch == {"interface ge1/1/1": OrderedDict([("undo removed", None)])}
 
 
+# Real-world scenario: an ACL has both a specific rule that protects
+# `diffserv domain default` via `%cant_delete` and a generic catch-all
+# `diffserv domain *` without `%cant_delete`.  Aggregating cant_delete across
+# *all* matching rules used to AND the two flags and drop protection from the
+# `default` domain, deleting it.  Only the best matches (same %prio and same
+# string_similarity) must contribute to the aggregation, so the specific rule
+# wins for `default` while the generic rule still allows deleting other domains.
+def test_cant_delete_specific_rule_wins_over_catch_all(device):
+    acl = compile_acl_text(
+        r"""
+        diffserv domain default %cant_delete
+        diffserv domain *
+        """,
+        device.hw.vendor,
+    )
+    config = r"""
+        diffserv domain default
+        diffserv domain other
+    """
+    patch = _make_patch(config, acl, device)
+    # `default` must stay (protected by the specific rule); `other` must be deleted.
+    assert patch == {"undo diffserv domain other": None}
+
+
 def _make_patch(config, acl, device):
     formatter = registry_connector.get().match(device.hw).make_formatter()
     empty_tree = tabparser.parse_to_tree("", formatter.split)
