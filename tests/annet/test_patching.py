@@ -144,8 +144,6 @@ def test_patch_class_to_from_json():
         ("?/(.*)/permit ~", "no permit {}"),
         # the * inside a ~/{regex}/ regexp must not leak out as an extra {}
         ("~/(a*)/permit ~", "no {}permit {}"),
-        # a mix of all placeholder kinds in one row
-        ("?/a/ */b/ ~/c/ *", "no {} {} {}"),
         # an existing reverse prefix is stripped rather than doubled
         ("no permit *", "permit {}"),
     ],

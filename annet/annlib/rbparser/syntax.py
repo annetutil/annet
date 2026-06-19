@@ -57,79 +57,82 @@ def parse_text_multi(text: str, params_scheme) -> ParsedTree:
     return ret
 
 
+# ?/{regex}/ and ~/{regex}/ let a row embed a raw regexp: ?/ matches without capturing,
+# ~/ captures the whole match into a group. The regexp runs GREEDILY to the LAST / on the
+# row, so it may contain anything (slashes, spaces) but a row may hold at most ONE such
+# regexp placeholder -- put everything in a single regexp rather than chaining ?//~/.
+# (This limit is only about ?//~/; * wildcards, */{regex}/, <name> groups and a trailing ~
+# are independent and may repeat, e.g. `* * something ~`.)
+# ~ may appear anywhere (it is not a regexp metachar). ? is a quantifier, so ?/ is only a
+# placeholder at the row start or after whitespace.
+_TILDE_PLACEHOLDER = re.compile(r"(~)/(.*)/")
+_QMARK_PLACEHOLDER = re.compile(r"(?:^|(?<=\s))(\?)/(.*)/")
+
+_SENTINEL = "\x00{}\x00"  # wraps the protected placeholder while the row is rewritten
+_SENTINEL_RE = re.compile(r"\x00(\d+)\x00")
+
+
 @functools.lru_cache()
 def compile_row_regexp(row, flags=0):
+    """Compile one ACL/rulebook row into a start-anchored regexp matching a config line:
+
+    1. hide a ?/ or ~/ regexp placeholder behind a sentinel;
+    2. expand * wildcards and <name> named groups;
+    3. anchor the right edge with (?:\\s|$) unless the row already owns it;
+    4. restore the placeholder.
+    """
     if "(?i)" in row:
         row = row.replace("(?i)", "")
         flags |= re.IGNORECASE
 
-    # ?/{regex}/ and ~/{regex}/ both match an arbitrary regexp. ?/{regex}/ is a
-    # non-capturing match (nothing reaches a group), while ~/{regex}/ captures its
-    # whole matched span into a single group (like */{regex}/ but spanning more than
-    # one word). Both are pulled out before the placeholder substitutions below so
-    # that *, (...) inside the user's own regexp stay part of the regexp instead of
-    # being reinterpreted, and so any groups the user wrote inside collapse to
-    # non-capturing -- only the ~/ wrapper itself captures. The ? / ~ prefix is glued
-    # to the /, so neither form clashes with literal slashes (e.g. interface names
-    # like Eth0/0/1).
-    #
-    # The placeholder closes at the FIRST / that is followed by whitespace/end-of-row
-    # (a token boundary) or that is the last / on the row. This lets the regexp itself
-    # contain literal slashes -- e.g. ~/(GE.+?/[12](\.|$))/ for interface names like
-    # GE1/0/2 -- while a placeholder followed by literal text (~/interface|if/ eth0/1/2
-    # or the glued ?/(.*)/permit) still closes at its own boundary / and leaves that
-    # text intact. A leading (?:^|(?<=\s)) and the (?![?~]/)-style boundary keep
-    # several placeholders on one row from bleeding into each other.
-    protected: list[tuple[str, bool]] = []  # (regexp, captures)
+    # 1. Protect the placeholder. The inner re.sub rewrites the user's own (groups) to
+    #    non-capturing, so only the ~/ wrapper captures.
+    protected: list[tuple[str, bool]] = []  # [(regexp, is_capturing)]
 
-    def _protect(match: re.Match) -> str:
-        captures = match.group(1) == "~"
+    def _hide(match: re.Match) -> str:
         regexp = re.sub(r"\(([^\?])", r"(?:\1", match.group(2))
-        protected.append((regexp, captures))
-        return f"\x00{len(protected) - 1}\x00"
+        protected.append((regexp, match.group(1) == "~"))
+        return _SENTINEL.format(len(protected) - 1)
 
-    row = re.sub(r"(?:^|(?<=\s))([?~])/(.+?)/(?=\s|[^/]*$)", _protect, row)
+    row = _TILDE_PLACEHOLDER.sub(_hide, row)
+    row = _QMARK_PLACEHOLDER.sub(_hide, row)
 
+    # 2. */{regex}/ and bare-* wildcards, then <name> named groups.
     if "*" in row:
-        row = re.sub(r"\(([^\?])", r"(?:\1", row)  # Все дефолтные группы превратить в non-captured
-        row = re.sub(r"\*/(\S+)/", r"(\1)", row)  # */{regex_one_word}/ -> ({regex_one_word})
-        row = re.sub(r"(^|\s)\*", r"\1([^\\s]+)", row)
-
-    # Заменяем <someting> на named-группы
+        row = re.sub(r"\(([^\?])", r"(?:\1", row)  # default (groups) -> non-capturing
+        row = re.sub(r"\*/(\S+)/", r"(\1)", row)  # */{one-word regexp}/ -> ({regexp})
+        row = re.sub(r"(^|\s)\*", r"\1([^\\s]+)", row)  # bare * -> one word
     row = re.sub(r"<(\w+)>", r"(?P<\1>\\w+)", row)
 
-    # A trailing ?/{regex}/ or ~/{regex}/ whose regexp can match the empty string
-    # (e.g. a bare negative lookahead like ~/(?!foo)/) defines its own right
-    # boundary. Appending the (?:\s|$) anchor after a zero-width match can never
-    # succeed -- the anchor would have to match at the very start of the token --
-    # so such a placeholder must not be anchored, matching the pre-?/{regex}/
-    # behaviour where ~/{regex}/ was never anchored.
-    trailing_empty = False
-    trailing_match = re.search(r"\x00(\d+)\x00\s*$", row)
-    if trailing_match:
-        trailing_regexp = protected[int(trailing_match.group(1))][0]
-        try:
-            trailing_empty = re.compile(trailing_regexp).match("") is not None
-        except re.error:
-            trailing_empty = False
-
+    # 3. Anchor the right edge with (?:\s|$) so a row matches a whole token (interface Eth0
+    #    must not match interface Eth01) -- unless the row's right EDGE is a regexp:
+    #      foo~    capture the rest of the line (specificity resolved in match_row_to_acls)
+    #      foo...  match a prefix and ignore the rest
+    #      the row holds a placeholder (\x00 sentinel) AND ends in one, or ends in a )
+    #        (a lookaround that nests a placeholder, e.g. interface (?!...|Vbdif(~/.../))).
+    #        That regexp owns the edge, so the line may continue past the match (e.g. a
+    #        subinterface 25GE1/0/10.1501 under ~/(25GE1\/0\/10(?![0-9]))/). A placeholder
+    #        that is NOT at the edge does not count -- ~/x/ y still anchors the literal y --
+    #        and a plain trailing group with no placeholder, (tacacs|default), stays
+    #        anchored too.
     if row.endswith("~"):
-        # We determine the most specific regex for the row at matching in match_row_to_acls
         row = row[:-1] + "(.+)"
     elif row.endswith("..."):
         row = row[:-3]
-    elif trailing_empty:
+    elif "\x00" in row and row.rstrip().endswith(("\x00", ")")):
         pass
     else:
         row += r"(?:\s|$)"
+
+    # 4. Collapse whitespace runs, then restore the placeholder (after this step, so a
+    #    regexp's own spaces survive as literal spaces).
     row = re.sub(r"\s+", r"\\s+", row)
-    if protected:
 
-        def _restore(match: re.Match) -> str:
-            regexp, captures = protected[int(match.group(1))]
-            return f"({regexp})" if captures else f"(?:{regexp})"
+    def _restore(match: re.Match) -> str:
+        regexp, captures = protected[int(match.group(1))]
+        return f"({regexp})" if captures else f"(?:{regexp})"
 
-        row = re.sub(r"\x00(\d+)\x00", _restore, row)
+    row = _SENTINEL_RE.sub(_restore, row)
     return re.compile("^" + row, flags=flags)
 
 

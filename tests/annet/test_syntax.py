@@ -102,53 +102,53 @@ def test_parse_text(raw_rule, expected) -> None:
         ("~/a|b/ x", r"^(a|b)\s+x(?:\s|$)", "a x", True),
         ("~/a|b/ x", r"^(a|b)\s+x(?:\s|$)", "b x", True),
         ("~/a|b/ x", r"^(a|b)\s+x(?:\s|$)", "c x", False),
-        # a placeholder followed by literal text closes at its own boundary / (the one
-        # followed by whitespace), so literal slashes after it stay intact
-        ("~/interface|if/ eth0/1/2", r"^(interface|if)\s+eth0/1/2(?:\s|$)", "if eth0/1/2", True),
-        ("~/interface|if/ eth0/1/2", r"^(interface|if)\s+eth0/1/2(?:\s|$)", "if eth0X1X2", False),
-        # the regexp may itself contain literal slashes: it closes at the last / when no
-        # earlier / sits on a token boundary. Used by ACLs like
-        # `interface ~/(GE.+?/[12](\.|$))/` matching interface names such as GE1/0/2.
+        # A ~/{regex}/ runs greedily to the LAST / on the row, so the regexp may itself
+        # contain literal slashes -- e.g. ~/(GE.+?/[12](\.|$))/ matching GE1/0/2.
         (
             r"interface ~/(GE.+?/[12](\.|$))/",
-            r"^interface\s+((?:GE.+?/[12](?:\.|$)))(?:\s|$)",
+            r"^interface\s+((?:GE.+?/[12](?:\.|$)))",
             "interface GE1/0/2",
             True,
         ),
         (
             r"interface ~/(GE.+?/[12](\.|$))/",
-            r"^interface\s+((?:GE.+?/[12](?:\.|$)))(?:\s|$)",
+            r"^interface\s+((?:GE.+?/[12](?:\.|$)))",
             "interface GE1/0/1",
             True,
         ),
         (
             r"interface ~/(GE.+?/[12](\.|$))/",
-            r"^interface\s+((?:GE.+?/[12](?:\.|$)))(?:\s|$)",
+            r"^interface\s+((?:GE.+?/[12](?:\.|$)))",
             "interface GE1/0/3",
             False,
         ),
         (
             r"interface ~/(GE.+?/[12](\.|$))/",
-            r"^interface\s+((?:GE.+?/[12](?:\.|$)))(?:\s|$)",
+            r"^interface\s+((?:GE.+?/[12](?:\.|$)))",
             "interface XE1/0/2",
             False,
         ),
-        # a slash-containing regexp still does not bleed into a following placeholder
-        (r"~/a/b/ ~/c/d/", r"^(a/b)\s+(c/d)(?:\s|$)", "a/b c/d", True),
-        (r"~/a/b/ ~/c/d/", r"^(a/b)\s+(c/d)(?:\s|$)", "a/b c/e", False),
-        # several ~/.../ on one row do not bleed into each other; each captures
-        ("~/a|b/ x ~/c|d/", r"^(a|b)\s+x\s+(c|d)(?:\s|$)", "a x d", True),
-        ("~/a|b/ x ~/c|d/", r"^(a|b)\s+x\s+(c|d)(?:\s|$)", "a x e", False),
+        # Only ONE ?/ or ~/ regexp placeholder per row: the regexp is matched greedily to
+        # the last /, so two placeholders do NOT split -- they merge into one capture. Put
+        # everything in a single regexp instead.
+        (r"~/a/ ~/b/", r"^(a/ ~/b)", "a/ ~/b", True),
+        # The merged single-regexp form of `interface {downlinks}{vlans} mode l2` (what the
+        # generator now emits -- downlinks and vlans combined into one ~/.../):
+        (
+            r"interface ~/((25GE.+?/[12](\.|$))([2-9]|[1-9]\d{1,2}|to))/ mode l2",
+            r"^interface\s+((?:(25GE.+?/[12](?:\.|$))(?:[2-9]|[1-9]\d{1,2}|to)))\s+mode\s+l2(?:\s|$)",
+            "interface 25GE1/0/2.134 mode l2",
+            True,
+        ),
+        (
+            r"interface ~/((25GE.+?/[12](\.|$))([2-9]|[1-9]\d{1,2}|to))/ mode l2",
+            r"^interface\s+((?:(25GE.+?/[12](?:\.|$))(?:[2-9]|[1-9]\d{1,2}|to)))\s+mode\s+l2(?:\s|$)",
+            "interface 25GE1/0/3.134 mode l2",
+            False,
+        ),
         # ~/{regex}/ also works when combined with a trailing ~
         ("~/(a|b)/ permit ~", r"^((?:a|b))\s+permit\s+(.+)", "a permit foo bar", True),
         ("~/(a|b)/ permit ~", r"^((?:a|b))\s+permit\s+(.+)", "c permit foo", False),
-        # --- ?/{regex}/ and ~/{regex}/ mixed ------------------------------------
-        # several placeholders on one row do not bleed into each other: each one
-        # ends at its own first /. The ?/.../ stay non-capturing, the ~/x/ captures.
-        ("?/a|b/ ~/x/ ?/y|z/", r"^(?:a|b)\s+(x)\s+(?:y|z)(?:\s|$)", "a x y", True),
-        ("?/a|b/ ~/x/ ?/y|z/", r"^(?:a|b)\s+(x)\s+(?:y|z)(?:\s|$)", "b x z", True),
-        ("?/a|b/ ~/x/ ?/y|z/", r"^(?:a|b)\s+(x)\s+(?:y|z)(?:\s|$)", "a q y", False),
-        ("?/a|b/ ~/x/ ?/y|z/", r"^(?:a|b)\s+(x)\s+(?:y|z)(?:\s|$)", "a x q", False),
         # --- trailing zero-width placeholder ------------------------------------
         # A trailing ~/{regex}/ or ?/{regex}/ whose regexp matches an empty span
         # (a bare negative lookahead) is NOT anchored with (?:\s|$): the anchor
@@ -161,9 +161,65 @@ def test_parse_text(raw_rule, expected) -> None:
         ("user ~/(?!RO|SU)/", r"^user\s+((?!RO|SU))", "user RO", False),
         ("interface ?/(?!Tunnel)/", r"^interface\s+(?:(?!Tunnel))", "interface Eth0", True),
         ("interface ?/(?!Tunnel)/", r"^interface\s+(?:(?!Tunnel))", "interface Tunnel0", False),
-        # a trailing placeholder that still consumes input keeps the (?:\s|$) anchor
-        ("~/c|d/", r"^(c|d)(?:\s|$)", "d", True),
-        ("~/c|d/", r"^(c|d)(?:\s|$)", "e", False),
+        # a trailing placeholder is NOT anchored: the regexp owns the right edge, so the
+        # line may continue past the match (here just the bare token, but cf. subinterfaces)
+        ("~/c|d/", r"^(c|d)", "d", True),
+        ("~/c|d/", r"^(c|d)", "e", False),
+        # --- hand-written trailing lookaround -----------------------------------
+        # A row that ends in a hand-written zero-width lookaround (never a placeholder)
+        # is likewise NOT anchored. Used by ACLs like
+        # `interface (?!25GE.+?/...|Vbdif(~/(52[1-9]\d{4})/))` to cover any interface
+        # whose name is not one of the excluded ones. A ~/.../ placeholder may be nested
+        # inside the lookaround (preceded by `(`), so it is still unwrapped.
+        (
+            r"interface (?!25GE.+?/([^12](\.|$)|\d{2}(\.|$))|Vbdif(~/(52[1-9]\d{4})/))",
+            r"^interface\s+(?!25GE.+?/([^12](\.|$)|\d{2}(\.|$))|Vbdif(((?:52[1-9]\d{4}))))",
+            "interface 100GE1/0/1",
+            True,
+        ),
+        (
+            r"interface (?!25GE.+?/([^12](\.|$)|\d{2}(\.|$))|Vbdif(~/(52[1-9]\d{4})/))",
+            r"^interface\s+(?!25GE.+?/([^12](\.|$)|\d{2}(\.|$))|Vbdif(((?:52[1-9]\d{4}))))",
+            "interface 25GE1/0/3",
+            False,
+        ),
+        (
+            r"interface (?!25GE.+?/([^12](\.|$)|\d{2}(\.|$))|Vbdif(~/(52[1-9]\d{4})/))",
+            r"^interface\s+(?!25GE.+?/([^12](\.|$)|\d{2}(\.|$))|Vbdif(((?:52[1-9]\d{4}))))",
+            "interface Vbdif5210000",
+            False,
+        ),
+        # a placeholder nested in a (?!...) lookahead is unwrapped, and the lookahead
+        # tail is left un-anchored
+        (
+            r"interface Vbdif(?!~/(52[1-9]\d{4})/)",
+            r"^interface\s+Vbdif(?!((?:52[1-9]\d{4})))",
+            "interface Vbdif100",
+            True,
+        ),
+        (
+            r"interface Vbdif(?!~/(52[1-9]\d{4})/)",
+            r"^interface\s+Vbdif(?!((?:52[1-9]\d{4})))",
+            "interface Vbdif5210000",
+            False,
+        ),
+        # a trailing consuming group (NOT a lookaround) keeps the anchor, so it matches a
+        # whole token: interface (eth|lo) matches "interface eth", not "interface ethernet".
+        ("interface (eth|lo)", r"^interface\s+(eth|lo)(?:\s|$)", "interface eth", True),
+        ("interface (eth|lo)", r"^interface\s+(eth|lo)(?:\s|$)", "interface ethernet", False),
+        ("user (RO|SU)", r"^user\s+(RO|SU)(?:\s|$)", "user RO", True),
+        ("user (RO|SU)", r"^user\s+(RO|SU)(?:\s|$)", "user ROOT", False),
+        # Un-anchoring keys off ~/ presence (the pre-?/{regex}/ rule), not lookaround
+        # detection. A hand-written lookaround that nests a ~/ -- as production negative
+        # ACLs always do, via api_id_prefix / Vbdif(~/.../) -- is un-anchored (see the
+        # `interface (?!...|Vbdif(~/.../))` case above). A BARE (?!...) with no ~/ is
+        # treated like any other group and stays anchored (so it matches nothing useful --
+        # write the lookaround through a ~/ placeholder).
+        ("interface (?!Eth)", r"^interface\s+(?!Eth)(?:\s|$)", "interface Gi0", False),
+        # a trailing literal token (even after a placeholder) still anchors: ?/(.*)/permit
+        # matches the whole token `permit`, not `permitxxx`.
+        ("?/(.*)/permit", r"^(?:(?:.*))permit(?:\s|$)", "permit", True),
+        ("?/(.*)/permit", r"^(?:(?:.*))permit(?:\s|$)", "permitxxx", False),
     ],
 )
 def test_compile_row_regexp(row, expected_pattern, line, should_match) -> None:
