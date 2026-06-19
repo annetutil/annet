@@ -916,8 +916,8 @@ def match_row_to_acl(row, rules, exclusive=False):
         if exclusive:
             gen_cant_delete = {}
             for match in best_matches:
-                names = match[0]["attrs"]["generator_names"]
-                flags = match[0]["attrs"]["cant_delete"]
+                names = match[0][0]["attrs"]["generator_names"]
+                flags = match[0][0]["attrs"]["cant_delete"]
                 for name, flag in zip(names, flags):
                     if name not in gen_cant_delete:
                         gen_cant_delete[name] = flag
