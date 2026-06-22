@@ -63,9 +63,12 @@ class PartialGenerator(TreeGenerator):
                 text = _filter_str(text)
             self._append_text(text)
 
-        for row, annotation in zip(self._rows, self._annotations):
-            if NONE_SEARCHER.search(row):
-                raise InvalidValueFromGenerator("Found 'None' in yield result: %s" % add_annotation(row, annotation))
+        if not self.ALLOW_NONE:
+            for row, annotation in zip(self._rows, self._annotations):
+                if NONE_SEARCHER.search(row):
+                    raise InvalidValueFromGenerator(
+                        "Found 'None' in yield result: %s" % add_annotation(row, annotation)
+                    )
 
         if annotate:
             generated_rows = (add_annotation(x, y) for (x, y) in zip(self._rows, self._annotations))

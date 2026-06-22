@@ -77,7 +77,7 @@ class Entire(BaseGenerator):
         for text in run_res:
             if isinstance(text, tuple):
                 text = " ".join(map(_filter_str, flatten(text)))
-            if NONE_SEARCHER.search(text):
+            if not self.ALLOW_NONE and NONE_SEARCHER.search(text):
                 raise InvalidValueFromGenerator("Found 'None' in yield result: %s" % text)
             parts.append(text)
 
