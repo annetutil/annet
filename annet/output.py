@@ -2,6 +2,7 @@ import abc
 import os
 import posixpath
 import sys
+import traceback
 from typing import Dict, List, Optional, Tuple, Type
 from urllib.parse import urlparse
 
@@ -38,6 +39,14 @@ class _DriverConnector(Connector["OutputDriver"]):
 
 
 output_driver_connector = _DriverConnector()
+
+
+def _format_fail_exception(exc):
+    if formatted_output := getattr(exc, "formatted_output", None):
+        return formatted_output
+    if isinstance(exc, BaseException) and exc.__traceback__ is not None:
+        return "".join(traceback.format_exception(exc))
+    return f"{repr(exc)} (formatted_output is absent)"
 
 
 class OutputDriver(abc.ABC):
@@ -152,7 +161,7 @@ class OutputDriverBasic(OutputDriver):
                 label = assignment[0]
             else:
                 ValueError("Failed to parse failed assignment %r" % assignment)
-            ret.append((label, getattr(exc, "formatted_output", f"{repr(exc)} (formatted_output is absent)"), True))
+            ret.append((label, _format_fail_exception(exc), True))
         return ret
 
     def cfg_file_names(self, device: Device) -> list[str]:
