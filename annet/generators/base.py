@@ -60,6 +60,7 @@ def _split_and_strip(text):
 class BaseGenerator:
     TYPE: str
     TAGS: List[str] = []
+    ALLOW_NONE = False
 
     def supports_device(self, device) -> bool:  # pylint: disable=unused-argument
         return True
