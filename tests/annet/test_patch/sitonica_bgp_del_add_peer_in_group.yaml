@@ -1,0 +1,27 @@
+vendor: sitonica
+before: |
+  bgp 4200000000
+    router-id 192.0.2.69
+    group GROUP_NAME external
+    peer GROUP_NAME as-number 4200000001
+    peer 2001:DB8:1::99 group GROUP_NAME
+    peer 2001:DB8:1::99 description PEER_TO_DELETE
+    address-family ipv6 unicast
+      peer GROUP_NAME enable
+after: |
+  bgp 4200000000
+    router-id 192.0.2.69
+    group GROUP_NAME external
+    peer GROUP_NAME as-number 4200000001
+    peer 2001:DB8:1::1 group GROUP_NAME
+    peer 2001:DB8:1::1 description PEER_ADDED
+    address-family ipv6 unicast
+      peer GROUP_NAME enable
+patch: |
+  system-view
+  bgp 4200000000
+    undo peer 2001:DB8:1::99
+    peer 2001:DB8:1::1 group GROUP_NAME
+    peer 2001:DB8:1::1 description PEER_ADDED
+    quit
+  save force

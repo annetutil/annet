@@ -1,0 +1,42 @@
+vendor: sitonica
+before: |
+  bgp 4200000000
+    router-id 192.0.2.69
+    group DELETE_GROUP external
+    peer DELETE_GROUP as-number 4200000001
+    peer 2001:DB8:1::1 group DELETE_GROUP
+    peer 2001:DB8:1::1 description ADYR
+    address-family ipv6 unicast
+      balance as-path-relax
+      peer DELETE_GROUP enable
+      peer DELETE_GROUP route-policy RM6_TOZOK import
+      peer DELETE_GROUP route-policy RM6_BEISH export
+after: |
+  bgp 4200000000
+    router-id 192.0.2.69
+    group NEW_GROUP external
+    peer NEW_GROUP as-number 4200000001
+    peer 2001:DB8:1::99 group NEW_GROUP
+    peer 2001:DB8:1::99 description TOO
+    address-family ipv6 unicast
+      balance as-path-relax
+      peer NEW_GROUP enable
+      peer NEW_GROUP route-policy RM6_TOZOK import
+      peer NEW_GROUP route-policy RM6_BEISH export
+patch: |
+  system-view
+  bgp 4200000000
+    undo peer 2001:DB8:1::1
+    undo group DELETE_GROUP
+    group NEW_GROUP external
+    peer NEW_GROUP as-number 4200000001
+    peer 2001:DB8:1::99 group NEW_GROUP
+    peer 2001:DB8:1::99 description TOO
+    address-family ipv6 unicast
+      undo peer DELETE_GROUP enable
+      peer NEW_GROUP enable
+      peer NEW_GROUP route-policy RM6_TOZOK import
+      peer NEW_GROUP route-policy RM6_BEISH export
+      quit
+    quit
+  save force
