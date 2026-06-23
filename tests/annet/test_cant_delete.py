@@ -70,6 +70,49 @@ def test_cant_delete_specific_rule_wins_over_catch_all(device):
     assert patch == {"undo diffserv domain other": None}
 
 
+# Regression: a reverse command like `undo shutdown` present on the device must
+# stay protected by `undo shutdown %cant_delete`.  The row `undo shutdown`
+# matches both the direct rule `undo shutdown %cant_delete` and the *reverse*
+# form of a sibling rule `shutdown` (no %cant_delete) with the very same metric.
+# Aggregating cant_delete across both best matches AND-ed the flags and dropped
+# protection, so the row was wrongly deleted (emitted as `shutdown`).  Only the
+# best matches sharing the selected (direct) match's direction must contribute.
+@pytest.mark.parametrize(
+    "acl_text",
+    [
+        # a single ACL with the protecting rule and a reverse-matching sibling
+        r"""
+        interface %cant_delete=1
+            undo shutdown %cant_delete=1
+            shutdown
+        """,
+        # sibling order must not matter
+        r"""
+        interface %cant_delete=1
+            shutdown
+            undo shutdown %cant_delete=1
+        """,
+        # two generators: one protects `undo shutdown`, the other emits the
+        # canonical `shutdown` whose reverse form matches the same row
+        r"""
+        interface %cant_delete %generator_names=gen1
+            undo shutdown %cant_delete=1 %generator_names=gen1
+        interface %generator_names=gen2
+            shutdown %generator_names=gen2
+        """,
+    ],
+)
+def test_cant_delete_protects_reverse_command(device, acl_text):
+    acl = compile_acl_text(acl_text, device.hw.vendor)
+    config = r"""
+        interface ge1/1/1
+            undo shutdown
+    """
+    patch = _make_patch(config, acl, device)
+    # `undo shutdown` must stay; nothing may be deleted.
+    assert patch == {}
+
+
 def _make_patch(config, acl, device):
     formatter = registry_connector.get().match(device.hw).make_formatter()
     empty_tree = tabparser.parse_to_tree("", formatter.split)

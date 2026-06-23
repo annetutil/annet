@@ -907,17 +907,26 @@ def match_row_to_acl(row, rules, exclusive=False):
     matches_with_metric = _find_acl_matches(row, rules)
     if matches_with_metric:
         matches = [item for _metric, item in matches_with_metric]
+        match, children_rules = _select_match(matches, rules)
         # cant_delete and exclusivity must only consider rules that matched the
         # row equally well (same %prio and same string_similarity).  Otherwise
         # a generic catch-all like `diffserv domain *` would drop the
         # `%cant_delete` flag set by a more specific `diffserv domain default
         # %cant_delete` and the row would be wrongly deleted.
         best_matches = _best_matches(matches_with_metric)
+        # A row like `undo shutdown` can match both the direct rule `undo
+        # shutdown %cant_delete` and the *reverse* form of a sibling rule
+        # `shutdown` with the very same metric.  These are different commands,
+        # so the reverse match must not dilute the `%cant_delete` set on the
+        # selected (direct) rule.  Keep only the best matches that matched in the
+        # same direction as the selected match before aggregating.
+        if match is not None:
+            best_matches = [m for m in best_matches if m[1]["is_reverse"] == match["is_reverse"]]
         if exclusive:
             gen_cant_delete = {}
-            for match in best_matches:
-                names = match[0][0]["attrs"]["generator_names"]
-                flags = match[0][0]["attrs"]["cant_delete"]
+            for best_match in best_matches:
+                names = best_match[0][0]["attrs"]["generator_names"]
+                flags = best_match[0][0]["attrs"]["cant_delete"]
                 for name, flag in zip(names, flags):
                     if name not in gen_cant_delete:
                         gen_cant_delete[name] = flag
@@ -927,7 +936,6 @@ def match_row_to_acl(row, rules, exclusive=False):
             if len(can_delete) > 1:
                 generator_names = ", ".join(can_delete.keys())
                 raise AclNotExclusiveError("generators: '%s'" % generator_names)
-        match, children_rules = _select_match(matches, rules)
         if match is not None:
             aggregated = _aggregate_cant_delete(best_matches)
             if aggregated is not None:
