@@ -19,6 +19,8 @@ before: |
    neighbor 2001:db8::1234 description blf02
    neighbor 2001:db8::1234 advertisement-interval 0
    address-family ipv4 vrf TEST_VRF
+   network 10.1.1.0/24
+   network 10.1.2.0/24
    neighbor GROUP_UNDER_DELETION peer-group
    neighbor GROUP_UNDER_DELETION remote-as 99999
    neighbor GROUP_UNDER_DELETION advertisement-interval 0
@@ -29,8 +31,10 @@ before: |
    neighbor 2001:db8:4::1234 remote-as 23456
    neighbor 2001:db8:4::1234 peer-group GROUP_UNDER_DELETION
    neighbor 2001:db8:4::1234 description NEIGHBOR_2
-   network 10.1.1.0/24
-   network 10.1.2.0/24
+   neighbor 10.1.2.3 remote-as 12345
+   neighbor 10.1.2.3 local-as 54321
+   neighbor 10.1.2.3 fall-over bfd
+   neighbor 10.1.2.3 activate
    neighbor 10.1.1.2 remote-as 65513
    neighbor 10.1.1.2 activate
    neighbor 10.1.1.4 remote-as 65514
@@ -64,20 +68,32 @@ after: |
    neighbor 10.1.1.2 activate
    neighbor 10.1.1.6 remote-as 65515
    neighbor 10.1.1.6 activate
+   neighbor 10.1.2.3 remote-as 23456
+   neighbor 10.1.2.3 local-as 54321
+   neighbor 10.1.2.3 fall-over bfd
+   neighbor 10.1.2.3 activate
+   neighbor 10.1.2.3 remove-private-AS
+   neighbor 10.1.2.3 maximum-prefix 200 stop-update
+   neighbor 10.1.2.3 route-map SOME_RM out
 
 patch: |
   conf t
   router bgp 65512
     no address-family ipv6 vrf VRF_UNDER_DELETION
+    no neighbor GROUP_WITH_NEIGHBORS advertisement-interval 0
     no neighbor 2001:db8:2::1234 remote-as 23456
     no neighbor 2001:db8::1234 remote-as 1234
-    no neighbor GROUP_WITH_NEIGHBORS advertisement-interval 0
     address-family ipv4 vrf TEST_VRF
       no network 10.1.2.0/24
       no neighbor GROUP_UNDER_DELETION remote-as
       no neighbor GROUP_UNDER_DELETION peer-group
+      no neighbor 10.1.2.3 remote-as 12345
       no neighbor 10.1.1.4 remote-as 65514
       neighbor 10.1.1.6 remote-as 65515
+      neighbor 10.1.2.3 remote-as 23456
+      neighbor 10.1.2.3 remove-private-AS
+      neighbor 10.1.2.3 maximum-prefix 200 stop-update
+      neighbor 10.1.2.3 route-map SOME_RM out
       neighbor 10.1.1.6 activate
       exit-address-family
     exit
