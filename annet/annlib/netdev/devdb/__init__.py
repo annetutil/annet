@@ -10,7 +10,7 @@ from annet.lib import get_context
 
 @functools.lru_cache(None)
 def parse_hw_model(hw_model):
-    prepared = _prepare_db()
+    prepared = prepare_db()
     (tree, all_sequences) = get_db(prepared)
     true_sequences = find_true_sequences(hw_model, tree)
     return (
@@ -19,7 +19,7 @@ def parse_hw_model(hw_model):
     )
 
 
-def _prepare_db() -> dict[tuple[str, ...], Any]:
+def prepare_raw_db() -> dict[str, str]:
     try:
         from library.python import resource
 
@@ -30,4 +30,9 @@ def _prepare_db() -> dict[tuple[str, ...], Any]:
         devdb_file = Path(get_context().get("devdb", {}).get("path", Path(__file__).parent / "data" / "devdb.json"))
         with devdb_file.open("r", encoding="utf-8") as f:
             raw = json.load(f)
+    return raw
+
+
+def prepare_db() -> dict[tuple[str, ...], Any]:
+    raw = prepare_raw_db()
     return {tuple(seq.split(".")): re.compile(regexp) for (seq, regexp) in raw.items()}
