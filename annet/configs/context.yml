@@ -8,6 +8,12 @@ storage:
   default:
     adapter: netbox
 
+# Optionally override the rulebook module path (defaults to annet.rulebook.texts).
+# Uncomment the section below and add `rulebook: default` under the context to enable it.
+# rulebook:
+#   default:
+#     module: annet.rulebook.texts
+
 context:
   default:
     generators: default

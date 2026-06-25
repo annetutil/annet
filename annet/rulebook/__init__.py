@@ -12,6 +12,7 @@ from annet.annlib.rbparser.exceptions import RulebookSyntaxError
 from annet.annlib.rbparser.ordering import compile_ordering_text, dump_order_rulebook, merge_order_rulebooks
 from annet.annlib.rbparser.platform import VENDOR_ALIASES
 from annet.connectors import CachedConnector
+from annet.lib import get_context
 from annet.rulebook.deploying import compile_deploying_text, dump_deploy_rulebook, merge_deploy_rulebooks
 from annet.rulebook.patching import compile_patching_text, dump_patch_rulebook, merge_patch_rulebooks
 from annet.rulebook.types import (
@@ -61,7 +62,7 @@ def get_rulebook(hw) -> Rulebook:
 
 
 class DefaultRulebookProvider(RulebookProvider):
-    rulebook_module = "annet.rulebook.texts"
+    DEFAULT_RULEBOOK_MODULE = "annet.rulebook.texts"
     merge_rulebooks = {
         RUL: merge_patch_rulebooks,
         ORDER: merge_order_rulebooks,
@@ -74,6 +75,7 @@ class DefaultRulebookProvider(RulebookProvider):
     }
 
     def __init__(self):
+        self.rulebook_module = get_context().get("rulebook", {}).get("module") or self.DEFAULT_RULEBOOK_MODULE
         self._rulebook_cache = {}
         self._rulebook_text_cache = {}
 

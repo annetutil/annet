@@ -16,7 +16,7 @@ from .. import MockDevice
 
 
 class MockDefaultRulebookProvider(DefaultRulebookProvider):
-    rulebook_module = "tests.annet.test_pc_deploy.texts"
+    DEFAULT_RULEBOOK_MODULE = "tests.annet.test_pc_deploy.texts"
 
 
 @pytest.fixture
