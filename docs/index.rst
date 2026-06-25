@@ -56,6 +56,7 @@ Usage help can be obtained by calling ``annet -h`` or for a specific command, su
    usage/config.rst
    usage/gen.rst
    usage/acl.rst
+   usage/rulebooks.rst
 
 
 .. toctree::
