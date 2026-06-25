@@ -41,20 +41,20 @@ router bgp *
     bgp ~
     neighbor * fall-over bfd
     neighbor * advertisement-interval *
-    neighbor */[\da-f\.\:]+/ peer-group
-    neighbor */[\da-f\.\:]+/ remote-as
-    neighbor */(\w+_?-?)+/ peer-group
-    neighbor */(\w+_?-?)+/ remote-as
+    neighbor */[0-9a-fA-F\.\:]+/ peer-group %order_reverse
+    neighbor */[0-9a-fA-F\.\:]+/ remote-as  %order_reverse
+    neighbor */(\w+_?-?)+/ peer-group       %order_reverse
+    neighbor */(\w+_?-?)+/ remote-as        %order_reverse
     neighbor * description *
     network *
     address-family ~
         max-paths ebgp *
         neighbor * fall-over bfd
         neighbor * advertisement-interval *
-        neighbor */[\da-f\.\:]+/ peer-group
-        neighbor */[\da-f\.\:]+/ remote-as
-        neighbor */(\w+_?-?)+/ peer-group
-        neighbor */(\w+_?-?)+/ remote-as
+        neighbor */[0-9a-fA-F\.\:]+/ peer-group  %order_reverse
+        neighbor */[0-9a-fA-F\.\:]+/ remote-as   %order_reverse
+        neighbor */(\w+_?-?)+/ peer-group        %order_reverse
+        neighbor */(\w+_?-?)+/ remote-as         %order_reverse
         neighbor * description *
         neighbor * activate
         network *
