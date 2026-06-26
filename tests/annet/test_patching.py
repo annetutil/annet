@@ -4,7 +4,9 @@ from textwrap import dedent
 
 import pytest
 
+from annet.annlib.patching import Orderer
 from annet.annlib.rbparser import syntax
+from annet.annlib.rbparser.ordering import compile_ordering_text
 from annet.patching import PatchTree, make_diff
 from annet.rulebook.common import default, default_diff, ordered_diff
 from annet.rulebook.patching import _make_reverse
@@ -84,6 +86,65 @@ def test_ordered_diff_block(config_tree, reversed_tree, rb):
         ),
         (Op.MOVED, "z", [], _make_match(rb, "z")),
     ]
+
+
+def _order_undos(rules):
+    """Order an interface block containing `undo eth-trunk` and `undo portswitch` (in that, reversed,
+    order) and return the resulting sequence of commands."""
+    orderer = Orderer(compile_ordering_text(dedent(rules), "huawei"), "huawei")
+    config = odict(
+        [
+            (
+                "interface X",
+                odict(
+                    [
+                        ("undo eth-trunk", odict()),
+                        ("undo portswitch", odict()),
+                    ]
+                ),
+            ),
+        ]
+    )
+    return list(orderer.order_config(config)["interface X"])
+
+
+def test_undo_reverse_ordered_by_default():
+    # A bare reverse command is reverse-ordered: a line written later in the rulebook is applied
+    # earlier, so `undo eth-trunk` ends up before `undo portswitch`.
+    assert _order_undos("""
+        interface *
+            undo portswitch
+            undo eth-trunk
+    """) == ["undo eth-trunk", "undo portswitch"]
+
+
+def test_order_reverse_pins_undo_forward():
+    # %order_reverse cancels the reversal and pins the `undo` command at its written position, so the
+    # rulebook order is honored: `undo portswitch` before `undo eth-trunk`.
+    assert _order_undos("""
+        interface *
+            undo portswitch  %order_reverse
+            undo eth-trunk   %order_reverse
+    """) == ["undo portswitch", "undo eth-trunk"]
+
+
+def test_order_reverse_on_direct_row_is_a_noop():
+    # %order_reverse only has an effect on a row that is itself an `undo ...` command. On a direct row
+    # it matches nothing, leaving the reverse command unordered (falls back to position 0).
+    orderer = Orderer(
+        compile_ordering_text(
+            dedent("""
+        interface *
+            aaa
+            bbb
+            portswitch  %order_reverse
+    """),
+            "huawei",
+        ),
+        "huawei",
+    )
+    pos = orderer.get_order(("interface X", "undo portswitch"), cmd_direct=False)
+    assert pos[0][-1][0] == 0
 
 
 def _make_match(rb, *key):
