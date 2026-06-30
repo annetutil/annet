@@ -218,7 +218,8 @@ positional arguments concrete, we'll follow one sample rule through — ``snmp-a
 
     snmp-agent sys-info * %logic=mycompany.rulebook.huawei.snmp.sys_info
 
-**Argument 1 — ``rule``**: a dict describing the matched rule. The fields you will use most are:
+**Argument 1** — ``rule``: a dict describing the matched rule. The fields you'll use most are
+shown below; the :ref:`full list with types <logic-rule-fields>` is in the reference.
 
 .. code-block:: python
 
@@ -230,12 +231,12 @@ positional arguments concrete, we'll follow one sample rule through — ``snmp-a
         # ... plus the rule's params (comment, multiline, context, …)
     }
 
-**Argument 2 — ``key``**: a tuple of the values that ``*`` / ``~`` matched on the line. For the
+**Argument 2** — ``key``: a tuple of the values that ``*`` / ``~`` matched on the line. For the
 line ``snmp-agent sys-info contact`` matched by ``snmp-agent sys-info *`` the key is
 ``("contact",)``. This is what you pass to ``rule["reverse"].format(*key)`` to build a removal
 command.
 
-**Argument 3 — ``diff``**: a dict that groups what changed for this command, keyed by operation:
+**Argument 3** — ``diff``: a dict that groups what changed for this command, keyed by operation:
 
 .. code-block:: python
 
@@ -249,7 +250,7 @@ command.
 
 Each entry is ``{"row": <text>, "children": <subtree or None>}``.
 
-**The ``**_`` (extra keyword arguments)**: besides those three, Annet always passes a few more
+**Extra keyword arguments** (``**_``): besides those three, Annet always passes a few more
 keyword arguments. Most functions don't need them and swallow them with ``**_`` (or ``**kwargs``
 if they want to forward them to ``common.default``). They are:
 
@@ -348,11 +349,11 @@ The arguments are:
   through to ``common.default_diff``).
 - ``_pops`` — the chain of parent operations, used internally; forward it unchanged.
 
-A ``DiffItem`` is a named tuple ``(op, row, children, diff_pre)``. The usual pattern is to call
-``common.default_diff(...)`` to get the normal list and then filter or tweak it, as the real
-``vlan_diff`` and ``local_user_diff`` helpers do. As with ``%logic``, ``annet.rulebook.common``
-ships ready-made diff functions: ``default_diff``, ``ordered_diff``, ``rewrite_diff`` and
-``multiline_diff``.
+A ``DiffItem`` is a named tuple ``(op, row, children, diff_pre)`` (its fields are typed in the
+:ref:`reference <diff-logic-reference>`). The usual pattern is to call ``common.default_diff(...)``
+to get the normal list and then filter or tweak it, as the real ``vlan_diff`` and
+``local_user_diff`` helpers do. As with ``%logic``, ``annet.rulebook.common`` ships ready-made
+diff functions: ``default_diff``, ``ordered_diff``, ``rewrite_diff`` and ``multiline_diff``.
 
 
 Other patching params
@@ -455,7 +456,13 @@ command sequence that is actually sent to the device). The same ordering ruleboo
 By default a rule applies to both passes; ``%scope=patch`` limits it to the patch pass only, so
 it changes the order commands are sent in without disturbing how the config itself is laid out.
 
-``%split`` is what lets you express "remove first, then add" within one block:
+Repeating a rule with ``%split``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Normally a command may appear only **once** in an ordering rulebook (listing it twice is an
+error, because its position would be ambiguous). Some blocks genuinely need a command in two
+places — for example remove all VLANs, then later add the new ones. Mark such a rule with
+``%split`` and it may repeat, each occurrence acting as its own ordering slot:
 
 .. code-block:: text
 
@@ -697,23 +704,12 @@ Both ``my-banner`` and ``my-cleanup`` are anchored to ``hostname`` (the group ru
     interface
 
 
-Repeating a rule: ``%split``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Anchoring on a repeated rule: ``%split``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Normally a command may appear only **once** in an ordering rulebook (listing it twice is an
-error, because its position would be ambiguous). Some blocks genuinely need a command in two
-places — e.g. remove all VLANs, then later add the new ones. Mark such a rule with ``%split`` in
-**both** the parent and the child so it is allowed to repeat, and each occurrence acts as its own
-anchor:
-
-.. code-block:: text
-
-    interface
-        bridge
-            vlan %split
-                remove
-            vlan %split
-                add
+A plain rule may anchor only once. A rule marked ``%split`` (see *Ordering rulebooks* above)
+repeats, and **each occurrence is its own anchor**. For that to work the rule must carry
+``%split`` in **both** the parent and the child, so the merge can line the occurrences up.
 
 
 Pointing Annet at your rulebooks
@@ -843,3 +839,128 @@ Built-in ``%diff_logic`` functions (``annet.rulebook.common``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``default_diff``, ``ordered_diff``, ``rewrite_diff``, ``multiline_diff``.
+
+
+.. _logic-rule-fields:
+
+The ``%logic`` function in detail
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Annet calls the function with every argument by keyword, so the complete signature is::
+
+    def fn(rule, key, diff, hw, rule_pre, root_pre) -> Iterable[tuple[bool | None, str, dict | None]]
+
+In practice you only declare the arguments you use and collect the rest with ``**_`` — but for
+reference, here is every one of them.
+
+**Input —** ``rule`` (``dict``) — every attribute of the matched rule:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 22 58
+
+   * - Field
+     - Type
+     - Meaning
+   * - ``regexp``
+     - ``re.Pattern``
+     - compiled regex that parsed the config line; its capture groups are the ``key``
+   * - ``reverse``
+     - ``str``
+     - removal-command template; ``{}`` slots are filled positionally from ``key``
+   * - ``logic``
+     - ``Callable``
+     - the ``%logic`` function bound to this rule
+   * - ``diff_logic``
+     - ``Callable``
+     - the ``%diff_logic`` function for this rule's block
+   * - ``parent``
+     - ``bool``
+     - whether the rule is a block (has child rules)
+   * - ``multiline``
+     - ``bool``
+     - the ``%multiline`` flag
+   * - ``ordered``
+     - ``bool``
+     - the ``%ordered`` flag
+   * - ``force_commit``
+     - ``bool``
+     - the ``%force_commit`` flag
+   * - ``ignore_case``
+     - ``bool``
+     - the ``%ignore_case`` flag
+   * - ``comment``
+     - ``list[str]``
+     - extra strings shown with ``patch --add-comments``
+   * - ``context``
+     - ``dict[str, str]``
+     - the rule's ``%context`` tags
+
+**Input —** ``key`` (``tuple[str, ...]``) — the values the ``*`` / ``~`` placeholders matched,
+i.e. ``rule["regexp"].match(line).groups()``. Feed it into ``rule["reverse"].format(*key)``.
+
+**Input —** ``diff`` (``dict[Op, list[dict]]``) — what changed for this command, grouped by
+operation (``Op.ADDED`` / ``Op.REMOVED`` / ``Op.AFFECTED`` / ``Op.MOVED`` / ``Op.UNCHANGED``).
+Each entry is ``{"row": str, "children": dict | None}``.
+
+**Input —** ``hw`` (``HardwareView``) — the device's hardware, for branching on model.
+
+**Input —** ``rule_pre`` (``dict``) — this rule's full pre-computed data
+(``{"rule": str, "attrs": dict, "items": {key: diff, ...}}``); ``rule`` above is its ``attrs``.
+
+**Input —** ``root_pre`` (``dict``) — the same structure for the whole patch, keyed by rule text;
+use it to inspect sibling commands. (``hw`` / ``rule_pre`` / ``root_pre`` are rarely needed.)
+
+**Output** — an iterable of ``(is_forward, command, children)`` tuples:
+
+- ``is_forward`` (``bool``) — forward (configuration) command vs removal command;
+- ``command`` (``str``) — the command text to emit;
+- ``children`` (``dict | None``) — a sub-tree to recurse into, or ``None`` for a leaf line.
+
+Yield nothing to emit no command for the rule.
+
+
+.. _diff-logic-reference:
+
+The ``%diff_logic`` function in detail
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A ``%diff_logic`` function computes the diff of a whole block. Annet calls it with every argument
+by keyword, so the complete signature is::
+
+    def fn(old, new, diff_pre, _pops) -> list[DiffItem]
+
+**Input —** ``old`` (``OrderedDict``) — the block's children in the **old** config, mapping each
+row (``str``) to its sub-tree.
+
+**Input —** ``new`` (``OrderedDict``) — the same for the **new** config.
+
+**Input —** ``diff_pre`` (``OrderedDict``) — Annet's pre-computed match metadata, keyed by config
+line. Most functions just pass it straight through to ``common.default_diff``; if you do inspect
+it, each entry has the shape::
+
+    diff_pre[row] = {
+        "match": {
+            "attrs": {...},      # the rule's attributes — the same dict as `rule` in %logic
+            "rule": str,         # rule text without params, e.g. "ntp server *"
+            "raw_rule": str,     # rule text with params
+            "key": tuple,        # placeholder values matched on this row
+        },
+        "subtree": OrderedDict,  # the same structure again for this row's children
+    }
+
+The ``diff_pre`` field on each returned ``DiffItem`` (below) is exactly the ``"match"`` dict here.
+
+**Input —** ``_pops`` (``tuple[Op, ...]``) — the chain of parent operations, used internally;
+forward it unchanged. Its default is ``(Op.AFFECTED,)``.
+
+**Output** — a ``list`` of ``DiffItem`` named tuples ``(op, row, children, diff_pre)``:
+
+- ``op`` (``Op``) — the operation: ``ADDED`` / ``REMOVED`` / ``AFFECTED`` / ``MOVED`` /
+  ``UNCHANGED``;
+- ``row`` (``str``) — the config line;
+- ``children`` (``list[DiffItem]``) — the diff of this row's sub-block;
+- ``diff_pre`` (``dict``) — the ``"match"`` entry for this row (the inner dict shown above).
+
+The usual pattern is to call ``common.default_diff(old, new, diff_pre, _pops)`` for the normal
+list and then filter or tweak it.

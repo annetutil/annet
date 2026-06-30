@@ -328,7 +328,7 @@ lines"*:
         bmp
             ~ %global
 
-This modifier is **on by default for any block starting with ``interface``** — Annet will not
+This modifier is **on by default** for any block starting with ``interface`` — Annet will not
 delete interfaces unless you opt in. To allow deletion, turn it off explicitly:
 
 .. code-block:: text
