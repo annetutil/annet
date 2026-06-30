@@ -185,10 +185,10 @@ interface */Tunnel.*/
 interface *
     # должно идти до undo portswich, т.к. потом удалить он ее не даст
     undo mac-address learning     %order_reverse
-    undo portswitch  %order_reverse
+    undo portswitch
     undo ip address * * sub  %order_reverse
     undo ip address * *  %order_reverse
-    portswitch
+    portswitch  %order_reverse
     ip binding
     ipv6 enable
     ipv6 nd ra prefix
@@ -218,7 +218,7 @@ interface *
     port hybrid pvid
     voice-vlan */\d+/
     voice-vlan
-    undo eth-trunk  %order_reverse
+    undo eth-trunk
     eth-trunk
     mode
     qos (wfq|drr)
