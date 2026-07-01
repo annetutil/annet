@@ -1,13 +1,18 @@
 import re
-from collections import defaultdict
-from collections.abc import Iterable
+from collections import OrderedDict, defaultdict
+from collections.abc import Callable, Iterable, Iterator
 from itertools import groupby
+from typing import Any, TypeVar
 
+from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.types import Op
 from annet.rulebook import common
 
 
-def _groupby_sorted(iterable, *, key):
+_T = TypeVar("_T")
+
+
+def _groupby_sorted(iterable: Iterable[_T], *, key: Callable[[_T], Any]) -> Iterator[tuple[Any, Iterator[_T]]]:
     return groupby(sorted(iterable, key=key), key=key)
 
 
@@ -93,11 +98,16 @@ def _unparse_port_split_args(ifaces: Iterable[tuple[str, int]], *, split_type: s
     return result
 
 
-def port_split_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
+def port_split_diff(
+    old: OrderedDict[str, Any],
+    new: OrderedDict[str, Any],
+    diff_pre: OrderedDict[str, Any],
+    _pops: tuple[str, ...] = (Op.AFFECTED,),
+) -> Iterator[common.DiffItem]:
     # pylint: disable=unused-argument
 
-    old_row_by_iface = {}
-    old_ifaces_by_type = defaultdict(set)
+    old_row_by_iface: dict[tuple[str, int], str] = {}
+    old_ifaces_by_type: defaultdict[str, set[tuple[str, int]]] = defaultdict(set)
     for row in old:
         (row_args,) = diff_pre[row]["match"]["key"]
         ifaces, split_type = _parse_port_split_args(_remove_comments(row_args))
@@ -105,8 +115,8 @@ def port_split_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
         for iface in ifaces:
             old_row_by_iface[iface] = row
 
-    new_row_by_iface = {}
-    new_ifaces_by_type = defaultdict(set)
+    new_row_by_iface: dict[tuple[str, int], str] = {}
+    new_ifaces_by_type: defaultdict[str, set[tuple[str, int]]] = defaultdict(set)
     for row in new:
         (row_args,) = diff_pre[row]["match"]["key"]
         ifaces, split_type = _parse_port_split_args(_remove_comments(row_args))
@@ -118,8 +128,8 @@ def port_split_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
 
     for split_type in old_ifaces_by_type.keys():
         if removed := old_ifaces_by_type[split_type] - new_ifaces_by_type[split_type]:
-            for orig_row, ifaces in _groupby_sorted(removed, key=lambda x: old_row_by_iface[x]):
-                args = _unparse_port_split_args(ifaces, split_type=split_type)
+            for orig_row, grouped_ifaces in _groupby_sorted(removed, key=lambda x: old_row_by_iface[x]):
+                args = _unparse_port_split_args(grouped_ifaces, split_type=split_type)
                 yield common.DiffItem(
                     Op.REMOVED,
                     f"port split dimension interface {args}",
@@ -129,8 +139,8 @@ def port_split_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
 
     for split_type in new_ifaces_by_type.keys():
         if added := new_ifaces_by_type[split_type] - old_ifaces_by_type[split_type]:
-            for orig_row, ifaces in _groupby_sorted(added, key=lambda x: new_row_by_iface[x]):
-                args = _unparse_port_split_args(ifaces, split_type=split_type)
+            for orig_row, grouped_ifaces in _groupby_sorted(added, key=lambda x: new_row_by_iface[x]):
+                args = _unparse_port_split_args(grouped_ifaces, split_type=split_type)
                 yield common.DiffItem(
                     Op.ADDED,
                     f"port split dimension interface {args}",
@@ -139,7 +149,9 @@ def port_split_diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
                 )
 
 
-def port_split(rule, key, diff, hw, **_):
+def port_split(
+    rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, hw: HardwareView, **_: Any
+) -> common.LogicResult:
     yield from common.default(rule, key, diff)
     if not hw.Huawei.NE and not hw.Huawei.CE.CE8800.CE8875 and not hw.Huawei.CE.CE8800.CE8851:
         # some devices require `port split refresh`, some do not

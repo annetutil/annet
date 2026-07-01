@@ -1,9 +1,17 @@
+from __future__ import annotations
+
 from collections import OrderedDict as odict
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, cast
 
 from annet.annlib.rbparser import syntax
 
 
-def config(config_tree, rules):
+if TYPE_CHECKING:
+    from annet.storage import Device
+
+
+def config(config_tree: Mapping[str, Any], rules: Mapping[str, Any]) -> odict[str, Any]:
     implicit_config_tree = odict()
     for row, rule in rules.items():
         matched_lines = [line for line in config_tree.keys() if rule["regexp"].match(line)]
@@ -15,11 +23,11 @@ def config(config_tree, rules):
     return implicit_config_tree
 
 
-def compile_rules(device):
+def compile_rules(device: Device) -> odict[str, Any]:
     return compile_tree(_implicit_tree(device))
 
 
-def compile_tree(tree):
+def compile_tree(tree: odict[Any, Any]) -> odict[str, Any]:
     rules = odict()
     for _, attrs in tree.items():
         rule = {
@@ -31,7 +39,7 @@ def compile_tree(tree):
     return rules
 
 
-def _implicit_tree(device):
+def _implicit_tree(device: Device) -> odict[Any, Any]:
     text = ""
     if device.hw.Huawei:
         if device.hw.Huawei.CE:
@@ -100,7 +108,9 @@ def _implicit_tree(device):
         """
         if (
             device.hw.Nexus.N3x.N3432
-            or (device.hw.Nexus.N9x.N9500 and "spine1" in device.tags)
+            # ``tags`` is not declared on the Device protocol (annet/storage.py) but is
+            # present on concrete device implementations.
+            or (device.hw.Nexus.N9x.N9500 and "spine1" in cast(Any, device).tags)
             or device.hw.Nexus.N9x.N9316
             or device.hw.Cisco.Nexus.N9x.N9364
         ):
@@ -218,7 +228,7 @@ def _implicit_tree(device):
     return parse_text(text)
 
 
-def parse_text(text):
+def parse_text(text: str) -> odict[Any, Any]:
     return syntax.parse_text(
         text,
         {

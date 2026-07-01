@@ -2,18 +2,19 @@
 import logging
 import sys
 from importlib.metadata import distributions
+from typing import cast
 
 import annet
 from annet import argparse, cli, diff, generators, hardware, lib, rulebook
 
 
-def _get_installed_packages_list():
+def _get_installed_packages_list() -> list[tuple[str, str]]:
     return sorted([(d.metadata["Name"], d.version) for d in distributions()], key=lambda x: x[0].lower())
 
 
 # =====
 @lib.catch_ctrl_c
-def main():
+def main() -> int:
     annet.assert_python_version()
     parser = argparse.ArgParser()
     cli.fill_base_args(parser, annet.__name__, "configs/logging.yaml")
@@ -23,7 +24,7 @@ def main():
 
     parser.add_commands(parser.find_subcommands(cli.list_subcommands()))
     try:
-        return parser.dispatch(pre_call=annet.init, add_help_command=True)
+        return cast(int, parser.dispatch(pre_call=annet.init, add_help_command=True))
     except (generators.GeneratorError, annet.ExecError) as e:
         logging.error(e)
         return 1

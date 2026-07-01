@@ -4,6 +4,7 @@ Custom diff logic for RouterOS user commands.
 
 import re
 from collections import OrderedDict as odict
+from typing import Any
 
 from annet.annlib.rulebook.common import DiffItem, call_diff_logic
 from annet.types import Op
@@ -21,7 +22,9 @@ def normalize_user_line(line: str) -> str:
     return normalized.strip()
 
 
-def diff(old: odict, new: odict, diff_pre: odict, _pops: tuple[Op, ...] = (Op.AFFECTED,)) -> list[DiffItem]:
+def diff(
+    old: odict[str, Any], new: odict[str, Any], diff_pre: odict[str, Any], _pops: tuple[str, ...] = (Op.AFFECTED,)
+) -> list[DiffItem]:
     """Custom diff logic for RouterOS user commands."""
     diff_indexed = []
 

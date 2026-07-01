@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import os
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Any
 
 from .query import parse_query
 
@@ -32,7 +34,8 @@ class NetboxStorageOpts:
         self.recache = recache
 
     @classmethod
-    def parse_params(cls, conf_params: Optional[dict[str, str]], cli_opts: Any):
+    def parse_params(cls, conf_params: dict[str, Any] | None, cli_opts: Any) -> "NetboxStorageOpts":
+        conf_params = conf_params or {}
         url = os.getenv("NETBOX_URL") or conf_params.get("url") or DEFAULT_URL
         token = os.getenv("NETBOX_TOKEN", "").strip() or conf_params.get("token") or ""
         all_hosts_filter = None
@@ -56,8 +59,8 @@ class NetboxStorageOpts:
         else:
             cache_path = str(conf_params.get("cache_path", ""))
 
-        if cache_ttl := os.getenv("NETBOX_CACHE_TTL"):
-            cache_ttl = timedelta(seconds=int(cache_ttl))
+        if cache_ttl_env := os.getenv("NETBOX_CACHE_TTL"):
+            cache_ttl = timedelta(seconds=int(cache_ttl_env))
         else:
             cache_ttl = timedelta(seconds=conf_params.get("cache_ttl", 0))
 

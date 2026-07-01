@@ -1,5 +1,7 @@
-from typing import Any
+from collections.abc import Iterator
+from typing import Any, cast
 
+from annet.adapters.netbox.common.models import NetboxDevice
 from annet.generators import BaseGenerator, Entire
 from annet.mesh import MeshExecutor
 from annet.rpl import RouteMap, RoutingPolicy
@@ -27,7 +29,7 @@ class CommunityGenerator(CommunityListGenerator):
     def get_community_lists(self, device: Any) -> list[CommunityList]:
         return COMMUNITIES
 
-    def get_routemap(self) -> RouteMap:
+    def get_routemap(self) -> RouteMap[NetboxDevice[Any, Any]]:
         return routemap
 
     def get_policies(self, device: Any) -> list[RoutingPolicy]:
@@ -118,13 +120,15 @@ class FrrGenerator(Entire, CumulusPolicyGenerator):
     def get_as_path_filters(self, device: Any) -> list[AsPathFilter]:
         return AS_PATH_FILTERS
 
-    def path(self, device):
+    def path(self, device: Any) -> str | None:
         if device.hw.PC.Mellanox or device.hw.PC.NVIDIA:
             return "/etc/frr/frr.conf"
+        return None
 
-    def run(self, device):
+    def run(self, device: Any) -> Iterator[str | tuple[Any, ...]]:
         yield FRR_HEADER
-        yield from self.generate_cumulus_rpl(device)
+        # generate_cumulus_rpl is typed as yielding Sequence[str] but emits tuples at runtime
+        yield from cast("Iterator[tuple[Any, ...]]", self.generate_cumulus_rpl(device))
         yield "line vty"
 
 

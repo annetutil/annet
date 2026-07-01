@@ -1,6 +1,6 @@
 import os
 from collections import OrderedDict
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -35,7 +35,9 @@ class PCVendor(AbstractVendor):
     def reverse(self) -> str:
         return "-"
 
-    def apply(self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str) -> tuple[CommandList, CommandList]:
+    def apply(
+        self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str | None
+    ) -> tuple[CommandList, CommandList]:
         before, after = CommandList(), CommandList()
 
         if hw.soft.startswith(("Cumulus", "SwitchDev")):
@@ -48,7 +50,7 @@ class PCVendor(AbstractVendor):
     def hardware(self) -> HardwareView:
         return HardwareView("PC")
 
-    def make_formatter(self, **kwargs) -> CommonFormatter:
+    def make_formatter(self, **kwargs: Any) -> CommonFormatter:
         return CommonFormatter(**kwargs)
 
     @property
@@ -72,7 +74,7 @@ def nvos_yaml_to_dict(text: str) -> dict[str, Any]:
             for key, value in item.items():
                 merged[key] = value
         return merged
-    return doc
+    return cast(dict[str, Any], doc)
 
 
 def dict_to_nvos_yaml(config: dict[str, Any]) -> str:

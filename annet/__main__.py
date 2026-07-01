@@ -1,4 +1,4 @@
-import annet.annet
+from annet.annet import main
 
 
-annet.annet.main()
+main()

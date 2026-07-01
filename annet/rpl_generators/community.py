@@ -5,6 +5,7 @@ from typing import Any
 
 from annet.generators import PartialGenerator
 from annet.rpl import ConditionOperator, MatchField, RoutingPolicy, SingleCondition, ThenField
+from annet.storage import Device
 
 from .entities import (
     CommunityList,
@@ -136,7 +137,7 @@ class CommunityListGenerator(PartialGenerator, ABC):
             policies=self.get_policies(device),
         )
 
-    def acl_huawei(self, _):
+    def acl_huawei(self, _: Device) -> str:
         return r"""
         ip community-filter
         ip extcommunity-filter
@@ -144,7 +145,7 @@ class CommunityListGenerator(PartialGenerator, ABC):
         ip large-community-filter
         """
 
-    def ref_huawei(self, _):
+    def ref_huawei(self, _: Device) -> str:
         return """
         route-policy
             if-match community-filter <name>
@@ -170,7 +171,7 @@ class CommunityListGenerator(PartialGenerator, ABC):
         else:
             raise NotImplementedError(f"CommunityList type {community_list.type} not implemented for huawei")
 
-    def run_huawei(self, device: Any):
+    def run_huawei(self, device: Any) -> Iterator[Sequence[str]]:
         for community_list in self.get_used_community_lists(device):
             if community_list.use_regex and len(community_list.members) > 1:
                 raise NotImplementedError("Multiple regex is not supported for huawei")
@@ -190,7 +191,7 @@ class CommunityListGenerator(PartialGenerator, ABC):
             else:
                 raise NotImplementedError(f"Community logic {community_list.logic} is not implemented for huawei")
 
-    def acl_arista(self, _):
+    def acl_arista(self, _: Device) -> str:
         return r"""
         ip community-list
         ip extcommunity-list
@@ -234,7 +235,7 @@ class CommunityListGenerator(PartialGenerator, ABC):
         else:
             raise NotImplementedError(f"CommunityList type {community_list.type} not implemented for arista")
 
-    def run_arista(self, device):
+    def run_arista(self, device: Device) -> Iterator[Sequence[str]]:
         for community_list_union in self.get_used_united_community_lists(device):
             name = mangle_united_community_list_name([c.name for c in community_list_union])
             for community_list in community_list_union:
@@ -265,7 +266,7 @@ class CommunityListGenerator(PartialGenerator, ABC):
                 else:
                     raise NotImplementedError(f"Community logic {community_list.logic} is not implemented for arista")
 
-    def acl_iosxr(self, _) -> str:
+    def acl_iosxr(self, _: Device) -> str:
         return r"""
         community-set *
             ~ %global=1
@@ -294,11 +295,11 @@ class CommunityListGenerator(PartialGenerator, ABC):
                 else:
                     yield (f"{community}{comma}",)
 
-    def run_iosxr(self, device):
+    def run_iosxr(self, device: Device) -> Iterator[Sequence[str]]:
         for community_list in self.get_used_community_lists(device):
             yield from self._iosxr_community_list(community_list)
 
-    def acl_juniper(self, _) -> str:
+    def acl_juniper(self, _: Device) -> str:
         return r"""
         policy-options  %cant_delete
             community ~
@@ -336,7 +337,7 @@ class CommunityListGenerator(PartialGenerator, ABC):
             if len(members) > 1:
                 yield *definition, "[", *members, "]"
 
-    def run_juniper(self, device):
+    def run_juniper(self, device: Device) -> Iterator[Sequence[str]]:
         # Juniper allows different community types
         # so we write generator in a generic way to reflect that.
         #

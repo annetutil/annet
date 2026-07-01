@@ -1,8 +1,15 @@
 import collections
 import functools
+import re
+from collections.abc import Iterable, Iterator, Mapping
+from typing import Any
 
 
-def get_db(prepared):
+Seq = tuple[str, ...]
+Tree = dict[re.Pattern[str], dict[str, Any]]
+
+
+def get_db(prepared: Mapping[Seq, re.Pattern[str]]) -> tuple[Tree, set[Seq]]:
     allowed = _make_allowed_by_seq(prepared)
     return (
         _build_tree(prepared, allowed),
@@ -10,8 +17,8 @@ def get_db(prepared):
     )
 
 
-def find_true_sequences(hw_model, tree):
-    sequences = set()
+def find_true_sequences(hw_model: str, tree: Tree) -> set[Seq]:
+    sequences: set[Seq] = set()
     for regexp, meta in tree.items():
         if regexp.search(hw_model):
             sequences.update(meta["sequences"])
@@ -19,8 +26,8 @@ def find_true_sequences(hw_model, tree):
     return sequences
 
 
-def _build_tree(prepared, allowed_by_seq):
-    tree = {}
+def _build_tree(prepared: Mapping[Seq, re.Pattern[str]], allowed_by_seq: Mapping[Seq, set[Seq]]) -> Tree:
+    tree: Tree = {}
     for seq, regexp in prepared.items():
         sub = tree
         for sub_seq in _seq_subs(seq):
@@ -34,14 +41,14 @@ def _build_tree(prepared, allowed_by_seq):
     return tree
 
 
-def _seq_subs(seq):
+def _seq_subs(seq: Seq) -> Iterator[Seq]:
     for index in range(1, len(seq) + 1):
         yield seq[:index]
 
 
-def _make_allowed_by_seq(sequences):
-    all_variants = collections.Counter()
-    variants_by_seq = {}
+def _make_allowed_by_seq(sequences: Iterable[Seq]) -> dict[Seq, set[Seq]]:
+    all_variants: collections.Counter[tuple[str, ...]] = collections.Counter()
+    variants_by_seq: dict[Seq, set[Seq]] = {}
 
     for seq in sequences:
         variants = _make_seq_variants(seq)
@@ -54,5 +61,5 @@ def _make_allowed_by_seq(sequences):
     }
 
 
-def _make_seq_variants(seq):
+def _make_seq_variants(seq: Seq) -> set[Seq]:
     return set(seq[left:-right] + (seq[-1],) for left in range(len(seq)) for right in range(1, len(seq[left:]) + 1))

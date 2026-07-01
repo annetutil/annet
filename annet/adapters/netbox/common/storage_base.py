@@ -1,15 +1,25 @@
+from __future__ import annotations
+
 import ssl
 from ipaddress import ip_interface
 from logging import getLogger
-from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union, cast
+from types import TracebackType
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, List, Optional, TypeVar, Union, cast
 
 from annetbox.v37 import models as api_models
 from requests import Session
-from requests_cache import CachedSession, SQLiteCache
+from requests_cache import CachedSession
+from requests_cache.backends.sqlite import SQLiteCache
 
 from annet.adapters.netbox.common.query import FIELD_VALUE_SEPARATOR, NetboxQuery
 from annet.adapters.netbox.common.storage_opts import NetboxStorageOpts
+from annet.storage import Device as DeviceProtocol
+from annet.storage import Interface as StorageInterface
 from annet.storage import Storage
+
+
+if TYPE_CHECKING:
+    from typing_extensions import Self
 
 from .adapter import NetboxAdapter
 from .models import (
@@ -23,14 +33,14 @@ from .models import (
 
 
 logger = getLogger(__name__)
-NetboxDeviceT = TypeVar("NetboxDeviceT", bound=NetboxDevice)
-InterfaceT = TypeVar("InterfaceT", bound=Interface)
-IpAddressT = TypeVar("IpAddressT", bound=IpAddress)
+NetboxDeviceT = TypeVar("NetboxDeviceT", bound=NetboxDevice[Any, Any])
+InterfaceT = TypeVar("InterfaceT", bound=Interface[Any, Any])
+IpAddressT = TypeVar("IpAddressT", bound=IpAddress[Any])
 PrefixT = TypeVar("PrefixT", bound=Prefix)
-FHRPGroupT = TypeVar("FHRPGroupT", bound=FHRPGroup)
+FHRPGroupT = TypeVar("FHRPGroupT", bound=FHRPGroup[Any])
 FHRPGroupAssignmentT = TypeVar(
     "FHRPGroupAssignmentT",
-    bound=FHRPGroupAssignment,
+    bound=FHRPGroupAssignment[Any],
 )
 
 
@@ -92,16 +102,21 @@ class BaseNetboxStorage(
     ) -> NetboxAdapter[NetboxDeviceT, InterfaceT, IpAddressT, PrefixT, FHRPGroupT, FHRPGroupAssignmentT]:
         raise NotImplementedError()
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, _, __, ___):
+    def __exit__(
+        self,
+        _: type[BaseException] | None,
+        __: BaseException | None,
+        ___: TracebackType | None,
+    ) -> bool | None:
         pass
 
-    def resolve_object_ids_by_query(self, query: NetboxQuery):
+    def resolve_object_ids_by_query(self, query: NetboxQuery) -> list[int]:
         return [d.id for d in self._load_devices(query)]
 
-    def resolve_fdnds_by_query(self, query: NetboxQuery):
+    def resolve_fdnds_by_query(self, query: NetboxQuery) -> list[str]:
         return [d.name for d in self._load_devices(query)]
 
     def resolve_all_fdnds(self) -> list[str]:
@@ -111,11 +126,11 @@ class BaseNetboxStorage(
 
     def make_devices(
         self,
-        query: Union[NetboxQuery, list],
-        preload_neighbors=False,
-        use_mesh=None,
-        preload_extra_fields=False,
-        **kwargs,
+        query: Union[NetboxQuery, list[Any]],
+        preload_neighbors: bool = False,
+        use_mesh: bool | None = None,
+        preload_extra_fields: bool = False,
+        **kwargs: Any,
     ) -> List[NetboxDeviceT]:
         if isinstance(query, list):
             query = NetboxQuery.new(query)
@@ -166,12 +181,14 @@ class BaseNetboxStorage(
         groups = {g.id: g for g in self.netbox.list_fhrp_groups(list(group_ids))}
         for assignment in assignments:
             assignment.group = groups[assignment.fhrp_group_id]
+            assert assignment.interface_id is not None
             interface_mapping[assignment.interface_id].fhrp_groups.append(assignment)
 
     def _fill_interface_ipaddress(self, interfaces: list[InterfaceT]) -> None:
         interface_mapping = {i.id: i for i in interfaces if i.count_ipaddresses}
         ips = self.netbox.list_ipaddr_by_ifaces(list(interface_mapping))
         for ip in ips:
+            assert ip.assigned_object_id is not None
             interface_mapping[ip.assigned_object_id].ip_addresses.append(ip)
         self._fill_ipaddr_prefixes(ips)
 
@@ -183,7 +200,7 @@ class BaseNetboxStorage(
             cidr = ip_to_cidrs[ip.address]
             ip.prefix = cidr_to_prefix.get(cidr)
 
-    def _record_device(self, device: NetboxDeviceT):
+    def _record_device(self, device: NetboxDeviceT) -> None:
         self._id_devices[device.id] = device
         self._short_name_devices[device.name] = device
         if not self.exact_host_filter:
@@ -192,10 +209,10 @@ class BaseNetboxStorage(
 
     def get_device(
         self,
-        obj_id,
-        preload_neighbors=False,
-        use_mesh=None,
-        **kwargs,
+        obj_id: Any,
+        preload_neighbors: bool = False,
+        use_mesh: bool | None = None,
+        **kwargs: Any,
     ) -> NetboxDeviceT:
         if obj_id in self._id_devices:
             return self._id_devices[obj_id]
@@ -205,33 +222,35 @@ class BaseNetboxStorage(
         self._record_device(device)
         return device
 
-    def flush_perf(self):
+    def flush_perf(self) -> None:
         pass
 
     def search_connections(
         self,
-        device: NetboxDeviceT,
-        neighbor: NetboxDeviceT,
-    ) -> list[tuple[InterfaceT, InterfaceT]]:
+        device: DeviceProtocol,
+        neighbor: DeviceProtocol,
+    ) -> list[tuple[StorageInterface, StorageInterface]]:
         if device.storage is not self:
             raise ValueError("device does not belong to this storage")
         if neighbor.storage is not self:
             raise ValueError("neighbor does not belong to this storage")
         # both devices are NetboxDevice if they are loaded from this storage
-        res = []
-        for local_port in device.interfaces:
+        netbox_device = cast(NetboxDeviceT, device)
+        netbox_neighbor = cast(NetboxDeviceT, neighbor)
+        res: list[tuple[StorageInterface, StorageInterface]] = []
+        for local_port in netbox_device.interfaces:
             if not local_port.connected_endpoints:
                 continue
             for endpoint in local_port.connected_endpoints:
-                if endpoint.device.id == neighbor.id:
-                    for remote_port in neighbor.interfaces:
+                if endpoint.device.id == netbox_neighbor.id:
+                    for remote_port in netbox_neighbor.interfaces:
                         if remote_port.name == endpoint.name:
                             res.append((local_port, remote_port))
                             break
         return res
 
 
-def _match_query(exact_host_filter: bool, query: NetboxQuery, device_data: api_models.Device) -> bool:
+def _match_query(exact_host_filter: bool, query: NetboxQuery, device_data: NetboxDevice[Any, Any]) -> bool:
     """
     Additional filtering after netbox due to limited backend logic.
     """
@@ -284,11 +303,15 @@ def cached_requests_session(opts: NetboxStorageOpts) -> Callable[[Session], Sess
     def session_factory(session: Session) -> Session:
         backend = SQLiteCache(db_path=opts.cache_path)
         if opts.recache:
-            backend.clear()
-        return CachedSession.wrap(
-            session,
-            backend=backend,
-            expire_after=opts.cache_ttl,
+            # requests_cache ships py.typed but leaves clear() unannotated; assert its type.
+            cast("Callable[[], None]", backend.clear)()
+        return cast(
+            "Session",
+            CachedSession.wrap(
+                session,
+                backend=backend,
+                expire_after=opts.cache_ttl,
+            ),
         )
 
     return session_factory

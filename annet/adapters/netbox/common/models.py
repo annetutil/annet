@@ -2,7 +2,7 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from ipaddress import IPv6Interface, ip_interface
-from typing import Any, Dict, Generic, List, Optional, Sequence, TypeVar
+from typing import Any, Dict, Generic, List, Optional, Sequence, TypeVar, cast
 
 from annet.annlib.netdev.views.dump import DumpableView
 from annet.annlib.netdev.views.hardware import HardwareView, lag_name
@@ -16,7 +16,7 @@ class Entity(DumpableView):
     name: str
 
     @property
-    def _dump__list_key(self):
+    def _dump__list_key(self) -> str:
         return self.name
 
 
@@ -51,7 +51,7 @@ class DeviceIp(DumpableView):
     address: str
 
     @property
-    def _dump__list_key(self):
+    def _dump__list_key(self) -> str:
         return self.address
 
 
@@ -78,7 +78,7 @@ class Prefix(DumpableView):
     description: Optional[str] = ""
 
     @property
-    def _dump__list_key(self):
+    def _dump__list_key(self) -> str:
         return self.prefix
 
 
@@ -100,7 +100,7 @@ class IpAddress(DumpableView, Generic[_PrefixT]):
     vrf: Optional[Vrf] = None
 
     @property
-    def _dump__list_key(self):
+    def _dump__list_key(self) -> str:
         return self.address
 
 
@@ -126,14 +126,14 @@ class InterfaceVlan(Entity):
     vid: int
 
 
-def vrf_object(vrf: str | None) -> Entity | None:
+def vrf_object(vrf: str | None) -> Vrf | None:
     if vrf is None:
         return None
     else:
         return Vrf(id=0, name=vrf, description="", rd=None)
 
 
-_IpAddressT = TypeVar("_IpAddressT", bound=IpAddress)
+_IpAddressT = TypeVar("_IpAddressT", bound=IpAddress[Any])
 
 
 _DeviceIPT = TypeVar("_DeviceIPT", bound=DeviceIp)
@@ -156,7 +156,7 @@ class FHRPGroup(Generic[_DeviceIPT]):
     comments: str | None = None
 
 
-_FHRPGroupT = TypeVar("_FHRPGroupT", bound=FHRPGroup)
+_FHRPGroupT = TypeVar("_FHRPGroupT", bound=FHRPGroup[Any])
 
 
 @dataclass
@@ -173,7 +173,7 @@ class FHRPGroupAssignment(Generic[_FHRPGroupT]):
 
 _FHRPGroupAssignmentT = TypeVar(
     "_FHRPGroupAssignmentT",
-    bound=FHRPGroupAssignment,
+    bound=FHRPGroupAssignment[Any],
 )
 
 
@@ -227,11 +227,11 @@ class Interface(Entity, Generic[_IpAddressT, _FHRPGroupAssignmentT]):
         self._add_new_addr(address_mask, vrf_obj, family)
 
     @abstractmethod
-    def _add_new_addr(self, address_mask: str, vrf: Entity | None, family: IpFamily):
+    def _add_new_addr(self, address_mask: str, vrf: Vrf | None, family: IpFamily) -> None:
         raise NotImplementedError
 
 
-_InterfaceT = TypeVar("_InterfaceT", bound=Interface)
+_InterfaceT = TypeVar("_InterfaceT", bound=Interface[Any, Any])
 
 
 @dataclass
@@ -264,7 +264,7 @@ class NetboxDevice(Entity, Generic[_InterfaceT, _DeviceIPT]):
 
     fqdn: str
     hostname: str
-    hw: Optional[HardwareView]
+    hw: HardwareView
     breed: str
 
     interfaces: List[_InterfaceT]
@@ -285,14 +285,16 @@ class NetboxDevice(Entity, Generic[_InterfaceT, _DeviceIPT]):
         return [dev.name for dev in self.neighbors]
 
     @property
-    def neighbours_ids(self):
+    def neighbours_ids(self) -> list[int]:
         return [dev.id for dev in self.neighbors]
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.id, type(self)))
 
-    def __eq__(self, other):
-        return type(self) is type(other) and self.url == other.url
+    def __eq__(self, other: object) -> bool:
+        if type(self) is not type(other):
+            return False
+        return self.url == cast("NetboxDevice[Any, Any]", other).url
 
     def is_pc(self) -> bool:
         custom_breed_pc = ("Mellanox", "NVIDIA", "Moxa", "Nebius")

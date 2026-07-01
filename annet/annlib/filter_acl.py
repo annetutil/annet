@@ -1,53 +1,67 @@
+from __future__ import annotations
+
 import collections
 import re
-import typing
+from typing import Any, TypeAlias, overload
 
 from annet.vendors import tabparser
 
+from ..types import OpType
 from . import patching
 from .diff import diff_ops, ops_sign
 from .rbparser import acl
 
 
-UnifiedInputConfig = str  # Конфиг классических сетевых устройств
-FileInputConfig = typing.Dict[str, typing.Any]  # Конфиг вайтбоксов и серверов
-InputConfig = typing.Union[UnifiedInputConfig, FileInputConfig]
+UnifiedInputConfig: TypeAlias = str  # Конфиг классических сетевых устройств
+FileInputConfig: TypeAlias = dict[str, Any]  # Конфиг вайтбоксов и серверов
+InputConfig: TypeAlias = UnifiedInputConfig | FileInputConfig
 
-Acl = typing.Dict[str, typing.Any]
+Acl: TypeAlias = dict[str, Any]
 
-UnifiedConfigTree = typing.OrderedDict[str, typing.Any]
-FileConfigTree = typing.Dict[str, typing.Any]
-ConfigTree = typing.Union[UnifiedConfigTree, FileConfigTree]
+UnifiedConfigTree: TypeAlias = collections.OrderedDict[str, Any]
+FileConfigTree: TypeAlias = dict[str, Any]
+ConfigTree: TypeAlias = UnifiedConfigTree | FileConfigTree
 
-DiffTree = typing.OrderedDict[str, typing.Any]
-UnifiedDiff = typing.List[typing.Tuple[str, str, typing.List, typing.Optional[int]]]
-FileConfigDiff = typing.Dict[str, typing.Any]
-Diff = typing.Union[UnifiedDiff, FileConfigDiff]
+DiffTree: TypeAlias = collections.OrderedDict[str, Any]
+UnifiedDiff: TypeAlias = list[tuple[OpType, str, list[Any], int | None]]
+FileConfigDiff: TypeAlias = dict[str, Any]
+Diff: TypeAlias = UnifiedDiff | FileConfigDiff
 
 
 def make_acl(text: str, vendor: str) -> Acl:
     return acl.compile_acl_text(text, vendor)
 
 
+@overload
+def filter_config(  # noqa: E704
+    acl: Acl, fmtr: tabparser.CommonFormatter, input_config: UnifiedInputConfig
+) -> UnifiedInputConfig: ...
+
+
+@overload
+def filter_config(  # noqa: E704
+    acl: Acl, fmtr: tabparser.CommonFormatter, input_config: FileInputConfig
+) -> FileInputConfig: ...
+
+
 def filter_config(acl: Acl, fmtr: tabparser.CommonFormatter, input_config: InputConfig) -> InputConfig:
     if isinstance(input_config, str):
         config: ConfigTree = tabparser.parse_to_tree(input_config, fmtr.split)
         config = patching.apply_acl(config, acl, fatal_acl=False)
-        config = fmtr.join(config)
-    else:
-        config = apply_acl_fileconfig(input_config, acl)
-    return config
+        return fmtr.join(config)
+    return apply_acl_fileconfig(input_config, acl)
 
 
 def filter_diff(acl: Acl, fmtr: tabparser.CommonFormatter, input_config: InputConfig) -> InputConfig:
+    config: InputConfig
     if isinstance(input_config, str):
         input_config = shift_op(input_config)
         diff_tee: DiffTree = tabparser.parse_to_tree(input_config, fmtr.split)
-        diff: Diff = tree_to_diff(diff_tee)
+        diff: UnifiedDiff = tree_to_diff(diff_tee)
         diff = patching.apply_acl_diff(diff, acl)
-        config = fmtr.join(diff_to_tree(diff))
-        config = unshift_op(config)
-        config = config.rstrip()
+        text = fmtr.join(diff_to_tree(diff))
+        text = unshift_op(text)
+        config = text.rstrip()
     else:
         config = apply_acl_fileconfig(input_config, acl)
     return config
@@ -58,7 +72,7 @@ def filter_patch(acl: Acl, fmtr: tabparser.CommonFormatter, text: str) -> str:
 
 
 # NOCDEV-6378 на патч для Juniper/Nokia нельзя просто так наложить filter_acl
-def filter_patch_jun_nokia(diff_filtered: InputConfig, fmtr: tabparser.CommonFormatter, text: str) -> str:
+def filter_patch_jun_nokia(diff_filtered: str, fmtr: tabparser.CommonFormatter, text: str) -> str:
     """
     Накладываем ACL на патчи для Juniper/Nokia
 
@@ -94,8 +108,8 @@ def filter_patch_jun_nokia(diff_filtered: InputConfig, fmtr: tabparser.CommonFor
     return "\n".join(patch_lines_passed)
 
 
-def apply_acl_fileconfig(config, rules):
-    passed = {}
+def apply_acl_fileconfig(config: FileInputConfig, rules: Acl) -> FileInputConfig:
+    passed: FileInputConfig = {}
     for filename, filecontent in config.items():
         (match, _) = patching.match_row_to_acl(filename, rules)
         if match:
@@ -104,7 +118,7 @@ def apply_acl_fileconfig(config, rules):
     return passed
 
 
-def get_op(line: str) -> typing.Tuple[str, str, str]:
+def get_op(line: str) -> tuple[str, str, str]:
     op = " "
     indent = ""
     opidx = -1
@@ -155,12 +169,12 @@ def strip_op(text: str) -> str:
     return ret
 
 
-def tree_to_diff(diff_tree: ConfigTree) -> Diff:
-    ret = []
+def tree_to_diff(diff_tree: ConfigTree) -> UnifiedDiff:
+    ret: UnifiedDiff = []
     for row, v in diff_tree.items():
         op, _, row = get_op(row)
         diff_op = diff_ops[op]
-        children = []
+        children: UnifiedDiff = []
         d_match = None
         if isinstance(v, dict):
             children = tree_to_diff(v)
@@ -168,15 +182,15 @@ def tree_to_diff(diff_tree: ConfigTree) -> Diff:
     return ret
 
 
-def diff_to_tree(diff: Diff) -> ConfigTree:
-    ret = collections.OrderedDict()
+def diff_to_tree(diff: UnifiedDiff) -> UnifiedConfigTree:
+    ret: UnifiedConfigTree = collections.OrderedDict()
     for diff_op, row, children, _ in diff:
         row = ops_sign[diff_op] + row
         ret[row] = diff_to_tree(children)
     return ret
 
 
-def _tree_expand_lists_nokia_jun(diff_tree: DiffTree):
+def _tree_expand_lists_nokia_jun(diff_tree: DiffTree) -> None:
     """
     Раскрываем списки Nokia/Juniper в отдельные элементы
     {command: {"[a, b, c]": {}}}   ->   {command a: {}, command b: {}, command c: {}}
@@ -184,7 +198,7 @@ def _tree_expand_lists_nokia_jun(diff_tree: DiffTree):
     В неупорядоченном множестве префиксов также стираем ';' на конце - их не бывает в патче
     {prefix-list: {"2a02::/64;": {}, "2a03::/64;": {}}}   ->   {prefix-list: {"2a02::/64": {}, "2a03::/64": {}}}
     """
-    process: typing.List[DiffTree] = [diff_tree]
+    process: list[dict[str, Any]] = [diff_tree]
     list_regexp = re.compile(r"^(.*)\s+\[(.+)\]$")
     while process:
         tree, process = process[0], process[1:]

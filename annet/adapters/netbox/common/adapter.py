@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 from annet.annlib.netdev.views.hardware import HardwareView
 
@@ -7,14 +7,14 @@ from .manufacturer import get_breed, get_hw
 from .models import FHRPGroup, FHRPGroupAssignment, Interface, IpAddress, NetboxDevice, Prefix
 
 
-NetboxDeviceT = TypeVar("NetboxDeviceT", bound=NetboxDevice)
-InterfaceT = TypeVar("InterfaceT", bound=Interface)
-IpAddressT = TypeVar("IpAddressT", bound=IpAddress)
+NetboxDeviceT = TypeVar("NetboxDeviceT", bound=NetboxDevice[Any, Any])
+InterfaceT = TypeVar("InterfaceT", bound=Interface[Any, Any])
+IpAddressT = TypeVar("IpAddressT", bound=IpAddress[Any])
 PrefixT = TypeVar("PrefixT", bound=Prefix)
-FHRPGroupT = TypeVar("FHRPGroupT", bound=FHRPGroup)
+FHRPGroupT = TypeVar("FHRPGroupT", bound=FHRPGroup[Any])
 FHRPGroupAssignmentT = TypeVar(
     "FHRPGroupAssignmentT",
-    bound=FHRPGroupAssignment,
+    bound=FHRPGroupAssignment[Any],
 )
 
 

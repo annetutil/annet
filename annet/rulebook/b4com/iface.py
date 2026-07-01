@@ -1,8 +1,17 @@
+from collections import OrderedDict
+from typing import Any
+
+from annet.annlib.rulebook.common import DiffItem
 from annet.annlib.types import Op
 from annet.rulebook import common
 
 
-def diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
+def diff(
+    old: OrderedDict[str, Any],
+    new: OrderedDict[str, Any],
+    diff_pre: OrderedDict[str, Any],
+    _pops: tuple[str, ...] = (Op.AFFECTED,),
+) -> list[DiffItem]:
     for iface_row in old:
         _filter_channel_members(old[iface_row])
     for iface_row in new:
@@ -28,14 +37,14 @@ def diff(old, new, diff_pre, _pops=(Op.AFFECTED,)):
 # листинге они наследуются от самого port-channel
 
 
-def _filter_channel_members(tree):
+def _filter_channel_members(tree: OrderedDict[str, Any]) -> None:
     if any(is_in_channel(x) for x in tree):
         for cmd in list(tree.keys()):
             if not _is_allowed_on_channel(cmd):
                 del tree[cmd]
 
 
-def is_in_channel(cmd_line):
+def is_in_channel(cmd_line: str) -> bool:
     """
     Признак того, что это lagg member
     """
@@ -43,7 +52,7 @@ def is_in_channel(cmd_line):
 
 
 # Возможно тут есть еще какие-то команды
-def _is_allowed_on_channel(cmd_line):
+def _is_allowed_on_channel(cmd_line: str) -> bool:
     return cmd_line.startswith(
         (
             "channel-group",
@@ -62,15 +71,15 @@ def _is_allowed_on_channel(cmd_line):
     )
 
 
-def is_vpn_cmd(cmd):
+def is_vpn_cmd(cmd: str) -> bool:
     return cmd.startswith("vrf member")
 
 
-def is_ip_cmd(cmd):
+def is_ip_cmd(cmd: str) -> bool:
     return cmd.startswith(("ip ", "ipv6 "))
 
 
-def mtu(rule, key, diff, **kwargs):
+def mtu(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:
     """
     Удаляем mtu без указания значения
     """
@@ -80,7 +89,7 @@ def mtu(rule, key, diff, **kwargs):
         yield from common.default(rule, key, diff, **kwargs)
 
 
-def description(rule, key, diff, **kwargs):
+def description(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:
     """
     Удаляем description без указания значения
     """
@@ -90,7 +99,7 @@ def description(rule, key, diff, **kwargs):
         yield from common.default(rule, key, diff, **kwargs)
 
 
-def sflow(rule, key, diff, **kwargs):
+def sflow(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:
     """
     Команда sflow sampling-rate * direction ingress max-header-size *
     сносится без указания sampling-rate и max-header-size
@@ -106,7 +115,7 @@ def sflow(rule, key, diff, **kwargs):
         yield from common.default(rule, key, diff, **kwargs)
 
 
-def lldp(rule, key, diff, **kwargs):
+def lldp(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:
     """
     Обрабатываем блок lldp-agent
     """

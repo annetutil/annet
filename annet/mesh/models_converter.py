@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from ipaddress import ip_interface
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from adaptix import Chain, Retort, as_is_loader, loader, name_mapping
 
@@ -30,14 +30,15 @@ LocalDTO = Union[DirectPeerDTO, IndirectPeerDTO, VirtualLocalDTO]
 
 @dataclass
 class InterfaceChanges:
-    addr: Optional[str] = None
+    # addr may be the UNNUMBERED sentinel (SpecialAddr), matching peer models' addr type.
+    addr: str | SpecialAddr | None = None
     lag: Optional[int] = None
     lag_links_min: Optional[int] = None
     svi: Optional[int] = None
     subif: Optional[int] = None
     vrf: Optional[str] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.lag is not None and self.svi is not None:
             raise ValueError("Cannot use LAG and SVI together")
         if self.svi is not None and self.subif is not None:
@@ -45,16 +46,16 @@ class InterfaceChanges:
 
 
 class ObjMapping:
-    def __init__(self, obj):
+    def __init__(self, obj: Any) -> None:
         self.obj = obj
 
-    def __contains__(self, item):
+    def __contains__(self, item: str) -> bool:
         return hasattr(self.obj, item)
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> Any:
         return getattr(self.obj, name)
 
-    def get(self, name, default=None):
+    def get(self, name: str, default: Any = None) -> Any:
         return getattr(self.obj, name, default)
 
 

@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 import inspect
 import sys
 import traceback
+from collections.abc import Callable, Iterator
+from typing import Any, cast
 
 
 class DumpResult(str):
@@ -8,7 +12,7 @@ class DumpResult(str):
     строка, у которой repr = value
     """
 
-    def __new__(cls, value):
+    def __new__(cls, value: str) -> DumpResult:
         return super().__new__(cls, value)
 
     __repr__ = str.__str__
@@ -19,19 +23,25 @@ class _EnumAllAttrs:
 
 
 class DumpableView:
-    def _enum_attrs(self):
+    def _enum_attrs(self) -> Iterator[str]:
         for attr in dir(self):
             if not attr.startswith("_") and attr != "dump":
                 yield attr
 
-    def _getter_for_dump(self, attr):
+    def _getter_for_dump(self, attr: str) -> Callable[[], object] | None:
         dumper_name = "_dump_" + attr
         if hasattr(self, dumper_name) and callable(getattr(self, dumper_name)):
-            return getattr(self, dumper_name)
+            return cast(Callable[[], object], getattr(self, dumper_name))
+        return None
 
     @staticmethod
-    def strip_dumper(attr, lines=None, chars=None, chars_in_line=None):
-        def bound_method(self):
+    def strip_dumper(
+        attr: str,
+        lines: int | None = None,
+        chars: int | None = None,
+        chars_in_line: int | None = None,
+    ) -> Callable[[DumpableView], DumpResult]:
+        def bound_method(self: DumpableView) -> DumpResult:
             lines_list = []
             value = getattr(self, attr)
             assert isinstance(value, str)
@@ -47,6 +57,7 @@ class DumpableView:
                     break
 
                 if chars_in_line and len(line) > chars_in_line:
+                    assert chars is not None
                     lines_list.append(line[chars - total_chars :] + " ...")
                 else:
                     lines_list.append(line)
@@ -62,8 +73,8 @@ class DumpableView:
 
         return bound_method
 
-    def __dump_value(self, prefix, value, seen):
-        ret = []
+    def __dump_value(self, prefix: str, value: Any, seen: dict[int, str]) -> list[str]:
+        ret: list[str] = []
         op = "="
         if isinstance(value, DumpableView):
             # защита от рекурсии - последующие ссылки на объекты, а не новые дампы
@@ -91,7 +102,7 @@ class DumpableView:
             ret += ["%s %s %s" % (prefix, op, fmt)]
         return ret
 
-    def dump(self, prefix="", value=_EnumAllAttrs, seen=None):
+    def dump(self, prefix: str = "", value: Any = _EnumAllAttrs, seen: dict[int, str] | None = None) -> list[str]:
         """
         В собственных DumpableView-классах нужно определить dump примерно так:
         def dump(self, prefix, **kwargs):
@@ -123,7 +134,7 @@ class DumpableView:
         return ret
 
     # Filter out cached lru_methods from state
-    def __getstate__(self):
+    def __getstate__(self) -> dict[str, Any]:
         state = self.__dict__.copy()
         for key in list(state.keys()):  # For thread-safe: dictionary changed size during iteration
             if inspect.ismethod(state[key]):
