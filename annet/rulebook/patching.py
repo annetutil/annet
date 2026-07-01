@@ -2,7 +2,7 @@ import functools
 import re
 import warnings
 from collections import OrderedDict as odict
-from typing import Generator, Literal, cast
+from typing import Any, Generator, Literal, cast
 
 from valkit.common import valid_bool, valid_string_list
 from valkit.python import valid_object_path
@@ -72,7 +72,7 @@ ATTRS: Literal["attrs"] = "attrs"
 CHILDREN: Literal["children"] = "children"
 
 
-def get_params_scheme(vendor) -> ParamsScheme:
+def get_params_scheme(vendor: str) -> ParamsScheme:
     """Returning the params scheme"""
     return {
         GLOBAL: {
@@ -135,7 +135,7 @@ def compile_patching_text(text: PatchingText, vendor: str) -> PatchRulebook:
 
 
 # =====
-def _compile_patching(tree, reverse_prefix, vendor) -> PatchRulebook:
+def _compile_patching(tree: dict[str, Any], reverse_prefix: str, vendor: str) -> PatchRulebook:
     rules = _create_empty_rulebook()
     for raw_rule, attrs in tree.items():
         regexp = _attrs_to_regexp(attrs)
@@ -190,7 +190,7 @@ def _compile_patching(tree, reverse_prefix, vendor) -> PatchRulebook:
 
 
 @functools.lru_cache()
-def _make_reverse(row, reverse_prefix, flags=0):
+def _make_reverse(row: str, reverse_prefix: str, flags: int = 0) -> str:
     if row.startswith(reverse_prefix + " "):
         row = row[len(reverse_prefix + " ") :]
     else:
@@ -213,7 +213,7 @@ def _make_reverse(row, reverse_prefix, flags=0):
     return row.strip()
 
 
-def _attrs_to_regexp(attrs):
+def _attrs_to_regexp(attrs: dict[str, Any]) -> re.Pattern[str]:
     flags = 0
     ignore_case = attrs[PARAMS][IGNORE_CASE]
     if ignore_case:
@@ -221,12 +221,12 @@ def _attrs_to_regexp(attrs):
     return syntax.compile_row_regexp(attrs[ROW], flags=flags)
 
 
-def _regexp_to_attrs(regexp, attrs):
+def _regexp_to_attrs(regexp: re.Pattern[str], attrs: dict[str, Any]) -> dict[str, Any]:
     attrs[PARAMS][IGNORE_CASE] = bool(regexp.flags & re.IGNORECASE)
     return attrs
 
 
-def merge_patch_rulebooks(parent_rulebook: PatchRulebook, child_rulebook: PatchRulebook, vendor) -> PatchRulebook:
+def merge_patch_rulebooks(parent_rulebook: PatchRulebook, child_rulebook: PatchRulebook, vendor: str) -> PatchRulebook:
     """Merges the parent rulebook with the child rulebook"""
     child_pre_merge = _get_pre_merge(child_rulebook)
     parent_pre_merge = _get_pre_merge(parent_rulebook)
@@ -261,7 +261,7 @@ def merge_patch_rulebooks(parent_rulebook: PatchRulebook, child_rulebook: PatchR
     return merged_rulebook
 
 
-def dump_patch_rulebook(rulebook: PatchRulebook, level=0) -> PatchingText:
+def dump_patch_rulebook(rulebook: PatchRulebook, level: int = 0) -> PatchingText:
     """Parses the rulebook into a text format"""
     lines = []
     for scope in [rulebook[LOCAL], rulebook[GLOBAL]]:
@@ -276,7 +276,7 @@ def dump_patch_rulebook(rulebook: PatchRulebook, level=0) -> PatchingText:
 
 
 def _add_child_to_merge_rulebook(
-    merged_rulebook: PatchRulebook, child_data: PatchPreMergeData, row: Row, vendor
+    merged_rulebook: PatchRulebook, child_data: PatchPreMergeData, row: Row, vendor: str
 ) -> None:
     """Add child rule to merged_rulebook"""
     if raw_param_to_bool(child_data[PARAMS].get(NOT_INHERIT)):
@@ -299,7 +299,7 @@ def _add_child_to_merge_rulebook(
     merged_rulebook[child_data[SCOPE]][row_with_params] = child_data[RULES]
 
 
-def _apply_not_inherit_to_child_rules(child_rulebook: PatchRulebook, vendor) -> PatchRulebook:
+def _apply_not_inherit_to_child_rules(child_rulebook: PatchRulebook, vendor: str) -> PatchRulebook:
     """Applies the logic of the %not_inherit param to all rules in the child_rulebook"""
     applied_rulebook = _create_empty_rulebook()
     for scope in (LOCAL, GLOBAL):
@@ -334,7 +334,7 @@ def _apply_not_inherit_to_child_rules(child_rulebook: PatchRulebook, vendor) -> 
 
 
 def _add_parent_to_merge_rulebook(
-    merged_rulebook: PatchRulebook, parent_data: PatchPreMergeData, row: Row, vendor
+    merged_rulebook: PatchRulebook, parent_data: PatchPreMergeData, row: Row, vendor: str
 ) -> None:
     """Add parent rule to merged_rulebook"""
     row_with_params = syntax.get_row_with_params(row, parent_data[PARAMS], get_params_scheme(vendor))
@@ -388,7 +388,7 @@ def _uniq_local_global_rules(
                 yield row
 
 
-def _get_merged_row(parent_params: RawParams, child_params: RawParams, row: Row, vendor) -> RawRow:
+def _get_merged_row(parent_params: RawParams, child_params: RawParams, row: Row, vendor: str) -> RawRow:
     """Concatenates the rule string with the merged raw params"""
     merged_params = get_merged_params(
         parent_params,
@@ -404,7 +404,7 @@ def _get_merged_scope(parent_scope: PatchScope, child_scope: PatchScope, child_p
 
 
 def _get_merged_rule(
-    parent_rules: PatchRule, child_rules: PatchRule, child_params: RawParams, scope: PatchScope, row: Row, vendor
+    parent_rules: PatchRule, child_rules: PatchRule, child_params: RawParams, scope: PatchScope, row: Row, vendor: str
 ) -> PatchRule:
     """Merges parent_rules and child_rules"""
     merged_type = child_rules[TYPE]
@@ -465,17 +465,17 @@ def _merge_attrs(
     # are guaranteed to be of type PatchNormalRuleAttrs
     if ORDERED in child_params:
         merged_attrs[LOGIC] = child_attrs[LOGIC]  # type: ignore[typeddict-item]
-        merged_attrs[DIFF_LOGIC] = child_attrs[DIFF_LOGIC]  # type: ignore[typeddict-item]
+        merged_attrs[DIFF_LOGIC] = child_attrs[DIFF_LOGIC]
     elif REWRITE in child_params:
         merged_attrs[LOGIC] = child_attrs[LOGIC]  # type: ignore[typeddict-item]
-        merged_attrs[DIFF_LOGIC] = child_attrs[DIFF_LOGIC]  # type: ignore[typeddict-item]
+        merged_attrs[DIFF_LOGIC] = child_attrs[DIFF_LOGIC]
     elif MULTILINE in child_params:
-        merged_attrs[DIFF_LOGIC] = child_attrs[DIFF_LOGIC]  # type: ignore[typeddict-item]
+        merged_attrs[DIFF_LOGIC] = child_attrs[DIFF_LOGIC]
 
     return merged_attrs
 
 
-def _validate_params_compatibility(params: Params, row: str, vendor) -> None:
+def _validate_params_compatibility(params: Params, row: str, vendor: str) -> None:
     """Checks compatibility of ordered/rewrite/multiline params with logic/diff_logic params at compile time"""
     used_default_logic_path = params[LOGIC] == DEFAULT_PATCH_LOGIC
     used_default_diff_logic_path = params[DIFF_LOGIC] == registry_connector.get()[vendor].diff(False)

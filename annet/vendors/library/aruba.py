@@ -1,3 +1,5 @@
+from typing import Any
+
 from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.vendors.base import AbstractVendor
@@ -9,7 +11,9 @@ from annet.vendors.tabparser import ArubaFormatter
 class ArubaVendor(AbstractVendor):
     NAME = "aruba"
 
-    def apply(self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str) -> tuple[CommandList, CommandList]:
+    def apply(
+        self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str | None
+    ) -> tuple[CommandList, CommandList]:
         before, after = CommandList(), CommandList()
 
         before.add_cmd(Command("conf t"))
@@ -32,7 +36,7 @@ class ArubaVendor(AbstractVendor):
     def hardware(self) -> HardwareView:
         return HardwareView("Aruba")
 
-    def make_formatter(self, **kwargs) -> ArubaFormatter:
+    def make_formatter(self, **kwargs: Any) -> ArubaFormatter:
         return ArubaFormatter(**kwargs)
 
     @property

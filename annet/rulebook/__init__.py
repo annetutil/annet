@@ -2,12 +2,14 @@ import re
 import sys
 from abc import ABC
 from collections import OrderedDict
+from collections.abc import Callable
 from importlib import resources
-from typing import Literal
+from typing import Literal, cast, overload
 
 from valkit.python import valid_object_path
 
 from annet.annlib.lib import mako_render
+from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.rbparser.exceptions import RulebookSyntaxError
 from annet.annlib.rbparser.ordering import compile_ordering_text, dump_order_rulebook, merge_order_rulebooks
 from annet.annlib.rbparser.platform import VENDOR_ALIASES
@@ -16,27 +18,51 @@ from annet.lib import get_context
 from annet.rulebook.deploying import compile_deploying_text, dump_deploy_rulebook, merge_deploy_rulebooks
 from annet.rulebook.patching import compile_patching_text, dump_patch_rulebook, merge_patch_rulebooks
 from annet.rulebook.types import (
-    AnyRulebook,
-    AnyRulebookText,
-    DeployingText,
-    DeployRulebook,
-    Extension,
-    OrderingText,
-    OrderRulebook,
-    PatchingText,
-    PatchRulebook,
-    Rulebook,
-    RulebookTexts,
+    AnyRulebook as AnyRulebook,
+)
+from annet.rulebook.types import (
+    AnyRulebookText as AnyRulebookText,
+)
+from annet.rulebook.types import (
+    DeployingText as DeployingText,
+)
+from annet.rulebook.types import (
+    DeployRulebook as DeployRulebook,
+)
+from annet.rulebook.types import (
+    Extension as Extension,
+)
+from annet.rulebook.types import (
+    OrderingText as OrderingText,
+)
+from annet.rulebook.types import (
+    OrderRulebook as OrderRulebook,
+)
+from annet.rulebook.types import (
+    PatchingText as PatchingText,
+)
+from annet.rulebook.types import (
+    PatchRulebook as PatchRulebook,
+)
+from annet.rulebook.types import (
+    Rulebook as Rulebook,
+)
+from annet.rulebook.types import (
+    RulebookTexts as RulebookTexts,
 )
 from annet.vendors import registry_connector
 
 
+RULEBOOK_READ_EXCEPTIONS: tuple[type[BaseException], ...] = (FileNotFoundError,)
 if sys.version_info >= (3, 12):
-    from importlib.resources.abc import TraversalError
+    # importlib.resources.abc.TraversalError exists at runtime on 3.12+, but is missing
+    # from the typeshed stubs for 3.13/3.14; look it up dynamically so this module both
+    # type-checks on those versions and still catches the error when it is available.
+    from importlib.resources import abc as _resources_abc
 
-    RULEBOOK_READ_EXCEPTIONS = (FileNotFoundError, TraversalError)
-else:
-    RULEBOOK_READ_EXCEPTIONS = (FileNotFoundError,)
+    _traversal_error = cast("type[BaseException] | None", getattr(_resources_abc, "TraversalError", None))
+    if _traversal_error is not None:
+        RULEBOOK_READ_EXCEPTIONS = (FileNotFoundError, _traversal_error)
 
 
 RUL: Literal["rul"] = "rul"
@@ -45,7 +71,7 @@ DEPLOY: Literal["deploy"] = "deploy"
 
 
 class RulebookProvider(ABC):
-    def get_rulebook(self, hw) -> Rulebook:
+    def get_rulebook(self, hw: HardwareView) -> Rulebook:
         raise NotImplementedError
 
 
@@ -57,34 +83,34 @@ class _RulebookProviderConnector(CachedConnector[RulebookProvider]):
 rulebook_provider_connector = _RulebookProviderConnector()
 
 
-def get_rulebook(hw) -> Rulebook:
+def get_rulebook(hw: HardwareView) -> Rulebook:
     return rulebook_provider_connector.get().get_rulebook(hw)
 
 
 class DefaultRulebookProvider(RulebookProvider):
     DEFAULT_RULEBOOK_MODULE = "annet.rulebook.texts"
-    merge_rulebooks = {
+    merge_rulebooks: dict[Extension, Callable[..., AnyRulebook]] = {
         RUL: merge_patch_rulebooks,
         ORDER: merge_order_rulebooks,
         DEPLOY: merge_deploy_rulebooks,
     }
-    compile_rulebooks = {
+    compile_rulebooks: dict[Extension, Callable[..., AnyRulebook]] = {
         RUL: compile_patching_text,
         ORDER: compile_ordering_text,
         DEPLOY: compile_deploying_text,
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.rulebook_module = get_context().get("rulebook", {}).get("module") or self.DEFAULT_RULEBOOK_MODULE
-        self._rulebook_cache = {}
-        self._rulebook_text_cache = {}
+        self._rulebook_cache: dict[HardwareView, Rulebook] = {}
+        self._rulebook_text_cache: dict[tuple[str, Extension, HardwareView], AnyRulebookText] = {}
 
-    def get_rulebook(self, hw) -> Rulebook:
+    def get_rulebook(self, hw: HardwareView) -> Rulebook:
         if hw in self._rulebook_cache:
             return self._rulebook_cache[hw]
 
         vendor = hw.vendor
-        assert vendor in registry_connector.get(), "Unknown vendor: %s" % (vendor)
+        assert vendor is not None and vendor in registry_connector.get(), "Unknown vendor: %s" % (vendor)
         rul_vendor_name = VENDOR_ALIASES.get(vendor, vendor)
 
         patching: PatchRulebook = self._get_rulebook_by_extension(
@@ -96,8 +122,10 @@ class DefaultRulebookProvider(RulebookProvider):
         )
         patching_text: PatchingText = dump_patch_rulebook(patching)
 
+        ordering: OrderRulebook
+        ordering_text: OrderingText
         try:
-            ordering: OrderRulebook = self._get_rulebook_by_extension(
+            ordering = self._get_rulebook_by_extension(
                 rulebook_path=".".join((self.rulebook_module, vendor)),
                 vendor=vendor,
                 extension=ORDER,
@@ -105,9 +133,11 @@ class DefaultRulebookProvider(RulebookProvider):
             )
             ordering_text = dump_order_rulebook(ordering)
         except FileNotFoundError:
-            ordering: OrderRulebook = []
-            ordering_text: OrderingText = ""
+            ordering = []
+            ordering_text = ""
 
+        deploying: DeployRulebook
+        deploying_text: DeployingText
         try:
             deploying = self._get_rulebook_by_extension(
                 rulebook_path=".".join((self.rulebook_module, vendor)),
@@ -117,8 +147,8 @@ class DefaultRulebookProvider(RulebookProvider):
             )
             deploying_text = dump_deploy_rulebook(deploying)
         except FileNotFoundError:
-            deploying: DeployRulebook = OrderedDict()
-            deploying_text: DeployingText = ""
+            deploying = OrderedDict()
+            deploying_text = ""
 
         self._rulebook_cache[hw] = Rulebook(
             patching=patching,
@@ -132,7 +162,24 @@ class DefaultRulebookProvider(RulebookProvider):
         )
         return self._rulebook_cache[hw]
 
-    def _get_rulebook_by_extension(self, rulebook_path: str, vendor: str, extension: Extension, hw) -> AnyRulebook:
+    @overload
+    def _get_rulebook_by_extension(  # noqa: E704
+        self, rulebook_path: str, vendor: str, extension: Literal["rul"], hw: HardwareView
+    ) -> PatchRulebook: ...
+
+    @overload
+    def _get_rulebook_by_extension(  # noqa: E704
+        self, rulebook_path: str, vendor: str, extension: Literal["order"], hw: HardwareView
+    ) -> OrderRulebook: ...
+
+    @overload
+    def _get_rulebook_by_extension(  # noqa: E704
+        self, rulebook_path: str, vendor: str, extension: Literal["deploy"], hw: HardwareView
+    ) -> DeployRulebook: ...
+
+    def _get_rulebook_by_extension(
+        self, rulebook_path: str, vendor: str, extension: Extension, hw: HardwareView
+    ) -> AnyRulebook:
         """Walks inheritance chain of rulebooks: gets texts → compiles → merges (if required)"""
         child_rulebook_text = self._get_rulebook_text(rulebook_path, extension, hw)
         inherit_from, child_rulebook_text = self._split_text_from_inherit_from_param(child_rulebook_text)
@@ -179,7 +226,7 @@ class DefaultRulebookProvider(RulebookProvider):
         if not valid_object_path(rulebook_path):
             raise ValueError(f"Invalid rulebook path '{rulebook_path}'. The path must follow the 'module.name' format.")
 
-    def _get_rulebook_text(self, rulebook_path: str, extension: Extension, hw) -> AnyRulebookText:
+    def _get_rulebook_text(self, rulebook_path: str, extension: Extension, hw: HardwareView) -> AnyRulebookText:
         """Gets the rulebook text"""
         key = (rulebook_path, extension, hw)
         if key not in self._rulebook_text_cache:
@@ -199,7 +246,7 @@ class DefaultRulebookProvider(RulebookProvider):
             raise FileNotFoundError(f'Unable to find rulebook "{name}" in "{self.rulebook_module}" module') from err
 
     @staticmethod
-    def _escape_mako(text):
+    def _escape_mako(text: str) -> str:
         # Экранирование всего, что начинается на %, например %comment -> %%comment, чтобы он не интерпретировался
         # как mako-оператор
         text = re.sub(r"(?:^|\n)%((?!if\s*|elif\s*|else\s*|endif\s*|for\s*|endfor\s*))", "\n%%\\1", text)

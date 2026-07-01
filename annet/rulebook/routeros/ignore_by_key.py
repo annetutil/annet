@@ -1,13 +1,16 @@
 import shlex
 from collections import OrderedDict
+from typing import Any
 
 from contextlog import get_logger
 
-from annet.annlib.rulebook.common import default_diff
+from annet.annlib.rulebook.common import DiffItem, default_diff
 from annet.annlib.types import Op
 
 
-def _normalize_command(command_line, ignore_keys=None, match_word="comment=DHCP"):
+def _normalize_command(
+    command_line: str, ignore_keys: list[str] | None = None, match_word: str = "comment=DHCP"
+) -> str:
     """Remove specified keys from commands when match_word is found for comparison.
 
     Args:
@@ -48,7 +51,12 @@ def _normalize_command(command_line, ignore_keys=None, match_word="comment=DHCP"
         return command_line
 
 
-def dhcpclient_change(old, new, diff_pre, _pops=(Op.AFFECTED,)):
+def dhcpclient_change(
+    old: OrderedDict[str, Any],
+    new: OrderedDict[str, Any],
+    diff_pre: OrderedDict[str, Any],
+    _pops: tuple[str, ...] = (Op.AFFECTED,),
+) -> list[DiffItem]:
     """
     Custom diff logic for RouterOS that ignores specified parameters
     when comment contains "DHCP".

@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import time
-from typing import Optional, Union
+from contextlib import AbstractContextManager
+from types import TracebackType
+from typing import Any
 
 from annet import tracing
 from annet.tracing import tracing_connector
@@ -12,18 +16,18 @@ class GeneratorPerfMesurer:
     def __init__(
         self,
         gen: BaseGenerator,
-        run_args: Optional[GeneratorPartialRunArgs] = None,
+        run_args: GeneratorPartialRunArgs | None = None,
         trace_min_duration: tracing.MinDurationT = None,
     ):
         self._gen = gen
         self._run_args = run_args
 
         self._start_time: float = 0.0
-        self._span_ctx = None
-        self._span = None
+        self._span_ctx: AbstractContextManager[Any] | None = None
+        self._span: Any = None
         self._trace_min_duration = trace_min_duration
 
-        self.last_result: Optional[GeneratorPerf] = None
+        self.last_result: GeneratorPerf | None = None
 
     def start(self) -> None:
         self.last_result = None
@@ -45,12 +49,18 @@ class GeneratorPerfMesurer:
 
         self._start_time = time.monotonic()
 
-    def finish(self, exc_type=None, exc_val=None, exc_tb=None) -> GeneratorPerf:
+    def finish(
+        self,
+        exc_type: type[BaseException] | None = None,
+        exc_val: BaseException | None = None,
+        exc_tb: TracebackType | None = None,
+    ) -> GeneratorPerf:
         total = time.monotonic() - self._start_time
+        assert self._span_ctx is not None
         self._span_ctx.__exit__(exc_type, exc_val, exc_tb)
         rt = self._gen.storage.flush_perf()
 
-        meta = {}
+        meta: dict[str, Any] = {}
         if tracing_connector.get().enabled:
             span_context = self._span.get_span_context()
             meta = {
@@ -63,9 +73,14 @@ class GeneratorPerfMesurer:
         self.last_result = GeneratorPerf(total=total, rt=rt, meta=meta)
         return self.last_result
 
-    def __enter__(self):
+    def __enter__(self) -> GeneratorPerfMesurer:
         self.start()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.finish(exc_type, exc_val, exc_tb)

@@ -1,4 +1,4 @@
-from typing import Annotated, Optional, Union
+from typing import Annotated, Any, Optional, Union
 
 from annet.bgp_models import Aggregate, Family, Redistribute
 
@@ -17,7 +17,7 @@ class _Aggregate(BaseMeshModel):
 
 
 class FamilyOptions(BaseMeshModel):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.setdefault("aggregate", _Aggregate())
         super().__init__(**kwargs)
 
@@ -43,7 +43,7 @@ class FamilyOptions(BaseMeshModel):
 
 
 class _FamiliesMixin:
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.setdefault("ipv4_unicast", FamilyOptions(family="ipv4_unicast"))
         kwargs.setdefault("ipv6_unicast", FamilyOptions(family="ipv6_unicast"))
         kwargs.setdefault("ipv4_vpn_unicast", FamilyOptions(family="ipv4_vpn_unicast"))
@@ -63,7 +63,7 @@ class _FamiliesMixin:
 
 
 class VrfOptions(_FamiliesMixin, BaseMeshModel):
-    def __init__(self, vrf_name: str, **kwargs):
+    def __init__(self, vrf_name: str, **kwargs: Any) -> None:
         kwargs.setdefault("ipv4_unicast", FamilyOptions(family="ipv4_unicast", vrf_name=vrf_name))
         kwargs.setdefault("ipv6_unicast", FamilyOptions(family="ipv6_unicast", vrf_name=vrf_name))
         kwargs.setdefault("ipv4_vpn_unicast", FamilyOptions(family="ipv4_unicast", vrf_name=vrf_name))
@@ -100,7 +100,7 @@ class L2VpnOptions(BaseMeshModel):
 
 
 class GlobalOptionsDTO(_FamiliesMixin, BaseMeshModel):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.setdefault("groups", KeyDefaultDict(lambda x: MeshPeerGroup(name=x)))
         kwargs.setdefault("vrf", KeyDefaultDict(lambda x: VrfOptions(vrf_name=x)))
         kwargs.setdefault("l2vpn", KeyDefaultDict(lambda x: L2VpnOptions(name=x)))

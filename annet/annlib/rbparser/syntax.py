@@ -3,8 +3,8 @@ from __future__ import annotations
 import functools
 import re
 from collections import OrderedDict as odict
-from collections.abc import Iterator
-from typing import Any, TypedDict, cast
+from collections.abc import Iterable, Iterator, Mapping
+from typing import Any, TypedDict
 
 from annet.annlib import lib
 from annet.rulebook.types import ParamsScheme, RawParams, RawRow, Row
@@ -35,7 +35,7 @@ def _convert(tree: ParsedTree) -> odict[Any, Any]:
     return ret
 
 
-def parse_text(text: str, params_scheme) -> odict[Any, Any]:
+def parse_text(text: str, params_scheme: Mapping[str, Any]) -> odict[Any, Any]:
     ret = _parse_tree_with_params(tabparser.parse_to_tree_multi(text, _split_rows, ["#"]), params_scheme)
     return _convert(ret)
 
@@ -52,7 +52,7 @@ class _ParsedTreeNode(TypedDict):
 ParsedTree = list[tuple[str, _ParsedTreeNode]]
 
 
-def parse_text_multi(text: str, params_scheme) -> ParsedTree:
+def parse_text_multi(text: str, params_scheme: Mapping[str, Any]) -> ParsedTree:
     ret = _parse_tree_with_params(tabparser.parse_to_tree_multi(text, _split_rows, ["#"]), params_scheme)
     return ret
 
@@ -73,7 +73,7 @@ _SENTINEL_RE = re.compile(r"\x00(\d+)\x00")
 
 
 @functools.lru_cache()
-def compile_row_regexp(row, flags=0):
+def compile_row_regexp(row: str, flags: int = 0) -> re.Pattern[str]:
     """Compile one ACL/rulebook row into a start-anchored regexp matching a config line:
 
     1. hide a ?/ or ~/ regexp placeholder behind a sentinel;
@@ -89,7 +89,7 @@ def compile_row_regexp(row, flags=0):
     #    non-capturing, so only the ~/ wrapper captures.
     protected: list[tuple[str, bool]] = []  # [(regexp, is_capturing)]
 
-    def _hide(match: re.Match) -> str:
+    def _hide(match: re.Match[str]) -> str:
         regexp = re.sub(r"\(([^\?])", r"(?:\1", match.group(2))
         protected.append((regexp, match.group(1) == "~"))
         return _SENTINEL.format(len(protected) - 1)
@@ -128,7 +128,7 @@ def compile_row_regexp(row, flags=0):
     #    regexp's own spaces survive as literal spaces).
     row = re.sub(r"\s+", r"\\s+", row)
 
-    def _restore(match: re.Match) -> str:
+    def _restore(match: re.Match[str]) -> str:
         regexp, captures = protected[int(match.group(1))]
         return f"({regexp})" if captures else f"(?:{regexp})"
 
@@ -142,7 +142,9 @@ def _split_rows(text: str) -> Iterator[str]:
         yield row.replace("\n", " ")
 
 
-def _parse_tree_with_params(raw_tree: tabparser.SimpleTree, scheme, context: dict | None = None) -> ParsedTree:
+def _parse_tree_with_params(
+    raw_tree: tabparser.SimpleTree, scheme: Mapping[str, Any], context: dict[str, Any] | None = None
+) -> ParsedTree:
     tree: ParsedTree = []
     if context is None:
         context = {}
@@ -165,16 +167,16 @@ def _parse_tree_with_params(raw_tree: tabparser.SimpleTree, scheme, context: dic
                     "row": row,
                     "type": row_type,
                     "params": params,
-                    "children": _parse_tree_with_params(children, scheme, cast(dict, context).copy()),
+                    "children": _parse_tree_with_params(children, scheme, context.copy()),
                     "raw_rule": raw_rule,
-                    "context": cast(dict, context).copy(),
+                    "context": context.copy(),
                 },
             )
         )
     return tree
 
 
-def parse_raw_rule(raw_rule: str, scheme) -> tuple[str, dict[str, str]]:
+def parse_raw_rule(raw_rule: str, scheme: Mapping[str, Any]) -> tuple[str, dict[str, str]]:
     params: dict[str, str] = {}
 
     row, *params_raw = re.split(r"(?:^|\s)%(?=[a-zA-Z_]\w*)", raw_rule)
@@ -187,7 +189,7 @@ def parse_raw_rule(raw_rule: str, scheme) -> tuple[str, dict[str, str]]:
     return row, params
 
 
-def _fill_and_validate(params, scheme, raw_rule):
+def _fill_and_validate(params: Mapping[str, str], scheme: Mapping[str, Any], raw_rule: str) -> dict[str, Any]:
     return {
         key: (
             attrs["validator"](params[key])
@@ -198,7 +200,7 @@ def _fill_and_validate(params, scheme, raw_rule):
     }
 
 
-def match_context(ifcontext, context):
+def match_context(ifcontext: Iterable[str], context: Mapping[str, str]) -> bool:
     if not ifcontext:
         return True
     for ifcontext_value in ifcontext:
@@ -209,7 +211,7 @@ def match_context(ifcontext, context):
     return False
 
 
-def _parse_context(context, row):
+def _parse_context(context: dict[str, Any], row: str) -> dict[str, Any]:
     name, value = row.strip().split(":")
     return lib.merge_dicts(context, {name: value})
 

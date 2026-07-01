@@ -34,7 +34,9 @@ class AnnetHardwareProvider(HardwareProvider):
         return HardwareView(hw_model, sw_version)
 
     def vendor_to_hw(self, vendor: str) -> HardwareView:
-        return registry_connector.get().get(vendor.lower()).hardware
+        matched = registry_connector.get().get(vendor.lower())
+        assert matched is not None  # get() without a default falls back to GENERIC_VENDOR
+        return matched.hardware
 
     def hw_to_vendor(self, hw: HardwareView) -> str | None:
         if vendor := registry_connector.get().match(hw, None):

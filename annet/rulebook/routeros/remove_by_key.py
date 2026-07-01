@@ -1,12 +1,16 @@
 import shlex
+from collections.abc import Iterator
 from ipaddress import ip_address
+from typing import Any
 
 from contextlog import get_logger
 
 from annet.annlib.types import Op
 
 
-def change(key, diff, **kwargs):
+def change(
+    key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **kwargs: Any
+) -> Iterator[tuple[bool, str, None]]:
     """
     Handle RouterOS operations.
 
@@ -60,7 +64,7 @@ def change(key, diff, **kwargs):
                 addr, sep, mask = address.partition("/")
                 ip = ip_address(addr)
                 if not mask:
-                    mask = ip.max_prefixlen
+                    mask = str(ip.max_prefixlen)
                     address = f"{addr}/{mask}"
                 if interface.startswith("*"):
                     yield True, f'remove address="{address}"', None

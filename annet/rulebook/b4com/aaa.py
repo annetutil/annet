@@ -1,10 +1,14 @@
 import re
 from collections import OrderedDict
+from typing import Any
 
+from annet.annlib.rulebook.common import DiffItem
 from annet.rulebook.common import default_diff
 
 
-def rsa_key_diff(old, new, diff_pre, **kwargs):
+def rsa_key_diff(
+    old: OrderedDict[str, Any], new: OrderedDict[str, Any], diff_pre: OrderedDict[str, Any], **kwargs: Any
+) -> list[DiffItem]:
     old_hex = _collect_hex_in_order(old)
     new_hex = _collect_hex_in_order(new)
     if old_hex and new_hex and _keys_equal(old_hex, new_hex):
@@ -13,10 +17,10 @@ def rsa_key_diff(old, new, diff_pre, **kwargs):
         return default_diff(old, new, diff_pre, **kwargs)
 
 
-def _collect_hex_in_order(block):
-    parts = []
+def _collect_hex_in_order(block: OrderedDict[str, Any]) -> str:
+    parts: list[str] = []
 
-    def _recurse(d):
+    def _recurse(d: Any) -> None:
         if not isinstance(d, OrderedDict):
             return
         for key, value in d.items():

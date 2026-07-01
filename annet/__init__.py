@@ -24,7 +24,7 @@ __all__ = ("DeployCancelled", "ExecError")
 DEBUG2_LEVELV_NUM = 9
 
 
-def fill_base_args(parser: annet.argparse.ArgParser, pkg_name: str, logging_config: str):
+def fill_base_args(parser: annet.argparse.ArgParser, pkg_name: str, logging_config: str) -> None:
     parser.add_argument(
         "--log-level",
         default="WARN",
@@ -35,11 +35,16 @@ def fill_base_args(parser: annet.argparse.ArgParser, pkg_name: str, logging_conf
     parser.add_argument("--logging_config", default=logging_config, help=SUPPRESS)
 
 
-def init_logging(options: Namespace):
+def init_logging(options: Namespace) -> None:
     patch_logging()
     patch_threading()
     logging.captureWarnings(True)
-    logging_config = yaml.safe_load(pkgutil.get_data(options.pkg_name, options.logging_config))
+    raw_logging_config = pkgutil.get_data(options.pkg_name, options.logging_config)
+    if raw_logging_config is None:
+        raise RuntimeError(
+            f"Unable to load logging config {options.logging_config!r} from package {options.pkg_name!r}"
+        )
+    logging_config = yaml.safe_load(raw_logging_config)
     if options.log_level is not None:
         logging_config.setdefault("root", {})
         logging_config["root"]["level"] = options.log_level
@@ -47,7 +52,7 @@ def init_logging(options: Namespace):
     logging.config.dictConfig(logging_config)
 
 
-def init(options: Namespace):
+def init(options: Namespace) -> None:
     init_logging(options)
 
     if logging.getLogger().getEffectiveLevel() <= logging.DEBUG:
@@ -59,7 +64,7 @@ def init(options: Namespace):
     colorama.init()
 
 
-def assert_python_version():
+def assert_python_version() -> None:
     if sys.version_info < (3, 10, 0):
         sys.stderr.write("Error: you need python 3.10.0 or higher\n")
         sys.exit(1)

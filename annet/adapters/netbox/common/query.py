@@ -36,7 +36,7 @@ class NetboxQuery(Query):
         return cls(query=list(query))
 
     @property
-    def globs(self):
+    def globs(self) -> list[str]:
         # We process every query host as a glob
         return self.query
 

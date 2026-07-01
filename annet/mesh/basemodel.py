@@ -64,12 +64,12 @@ class ForbidChange(Merger):
 
 class Concat(Merger):
     def _merge(self, name: str, x: T, y: T) -> T:
-        return x + y  # type: ignore[operator]
+        return cast(T, x + y)  # type: ignore[operator]
 
 
 class Unite(Merger):
     def _merge(self, name: str, x: T, y: T) -> T:
-        return x | y  # type: ignore[operator]
+        return cast(T, x | y)  # type: ignore[operator]
 
 
 class Merge(Merger):
@@ -81,7 +81,7 @@ class DictMerge(Merger):
     def __init__(self, value_merger: Merger = Forbid()):
         self.value_merger = value_merger
 
-    def _merge(self, name: str, x: dict, y: dict) -> dict:  # type: ignore[override]
+    def _merge(self, name: str, x: dict[Any, Any], y: dict[Any, Any]) -> dict[Any, Any]:  # type: ignore[override]
         result = copy(x)
         for key, value in y.items():
             if key in result:
@@ -92,7 +92,7 @@ class DictMerge(Merger):
 
 
 class ApplyFunc(Merger):
-    def __init__(self, func: Callable):
+    def __init__(self, func: Callable[..., Any]):
         self.func = func
 
     def __call__(self, name: str, x: Union[T, Special], y: Union[T, Special]) -> Union[T, Special]:
@@ -100,10 +100,10 @@ class ApplyFunc(Merger):
             return y
         if y is Special.NOT_SET:
             return x
-        return self.func(x, y)
+        return cast(Union[T, Special], self.func(x, y))
 
 
-def _get_merger(hint: Any):
+def _get_merger(hint: Any) -> Merger:
     if get_origin(hint) is not Annotated:
         return ForbidChange()
     for arg in get_args(hint):
@@ -115,30 +115,30 @@ def _get_merger(hint: Any):
 class BaseMeshModel:
     _field_mergers: ClassVar[dict[str, Merger]]
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         if extra_keys := (kwargs.keys() - self._field_mergers.keys()):
             raise ValueError(f"Extra arguments: {extra_keys}")
         self.__dict__.update(kwargs)
 
-    def unset_attrs(self):
+    def unset_attrs(self) -> set[str]:
         return type(self)._field_mergers.keys() - vars(self).keys()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(" + ", ".join(f"{key}={value}" for key, value in vars(self).items()) + ")"
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         cls._field_mergers = {
             field: _get_merger(hint)
             for field, hint in get_type_hints(cls, include_extras=True).items()
             if get_origin(hint) is not ClassVar
         }
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value: Any) -> None:
         if key not in self._field_mergers:
             raise AttributeError(f"{self.__class__.__name__} has no field {key}")
         super().__setattr__(key, value)
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         return not self.__dict__
 
 
@@ -237,11 +237,11 @@ def dataclass_default(dataclass_cls: type[T]) -> T:
     return cast(T, dataclass_cls())
 
 
-class KeyDefaultDict(dict):
+class KeyDefaultDict(dict[str, Any]):
     def __init__(self, factory: Callable[[str], Any]):
         super().__init__()
         self.factory = factory
 
-    def __missing__(self, key):
+    def __missing__(self, key: str) -> Any:
         x = self[key] = self.factory(key)
         return x

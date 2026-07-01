@@ -1,9 +1,15 @@
+from collections import OrderedDict as odict
+from typing import Any
+
 from annet.annlib.types import Op
 from annet.rulebook import common
+from annet.rulebook.common import DiffItem
 
 
 # [NOCDEV-2180] After vrf was change we put ip config one more time
-def binding_change(old, new, diff_pre, _pops=(Op.AFFECTED,)):
+def binding_change(
+    old: odict[str, Any], new: odict[str, Any], diff_pre: odict[str, Any], _pops: tuple[str, ...] = (Op.AFFECTED,)
+) -> list[DiffItem]:
     ret = common.default_diff(old, new, diff_pre, _pops)
     vpn_changed = False
     for op, cmd, _, _ in ret:
@@ -17,5 +23,5 @@ def binding_change(old, new, diff_pre, _pops=(Op.AFFECTED,)):
     return ret
 
 
-def _is_vpn_cmd(cmd):
+def _is_vpn_cmd(cmd: str) -> bool:
     return cmd.startswith("ip binding vpn-instance")

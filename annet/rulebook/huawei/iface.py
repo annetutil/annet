@@ -1,10 +1,13 @@
 import re
+from collections import OrderedDict
+from typing import Any
 
+from annet.annlib.rulebook.common import DiffItem
 from annet.annlib.types import Op
 from annet.rulebook import common
 
 
-def permanent(rule, key, diff, **kwargs):  # pylint: disable=redefined-outer-name
+def permanent(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:  # pylint: disable=redefined-outer-name  # noqa: E501
     ifname = key[0]
     if re.match(r"(Eth-Trunk|Vlanif|Vbdif|Loop[Bb]ack|Tunnel|.*\.\d+)", ifname):
         # эти интерфейсы можно удалять
@@ -14,7 +17,12 @@ def permanent(rule, key, diff, **kwargs):  # pylint: disable=redefined-outer-nam
 
 
 # [NOCDEV-2180] Хуавей просит переввести ip конфигурацию после изменения vrf
-def binding_change(old, new, diff_pre, _pops=(Op.AFFECTED,)):
+def binding_change(
+    old: OrderedDict[str, Any],
+    new: OrderedDict[str, Any],
+    diff_pre: OrderedDict[str, Any],
+    _pops: tuple[str, ...] = (Op.AFFECTED,),
+) -> list[DiffItem]:
     ret = common.default_diff(old, new, diff_pre, _pops)
     vpn_changed = False
     for op, cmd, _, _ in ret:
@@ -28,5 +36,5 @@ def binding_change(old, new, diff_pre, _pops=(Op.AFFECTED,)):
     return ret
 
 
-def _is_vpn_cmd(cmd):
+def _is_vpn_cmd(cmd: str) -> bool:
     return cmd.startswith("ip binding vpn-instance")

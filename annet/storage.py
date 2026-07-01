@@ -1,9 +1,16 @@
+from __future__ import annotations
+
 import abc
-from collections.abc import Sequence
-from typing import Any, Dict, Iterable, Optional, Protocol, Type, Union
+from collections.abc import Collection, Iterable, Sequence
+from types import TracebackType
+from typing import Any, Protocol, TypeAlias
 
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.connectors import Connector, get_connector_from_config
+
+
+# Device identifier: an integer PK (netbox/annushka) or a string key (file adapter).
+DeviceId: TypeAlias = int | str
 
 
 class _StorageConnector(Connector["StorageProvider"]):
@@ -17,15 +24,15 @@ storage_connector = _StorageConnector()
 
 class StorageProvider(abc.ABC):
     @abc.abstractmethod
-    def storage(self) -> Type["Storage"]:
+    def storage(self) -> type[Storage]:
         pass
 
     @abc.abstractmethod
-    def opts(self) -> Type["StorageOpts"]:
+    def opts(self) -> type[StorageOpts]:
         pass
 
     @abc.abstractmethod
-    def query(self) -> Type["Query"]:
+    def query(self) -> type[Query]:
         pass
 
     @abc.abstractmethod
@@ -35,19 +42,24 @@ class StorageProvider(abc.ABC):
 
 class Storage(abc.ABC):
     @abc.abstractmethod
-    def __enter__(self):
+    def __enter__(self) -> Storage:
         pass
 
     @abc.abstractmethod
-    def __exit__(self, _, __, ___):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool | None:
         pass
 
     @abc.abstractmethod
-    def resolve_object_ids_by_query(self, query: Any):
+    def resolve_object_ids_by_query(self, query: Any) -> Iterable[DeviceId]:
         pass
 
     @abc.abstractmethod
-    def resolve_fdnds_by_query(self, query: Any):
+    def resolve_fdnds_by_query(self, query: Any) -> list[str]:
         pass
 
     @abc.abstractmethod
@@ -55,7 +67,7 @@ class Storage(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def search_connections(self, device: "Device", neighbor: "Device") -> list[tuple["Interface", "Interface"]]:
+    def search_connections(self, device: Device, neighbor: Device) -> list[tuple[Interface, Interface]]:
         pass
 
     @abc.abstractmethod
@@ -63,32 +75,34 @@ class Storage(abc.ABC):
         self,
         query: Any,
         preload_neighbors: bool = False,
-        use_mesh: Optional[bool] = None,
+        use_mesh: bool | None = None,
         preload_extra_fields: bool = False,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> Sequence[Device]:
         pass
 
     @abc.abstractmethod
-    def get_device(self, obj_id, preload_neighbors=False, use_mesh=None, **kwargs) -> "Device":
+    def get_device(
+        self, obj_id: Any, preload_neighbors: bool = False, use_mesh: bool | None = None, **kwargs: Any
+    ) -> Device:
         pass
 
     @abc.abstractmethod
-    def flush_perf(self):
+    def flush_perf(self) -> dict[str, Any] | None:
         pass
 
 
 class StorageOpts(abc.ABC):
     @classmethod
     @abc.abstractmethod
-    def parse_params(cls, conf_params: Optional[Dict[str, str]], cli_opts: Any):
+    def parse_params(cls, conf_params: dict[str, str] | None, cli_opts: Any) -> Any:
         pass
 
 
 class Query(abc.ABC):
     @classmethod
     @abc.abstractmethod
-    def new(cls, query: Union[str, Iterable[str]], hosts_range: Optional[slice] = None) -> "Query":
+    def new(cls, query: str | Iterable[str], hosts_range: slice | None = None) -> Query:
         pass
 
     def is_empty(self) -> bool:
@@ -102,7 +116,7 @@ class Interface(Protocol):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def add_addr(self, address_mask: str, vrf: Optional[str]) -> None:
+    def add_addr(self, address_mask: str, vrf: str | None) -> None:
         raise NotImplementedError
 
 
@@ -113,7 +127,7 @@ class Device(Protocol):
         pass
 
     @abc.abstractmethod
-    def __hash__(self):
+    def __hash__(self) -> int:
         pass
 
     @abc.abstractmethod
@@ -127,7 +141,7 @@ class Device(Protocol):
 
     @property
     @abc.abstractmethod
-    def id(self):
+    def id(self) -> DeviceId:
         pass
 
     @property
@@ -142,21 +156,29 @@ class Device(Protocol):
 
     @property
     @abc.abstractmethod
-    def neighbours_ids(self):
+    def neighbours_ids(self) -> Collection[DeviceId]:
         pass
 
     @property
     @abc.abstractmethod
-    def neighbours_fqdns(self):
+    def breed(self) -> str | None:
         pass
+
+
+class MeshDevice(Device, Protocol):
+    """A device that also exposes the topology / interface-building surface.
+
+    These members are only needed by the mesh executor; most consumers work with
+    the smaller ``Device`` protocol above.
+    """
 
     @property
     @abc.abstractmethod
-    def breed(self) -> str:
+    def neighbours_fqdns(self) -> list[str]:
         pass
 
     @abc.abstractmethod
-    def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: Optional[int]) -> Interface:
+    def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: int | None) -> Interface:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -170,10 +192,10 @@ class Device(Protocol):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def find_interface(self, name: str) -> Optional[Interface]:
+    def find_interface(self, name: str) -> Interface | None:
         raise NotImplementedError
 
 
-def get_storage() -> tuple[StorageProvider, Dict[str, Any]]:
+def get_storage() -> tuple[StorageProvider, dict[str, Any]]:
     connectors = storage_connector.get_all()
     return get_connector_from_config("storage", connectors)

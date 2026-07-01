@@ -1,6 +1,6 @@
 import functools
 from collections import OrderedDict as odict
-from typing import Literal
+from typing import Any, Literal
 
 from valkit.common import valid_bool, valid_number, valid_string_list
 from valkit.python import valid_object_path
@@ -109,7 +109,7 @@ def compile_deploying_text(text: DeployingText, vendor: str) -> DeployRulebook:
 
 
 # =====
-def _compile_deploying(tree, reverse_prefix) -> DeployRulebook:
+def _compile_deploying(tree: dict[str, Any], reverse_prefix: str) -> DeployRulebook:
     deploying: DeployRulebook = odict()
     for rule_id, attrs in tree.items():
         if attrs[TYPE] == NORMAL and not attrs[ROW].startswith(DIALOG_PREFIX):

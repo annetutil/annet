@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, Optional, Union
+from typing import Annotated, Any, Literal, Optional, Union
 
 from ..bgp_models import BFDTimers, PeerFamilyOptions, SpecialAddr
 from .basemodel import BaseMeshModel, Concat, Unite
@@ -43,7 +43,7 @@ class _OptionsDTO(_SharedOptionsDTO):
     Options which can be set on group of peers or peer itself
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.setdefault("family_options", PeerFamilyOptions())
         super().__init__(**kwargs)
 

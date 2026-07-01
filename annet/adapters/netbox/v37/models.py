@@ -68,7 +68,7 @@ class InterfaceV37(Interface[IpAddressV37, FHRPGroupAssignmentV37]):
 class NetboxDeviceV37(NetboxDevice[InterfaceV37, DeviceIpV37]):
     device_role: Entity
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.id, type(self)))
 
     def _make_interface(self, name: str, type: InterfaceType) -> InterfaceV37:
