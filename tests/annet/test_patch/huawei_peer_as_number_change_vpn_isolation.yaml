@@ -1,0 +1,67 @@
+# The same IP is a peer in two different vpn-instances. Only the peer in
+# vpn-instance ONE changes its as-number; the identically-numbered peer in
+# vpn-instance TWO must be left completely untouched. This locks the
+# per-vpn-instance scoping: a wipe in one block must not leak into another.
+- vendor: huawei
+  before: |
+    bgp 65536
+     ipv4-family vpn-instance ONE
+      peer 192.0.2.1 as-number 12345
+      peer 192.0.2.1 route-policy RP_ONE import
+     ipv4-family vpn-instance TWO
+      peer 192.0.2.1 as-number 10
+      peer 192.0.2.1 route-policy RP_TWO import
+  after: |
+    bgp 65536
+     ipv4-family vpn-instance ONE
+      peer 192.0.2.1 as-number 1234
+      peer 192.0.2.1 route-policy RP_ONE import
+     ipv4-family vpn-instance TWO
+      peer 192.0.2.1 as-number 10
+      peer 192.0.2.1 route-policy RP_TWO import
+  patch: |
+    system-view
+    bgp 65536
+      ipv4-family vpn-instance ONE
+        undo peer 192.0.2.1
+        peer 192.0.2.1 as-number 1234
+        peer 192.0.2.1 route-policy RP_ONE import
+        quit
+      quit
+    q
+    save
+# The same IP is used both as a global BGP peer and as a vpn-instance peer.
+# Only the global peer changes its as-number; the vpn-instance peer must be
+# left completely untouched. This locks the vpn-instance boundary: a global
+# `undo peer <ip>` must not leak into a VPN namespace.
+- vendor: huawei
+  before: |
+    bgp 65536
+     peer 192.0.2.1 as-number 12345
+     ipv4-family unicast
+      peer 192.0.2.1 enable
+      peer 192.0.2.1 route-policy RP_GLOBAL import
+     ipv4-family vpn-instance CUSTOMER
+      peer 192.0.2.1 as-number 10
+      peer 192.0.2.1 route-policy RP_VPN import
+  after: |
+    bgp 65536
+     peer 192.0.2.1 as-number 1234
+     ipv4-family unicast
+      peer 192.0.2.1 enable
+      peer 192.0.2.1 route-policy RP_GLOBAL import
+     ipv4-family vpn-instance CUSTOMER
+      peer 192.0.2.1 as-number 10
+      peer 192.0.2.1 route-policy RP_VPN import
+  patch: |
+    system-view
+    bgp 65536
+      undo peer 192.0.2.1
+      peer 192.0.2.1 as-number 1234
+      ipv4-family unicast
+        peer 192.0.2.1 enable
+        peer 192.0.2.1 route-policy RP_GLOBAL import
+        quit
+      quit
+    q
+    save

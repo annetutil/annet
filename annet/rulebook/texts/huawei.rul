@@ -377,7 +377,7 @@ xpl ~
 bgp path-attribute attr-set *
 bgp path-attribute *
 
-bgp %logic=annet.rulebook.huawei.bgp.undo_commit
+bgp %logic=annet.rulebook.huawei.bgp.undo_commit %diff_logic=annet.rulebook.huawei.bgp.reapply_after_as_number_change
     private-4-byte-as
     router-id
 

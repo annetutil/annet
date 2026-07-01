@@ -1,0 +1,30 @@
+- vendor: huawei
+  name: group as-number rename emits undo before declare and does not re-emit member rows
+  before: |
+    bgp 65536
+     group SPINES external
+     peer SPINES as-number 12345
+     peer 192.0.2.10 as-number 12345
+     peer 192.0.2.10 group SPINES
+     ipv4-family unicast
+      peer SPINES enable
+      peer 192.0.2.10 enable
+      peer 192.0.2.10 route-policy DENY_ALL import
+  after: |
+    bgp 65536
+     group SPINES external
+     peer SPINES as-number 2
+     peer 192.0.2.10 as-number 12345
+     peer 192.0.2.10 group SPINES
+     ipv4-family unicast
+      peer SPINES enable
+      peer 192.0.2.10 enable
+      peer 192.0.2.10 route-policy DENY_ALL import
+  patch: |
+    system-view
+    bgp 65536
+      undo peer SPINES as-number
+      peer SPINES as-number 2
+      quit
+    q
+    save

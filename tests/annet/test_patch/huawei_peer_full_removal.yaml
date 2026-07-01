@@ -1,0 +1,46 @@
+- vendor: huawei
+  name: full IP peer removal collapses bgp-level and family-level per-option undos
+  before: |
+    bgp 65536
+     peer 192.0.2.1 as-number 12345
+     peer 192.0.2.1 description some peer
+     peer 192.0.2.2 as-number 64500
+     ipv4-family unicast
+      peer 192.0.2.1 enable
+      peer 192.0.2.1 route-policy DENY_ALL import
+      peer 192.0.2.2 enable
+  after: |
+    bgp 65536
+     peer 192.0.2.2 as-number 64500
+     ipv4-family unicast
+      peer 192.0.2.2 enable
+  patch: |
+    system-view
+    bgp 65536
+      undo peer 192.0.2.1
+      quit
+    q
+    save
+- vendor: huawei
+  name: full IPv6 peer removal collapses bgp-level and family-level per-option undos
+  before: |
+    bgp 65536
+     peer 2001:db8::1 as-number 12345
+     peer 2001:db8::1 description some peer
+     peer 2001:db8::2 as-number 64500
+     ipv6-family unicast
+      peer 2001:db8::1 enable
+      peer 2001:db8::1 route-policy DENY_ALL import
+      peer 2001:db8::2 enable
+  after: |
+    bgp 65536
+     peer 2001:db8::2 as-number 64500
+     ipv6-family unicast
+      peer 2001:db8::2 enable
+  patch: |
+    system-view
+    bgp 65536
+      undo peer 2001:db8::1
+      quit
+    q
+    save
