@@ -1,3 +1,5 @@
+from typing import Any
+
 from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.vendors.base import AbstractVendor
@@ -9,7 +11,9 @@ from annet.vendors.tabparser import RibbonFormatter
 class RibbonVendor(AbstractVendor):
     NAME = "ribbon"
 
-    def apply(self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str) -> tuple[CommandList, CommandList]:
+    def apply(
+        self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str | None
+    ) -> tuple[CommandList, CommandList]:
         before, after = CommandList(), CommandList()
 
         before.add_cmd(Command("configure exclusive"))
@@ -30,7 +34,7 @@ class RibbonVendor(AbstractVendor):
     def hardware(self) -> HardwareView:
         return HardwareView("Ribbon")
 
-    def make_formatter(self, **kwargs) -> RibbonFormatter:
+    def make_formatter(self, **kwargs: Any) -> RibbonFormatter:
         return RibbonFormatter(**kwargs)
 
     @property

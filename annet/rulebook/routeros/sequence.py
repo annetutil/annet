@@ -1,7 +1,12 @@
+from collections.abc import Iterator
+from typing import Any
+
 from annet.annlib.types import Op
 
 
-def erase_before(key, diff, **kwargs):
+def erase_before(
+    key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **kwargs: Any
+) -> Iterator[tuple[bool, str, None]]:
     """
     Handle RouterOS IP firewall and queue operations.
     """

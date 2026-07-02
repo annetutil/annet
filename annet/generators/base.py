@@ -4,13 +4,19 @@ import abc
 import contextlib
 import re
 import textwrap
-from typing import List, Union
+from collections.abc import Callable, Iterator, Sequence
+from typing import Union, cast
 
 from annet import tracing
+from annet.storage import Device, Storage
 from annet.tracing import tracing_connector
 from annet.vendors import tabparser
 
 from .exceptions import InvalidValueFromGenerator
+
+
+# A single value that a generator may yield and that _filter_str can render.
+Token = Union[str, int, float, tabparser.JuniperList, "GenStringable"]
 
 
 NONE_SEARCHER = re.compile(r"\bNone\b")
@@ -29,7 +35,7 @@ class GenStringable(abc.ABC):
         pass
 
 
-def _filter_str(value: Union[str, int, float, tabparser.JuniperList, ParamsList, GenStringable]):
+def _filter_str(value: Union[str, int, float, tabparser.JuniperList, ParamsList, GenStringable]) -> str:
     if isinstance(
         value,
         (
@@ -48,7 +54,7 @@ def _filter_str(value: Union[str, int, float, tabparser.JuniperList, ParamsList,
     raise InvalidValueFromGenerator("Invalid yield type: %s(%s)" % (type(value).__name__, value))
 
 
-def _split_and_strip(text):
+def _split_and_strip(text: str) -> list[str]:
     if "\n" in text:
         rows = textwrap.dedent(text).strip().split("\n")
     else:
@@ -59,10 +65,11 @@ def _split_and_strip(text):
 # =====
 class BaseGenerator:
     TYPE: str
-    TAGS: List[str] = []
+    TAGS: list[str] = []
     ALLOW_NONE = False
+    storage: Storage
 
-    def supports_device(self, device) -> bool:  # pylint: disable=unused-argument
+    def supports_device(self, device: Device) -> bool:  # pylint: disable=unused-argument
         return True
 
     @classmethod
@@ -75,15 +82,15 @@ class BaseGenerator:
 
 
 class TreeGenerator(BaseGenerator):
-    def __init__(self, indent="  "):
-        self._indents = []
-        self._rows = []
-        self._block_path = []
+    def __init__(self, indent: str = "  ") -> None:
+        self._indents: list[str] = []
+        self._rows: list[str] = []
+        self._block_path: list[str] = []
         self._indent = indent
 
     @tracing.contextmanager(min_duration="0.1")
     @contextlib.contextmanager
-    def block(self, *tokens, indent=None):
+    def block(self, *tokens: Token, indent: str | None = None) -> Iterator[None]:
         span = tracing_connector.get().get_current_span()
         if span:
             span.set_attribute("tokens", " ".join(map(str, tokens)))
@@ -98,17 +105,19 @@ class TreeGenerator(BaseGenerator):
         self._block_path.pop(-1)
 
     @contextlib.contextmanager
-    def block_if(self, *tokens, condition=DefaultBlockIfCondition):
+    def block_if(self, *tokens: Token | None, condition: object = DefaultBlockIfCondition) -> Iterator[None]:
         if condition is DefaultBlockIfCondition:
             condition = None not in tokens and "" not in tokens
         if condition:
-            with self.block(*tokens):
+            # In the default mode a truthy condition means no None token slipped through;
+            # an explicitly-passed condition leaves token validity to the caller.
+            with self.block(*cast("tuple[Token, ...]", tokens)):
                 yield
                 return
         yield
 
     @contextlib.contextmanager
-    def multiblock(self, *blocks):
+    def multiblock(self, *blocks: Token | Sequence[Token]) -> Iterator[None]:
         if blocks:
             blk = blocks[0]
             tokens = blk if isinstance(blk, (list, tuple)) else [blk]
@@ -119,7 +128,9 @@ class TreeGenerator(BaseGenerator):
         yield
 
     @contextlib.contextmanager
-    def multiblock_if(self, *blocks, condition=DefaultBlockIfCondition):
+    def multiblock_if(
+        self, *blocks: Token | Sequence[Token], condition: object = DefaultBlockIfCondition
+    ) -> Iterator[None]:
         if condition is DefaultBlockIfCondition:
             condition = None not in blocks
             if condition:
@@ -133,10 +144,10 @@ class TreeGenerator(BaseGenerator):
         yield
 
     # ===
-    def _append_text(self, text):
+    def _append_text(self, text: str) -> None:
         self._append_text_cb(text)
 
-    def _append_text_cb(self, text, row_cb=None):
+    def _append_text_cb(self, text: str, row_cb: Callable[[str], str] | None = None) -> None:
         for row in _split_and_strip(text):
             if row_cb:
                 row = row_cb(row)
@@ -144,9 +155,9 @@ class TreeGenerator(BaseGenerator):
 
 
 class TextGenerator(TreeGenerator):
-    def __add__(self, line):
+    def __add__(self, line: str) -> TextGenerator:
         self._append_text(line)
         return self
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         yield from self._rows

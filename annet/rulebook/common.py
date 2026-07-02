@@ -1,6 +1,6 @@
 import functools
 import importlib
-from typing import Literal
+from typing import Any, Callable, Literal, cast
 
 from valkit.common import valid_bool
 
@@ -14,11 +14,11 @@ CONTEXT: Literal["context"] = "context"
 
 
 @functools.lru_cache()
-def import_rulebook_function(name):
-    module, function_name = name.rsplit(".", 1)
+def import_rulebook_function(name: str) -> Callable[..., Any]:
+    module_name, function_name = name.rsplit(".", 1)
     try:
-        module = importlib.import_module(module)
-        return getattr(module, function_name)
+        module = importlib.import_module(module_name)
+        return cast("Callable[..., Any]", getattr(module, function_name))
     except ImportError:
         raise ImportError(f"Could not import {name}")
 
@@ -47,4 +47,4 @@ def raw_param_to_bool(raw_param_value: str | None) -> bool:
     """
     if raw_param_value is None:
         return False
-    return valid_bool(raw_param_value if raw_param_value != "" else "1")
+    return cast(bool, valid_bool(raw_param_value if raw_param_value != "" else "1"))

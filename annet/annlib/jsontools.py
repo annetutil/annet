@@ -9,7 +9,7 @@ import json
 from collections.abc import Mapping, Sequence
 from itertools import starmap
 from operator import itemgetter
-from typing import Any, Dict, Final, Iterable, List, Optional
+from typing import Any, Dict, Final, Iterable, List, Optional, cast
 
 import jsonpatch
 import jsonpointer
@@ -89,7 +89,7 @@ def apply_json_fragment(
         normalized_acl = [EVERYTHING_ACL]
     full_new_config = copy.deepcopy(old)
     for acl_item in normalized_acl:
-        new_pointers = resolve_json_pointers(acl_item.pointer, new_fragment)
+        new_pointers: Sequence[jsonpointer.JsonPointer] = resolve_json_pointers(acl_item.pointer, new_fragment)
         if filters is not None:
             new_pointers = _apply_filters_to_json_pointers(new_pointers, filters, content=new_fragment)
 
@@ -108,8 +108,8 @@ def apply_json_fragment(
             prefix_pattern = jsonpointer.JsonPointer.from_parts(pointer_parts[:depth]).path
             if _pattern_matches_protected(prefix_pattern, acl_item.cant_delete):
                 continue
-            level_new = resolve_json_pointers(prefix_pattern, new_fragment)
-            level_old = resolve_json_pointers(prefix_pattern, full_new_config)
+            level_new: Sequence[jsonpointer.JsonPointer] = resolve_json_pointers(prefix_pattern, new_fragment)
+            level_old: Sequence[jsonpointer.JsonPointer] = resolve_json_pointers(prefix_pattern, full_new_config)
             if filters is not None and depth == len(pointer_parts):
                 # Filters historically apply only at the deepest ACL level.
                 level_new = _apply_filters_to_json_pointers(level_new, filters, content=new_fragment)
@@ -190,7 +190,7 @@ def make_patch(old: Dict[str, Any], new: Dict[str, Any]) -> List[Dict[str, Any]]
     #  ```
     #  which relies on proper ordering to be correctly applied.
     #  See https://github.com/annetutil/annet/pull/452 for details.
-    return jsonpatch.make_patch(old, new).patch
+    return cast(List[Dict[str, Any]], jsonpatch.make_patch(old, new).patch)
 
 
 def apply_patch(content: Optional[bytes], patch_bytes: bytes) -> bytes:
@@ -251,9 +251,9 @@ def resolve_json_pointers(pattern: str, content: dict[str, Any]) -> list[jsonpoi
     ]
     """
     parts = jsonpointer.JsonPointer(pattern).parts
-    matched = [((), content)]
+    matched: list[tuple[tuple[str, ...], Any]] = [((), content)]
     for part in parts:
-        new_matched = []
+        new_matched: list[tuple[tuple[str, ...], Any]] = []
         for matched_parts, doc in matched:
             keys_and_docs = []
             if isinstance(doc, Mapping):
@@ -316,7 +316,7 @@ def _apply_filters_to_json_pointers(
                 deeper_pattern = "".join(
                     (f"/{jsonpointer.escape(part)}" for part in filter_parts[len(pointer_parts) :])
                 )
-                ret.update(map(pointer.join, resolve_json_pointers(deeper_pattern, deeper_doc)))
+                ret.update([pointer.join(p) for p in resolve_json_pointers(deeper_pattern, deeper_doc)])
             else:
                 ret.add(pointer)
     return ret

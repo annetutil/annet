@@ -1,3 +1,4 @@
+import types
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -243,7 +244,12 @@ class StatementBuilder:
     def __enter__(self) -> "StatementBuilder":
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> bool | None:
         if self._community:
             self._statement.then.append(
                 SingleAction(

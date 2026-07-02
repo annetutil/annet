@@ -52,7 +52,7 @@ class SingleCondition(Generic[ValueT]):
         raise ValueError(f"Cannot merge condition with operator {self.operator} and {other.operator}")
 
 
-Condition = Union[SingleCondition, "AndCondition"]
+Condition = Union[SingleCondition[Any], "AndCondition"]
 
 
 class AndCondition:
@@ -61,7 +61,7 @@ class AndCondition:
         for c in conditions:
             self.conditions.extend(self._unpack(c))
 
-    def _unpack(self, other: Condition) -> Sequence[SingleCondition]:
+    def _unpack(self, other: Condition) -> Sequence[SingleCondition[Any]]:
         if isinstance(other, AndCondition):
             return other.conditions
         return [other]
@@ -69,10 +69,10 @@ class AndCondition:
     def __and__(self, other: Condition) -> "AndCondition":
         return AndCondition(*self.conditions, other)
 
-    def __iadd__(self, other):
+    def __iadd__(self, other: Condition) -> None:
         self.conditions.extend(self._unpack(other))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         conditions = ", ".join(repr(c) for c in self.conditions)
         return f"AndCondition({conditions})"
 

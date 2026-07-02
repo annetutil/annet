@@ -1,8 +1,8 @@
 import functools
 from collections import OrderedDict as odict
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, TypeVar, cast
 
-from valkit import add_validator_magic
+from valkit import add_validator_magic as _add_validator_magic
 from valkit.common import valid_bool, valid_number, valid_string_list
 
 from annet.vendors import registry_connector
@@ -10,9 +10,14 @@ from annet.vendors import registry_connector
 from . import syntax
 
 
+_F = TypeVar("_F", bound=Callable[..., Any])
+# valkit's decorator is untyped; treat it as signature-preserving so decorated validators stay typed.
+add_validator_magic = cast("Callable[[_F], _F]", _add_validator_magic)
+
+
 # =====
 @functools.lru_cache()
-def compile_acl_text(text, vendor, allow_ignore=False):
+def compile_acl_text(text: str, vendor: str, allow_ignore: bool = False) -> dict[str, odict[Any, Any]]:
     return _compile_acl(
         trees=[syntax.parse_text(text, _PARAMS_SCHEME)],
         reverse_prefix=registry_connector.get()[vendor].reverse,
@@ -22,7 +27,7 @@ def compile_acl_text(text, vendor, allow_ignore=False):
 
 
 @functools.lru_cache()
-def compile_ref_acl_text(text):
+def compile_ref_acl_text(text: str) -> dict[str, odict[Any, Any]]:
     return _compile_acl(
         trees=[syntax.parse_text(text, _PARAMS_SCHEME)],
         reverse_prefix="",
@@ -38,8 +43,8 @@ def valid_bool_list(
     strip: bool = False,
 ) -> List[bool]:
     arg = valid_string_list(arg, delim, subval, strip)
-    arg = [valid_bool(x, strip) for x in arg]
-    return arg
+    result: List[bool] = [valid_bool(x, strip) for x in arg]
+    return result
 
 
 # =====
@@ -64,8 +69,13 @@ _PARAMS_SCHEME = {
 
 
 # =====
-def _compile_acl(trees, reverse_prefix, allow_ignore=False, vendor=""):
-    rules = {"local": odict(), "global": odict()}
+def _compile_acl(
+    trees: list[odict[Any, Any]],
+    reverse_prefix: str,
+    allow_ignore: bool = False,
+    vendor: str = "",
+) -> dict[str, odict[Any, Any]]:
+    rules: dict[str, odict[Any, Any]] = {"local": odict(), "global": odict()}
     for rule_id, attrs in _merge_toplevel(trees).items():
         if attrs["type"] == "ignore" and not allow_ignore:
             raise NotImplementedError("ACL does not support ignore-rules")
@@ -88,8 +98,8 @@ def _compile_acl(trees, reverse_prefix, allow_ignore=False, vendor=""):
     return rules
 
 
-def _merge_toplevel(trees):
-    merged = odict()
+def _merge_toplevel(trees: list[odict[Any, Any]]) -> odict[Any, Any]:
+    merged: odict[Any, Any] = odict()
     for tree in trees:
         for attrs in tree.values():
             rule_id = ("!" if attrs["type"] == "ignore" else "") + attrs["row"]
@@ -111,7 +121,7 @@ def _merge_toplevel(trees):
 
 
 @functools.lru_cache()
-def _make_reverse(row, reverse_prefix):
+def _make_reverse(row: str, reverse_prefix: str) -> str:
     if row.startswith(reverse_prefix + " "):
         return row[len(reverse_prefix + " ") :]
     else:

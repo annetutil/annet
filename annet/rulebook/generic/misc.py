@@ -1,8 +1,12 @@
+from typing import Any
+
 from annet.annlib.types import Op
 from annet.rulebook import common
 
 
-def remove_last_param(rule, key, diff, **_):
+def remove_last_param(
+    rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any
+) -> common.LogicResult:
     if diff[Op.REMOVED]:
         for rem in diff[Op.REMOVED]:
             # Обрабатывать удаление последнего параметра команды

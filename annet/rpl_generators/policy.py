@@ -30,6 +30,7 @@ from annet.rpl_generators.entities import (
     group_community_members,
     mangle_united_community_list_name,
 )
+from annet.storage import Device
 
 
 HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
@@ -127,7 +128,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         raise NotImplementedError()
 
     # huawei
-    def acl_huawei(self, _):
+    def acl_huawei(self, _: Device) -> str:
         return r"""
         route-policy *
             ~ %global=1
@@ -292,9 +293,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         if action.value.removed:
             raise NotImplementedError("Extcommunity_soo remove is not supported for huawei")
 
-    def _huawei_render_ext_community_members(
-        self, comm_type: CommunityType, members: list[str]
-    ) -> Sequence[Sequence[str]]:
+    def _huawei_render_ext_community_members(self, comm_type: CommunityType, members: list[str]) -> Sequence[str]:
         if comm_type is CommunityType.SOO:
             return "soo", *members
         if comm_type is CommunityType.RT:
@@ -311,7 +310,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         communities: dict[str, CommunityList],
         device: Any,
         action: SingleAction[CommunityActionValue],
-    ):
+    ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
             if action.value.added or action.value.removed:
                 raise NotImplementedError(
@@ -447,7 +446,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             if statement.result is ResultType.NEXT:
                 yield "goto next-node"
 
-    def run_huawei(self, device):
+    def run_huawei(self, device: Device) -> Iterator[Sequence[str]]:
         prefix_lists = self.get_prefix_lists(device)
         policies = self.get_policies(device)
         communities = {c.name: c for c in self.get_community_lists(device)}
@@ -461,7 +460,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 )
 
     # arista
-    def acl_arista(self, device):
+    def acl_arista(self, device: Device) -> str:
         return r"""
         route-map
             ~ %global=1
@@ -709,7 +708,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         communities: dict[str, CommunityList],
         device: Any,
         action: SingleAction[CommunityActionValue],
-    ):
+    ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
             if action.value.added or action.value.removed:
                 raise NotImplementedError(
@@ -851,7 +850,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             if statement.result is ResultType.NEXT:
                 yield "continue"
 
-    def run_arista(self, device):
+    def run_arista(self, device: Device) -> Iterator[Sequence[str]]:
         prefix_lists = self.get_prefix_lists(device)
         policies = self.get_policies(device)
         prefix_name_generator = PrefixListNameGenerator(prefix_lists, policies)
@@ -870,7 +869,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 )
 
     # Cisco IOS XR
-    def acl_iosxr(self, device):
+    def acl_iosxr(self, device: Device) -> str:
         return r"""
         route-policy *
             ~ %global=1
@@ -939,7 +938,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         else:
             yield (self._iosxr_or_matches([matches]),)
 
-    def _iosxr_match_local_pref(self, condition: SingleCondition) -> Iterator[Sequence[str]]:
+    def _iosxr_match_local_pref(self, condition: SingleCondition[Any]) -> Iterator[Sequence[str]]:
         if condition.operator is ConditionOperator.EQ:
             yield "local-preference", "eq", str(condition.value)
         elif condition.operator is ConditionOperator.LE:
@@ -954,7 +953,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 f"Operator {condition.operator} is not supported for {condition.field} on Cisco IOS XR",
             )
 
-    def _iosxr_match_as_path_length(self, condition: SingleCondition) -> Iterator[Sequence[str]]:
+    def _iosxr_match_as_path_length(self, condition: SingleCondition[Any]) -> Iterator[Sequence[str]]:
         if condition.operator is ConditionOperator.EQ:
             yield "as-path length", "eq", str(condition.value)
         elif condition.operator is ConditionOperator.LE:
@@ -1173,7 +1172,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 yield from self._iosxr_then(communities, device, action)
             yield (IOSXR_RESULT_MAP[statement.result],)
 
-    def run_iosxr(self, device):
+    def run_iosxr(self, device: Device) -> Iterator[Sequence[str]]:
         prefix_lists = self.get_prefix_lists(device)
         policies = self.get_policies(device)
         prefix_name_generator = PrefixListNameGenerator(prefix_lists, policies)
@@ -1196,7 +1195,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                     )
 
     # Juniper
-    def acl_juniper(self, device):
+    def acl_juniper(self, device: Device) -> str:
         return r"""
         policy-options       %cant_delete
             policy-statement
@@ -1206,7 +1205,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     def _juniper_match_communities(
         self,
         section: Literal["", "from"],
-        conditions: list[SingleCondition],
+        conditions: list[SingleCondition[Any]],
     ) -> Iterator[Sequence[str]]:
         names: list[str] = [name for cond in conditions for name in cond.value]
         operators = {x.operator for x in conditions}
@@ -1249,7 +1248,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     def _juniper_match_as_path_length(
         self,
         section: Literal["", "from"],
-        conditions: list[SingleCondition],
+        conditions: list[SingleCondition[Any]],
     ) -> Iterator[Sequence[str]]:
         for condition in conditions:
             if condition.operator is ConditionOperator.EQ:
@@ -1326,11 +1325,11 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
     ) -> Iterator[Sequence[str]]:
         community_fields = self._juniper_match_community_fields()
         prefix_fields = self._juniper_match_prefix_fields()
-        community_conditions: list[SingleCondition] = []
-        prefix_conditions: list[SingleCondition] = []
-        simple_conditions: list[SingleCondition] = []
-        as_path_length_conditions: list[SingleCondition] = []
-        rd_filter_conditions: list[SingleCondition] = []
+        community_conditions: list[SingleCondition[Any]] = []
+        prefix_conditions: list[SingleCondition[Any]] = []
+        simple_conditions: list[SingleCondition[Any]] = []
+        as_path_length_conditions: list[SingleCondition[Any]] = []
+        rd_filter_conditions: list[SingleCondition[Any]] = []
         for condition in conditions:
             if condition.field in community_fields:
                 community_conditions.append(condition)
@@ -1364,7 +1363,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 )
             yield section, JUNIPER_MATCH_COMMAND_MAP[condition.field].format(option_value=condition.value)
 
-    def _juniper_then_community(self, section: Literal["", "then"], actions: list[SingleAction[CommunityActionValue]]):
+    def _juniper_then_community(
+        self, section: Literal["", "then"], actions: list[SingleAction[CommunityActionValue]]
+    ) -> Iterator[Sequence[str]]:
         # juniper community ops are ORDERED
         # since data model does not support it
         # we use the order that makes sense: delete, set, add
@@ -1386,7 +1387,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         self,
         section: Literal["", "then"],
         actions: list[SingleAction[NextHopActionValue]],
-    ):
+    ) -> Iterator[Sequence[str]]:
         if len(actions) > 1:
             raise NotImplementedError("Only single next-hop action is supported for Juniper")
 
@@ -1422,7 +1423,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         self,
         section: Literal["", "then"],
         actions: list[SingleAction[AsPathActionValue]],
-    ):
+    ) -> Iterator[Sequence[str]]:
         if len(actions) > 1:
             raise NotImplementedError("Only single next-hop action is supported for Juniper")
 
@@ -1456,10 +1457,10 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         section: Literal["", "then"],
         actions: Action,
     ) -> Iterator[Sequence[str]]:
-        community_actions: list[SingleAction] = []
-        next_hop_actions: list[SingleAction] = []
-        as_path_actions: list[SingleAction] = []
-        simple_actions: list[SingleAction] = []
+        community_actions: list[SingleAction[Any]] = []
+        next_hop_actions: list[SingleAction[Any]] = []
+        as_path_actions: list[SingleAction[Any]] = []
+        simple_actions: list[SingleAction[Any]] = []
         for action in actions:
             if action.field == ThenField.community:
                 community_actions.append(action)
@@ -1529,7 +1530,7 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 with self.block_if("then", condition=not then_inlined):
                     yield then_section, JUNIPER_RESULT_MAP[statement.result]
 
-    def run_juniper(self, device):
+    def run_juniper(self, device: Device) -> Iterator[Sequence[str]]:
         prefix_lists = self.get_prefix_lists(device)
         policies = self.get_policies(device)
         prefix_name_generator = JuniperPrefixListNameGenerator(prefix_lists, policies)

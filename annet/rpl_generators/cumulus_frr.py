@@ -90,7 +90,7 @@ class CumulusPolicyGenerator(ABC):
         self,
         device: Any,
         policies: list[RoutingPolicy],
-    ):
+    ) -> Iterator[Sequence[str]]:
         as_path_filters = get_used_as_path_filters(self.get_as_path_filters(device), policies)
         if not as_path_filters:
             return
@@ -359,7 +359,7 @@ class CumulusPolicyGenerator(ABC):
         communities: dict[str, CommunityList],
         device: Any,
         action: SingleAction[CommunityActionValue],
-    ):
+    ) -> Iterator[Sequence[str]]:
         if action.value.replaced is not None:
             if action.value.added or action.value.removed:
                 raise NotImplementedError(

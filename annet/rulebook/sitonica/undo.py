@@ -1,11 +1,12 @@
 import copy
 import re
+from typing import Any
 
 from annet.annlib.types import Op
 from annet.rulebook import common
 
 
-def two(rule, key, diff, **kwargs):
+def two(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:
     """Undo commands that require two first parameters
 
     This command can't be undone with * or ~:
@@ -22,7 +23,7 @@ def two(rule, key, diff, **kwargs):
         yield from common.default(rule, key, diff, **kwargs)
 
 
-def strange(rule, key, diff, **kwargs):
+def strange(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:
     """Undo strange commands
 
     This list of commands can't be undone with standart methods:

@@ -7,13 +7,16 @@ import sys
 import textwrap
 from collections import OrderedDict as odict
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Iterator,
     TypeAlias,
     TypedDict,
+    TypeVar,
+    cast,
 )
 
 
@@ -25,12 +28,31 @@ else:
 from annet.rulebook.types import OrderRulebook
 from annet.vendors.tabparser import CommonFormatter
 
-from ..types import Diff, Op
+from ..types import Diff, Op, OpType
 from ..vendors import registry_connector
 from .lib import jun_activate, merge_dicts, strip_annotation, uniq
 from .rbparser.ordering import compile_ordering_text
 from .rulebook.common import call_diff_logic
 from .rulebook.common import default as common_default
+
+
+if TYPE_CHECKING:
+    from annet.annlib.netdev.views.hardware import HardwareView
+    from annet.reference import RefTracker
+
+
+# Nested config: mapping of a config row to its children (same shape, recursively).
+Config: TypeAlias = dict[str, Any]
+# Compiled ACL / patching rulebook: {"local": ..., "global": ...}.
+Rules: TypeAlias = dict[str, Any]
+# A single ACL rule with its attrs/children.
+_AclRule: TypeAlias = dict[str, Any]
+# Metadata attached to a match (is_reverse / raw_rule / rule / key ...).
+_AclMatch: TypeAlias = dict[str, Any]
+# One match: ((rule, is_cr_allowed), match-metadata).
+_AclMatchItem: TypeAlias = tuple[tuple[_AclRule, bool], _AclMatch]
+# Match metric used to rank matches: (prio, string_similarity).
+_AclMetric: TypeAlias = tuple[int, float]
 
 
 # =====
@@ -136,7 +158,7 @@ class PatchTree:
             yield str(item.row), item.child
 
     def asdict(self) -> odict[str, Any]:
-        ret = odict()
+        ret: odict[str, Any] = odict()
         for row in uniq(i.row for i in self.itms):
             subtrees = []
             for i in self.itms:
@@ -187,14 +209,14 @@ def string_similarity(s: str, pattern: str) -> float:
 
 
 class _ReversedSortWrapper:
-    def __init__(self, obj):
+    def __init__(self, obj: Any) -> None:
         self.obj = obj
 
-    def __lt__(self, other):
+    def __lt__(self, other: _ReversedSortWrapper) -> bool:
         return not (self.obj < other.obj)
 
 
-def reversed_sort_by(obj):
+def reversed_sort_by(obj: Any) -> _ReversedSortWrapper:
     return _ReversedSortWrapper(obj)
 
 
@@ -216,13 +238,13 @@ class Orderer:
         self.rb = rb
         self.vendor = vendor
 
-    def ref_insert(self, ref_tracker):
+    def ref_insert(self, ref_tracker: RefTracker) -> None:
         for ref, _ in reversed(ref_tracker.configs()):
             self.insert(ref)
         for _, defs in reversed(ref_tracker.configs()):
             self.insert(defs)
 
-    def insert(self, rules: str | dict) -> None:
+    def insert(self, rules: str | dict[str, Any]) -> None:
         if isinstance(rules, dict):
             fmtr = CommonFormatter()
             rules = fmtr.join(rules)
@@ -281,6 +303,7 @@ class Orderer:
             for rb_idx, (raw_rule, rule) in enumerate(children, start=0):
                 rb_attrs = rule["attrs"]
 
+                key: tuple[str, ...]
                 if not keys_suffix:  # we are either ordering a config or keys are somehow exhausted - not a problem
                     key = ()
                 else:
@@ -419,22 +442,22 @@ class Orderer:
 
 # =====
 def apply_acl(
-    config,
-    rules,
-    fatal_acl=False,
-    exclusive=False,
-    with_annotations=False,
-    forbid_ordered=False,
-    rb=None,
-    _path=(),
-    _ordered_paths=None,
-):
+    config: Config,
+    rules: Rules,
+    fatal_acl: bool = False,
+    exclusive: bool = False,
+    with_annotations: bool = False,
+    forbid_ordered: bool = False,
+    rb: dict[str, Any] | None = None,
+    _path: tuple[str, ...] = (),
+    _ordered_paths: set[tuple[str, ...]] | None = None,
+) -> Config:
     if _ordered_paths is None:
-        _ordered_paths: set[tuple[str, ...]] = set()
+        _ordered_paths = set()
         if forbid_ordered:
-            _ordered_paths = filter_rows_by_rulebook_selector(config, rb, "ordered")
+            _ordered_paths = filter_rows_by_rulebook_selector(config, rb, "ordered") or set()
 
-    passed = odict()
+    passed: Config = odict()
     for row, children in config.items():
         full_path = _path + (row,)
         if with_annotations:
@@ -447,6 +470,7 @@ def apply_acl(
         except AclNotExclusiveError as err:
             raise AclNotExclusiveError("'%s', %s" % ("/ ".join(full_path), err))
         if match:
+            assert children_rules is not None
             if not (match["is_reverse"] and all(match["attrs"]["cant_delete"])):
                 passed[row] = apply_acl(
                     config=children,
@@ -466,11 +490,18 @@ def apply_acl(
     return passed
 
 
-def apply_acl_diff(diff, rules):
-    passed = []
+# The 4th tuple element ("match") is opaque to this function — it is only carried
+# through untouched — so it is generic; callers use different shapes for it
+# (annet.types.Diff uses a dict, annet.annlib.filter_acl uses int | None).
+_MatchT = TypeVar("_MatchT")
+
+
+def apply_acl_diff(diff: list[tuple[str, str, Any, _MatchT]], rules: Rules) -> list[tuple[str, str, Any, _MatchT]]:
+    passed: list[tuple[str, str, Any, _MatchT]] = []
     for op, row, children, d_match in diff:
         (match, children_rules) = match_row_to_acl(row, rules)
         if match:
+            assert children_rules is not None
             if op == Op.REMOVED and all(match["attrs"]["cant_delete"]):
                 op = Op.AFFECTED
             children = apply_acl_diff(children, children_rules)
@@ -478,8 +509,8 @@ def apply_acl_diff(diff, rules):
     return passed
 
 
-def mark_unchanged(diff):
-    passed = []
+def mark_unchanged(diff: Diff) -> Diff:
+    passed: Diff = []
     for op, row, children, d_match in diff:
         if op == Op.AFFECTED:
             children = mark_unchanged(children)
@@ -489,8 +520,8 @@ def mark_unchanged(diff):
     return passed
 
 
-def strip_unchanged(diff):
-    passed = []
+def strip_unchanged(diff: Diff) -> Diff:
+    passed: Diff = []
     for op, row, children, d_match in diff:
         if op == Op.UNCHANGED:
             continue
@@ -499,12 +530,26 @@ def strip_unchanged(diff):
     return passed
 
 
-def make_diff(old, new, rb, acl_rules_list) -> Diff:
+def make_diff(
+    old: MutableMapping[str, Any],
+    new: MutableMapping[str, Any],
+    rb: Mapping[str, Any],
+    acl_rules_list: list[Rules | None],
+) -> Diff:
     # не позволяем logic-коду модифицировать конфиг
     old = copy.deepcopy(old)
     new = copy.deepcopy(new)
     diff_pre = apply_diff_rb(old, new, rb)
-    diff = call_diff_logic(diff_pre, old, new)
+    # old/new/diff_pre are OrderedDicts at runtime; call_diff_logic returns
+    # rulebook.common.DiffItem tuples which are structurally the annet.types.Diff shape.
+    diff: Diff = cast(
+        Diff,
+        call_diff_logic(
+            cast("odict[Any, Any]", diff_pre),
+            cast("odict[Any, Any]", old),
+            cast("odict[Any, Any]", new),
+        ),
+    )
     for acl_rules in acl_rules_list:
         if acl_rules is not None:
             diff = apply_acl_diff(diff, acl_rules)
@@ -512,9 +557,11 @@ def make_diff(old, new, rb, acl_rules_list) -> Diff:
     return diff
 
 
-def apply_diff_rb(old, new, rb):
+def apply_diff_rb(
+    old: MutableMapping[str, Any], new: MutableMapping[str, Any], rb: Mapping[str, Any]
+) -> dict[str, Any]:
     """Diff pre is a odict {(key, diff_logic): {}}"""
-    diff_pre = odict()
+    diff_pre: dict[str, Any] = odict()
     for row in list(uniq(old, new)):
         match, children_rules = _match_row_to_rules(row, rb["patching"])
         if match:
@@ -532,15 +579,23 @@ def apply_diff_rb(old, new, rb):
     return diff_pre
 
 
-def filter_rows_by_rulebook_selector(config, rb, selector):
+def filter_rows_by_rulebook_selector(
+    config: Config, rb: dict[str, Any] | None, selector: str
+) -> set[tuple[str, ...]] | None:
     if not rb:
-        return
+        return None
     ret: set[tuple[str, ...]] = set()
     _filter_rows_by_rulebook_selector(config, rb, selector, ret)
     return ret
 
 
-def _filter_rows_by_rulebook_selector(config, rb, selector, ret, path=()):
+def _filter_rows_by_rulebook_selector(
+    config: Config,
+    rb: dict[str, Any],
+    selector: str,
+    ret: set[tuple[str, ...]],
+    path: tuple[str, ...] = (),
+) -> None:
     for row in config:
         match, children_rules = _match_row_to_rules(row, rb["patching"])
         if match:
@@ -556,9 +611,9 @@ def _filter_rows_by_rulebook_selector(config, rb, selector, ret, path=()):
             )
 
 
-def make_pre(diff: Diff, _parent_match=None) -> dict[str, Any]:
-    pre = odict()
-    reversals = defaultdict(set)
+def make_pre(diff: Diff, _parent_match: dict[str, Any] | None = None) -> dict[str, Any]:
+    pre: dict[str, Any] = odict()
+    reversals: defaultdict[str, set[str]] = defaultdict(set)
     for op, row, children, match in diff:
         if _parent_match and _parent_match["attrs"]["multiline"]:
             # Если родительское правило было мультилайном, то все внутренности станут его контентом.
@@ -621,7 +676,7 @@ _comment_macros = {
 
 class _PreAttrs(TypedDict):
     logic: Callable[..., Iterable[tuple[bool | None, str, odict[str, _Pre] | None]]]
-    diff_logic: Callable
+    diff_logic: Callable[..., Any]
     regexp: re.Pattern[str]
     reverse: str
     comment: list[str]
@@ -641,7 +696,7 @@ class _DiffItem(TypedDict):
 class _Pre(TypedDict):
     rule: str
     attrs: _PreAttrs
-    items: odict[tuple[str, ...], dict[Op, list[_DiffItem]]]
+    items: odict[tuple[str, ...], dict[OpType, list[_DiffItem]]]
 
 
 class _PatchRow(TypedDict):
@@ -655,7 +710,7 @@ class _PatchRow(TypedDict):
 
 def _iterate_over_patch(
     pre: odict[str, _Pre],
-    hw,
+    hw: HardwareView,
     do_commit: bool,
     add_comments: bool,
 ) -> Iterable[_PatchRow]:
@@ -694,6 +749,7 @@ def _iterate_over_patch(
                         attrs=attrs.copy(),
                         direct=direct,
                         rules=(content["rule"],),
+                        sort_key=(),
                     )
 
                 else:
@@ -714,6 +770,7 @@ def _iterate_over_patch(
                             attrs=attrs.copy(),
                             direct=direct,
                             rules=(content["rule"],),
+                            sort_key=(),
                         )
                     for sub_row in children:
                         # block, has children -> emit only children
@@ -723,10 +780,11 @@ def _iterate_over_patch(
                             attrs=sub_row["attrs"],
                             direct=sub_row["direct"],
                             rules=(content["rule"], *sub_row["rules"]),
+                            sort_key=(),
                         )
 
 
-def sort_patch_rows(orderer: Orderer, patch_rows: list[_PatchRow]):
+def sort_patch_rows(orderer: Orderer, patch_rows: list[_PatchRow]) -> None:
     """
     regular sorting will not work here
     consider this case:
@@ -833,13 +891,13 @@ def sort_patch_rows(orderer: Orderer, patch_rows: list[_PatchRow]):
 def make_patch(
     pre: odict[str, _Pre],
     rb: dict[str, OrderRulebook],  # not correct, but good enough for now; TODO: make typeddict for this
-    hw,
+    hw: HardwareView,
     add_comments: bool,
     orderer: Orderer | None = None,
     do_commit: bool = True,
 ) -> PatchTree:
     if not orderer:
-        orderer = Orderer(rb["ordering"], hw.vendor)
+        orderer = Orderer(rb["ordering"], hw.vendor or "")
 
     patch_rows = list(
         _iterate_over_patch(
@@ -874,7 +932,7 @@ def make_patch(
     return tree
 
 
-def _aggregate_cant_delete(matches):
+def _aggregate_cant_delete(matches: list[_AclMatchItem]) -> list[bool] | None:
     """Combine cant_delete across the rules that matched the row, not just the selected one.
 
     The row is protected (cant_delete=1) only if *every* matching generator
@@ -891,7 +949,7 @@ def _aggregate_cant_delete(matches):
     return [all(flags)]
 
 
-def _best_matches(matches_with_metric):
+def _best_matches(matches_with_metric: list[tuple[_AclMetric, _AclMatchItem]]) -> list[_AclMatchItem]:
     """Pick the matches that share the top metric (prio, string_similarity).
 
     `_find_acl_matches` already sorts matches by metric in descending order, so
@@ -903,7 +961,7 @@ def _best_matches(matches_with_metric):
     return [item for metric, item in matches_with_metric if metric == top_metric]
 
 
-def match_row_to_acl(row, rules, exclusive=False):
+def match_row_to_acl(row: str, rules: Rules, exclusive: bool = False) -> tuple[_AclMatch | None, Rules | None]:
     matches_with_metric = _find_acl_matches(row, rules)
     if matches_with_metric:
         matches = [item for _metric, item in matches_with_metric]
@@ -923,7 +981,7 @@ def match_row_to_acl(row, rules, exclusive=False):
         if match is not None:
             best_matches = [m for m in best_matches if m[1]["is_reverse"] == match["is_reverse"]]
         if exclusive:
-            gen_cant_delete = {}
+            gen_cant_delete: dict[str, Any] = {}
             for best_match in best_matches:
                 names = best_match[0][0]["attrs"]["generator_names"]
                 flags = best_match[0][0]["attrs"]["cant_delete"]
@@ -946,14 +1004,14 @@ def match_row_to_acl(row, rules, exclusive=False):
     return (None, None)  # (match, children_rules)
 
 
-def _match_row_to_rules(row, rules):
+def _match_row_to_rules(row: str, rules: Rules) -> tuple[_AclMatch | None, Rules | None]:
     if matches := _find_rules_matches(row, rules):
         return _select_match(matches, rules)
     return None, None
 
 
-def _find_acl_matches(row, rules):
-    res = []
+def _find_acl_matches(row: str, rules: Rules) -> list[tuple[_AclMetric, _AclMatchItem]]:
+    res: list[tuple[_AclMetric, _AclMatchItem]] = []
     for regexp_key in ["direct_regexp", "reverse_regexp"]:
         for (_, rule), is_global in _rules_local_global(rules):
             row_to_match = _normalize_row_for_acl(row, rule)
@@ -987,8 +1045,8 @@ def _find_acl_matches(row, rules):
     return res
 
 
-def _find_rules_matches(row, rules):
-    matches = []
+def _find_rules_matches(row: str, rules: Rules) -> list[_AclMatchItem]:
+    matches: list[tuple[tuple[_AclRule, bool], _AclMatch, float]] = []
     for (raw_rule, rule), is_global in _rules_local_global(rules):
         if match := rule["attrs"]["regexp"].match(row):
             if rule["type"] == "ignore":
@@ -1005,15 +1063,15 @@ def _find_rules_matches(row, rules):
     return [(item[0], item[1]) for item in matches]
 
 
-def _select_match(matches, rules):
+def _select_match(matches: list[_AclMatchItem], rules: Rules) -> tuple[_AclMatch | None, Rules | None]:
     ((f_rule, is_f_cr_allowed), f_other) = matches[0]  # f == first
     if f_rule["type"] == "ignore":
         # В данный момент эта ветка достижима только в filter-acl
         return (None, None)
 
     # Мерджим всех потомков которые заматчились
-    local_children = odict()
-    global_children = odict()
+    local_children: dict[Any, Any] = odict()
+    global_children: dict[Any, Any] = odict()
     if is_f_cr_allowed:
         for rule, is_cr_allowed in map(operator.itemgetter(0), matches):
             if is_cr_allowed:
@@ -1034,14 +1092,14 @@ def _select_match(matches, rules):
     return match, children_rules
 
 
-def _rules_local_global(rules):
+def _rules_local_global(rules: Rules) -> Iterator[tuple[tuple[str, _AclRule], bool]]:
     for raw_rule, rule in rules["local"].items():
         yield ((raw_rule, rule), False)
     for raw_rule, rule in rules["global"].items():
         yield ((raw_rule, rule), True)
 
 
-def _normalize_row_for_acl(row, rule):
+def _normalize_row_for_acl(row: str, rule: _AclRule) -> str:
     # NOCDEV-5940 У джуниперов есть служебрая разметка "inactive:"
     if rule["attrs"]["vendor"] == "juniper":
         row = jun_activate(row)

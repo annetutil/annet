@@ -3,7 +3,7 @@ from logging import getLogger
 from typing import Annotated, Callable, Optional, Union
 
 from annet.bgp_models import UNNUMBERED, BgpConfig, GlobalOptions, Peer
-from annet.storage import Device, Storage
+from annet.storage import Device, MeshDevice, Storage
 
 from .basemodel import BaseMeshModel, Merge, MergeForbiddenError, UseLast, merge
 from .device_models import GlobalOptionsDTO
@@ -96,7 +96,7 @@ class MeshExecutor:
                 ) from e
         return global_opts
 
-    def _handler_name(self, handler: Callable) -> str:
+    def _handler_name(self, handler: Callable[..., None]) -> str:
         try:
             return f"{handler.__module__}.{handler.__qualname__}"
         except AttributeError:
@@ -153,7 +153,7 @@ class MeshExecutor:
 
         return Pair(local=device_dto, connected=neighbor_dto, device=neighbor_device, ports=peer_device.ports)
 
-    def _execute_direct(self, device: Device) -> list[Pair]:
+    def _execute_direct(self, device: MeshDevice) -> list[Pair]:
         # we can have multiple rules for the same pair
         # we merge them according to remote fqdn
         neighbor_peers: dict[PeerKey, Pair] = {}
@@ -331,7 +331,7 @@ class MeshExecutor:
 
     def _apply_direct_interface_changes(
         self,
-        device: Device,
+        device: MeshDevice,
         neighbor: Device,
         ports: list[str],
         changes: InterfaceChanges,
@@ -359,33 +359,36 @@ class MeshExecutor:
             target_interface = device.add_svi(changes.svi)
         else:
             target_interface, _ = port_pairs[0]
-        if changes.addr is not UNNUMBERED:
+        if changes.addr is not UNNUMBERED and changes.addr is not None:
             target_interface.add_addr(changes.addr, changes.vrf)
         return target_interface.name
 
     def _apply_nondirect_interface_changes(
         self,
-        device: Device,
+        device: MeshDevice,
         ifname: Optional[str],
         changes: InterfaceChanges,
     ) -> Optional[str]:
         if changes.lag is not None:
             raise ValueError("LAG creation unsupported for indirect and virtual peers")
         elif changes.subif is not None:
+            if ifname is None:
+                raise ValueError(f"Interface name is required to create a subinterface on device {device.fqdn}")
             target_interface = device.add_subif(ifname, changes.subif)
         elif changes.svi is not None:
             target_interface = device.add_svi(changes.svi)
         elif not ifname:
             return None
         else:
-            target_interface = device.find_interface(ifname)
-            if not target_interface:
+            found_interface = device.find_interface(ifname)
+            if not found_interface:
                 raise ValueError(f"Interface {ifname} not found for device {device.fqdn}")
-        if changes.addr is not UNNUMBERED:
+            target_interface = found_interface
+        if changes.addr is not UNNUMBERED and changes.addr is not None:
             target_interface.add_addr(changes.addr, changes.vrf)
         return target_interface.name
 
-    def execute_for(self, device: Device) -> BgpConfig:
+    def execute_for(self, device: MeshDevice) -> BgpConfig:
         all_fqdns = self._storage.resolve_all_fdnds()
 
         global_options = self._to_bgp_global(self._execute_globals(device))

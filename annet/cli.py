@@ -7,8 +7,9 @@ import platform
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable, Iterator
 from contextlib import ExitStack, contextmanager
-from typing import Iterable, Optional, Tuple
+from typing import Any, Iterable, Optional, Tuple, cast
 
 import tabulate
 import yaml
@@ -21,12 +22,14 @@ from annet.argparse import ArgParser, subcommand
 from annet.deploy import get_deployer
 from annet.diff import gen_sort_diff
 from annet.gen import CurrentState, Loader, get_current_state, old_raw
+from annet.generators.base import BaseGenerator
 from annet.lib import do_async, get_context_path, repair_context_file
 from annet.output import OutputDriver, output_driver_connector
-from annet.storage import Device, get_storage
+from annet.storage import Device, Storage, get_storage
+from annet.types import ExitCode
 
 
-def fill_base_args(parser: ArgParser, pkg_name: str, logging_config: str):
+def fill_base_args(parser: ArgParser, pkg_name: str, logging_config: str) -> None:
     parser.add_argument(
         "--log-level",
         default="WARN",
@@ -37,13 +40,13 @@ def fill_base_args(parser: ArgParser, pkg_name: str, logging_config: str):
     parser.add_argument("--logging_config", default=logging_config, help=argparse.SUPPRESS)
 
 
-def list_subcommands():
+def list_subcommands() -> dict[str, Any]:
     return globals().copy()
 
 
 def _gen_current_items(
-    config,
-    stdin,
+    config: str,
+    stdin: dict[str, Any],
     loader: Loader,
     output_driver: OutputDriver,
     gen_args: cli_args.GenOptions,
@@ -57,9 +60,11 @@ def _gen_current_items(
         stdin=stdin,
     ):
         if device.hw.vendor != "pc":
+            assert isinstance(result, str)
             destname = output_driver.cfg_file_names(device)[0]
             yield (destname, result, False)
         else:
+            assert isinstance(result, dict)
             for entire_path, entire_data in sorted(result.items(), key=operator.itemgetter(0)):
                 if entire_data is None:
                     entire_data = ""
@@ -68,24 +73,26 @@ def _gen_current_items(
 
 
 @contextmanager
-def get_loader(gen_args: cli_args.GenOptions, args: cli_args.QueryOptionsBase):
+def get_loader(gen_args: cli_args.GenOptions, args: cli_args.QueryOptionsBase) -> Iterator[Loader]:
     exit_stack = ExitStack()
     storages = []
     with exit_stack:
         connector, conf_params = get_storage()
         storage_opts = connector.opts().parse_params(conf_params, args)
-        storages.append(exit_stack.enter_context(connector.storage()(storage_opts)))
+        # base Storage lacks an __init__ accepting opts; concrete storages require it
+        storage_factory = cast(Callable[[Any], Storage], connector.storage())
+        storages.append(exit_stack.enter_context(storage_factory(storage_opts)))
         yield Loader(*storages, args=gen_args, no_empty_warning=args.query.is_empty())
 
 
 @subcommand(is_group=True)
-def show():
+def show() -> None:
     """A group of commands for showing parameters/configurations/data from deivces and data sources"""
     pass
 
 
 @subcommand(cli_args.QueryOptions, cli_args.opt_config, cli_args.FileOutOptions, parent=show)
-def show_current(args: cli_args.QueryOptions, config, arg_out: cli_args.FileOutOptions) -> None:
+def show_current(args: cli_args.QueryOptions, config: str, arg_out: cli_args.FileOutOptions) -> None:
     """Show current devices' configuration"""
     gen_args = cli_args.GenOptions(args, no_acl=True)
     output_driver = output_driver_connector.get()
@@ -115,10 +122,10 @@ def show_current(args: cli_args.QueryOptions, config, arg_out: cli_args.FileOutO
 
 
 @subcommand(cli_args.QueryOptions, cli_args.FileOutOptions, parent=show)
-def show_device_dump(args: cli_args.QueryOptions, arg_out: cli_args.FileOutOptions):
+def show_device_dump(args: cli_args.QueryOptions, arg_out: cli_args.FileOutOptions) -> None:
     """Show a dump of network devices' structure"""
 
-    def _show_device_dump_items(devices):
+    def _show_device_dump_items(devices: list[Device]) -> Iterator[tuple[str, str, bool]]:
         for device in devices:
             get_logger(host=device.hostname)  # add hostname into context
             if hasattr(device, "dump"):
@@ -142,7 +149,7 @@ def show_device_dump(args: cli_args.QueryOptions, arg_out: cli_args.FileOutOptio
 
 
 @subcommand(cli_args.ShowGeneratorsOptions, parent=show)
-def show_generators(args: cli_args.ShowGeneratorsOptions):
+def show_generators(args: cli_args.ShowGeneratorsOptions) -> None:
     """List applicable generators (for a device if query is set)"""
     arg_gens = cli_args.GenOptions(args)
     with get_loader(arg_gens, args) as loader:
@@ -157,21 +164,22 @@ def show_generators(args: cli_args.ShowGeneratorsOptions):
             # the error message will be logged in get_loader()
             sys.exit(1)
 
+        found_generators: list[BaseGenerator]
         if not device:
-            found_generators = loader.iter_all_gens()
+            found_generators = list(loader.iter_all_gens())
         else:
             found_generators = []
             gens = loader.resolve_gens(loader.devices)
-            for g in gens.partial[device]:
-                acl_func = g.acl_safe if args.acl_safe else g.acl
-                if g.supports_device(device) and acl_func(device):
-                    found_generators.append(g)
-            for g in gens.entire[device]:
-                if g.supports_device(device) and g.path(device):
-                    found_generators.append(g)
-            for g in gens.json_fragment[device]:
-                if g.supports_device(device) and g.path(device) and g.acl(device):
-                    found_generators.append(g)
+            for pg in gens.partial[device]:
+                acl_func = pg.acl_safe if args.acl_safe else pg.acl
+                if pg.supports_device(device) and acl_func(device):
+                    found_generators.append(pg)
+            for eg in gens.entire[device]:
+                if eg.supports_device(device) and eg.path(device):
+                    found_generators.append(eg)
+            for jg in gens.json_fragment[device]:
+                if jg.supports_device(device) and jg.path(device) and jg.acl(device):
+                    found_generators.append(jg)
 
     output_data = []
     for g in found_generators:
@@ -190,10 +198,10 @@ def show_generators(args: cli_args.ShowGeneratorsOptions):
 
     elif args.format == "text":
         keyfunc = operator.itemgetter("type")
-        for gen_type, gens in itertools.groupby(sorted(output_data, key=keyfunc, reverse=True), keyfunc):
+        for gen_type, gen_group in itertools.groupby(sorted(output_data, key=keyfunc, reverse=True), keyfunc):
             print(
                 tabulate.tabulate(
-                    [(g["name"], ", ".join(g["tags"]), g["module"], g["description"]) for g in gens],
+                    [(g["name"], ", ".join(g["tags"]), g["module"], g["description"]) for g in gen_group],
                     [f"{gen_type}-Class", "Tags", "Module", "Description"],
                     tablefmt="orgtbl",
                 )
@@ -202,7 +210,7 @@ def show_generators(args: cli_args.ShowGeneratorsOptions):
 
 
 @subcommand(cli_args.ShowGenOptions)
-def gen(args: cli_args.ShowGenOptions):
+def gen(args: cli_args.ShowGenOptions) -> None:
     """Generate configuration for devices"""
     with get_loader(args, args) as loader:
         (success, fail) = api.gen(args, loader)
@@ -221,7 +229,7 @@ def gen(args: cli_args.ShowGenOptions):
 
 
 @subcommand(cli_args.ShowDiffOptions)
-def diff(args: cli_args.ShowDiffOptions):
+def diff(args: cli_args.ShowDiffOptions) -> None:
     """Generate configuration for devices and show a diff with current configuration using the rulebook"""
     with get_loader(args, args) as loader:
         success, fail = api.diff(args, loader, loader.device_ids)
@@ -240,7 +248,7 @@ def diff(args: cli_args.ShowDiffOptions):
 
 
 @subcommand(cli_args.ShowPatchOptions)
-def patch(args: cli_args.ShowPatchOptions):
+def patch(args: cli_args.ShowPatchOptions) -> None:
     """Generate configuration patch for devices"""
     with get_loader(args, args) as loader:
         (success, fail) = api.patch(args, loader)
@@ -255,7 +263,7 @@ def patch(args: cli_args.ShowPatchOptions):
 
 
 @subcommand(cli_args.DeployOptions)
-def deploy(args: cli_args.DeployOptions):
+def deploy(args: cli_args.DeployOptions) -> ExitCode:
     """Generate and deploy configuration for devices"""
 
     deployer = Deployer(args)
@@ -273,10 +281,10 @@ def deploy(args: cli_args.DeployOptions):
 
 
 @subcommand(cli_args.FileDiffOptions)
-def file_diff(args: cli_args.FileDiffOptions):
+def file_diff(args: cli_args.FileDiffOptions) -> None:
     """Generate a diff between files or directories using the rulebook"""
     (success, fail) = api.file_diff(args)
-    out = []
+    out: list[tuple[str, str, bool]] = []
     output_driver = output_driver_connector.get()
     if not args.fails_only:
         out.extend(item for items in success.values() for item in items)
@@ -286,10 +294,10 @@ def file_diff(args: cli_args.FileDiffOptions):
 
 
 @subcommand(cli_args.FilePatchOptions)
-def file_patch(args: cli_args.FilePatchOptions):
+def file_patch(args: cli_args.FilePatchOptions) -> None:
     """Generate configuration patch for files or directories"""
     (success, fail) = api.file_patch(args)
-    out = []
+    out: list[tuple[str, str, bool]] = []
     output_driver = output_driver_connector.get()
     if not args.fails_only:
         out.extend(item for items in success.values() for item in items)
@@ -298,7 +306,7 @@ def file_patch(args: cli_args.FilePatchOptions):
 
 
 @subcommand(is_group=True)
-def context():
+def context() -> None:
     """A group of commands for manipulating context.
 
     By default, the context file is located in '~/.annet/context.yml',
@@ -308,13 +316,13 @@ def context():
 
 
 @subcommand(parent=context)
-def context_touch():
+def context_touch() -> None:
     """Show the context file path, and if the file is not present, create it with the default configuration"""
     print(get_context_path(touch=True))
 
 
 @subcommand(cli_args.SelectContext, parent=context)
-def context_set_context(args: cli_args.SelectContext):
+def context_set_context(args: cli_args.SelectContext) -> None:
     """Set the current active context.
 
     The selected context is used by default unless the environment variable ANN_SELECTED_CONTEXT is set
@@ -332,7 +340,7 @@ def context_set_context(args: cli_args.SelectContext):
 
 
 @subcommand(parent=context)
-def context_edit():
+def context_edit() -> None:
     """Open the context file using an editor from the EDITOR environment variable.
 
     If the EDITOR variable is not set, default variables are: "notepad.exe" for Windows and "vi" otherwise
@@ -351,6 +359,6 @@ def context_edit():
 
 
 @subcommand(parent=context)
-def context_repair():
+def context_repair() -> None:
     """Try to fix the context file's structure if it was generated for the older versions of annet"""
     repair_context_file()

@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import sys
 import warnings
 from abc import ABC, abstractmethod
 from functools import cached_property
-from importlib.metadata import entry_points
-from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar
+from importlib.metadata import EntryPoint, entry_points
+from typing import Any, Generic, TypeVar, cast
 
 from annet.lib import get_context
 
@@ -18,19 +20,19 @@ class Connector(ABC, Generic[T]):
     ep_group: str = "annet.connectors"
     # right way just to use ep groups
     ep_by_group_only: str = ""
-    _classes: Optional[List[Type[T]]] = None
+    _classes: list[type[T]] | None = None
 
-    def _get_default(self) -> Type[T]:
+    def _get_default(self) -> type[T]:
         raise RuntimeError(f"{self.name} is not set")
 
     @cached_property
-    def _entry_point(self) -> List[Type[T]]:
+    def _entry_point(self) -> list[type[T]]:
         ep = load_entry_point(self.ep_group, self.ep_name)
         if self.ep_by_group_only:
             ep.extend(load_entry_point_new(self.ep_by_group_only))
         return ep
 
-    def get(self, *args, **kwargs) -> T:
+    def get(self, *args: Any, **kwargs: Any) -> T:
         """
         Returns connector. If more than one is registered returns random and throw warning
         """
@@ -46,18 +48,18 @@ class Connector(ABC, Generic[T]):
         res = self._classes[0]
         return res(*args, **kwargs)
 
-    def get_all(self) -> List[T]:
+    def get_all(self) -> list[type[T]]:
         if self._classes is None:
             self._classes = self._entry_point or [self._get_default()]
 
         return self._classes.copy()
 
-    def set(self, cls: Type[T]):
+    def set(self, cls: type[T]) -> None:
         if self._classes is not None:
             raise RuntimeError(f"Cannot reinitialize value of {self.name}")
         self._classes = [cls]
 
-    def set_all(self, classes: List[Type[T]]):
+    def set_all(self, classes: list[type[T]]) -> None:
         if self._classes is not None:
             raise RuntimeError(f"Cannot reinitialize value of {self.name}")
         self._classes = list(classes)
@@ -67,20 +69,21 @@ class Connector(ABC, Generic[T]):
 
 
 class CachedConnector(Connector[T], ABC):
-    _cache: Optional[T] = None
+    _cache: T | None = None
 
-    def get(self, *args, **kwargs) -> T:
+    def get(self, *args: Any, **kwargs: Any) -> T:
         assert not (args or kwargs), "Arguments forwarding is not allowed for cached connectors"
         if self._cache is None:
             self._cache = super().get()
         return self._cache
 
-    def set(self, cls: Type[T]):
+    def set(self, cls: type[T]) -> None:
         super().set(cls)
         self._cache = None
 
 
-def load_entry_point(group: str, name: str):
+def load_entry_point(group: str, name: str) -> list[Any]:
+    ep: list[EntryPoint] | tuple[EntryPoint, ...]
     if sys.version_info < (3, 10):
         ep = [item for item in entry_points().get(group, []) if item.name == name]
     else:
@@ -90,7 +93,8 @@ def load_entry_point(group: str, name: str):
     return [item.load() for item in ep]
 
 
-def load_entry_point_new(group: str) -> List:
+def load_entry_point_new(group: str) -> list[Any]:
+    ep: list[EntryPoint] | tuple[EntryPoint, ...]
     if sys.version_info < (3, 10):
         ep = [item for item in entry_points().get(group, [])]
     else:
@@ -103,7 +107,7 @@ def load_entry_point_new(group: str) -> List:
 class AdapterWithConfig(ABC, Generic[T]):
     @classmethod
     @abstractmethod
-    def with_config(cls, **kwargs: Dict[str, Any]) -> T:
+    def with_config(cls, **kwargs: Any) -> T:
         pass
 
 
@@ -114,12 +118,12 @@ class AdapterWithName(ABC):
         pass
 
 
-def get_connector_from_config(config_key: str, connectors: List[Type[Connector]]) -> Tuple[Connector, Dict[str, Any]]:
+def get_connector_from_config(config_key: str, connectors: list[type[T]]) -> tuple[T, dict[str, Any]]:
     if not connectors:
         raise Exception("empty connectors")
 
     # handle configuration
-    connector_params = dict[str, Any]()  # default
+    connector_params: dict[str, Any] = {}  # default
     if context_storage := get_context().get(config_key):
         connector_params = context_storage.get("params", {})
         if adapter_name := context_storage.get("adapter", None):
@@ -142,7 +146,7 @@ def get_connector_from_config(config_key: str, connectors: List[Type[Connector]]
         )
     connector = connectors[0]
     if issubclass(connector, AdapterWithConfig):
-        connector_ins = connector.with_config(**connector_params)
+        connector_ins = cast(T, connector.with_config(**connector_params))
     else:
         connector_ins = connector()
     # return connector_params only for storage

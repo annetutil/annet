@@ -1,7 +1,10 @@
 import re
+from collections.abc import Iterator
+from typing import Any
 
 from annet.annlib.lib import cisco_collapse_vlandb as collapse_vlandb
 from annet.annlib.lib import cisco_expand_vlandb as expand_vlandb
+from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.types import Op
 
 
@@ -10,16 +13,27 @@ SWTRUNK_CHUNK = 5
 
 
 # =====
-def simple(rule, key, diff, hw, **_):
+def simple(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], hw: HardwareView, **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     yield from _process_vlandb(rule, key, diff, hw, False, VLANDB_CHUNK)
 
 
-def swtrunk(rule, key, diff, hw, **_):
+def swtrunk(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], hw: HardwareView, **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     yield from _process_vlandb(rule, key, diff, hw, True, SWTRUNK_CHUNK)
 
 
 # =====
-def _process_vlandb(rule, key, diff, hw, explicit_changing, multi_chunk):
+def _process_vlandb(
+    rule: dict[str, Any],
+    key: tuple[str, ...],
+    diff: dict[str, list[dict[str, Any]]],
+    hw: HardwareView,
+    explicit_changing: bool,
+    multi_chunk: int,
+) -> Iterator[tuple[bool, str, Any]]:
     # pylint: disable=unused-argument
     for affected in diff[Op.AFFECTED]:
         # Изменилось содержимое блока vlan
@@ -75,15 +89,15 @@ def _process_vlandb(rule, key, diff, hw, explicit_changing, multi_chunk):
             yield (True, "%s %s" % (prefix, vlan_id), block)
 
 
-def _chunked(items, size):
+def _chunked(items: list[str], size: int) -> Iterator[list[str]]:
     for offset in range(0, len(items), size):
         yield items[offset : offset + size]
 
 
-def _parse_vlancfg_actions(actions):
+def _parse_vlancfg_actions(actions: list[dict[str, Any]]) -> tuple[str | None, set[int], dict[int, Any]]:
     prefix = None
-    vlandb = set()
-    blocks = {}
+    vlandb: set[int] = set()
+    blocks: dict[int, Any] = {}
     for action in actions:
         (prefix, part) = _parse_vlancfg(action["row"])
         if action["children"]:
@@ -93,7 +107,7 @@ def _parse_vlancfg_actions(actions):
     return (prefix, vlandb, blocks)
 
 
-def _parse_vlancfg(row):
+def _parse_vlancfg(row: str) -> tuple[str, set[int]]:
     # иногда циски ставят пробелы между влан ренджами, а иногда нет.
     words = re.sub(r",\s+", ",", row).split()
 

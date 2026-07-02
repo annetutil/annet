@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import bisect
 import contextlib
@@ -11,11 +13,12 @@ import re
 import socket
 import sys
 import textwrap
+import types
 import typing
 from collections import OrderedDict as odict
-from collections.abc import Iterable
+from collections.abc import AsyncIterator, Callable, Collection, Iterable, Iterator, Sequence
 from functools import lru_cache
-from typing import List, NamedTuple, Optional, Tuple, Union
+from typing import Any, NamedTuple, TypeVar
 
 import contextlog
 import mako.template
@@ -23,41 +26,49 @@ import mako.template
 
 _logger = contextlog.get_logger()
 
+_T = TypeVar("_T")
+
 
 # =====
 class HuaweiNumBlock(metaclass=abc.ABCMeta):
-    def __init__(self, generator, block_name, start=5, step=5):
+    def __init__(self, generator: Any, block_name: str, start: int = 5, step: int = 5) -> None:
         self._gen = generator
         self._block_name = block_name
         self._rule_num = start
         self._rule_step = step
-        self._block = None
+        self._block: Any = None
 
-    def _current(self):
+    def _current(self) -> int:
         (current, self._rule_num) = (self._rule_num, self._rule_num + self._rule_step)
         return current
 
-    def __enter__(self):
+    def __enter__(self) -> HuaweiNumBlock:
         self._block = self._gen.block(self._block_name)
         self._block.__enter__()
         return self
 
-    def __exit__(self, exc_type, exc_val, trace):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        trace: types.TracebackType | None,
+    ) -> None:
+        assert self._block is not None
         self._block.__exit__(exc_type, exc_val, trace)
         self._block = None
 
-    def __call__(self, rule_str, min_number=None):
+    def __call__(self, rule_str: str, min_number: int | None = None) -> str:
         if min_number is not None:
             self._rule_num = max(self._rule_num, int(min_number))
         return self.format_rule_string(rule_str)
 
     @abc.abstractmethod
-    def format_rule_string(self, rule_str):
+    def format_rule_string(self, rule_str: str) -> str:
         pass
 
 
-def huawei_expand_vlandb(row):
-    expanded = set()
+def huawei_expand_vlandb(row: str) -> set[int]:
+    expanded: set[int] = set()
     row_parts = row.split()
     for index, part in enumerate(row_parts):
         if part == "to":
@@ -69,8 +80,8 @@ def huawei_expand_vlandb(row):
     return expanded
 
 
-def cisco_expand_vlandb(row):
-    expanded = set()
+def cisco_expand_vlandb(row: str) -> set[int]:
+    expanded: set[int] = set()
     for part in row.split(","):
         range_parts = [int(p.strip()) for p in part.strip().split("-")]
         assert len(range_parts) in (1, 2)
@@ -83,11 +94,12 @@ def cisco_expand_vlandb(row):
     return expanded
 
 
-def huawei_collapse_vlandb(vlans, chunk_len=0):
+# Returns list[str], or list[list[str]] when chunk_len > 0 (rows split into chunks).
+def huawei_collapse_vlandb(vlans: Collection[int], chunk_len: int = 0) -> list[Any]:
     return collapse_vlandb(vlans, " to ", chunk_len=chunk_len)
 
 
-def cisco_collapse_vlandb(vlans, tiny_ranges=True):
+def cisco_collapse_vlandb(vlans: Collection[int], tiny_ranges: bool = True) -> list[Any]:
     return collapse_vlandb(vlans, "-", tiny_ranges)
 
 
@@ -112,10 +124,12 @@ def juniper_fmt_prefix_lists_acl(prefix_list_names: typing.Iterable[str]) -> str
 
 # tiny_ranges - если выставлен в False, то два рядом стоящих влана не конвертятся в
 # рендж (поведение cisco catalyst)
-def collapse_vlandb(vlans, range_sep, tiny_ranges=True, chunk_len=0):
+def collapse_vlandb(
+    vlans: Collection[int], range_sep: str, tiny_ranges: bool = True, chunk_len: int = 0
+) -> list[Any]:  # list[str], or list[list[str]] when chunk_len > 0
     assert len(vlans) != 0
     vlans = sorted(set(vlans))
-    res = []
+    res: list[list[int]] = []
     row = [vlans[0], vlans[0]]
     for vlan in vlans[1::]:
         if row[1] == (vlan - 1):
@@ -128,19 +142,19 @@ def collapse_vlandb(vlans, range_sep, tiny_ranges=True, chunk_len=0):
             res.append(row)
             row = [vlan, vlan]
     res.append(row)
-    res = list(map(lambda x: x[0] != x[1] and "%s%s%s" % (x[0], range_sep, x[1]) or str(x[0]), res))
+    collapsed = list(map(lambda x: x[0] != x[1] and "%s%s%s" % (x[0], range_sep, x[1]) or str(x[0]), res))
 
     # Устройства бьют списки вланов на чанки при добавлении в конфиг
     if chunk_len:
-        chunks = [res[i : i + chunk_len] for i in range(0, len(res), chunk_len)]
+        chunks = [collapsed[i : i + chunk_len] for i in range(0, len(collapsed), chunk_len)]
         return chunks
 
-    return res
+    return collapsed
 
 
-def huawei_iface_ranges(iface_names):
-    ret = []
-    grouped = odict()
+def huawei_iface_ranges(iface_names: Iterable[str]) -> list[str | tuple[str, str]]:
+    ret: list[str | tuple[str, str]] = []
+    grouped: odict[str, list[tuple[int, str]]] = odict()
     for iface in iface_names:
         match = re.match(r"(.*[:/])(\d+)$", iface)
         if not match:
@@ -164,12 +178,12 @@ def huawei_iface_ranges(iface_names):
     return ret
 
 
-def juniper_port_split(iface_name):
+def juniper_port_split(iface_name: str) -> dict[str, str]:
     ret = dict(zip(["speed", "fpc", "pic", "port"], re.split(r"-+|/+|:", iface_name)))
     return ret
 
 
-def make_ip4_mask(prefix_len, inverse=False):
+def make_ip4_mask(prefix_len: int, inverse: bool = False) -> str:
     """
     Returns dotted-quad string representing IPv4 mask of given length
 
@@ -183,7 +197,7 @@ def make_ip4_mask(prefix_len, inverse=False):
     return socket.inet_ntop(socket.AF_INET, bin_mask)
 
 
-def merge_dicts(*args: dict | odict) -> odict:
+def merge_dicts(*args: dict[Any, Any]) -> dict[Any, Any]:
     if len(args) == 0:
         return odict()
     if len(args) == 1:
@@ -206,8 +220,8 @@ def merge_dicts(*args: dict | odict) -> odict:
     return merged
 
 
-def meta_decor(*method_list):
-    def wrapper(*args, **kwds):
+def meta_decor(*method_list: Callable[..., Any]) -> Callable[..., Any]:
+    def wrapper(*args: Any, **kwds: Any) -> Any:
         for method in method_list:
             res = method(*args, **kwds)
         return res
@@ -215,11 +229,11 @@ def meta_decor(*method_list):
     return wrapper
 
 
-def first(iterable, default=None):
+def first(iterable: Iterable[_T], default: _T | None = None) -> _T | None:
     return next(iter(iterable), default)
 
 
-def flatten(iterable):
+def flatten(iterable: Iterable[Any]) -> Iterator[Any]:
     for x in iterable:
         if not isinstance(x, (str, bytes)) and isinstance(x, Iterable):
             yield from flatten(x)
@@ -227,8 +241,8 @@ def flatten(iterable):
             yield x
 
 
-def uniq(*iterables):
-    seen = set()
+def uniq(*iterables: Iterable[_T]) -> Iterator[_T]:
+    seen: set[_T] = set()
     for iterable in iterables:
         for item in iterable:
             if item not in seen:
@@ -241,11 +255,11 @@ def uniq(*iterables):
 # которые должны наследоваться от верхних блоков к нижним
 # XXX Покрыть тестами
 class ContextOrderedDict:
-    def __init__(self, iterable):
+    def __init__(self, iterable: Any) -> None:
         self.dict = odict(iterable)
 
     @contextlib.contextmanager
-    def update(self, peers_sub_dict):
+    def update(self, peers_sub_dict: dict[Any, Any]) -> Iterator[None]:
         values_backup = self.dict.copy()
         for key in set(self.dict).intersection(peers_sub_dict.keys()):
             if not isinstance(peers_sub_dict[key], dict):
@@ -256,7 +270,7 @@ class ContextOrderedDict:
 
 
 # {{{ http://code.activestate.com/recipes/511478/ (r1)
-def percentile(list_numbers, percent, key=lambda x: x):
+def percentile(list_numbers: Sequence[Any], percent: float, key: Callable[[Any], float] = lambda x: x) -> float | None:
     """
     Find the percentile of a list of values.
 
@@ -279,9 +293,9 @@ def percentile(list_numbers, percent, key=lambda x: x):
     return d0 + d1
 
 
-def mako_render(template, dedent=False, **kwargs):
+def mako_render(template: str, dedent: bool = False, **kwargs: Any) -> str:
     @lru_cache(None)
-    def _compile_mako(template, dedent):
+    def _compile_mako(template: str, dedent: bool) -> mako.template.Template:
         if dedent:
             template = textwrap.dedent(template).strip()
         return mako.template.Template(template)
@@ -289,14 +303,12 @@ def mako_render(template, dedent=False, **kwargs):
     ret = _compile_mako(template, dedent).render(**kwargs)
     if dedent:
         ret = ret.strip()
-    return ret
+    return typing.cast(str, ret)
 
 
 # =====
-def find_exc_in_stack(
-    container_exc: Exception, target_exc_type: Union[type, Tuple[type, ...]]
-) -> Optional[BaseException]:
-    curr_err: Optional[BaseException] = container_exc
+def find_exc_in_stack(container_exc: Exception, target_exc_type: type | tuple[type, ...]) -> BaseException | None:
+    curr_err: BaseException | None = container_exc
     while curr_err is not None:
         if isinstance(curr_err, target_exc_type):
             return curr_err
@@ -304,7 +316,7 @@ def find_exc_in_stack(
     return None
 
 
-def find_modules(base_dir):
+def find_modules(base_dir: str | os.PathLike[str]) -> Iterator[str]:
     """
     Рекурсивно ищем в base_dir файлы python модулей
     """
@@ -319,9 +331,9 @@ def find_modules(base_dir):
             yield entry.name[:-3]
 
 
-def catch_ctrl_c(func):
+def catch_ctrl_c(func: Callable[..., _T]) -> Callable[..., _T]:
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> _T:
         try:
             return func(*args, **kwargs)
         except KeyboardInterrupt:
@@ -356,36 +368,46 @@ class LMSegment(NamedTuple):
         return self.begin <= other.begin and other.end <= self.end
 
     @classmethod
-    def from_net(cls, net: Union[ipaddress.IPv4Network, ipaddress.IPv6Network]):
+    def from_net(cls, net: ipaddress.IPv4Network | ipaddress.IPv6Network) -> LMSegment:
         return cls(
             begin=int(net.network_address),
             end=int(net.network_address) | int(net.hostmask),
         )
 
-    def _cmp_identity(self) -> Tuple[int, int]:
+    def _cmp_identity(self) -> tuple[int, int]:
         return (self.begin, -self.end)
 
-    def __eq__(self, other: "LMSegment"):
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, LMSegment):
+            return NotImplemented
         return self._cmp_identity() == other._cmp_identity()
 
-    def __lt__(self, other: "LMSegment"):
+    def __lt__(self, other: tuple[int, ...]) -> bool:
+        if not isinstance(other, LMSegment):
+            return NotImplemented
         return self._cmp_identity() < other._cmp_identity()
 
-    def __le__(self, other: "LMSegment"):
+    def __le__(self, other: tuple[int, ...]) -> bool:
+        if not isinstance(other, LMSegment):
+            return NotImplemented
         return self._cmp_identity() <= other._cmp_identity()
 
-    def __ge__(self, other: "LMSegment"):
+    def __ge__(self, other: tuple[int, ...]) -> bool:
+        if not isinstance(other, LMSegment):
+            return NotImplemented
         return self._cmp_identity() >= other._cmp_identity()
 
-    def __gt__(self, other: "LMSegment"):
+    def __gt__(self, other: tuple[int, ...]) -> bool:
+        if not isinstance(other, LMSegment):
+            return NotImplemented
         return self._cmp_identity() > other._cmp_identity()
 
 
 class LMSegmentList:
     """Упорядоченный список подсетей"""
 
-    def __init__(self):
-        self.pfxs: List[LMSegment] = []
+    def __init__(self) -> None:
+        self.pfxs: list[LMSegment] = []
 
     def add(self, pref: LMSegment) -> None:
         """Добавляем новый префикс в упорядоченный список, если он не дублируется"""
@@ -395,7 +417,7 @@ class LMSegmentList:
                 return
         self.pfxs.insert(idx + 1, pref)
 
-    def find(self, target: LMSegment) -> Optional[LMSegment]:
+    def find(self, target: LMSegment) -> LMSegment | None:
         """LPM поиск в добавленных"""
         upper_bound = bisect.bisect(self.pfxs, target)
         for i in reversed(range(0, upper_bound)):
@@ -409,7 +431,7 @@ class LMSegmentList:
 class LMSMatcher:
     """Обертка над парой LMSegmentList над парой LMSegmentList для v4/v6"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.v4 = LMSegmentList()
         self.v6 = LMSegmentList()
 
@@ -417,7 +439,7 @@ class LMSMatcher:
         net = ipaddress.ip_network(pref)
         self._af(net).add(LMSegment.from_net(net))
 
-    def find(self, pref: str) -> Optional[str]:
+    def find(self, pref: str) -> str | None:
         net = ipaddress.ip_network(pref)
         found = self._af(net).find(LMSegment.from_net(net))
         if found:
@@ -425,8 +447,9 @@ class LMSMatcher:
             net_hostmask = (found.begin ^ found.end).bit_length()
             net_mask = net_addr.max_prefixlen - net_hostmask
             return str(net_addr) + "/" + str(net_mask)
+        return None
 
-    def _af(self, net):
+    def _af(self, net: ipaddress.IPv4Network | ipaddress.IPv6Network) -> LMSegmentList:
         if net.version == 4:
             return self.v4
         elif net.version == 6:
@@ -461,16 +484,16 @@ def jun_inactive_pfx() -> str:
     return "inactive: "
 
 
-def jun_is_inactive(key) -> bool:
+def jun_is_inactive(key: str) -> bool:
     return key.startswith(jun_inactive_pfx())
 
 
-def jun_activate(key) -> str:
+def jun_activate(key: str) -> str:
     if jun_is_inactive(key):
         key = key[len(jun_inactive_pfx()) :]
     return key
 
 
 # TODO: Remove with python3.10
-async def anext(async_iter):
+async def anext(async_iter: AsyncIterator[_T]) -> _T:
     return await async_iter.__anext__()  # pylint: disable=unnecessary-dunder-call

@@ -1,5 +1,7 @@
 from ipaddress import ip_address
+from typing import Any
 
+from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.types import Op
 from annet.rulebook import common
 
@@ -12,7 +14,9 @@ def is_ipaddress(address: str) -> bool:
         return False
 
 
-def undo_peer(rule, key, diff, hw, **kwargs):
+def undo_peer(
+    rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, hw: HardwareView, **kwargs: Any
+) -> common.LogicResult:
     """
     If we remove a neighbor, we just remove configuration with remote-as command
     (+ peer-group if it's a group) but if we remove specific neighbor's options,
@@ -26,7 +30,7 @@ def undo_peer(rule, key, diff, hw, **kwargs):
             # If neighbor's group under deletion, do not generate neighbor deletion
             if is_ipaddress(neighbor):
                 neighbor_group = ""
-                groups_for_deletion = []
+                groups_for_deletion: list[str] = []
                 for item in kwargs["rule_pre"]["items"].values():
                     if item[Op.REMOVED]:
                         if f"{neighbor} peer-group" in item[Op.REMOVED][0]["row"]:

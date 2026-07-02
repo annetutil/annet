@@ -1,4 +1,5 @@
 from ipaddress import ip_address
+from typing import Any
 
 from annet.annlib.types import Op
 from annet.rulebook import common
@@ -12,7 +13,7 @@ def is_ipaddress(address: str) -> bool:
         return False
 
 
-def undo_peer(rule, key, diff, **kwargs):
+def undo_peer(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:
     if diff[Op.REMOVED]:
         current_row = diff[Op.REMOVED][0]["row"]
         peer = current_row.split()[1]

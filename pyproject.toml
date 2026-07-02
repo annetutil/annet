@@ -13,6 +13,9 @@ indent-style = "space"
 select = [
     "I", # isort
 ]
+# Codes handled by flake8 (not Ruff) but used in `# noqa` comments; declared so
+# Ruff does not warn about them. E704 is emitted on @overload one-line stubs.
+external = ["E704"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/*.pyi" = ["I"]

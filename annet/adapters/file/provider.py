@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 import dataclasses
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, fields
-from typing import Any, Iterable, List, Optional, Sequence
+from types import TracebackType
+from typing import Any, cast
 
 import yaml
 
@@ -10,7 +14,10 @@ from annet.annlib.netdev.views.hardware import HardwareView
 from annet.connectors import AdapterWithName
 from annet.hardware import hardware_connector
 from annet.storage import Device as DeviceProtocol
-from annet.storage import Query, Storage, StorageProvider
+from annet.storage import DeviceId, Storage, StorageProvider
+from annet.storage import Interface as StorageInterface
+from annet.storage import Query as QueryProtocol
+from annet.storage import StorageOpts as StorageOptsBase
 
 
 @dataclass
@@ -20,7 +27,7 @@ class Interface(DumpableView):
     enabled: bool = True
 
     @property
-    def _dump__list_key(self):
+    def _dump__list_key(self) -> str:
         return self.name
 
 
@@ -28,20 +35,20 @@ class Interface(DumpableView):
 class DeviceStorage:
     fqdn: str
 
-    vendor: Optional[str] = None
-    hw_model: Optional[str] = None
-    sw_version: Optional[str] = None
-    breed: Optional[str] = None
+    vendor: str | None = None
+    hw_model: str | None = None
+    sw_version: str | None = None
+    breed: str | None = None
 
-    hostname: Optional[str] = None
-    serial: Optional[str] = None
-    id: Optional[str] = None
-    interfaces: Optional[list[Interface]] = None
-    storage: Optional[Storage] = None
+    hostname: str | None = None
+    serial: str | None = None
+    id: str | None = None
+    interfaces: list[Interface] | None = None
+    storage: Storage | None = None
 
     hw: HardwareView = dataclasses.field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.id:
             self.id = self.fqdn
         if not self.hostname:
@@ -54,8 +61,10 @@ class DeviceStorage:
             else:
                 self.vendor = hw.vendor
         else:
+            if not self.vendor:
+                raise Exception("unknown vendor")
             hw_provider = hardware_connector.get()
-            hw: HardwareView = hw_provider.vendor_to_hw(self.vendor)
+            hw = hw_provider.vendor_to_hw(self.vendor)
             if not hw:
                 raise Exception("unknown vendor")
             self.hw_model = hw.model
@@ -73,12 +82,13 @@ class DeviceStorage:
             interfaces = []
             for iface in self.interfaces:
                 try:
-                    interfaces.append(Interface(**iface))
+                    # interfaces arrive as raw dicts from the parsed inventory
+                    interfaces.append(Interface(**cast(dict[str, Any], iface)))
                 except Exception as e:
                     raise Exception("unable to parse %s as Interface: %s" % (iface, e))
             self.interfaces = interfaces
 
-    def set_storage(self, storage: Storage):
+    def set_storage(self, storage: Storage) -> None:
         self.storage = storage
 
 
@@ -86,17 +96,20 @@ class DeviceStorage:
 class Device(DeviceProtocol, DumpableView):
     dev: DeviceStorage
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.id, type(self)))
 
-    def __eq__(self, other):
-        return type(self) is type(other) and self.fqdn == other.fqdn and self.vendor == other.vendor
+    def __eq__(self, other: object) -> bool:
+        if type(self) is not type(other):
+            return False
+        return self.fqdn == other.fqdn and self.dev.vendor == other.dev.vendor
 
     def is_pc(self) -> bool:
         return False
 
     @property
     def hostname(self) -> str:
+        assert self.dev.hostname is not None
         return self.dev.hostname
 
     @property
@@ -104,11 +117,13 @@ class Device(DeviceProtocol, DumpableView):
         return self.dev.fqdn
 
     @property
-    def id(self):
+    def id(self) -> str:
+        assert self.dev.id is not None
         return self.dev.id
 
     @property
     def storage(self) -> Storage:
+        assert self.dev.storage is not None
         return self.dev.storage
 
     @property
@@ -117,29 +132,30 @@ class Device(DeviceProtocol, DumpableView):
 
     @property
     def breed(self) -> str:
+        assert self.dev.breed is not None
         return self.dev.breed
 
     @property
-    def neighbours_ids(self):
+    def neighbours_ids(self) -> list[DeviceId]:
         return []
 
     @property
     def neighbours_fqdns(self) -> list[str]:
         return []
 
-    def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: Optional[int]) -> Interface:
+    def make_lag(self, lag: int, ports: Sequence[str], lag_min_links: int | None) -> StorageInterface:
         raise NotImplementedError
 
-    def add_svi(self, svi: int) -> Interface:
+    def add_svi(self, svi: int) -> StorageInterface:
         raise NotImplementedError
 
-    def add_subif(self, interface: str, subif: int) -> Interface:
+    def add_subif(self, interface: str, subif: int) -> StorageInterface:
         raise NotImplementedError
 
-    def find_interface(self, name: str) -> Optional[Interface]:
+    def find_interface(self, name: str) -> StorageInterface | None:
         raise NotImplementedError
 
-    def flush_perf(self):
+    def flush_perf(self) -> None:
         pass
 
 
@@ -147,7 +163,7 @@ class Device(DeviceProtocol, DumpableView):
 class Devices:
     devices: list[Device]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if isinstance(self.devices, list):
             devices = []
 
@@ -166,13 +182,13 @@ class Devices:
 
 
 class Provider(StorageProvider, AdapterWithName):
-    def storage(self):
-        return storage_factory
+    def storage(self) -> type[Storage]:
+        return cast("type[Storage]", storage_factory)
 
-    def opts(self):
-        return StorageOpts
+    def opts(self) -> type[StorageOptsBase]:
+        return cast("type[StorageOptsBase]", StorageOpts)
 
-    def query(self):
+    def query(self) -> type[Query]:
         return Query
 
     @classmethod
@@ -181,17 +197,17 @@ class Provider(StorageProvider, AdapterWithName):
 
 
 @dataclass
-class Query(Query):
-    query: List[str]
+class Query(QueryProtocol):
+    query: list[str]
 
     @classmethod
-    def new(cls, query: str | Iterable[str], hosts_range: Optional[slice] = None) -> "Query":
+    def new(cls, query: str | Iterable[str], hosts_range: slice | None = None) -> Query:
         if hosts_range is not None:
             raise ValueError("host_range is not supported")
         return cls(query=list(query))
 
     @property
-    def globs(self):
+    def globs(self) -> list[str]:
         return self.query
 
     def is_empty(self) -> bool:
@@ -203,8 +219,8 @@ class StorageOpts:
         self.path = path
 
     @classmethod
-    def parse_params(cls, conf_params: Optional[dict[str, str]], cli_opts: Any):
-        path = conf_params.get("path")
+    def parse_params(cls, conf_params: dict[str, str] | None, cli_opts: Any) -> "StorageOpts":
+        path = conf_params.get("path") if conf_params else None
         if not path:
             raise Exception("empty path")
         return cls(path=path)
@@ -219,10 +235,15 @@ class FS(Storage):
         self.opts = opts
         self.inventory: Devices = read_inventory(opts.path, self)
 
-    def __enter__(self):
+    def __enter__(self) -> FS:
         return self
 
-    def __exit__(self, _, __, ___):
+    def __exit__(
+        self,
+        _: type[BaseException] | None,
+        __: BaseException | None,
+        ___: TracebackType | None,
+    ) -> bool | None:
         pass
 
     def resolve_object_ids_by_query(self, query: Query) -> list[str]:
@@ -235,30 +256,34 @@ class FS(Storage):
 
     def make_devices(
         self,
-        query: Query | list,
-        preload_neighbors=False,
-        use_mesh=None,
-        preload_extra_fields=False,
-        **kwargs,
+        query: Query | list[str],
+        preload_neighbors: bool = False,
+        use_mesh: bool | None = None,
+        preload_extra_fields: bool = False,
+        **kwargs: Any,
     ) -> list[Device]:
         if isinstance(query, list):
             query = Query.new(query)
         result = filter_query(self.inventory.devices, query)
         return result
 
-    def get_device(self, obj_id: str, preload_neighbors=False, use_mesh=None, **kwargs) -> Device:
+    def get_device(
+        self, obj_id: str, preload_neighbors: bool = False, use_mesh: bool | None = None, **kwargs: Any
+    ) -> Device:
         result = filter_query(self.inventory.devices, Query.new(obj_id))
         if not result:
             raise Exception("not found")
         return result[0]
 
-    def flush_perf(self):
+    def flush_perf(self) -> None:
         pass
 
     def resolve_all_fdnds(self) -> list[str]:
         return [d.fqdn for d in self.inventory.devices]
 
-    def search_connections(self, device: "Device", neighbor: "Device") -> list[tuple["Interface", "Interface"]]:
+    def search_connections(
+        self, device: DeviceProtocol, neighbor: DeviceProtocol
+    ) -> list[tuple[StorageInterface, StorageInterface]]:
         return []
 
 
@@ -273,15 +298,15 @@ def filter_query(devices: list[Device], query: Query) -> list[Device]:
 def read_inventory(path: str, storage: Storage) -> Devices:
     with open(path, "r") as f:
         file_data = yaml.load(f, Loader=yaml.SafeLoader)
-    res = dataclass_from_dict(Devices, file_data)
+    res = cast(Devices, dataclass_from_dict(Devices, file_data))
     for dev in res.devices:
         dev.dev.set_storage(storage)
     return res
 
 
-def dataclass_from_dict(klass: type, d: dict[str, Any]):
+def dataclass_from_dict(klass: type, d: dict[str, Any]) -> Any:
     try:
         fieldtypes = {f.name: f.type for f in fields(klass)}
     except TypeError:
         return d
-    return klass(**{f: dataclass_from_dict(fieldtypes[f], d[f]) for f in d})
+    return klass(**{f: dataclass_from_dict(cast(type, fieldtypes[f]), d[f]) for f in d})

@@ -1,12 +1,14 @@
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
+from typing import Any
 
+from annet.annlib.rulebook.common import DiffDict, DiffItem, LogicResult
 from annet.annlib.types import Op
 from annet.rulebook.common import default, default_diff
 
 
-def user(key, diff, **_):
+def user(key: tuple[str, ...], diff: DiffDict, **_: Any) -> LogicResult:
     check_for_remove = True
-    added = []
+    added: list[tuple[bool, str, None]] = []
     for add in diff[Op.ADDED]:
         added.append((True, add["row"], None))
         if add["row"].startswith("local-user %s password" % key[0]):
@@ -26,14 +28,14 @@ def user(key, diff, **_):
     yield from added
 
 
-def _added_contains(array: list[dict], lookup_string: str) -> bool:
+def _added_contains(array: list[dict[str, Any]], lookup_string: str) -> bool:
     for item in array:
         if item["row"].startswith(lookup_string):
             return True
     return False
 
 
-def domain(rule, key, diff, **_):
+def domain(rule: dict[str, Any], key: tuple[str, ...], diff: DiffDict, **_: Any) -> LogicResult:
     """
     При удалении метода для accounting|authorization|authentication
     не нужно указывать сам метод, поэтому откидываем последний ключ.
@@ -44,19 +46,20 @@ def domain(rule, key, diff, **_):
         yield from default(rule, key, diff)
 
 
-def local_user_diff(old, new, diff_pre, **kwargs):
+def local_user_diff(
+    old: OrderedDict[str, Any], new: OrderedDict[str, Any], diff_pre: OrderedDict[str, Any], **kwargs: Any
+) -> list[DiffItem]:
     diff = default_diff(old, new, diff_pre, **kwargs)
-    filtered_diff = []
     # Группируем команды local-user по пользователю
     # и назначению (mode будет "password", "service-type", etc.)
     # {("username", "mode"): {op: diff_item}}}
-    grouped = defaultdict(dict)
+    grouped: defaultdict[tuple[str, str], dict[str, DiffItem]] = defaultdict(dict)
     for diff_item in diff:
         username, mode = _local_user_row_key(diff_item.row)
         if username and mode:
             grouped[(username, mode)][diff_item.op] = diff_item
 
-    filtered_diff = []
+    filtered_diff: list[DiffItem] = []
     for diff_item in diff:
         username, mode = _local_user_row_key(diff_item.row)
         if username and mode:
@@ -76,7 +79,7 @@ def local_user_diff(old, new, diff_pre, **kwargs):
     return filtered_diff
 
 
-def _local_user_row_key(row):
+def _local_user_row_key(row: str) -> tuple[str | None, str | None]:
     username, mode = None, None
     splitted_row = row.split()
     # Ожидаемый формат команды 'local-user <username> <mode> ...'

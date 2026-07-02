@@ -6,13 +6,17 @@ import json
 import re
 from collections import OrderedDict as odict
 from collections.abc import Callable, Iterator, Sequence
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, TypeAlias
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, TypeAlias, cast
 
 from annet.annlib.types import Op
 
 
 if TYPE_CHECKING:
     from annet.annlib.patching import PatchTree
+    from annet.types import Diff
+
+
+FormatterTree: TypeAlias = "PatchTree | dict[str, Any]"
 
 
 # =====
@@ -31,6 +35,15 @@ class BlockBegin:
 
 class BlockEnd:
     pass
+
+
+# A single row produced by the formatter pipeline: either a real config line
+# or one of the block delimiter markers.
+BlockRow: TypeAlias = "str | type[BlockBegin] | type[BlockEnd]"
+
+# A (row, context) pair as yielded by ``blocks_and_context``; the context is
+# ``None`` for the block delimiter markers.
+BlockRowWithContext: TypeAlias = "tuple[BlockRow, dict[str, Any] | None]"
 
 
 RowWithContext = Tuple[str, Optional[Dict[str, Any]]]
@@ -70,23 +83,23 @@ class FormatterContext:
 class NotUniquePatch:
     def __init__(self) -> None:
         """Plain odict is not suitable: there may be several block enters and exits"""
-        self._items = list[tuple[str, FormatterContext]]()
-        self._keys = set[str]()
+        self._items = list[tuple[tuple[str, ...], dict[str, Any]]]()
+        self._keys = set[tuple[str, ...]]()
 
-    def __setitem__(self, key: str, value: FormatterContext) -> None:
+    def __setitem__(self, key: tuple[str, ...], value: dict[str, Any]) -> None:
         self._keys.add(key)
         self._items.append((key, value))
 
-    def keys(self) -> list[str]:
+    def keys(self) -> list[tuple[str, ...]]:
         return list(self)
 
-    def items(self) -> Sequence[tuple[str, FormatterContext]]:
+    def items(self) -> Sequence[tuple[tuple[str, ...], dict[str, Any]]]:
         return self._items
 
-    def __contains__(self, item: str) -> bool:
+    def __contains__(self, item: tuple[str, ...]) -> bool:
         return item in self._keys
 
-    def __iter__(self) -> Iterable[str]:
+    def __iter__(self) -> Iterator[tuple[str, ...]]:
         return iter(k for k, _ in self._items)
 
     def __bool__(self) -> bool:
@@ -97,22 +110,22 @@ class NotUniquePatch:
 class CommonFormatter:
     cmd_path_cls = NotUniquePatch
 
-    def __init__(self, indent="  "):
+    def __init__(self, indent: str = "  ") -> None:
         self._indent = indent
         self._block_begin = ""
         self._block_end = ""
         self._statement_end = ""
 
-    def split(self, text: str):
+    def split(self, text: str) -> list[str]:
         return list(filter(None, text.split("\n")))
 
-    def join(self, config: PatchTree) -> str:
+    def join(self, config: FormatterTree) -> str:
         return "\n".join(_filtered_block_marks(self._indent_blocks(self._blocks(config, is_patch=False))))
 
-    def diff_generator(self, diff):
+    def diff_generator(self, diff: Diff) -> Iterator[str]:
         yield from self._diff_lines(diff)
 
-    def diff(self, diff):
+    def diff(self, diff: Diff) -> list[str]:
         return list(self.diff_generator(diff))
 
     def patch(self, patch: PatchTree) -> str:
@@ -120,23 +133,24 @@ class CommonFormatter:
 
     def cmd_paths(self, patch: PatchTree) -> NotUniquePatch:
         ret = self.cmd_path_cls()
-        path = []
+        path: list[str] = []
         for row, context in self.blocks_and_context(patch, is_patch=True):
             if row is BlockBegin:
                 path.append(path[-1])
             elif row is BlockEnd:
                 path.pop()
             else:
+                assert isinstance(row, str)
                 if path:
                     path.pop()
                 path.append(row)
-                ret[tuple(path)] = context
+                ret[tuple(path)] = cast("dict[str, Any]", context)
         return ret
 
-    def patch_plain(self, patch):
+    def patch_plain(self, patch: PatchTree) -> list[tuple[str, ...]]:
         return list(self.cmd_paths(patch).keys())
 
-    def _diff_lines(self, diff, _level=0, _block_sign=None):
+    def _diff_lines(self, diff: Diff, _level: int = 0, _block_sign: str | None = None) -> Iterator[str]:
         sign_map = {
             Op.REMOVED: "-",
             Op.ADDED: "+",
@@ -153,10 +167,10 @@ class CommonFormatter:
         if _level > 0 and self._block_end and _block_sign is not None:
             yield "%s %s%s" % (_block_sign, self._indent * (_level - 1), self._block_end)
 
-    def _indented_blocks(self, tree):
+    def _indented_blocks(self, tree: FormatterTree) -> Iterator[BlockRow]:
         return self._indent_blocks(self._blocks(tree, False))
 
-    def _indent_blocks(self, blocks):
+    def _indent_blocks(self, blocks: Iterable[BlockRow]) -> Iterator[BlockRow]:
         _level = 0
         for row in blocks:
             if row is BlockBegin:
@@ -164,15 +178,20 @@ class CommonFormatter:
             elif row is BlockEnd:
                 _level -= 1
             else:
+                assert isinstance(row, str)
                 row = self._indent * _level + row
             yield row
 
-    def blocks_and_context(self, tree: PatchTree, is_patch: bool, context: Optional[FormatterContext] = None):
+    def blocks_and_context(
+        self, tree: FormatterTree, is_patch: bool, context: Optional[FormatterContext] = None
+    ) -> Iterator[BlockRowWithContext]:
         if context is None:
             context = FormatterContext()
 
+        items: list[tuple[str, Any, dict[str, Any]]]
         if is_patch:
-            items = [(item.row, item.child, item.context) for item in tree.itms]
+            patch_tree = cast("PatchTree", tree)
+            items = [(item.row, item.child, item.context) for item in patch_tree.itms]
         else:
             items = [(row, child, {}) for row, child in tree.items()]
 
@@ -193,16 +212,16 @@ class CommonFormatter:
                 yield from self.blocks_and_context(sub_config, is_patch, context=FormatterContext(parent=context))
                 yield BlockEnd, None
 
-    def _blocks(self, tree: PatchTree, is_patch: bool):
+    def _blocks(self, tree: FormatterTree, is_patch: bool) -> Iterator[BlockRow]:
         for row, _context in self.blocks_and_context(tree, is_patch):
             yield row
 
 
 class BlockExitFormatter(CommonFormatter):
     block_exit_command = "exit"
-    no_block_exit = ()
+    no_block_exit: str | tuple[str, ...] = ()
 
-    def split_remove_spaces(self, text):
+    def split_remove_spaces(self, text: str) -> list[str]:
         # эта регулярка заменяет 2 и более пробела на один, но оставляет пробелы в начале линии
         text = re.sub(r"(?<=\S)\ {2,}(?=\S)", " ", text)
         res = super().split(text)
@@ -213,7 +232,9 @@ class BlockExitFormatter(CommonFormatter):
         if current and not current.startswith(self.no_block_exit):
             yield from block_wrapper(self.block_exit_command)
 
-    def blocks_and_context(self, tree, is_patch, context: Optional[FormatterContext] = None):
+    def blocks_and_context(
+        self, tree: FormatterTree, is_patch: bool, context: Optional[FormatterContext] = None
+    ) -> Iterator[BlockRowWithContext]:
         if context is None:
             context = FormatterContext()
 
@@ -245,14 +266,14 @@ class HuaweiFormatter(BlockExitFormatter):
     )
     policy_end_blocks = ("end-list", "endif", "end-filter")
 
-    def split(self, text):
+    def split(self, text: str) -> list[str]:
         # на старых прошивка наблюдается баг с двумя пробелами в этом месте в конфиге
         # например на VRP V100R006C00SPC500 + V100R006SPH003
         tree = self.split_remove_spaces(text)
         tree[:] = filter(lambda x: not str(x).strip().startswith(self.policy_end_blocks), tree)
         return tree
 
-    def block_exit(self, context: Optional[FormatterContext]):
+    def block_exit(self, context: Optional[FormatterContext]) -> Iterable[Any]:
         current = context and context.row or ""
         next_row = context and context.row_next
         parent_row = context and context.parent and context.parent.row or ""
@@ -318,7 +339,7 @@ class CiscoFormatter(BlockExitFormatter):
         block_exit_strings.append(block_exit_wrapped[1])
         return block_exit_strings, indent
 
-    def split(self, text):
+    def split(self, text: str) -> list[str]:
         additional_indent = 0
         block_exit_strings = [self.block_exit_command]
 
@@ -356,7 +377,7 @@ class CiscoFormatter(BlockExitFormatter):
 
         return result
 
-    def block_exit(self, context: Optional[FormatterContext]):
+    def block_exit(self, context: Optional[FormatterContext]) -> Iterable[Any]:
         current = context and context.row or ""
 
         if current.startswith(("address-family")):
@@ -366,7 +387,7 @@ class CiscoFormatter(BlockExitFormatter):
 
 
 class NexusFormatter(BlockExitFormatter):
-    def split(self, text):
+    def split(self, text: str) -> list[str]:
         return self.split_remove_spaces(text)
 
 
@@ -419,7 +440,7 @@ class B4comFormatter(BlockExitFormatter):
 
         return "\n".join(result)
 
-    def split(self, text):
+    def split(self, text: str) -> list[str]:
         text = self._fix_af_indentation(text)
         tree = self.split_remove_spaces(text)
         # Drop syntactic block-end markers (see ``block_end_markers``): they are
@@ -429,7 +450,7 @@ class B4comFormatter(BlockExitFormatter):
         tree[:] = [row for row in tree if row.strip() not in self.block_end_markers]
         return tree
 
-    def block_exit(self, context: Optional[FormatterContext]):
+    def block_exit(self, context: Optional[FormatterContext]) -> Iterable[Any]:
         current = context and context.row or ""
 
         if current.startswith(("address-family")):
@@ -441,23 +462,23 @@ class B4comFormatter(BlockExitFormatter):
 
 
 class ArubaFormatter(BlockExitFormatter):
-    def split(self, text):
+    def split(self, text: str) -> list[str]:
         return self.split_remove_spaces(text)
 
 
 class AristaFormatter(BlockExitFormatter):
-    def split(self, text):
+    def split(self, text: str) -> list[str]:
         return self.split_remove_spaces(text)
 
 
 class AsrFormatter(BlockExitFormatter):
-    def split(self, text):
+    def split(self, text: str) -> list[str]:
         policy_end_blocks = ("end-set", "endif", "end-policy")
         tree = self.split_remove_spaces(text)
         tree[:] = filter(lambda x: not x.endswith(policy_end_blocks), tree)
         return tree
 
-    def block_exit(self, context: Optional[FormatterContext]):
+    def block_exit(self, context: Optional[FormatterContext]) -> Iterable[Any]:
         current = context and context.row or ""
         next_row = context and context.row_next
         parent_row = context and context.parent and context.parent.row or ""
@@ -495,18 +516,18 @@ class JuniperFormatter(CommonFormatter):
         row: str
         comment: str
 
-        def __post_init__(self):
+        def __post_init__(self) -> None:
             self.row = " ".join(map(lambda x: x.strip("\"'"), self.row.strip().split(" ")))
             self.comment = self.comment.strip()
 
         @classmethod
-        def loads(cls, value: str):
+        def loads(cls, value: str) -> "JuniperFormatter.Comment":
             return cls(**json.loads(value.removeprefix(cls.begin).removesuffix(cls.end).strip()))
 
-        def dumps(self):
+        def dumps(self) -> str:
             return json.dumps({"row": self.row, "comment": self.comment})
 
-    def __init__(self, indent="    "):
+    def __init__(self, indent: str = "    ") -> None:
         super().__init__(indent)
         self._block_begin = " {"
         self._block_end = "}"
@@ -540,23 +561,23 @@ class JuniperFormatter(CommonFormatter):
 
         return list(filter(None, result))
 
-    def join(self, config):
+    def join(self, config: FormatterTree) -> str:
         return "\n".join(_filtered_block_marks(self._formatted_blocks(self._indented_blocks(config))))
 
-    def patch(self, patch):
+    def patch(self, patch: PatchTree) -> str:
         return "\n".join(" ".join(x) for x in self.cmd_paths(patch))
 
-    def patch_plain(self, patch):
+    def patch_plain(self, patch: PatchTree) -> list[tuple[str, ...]]:
         return list(self.cmd_paths(patch).keys())
 
-    def _blocks(self, tree: PatchTree, is_patch: bool):
+    def _blocks(self, tree: FormatterTree, is_patch: bool) -> Iterator[BlockRow]:
         for row in super()._blocks(tree, is_patch):
             if isinstance(row, str) and row.startswith(self.Comment.begin):
                 yield f"{self.Comment.begin} {self.Comment.loads(row).comment} {self.Comment.end}"
             else:
                 yield row
 
-    def _formatted_blocks(self, blocks):
+    def _formatted_blocks(self, blocks: Iterable[BlockRow]) -> Iterator[str]:
         level = 0
         line = None
         for new_line in blocks:
@@ -575,7 +596,7 @@ class JuniperFormatter(CommonFormatter):
         if isinstance(line, str):
             yield line + self._statement_end
 
-    def cmd_paths(self, patch, _prev=tuple()) -> NotUniquePatch:
+    def cmd_paths(self, patch: PatchTree, _prev: tuple[str, ...] = ()) -> NotUniquePatch:
         commands = self.cmd_path_cls()
 
         for item in patch.itms:
@@ -585,6 +606,7 @@ class JuniperFormatter(CommonFormatter):
                 for k, v in self.cmd_paths(childs, (*_prev, key.strip())).items():
                     commands[k] = v
             else:
+                cmds: tuple[str, ...]
                 if "comment" in context:
                     value = (
                         ""
@@ -619,7 +641,7 @@ class JuniperFormatter(CommonFormatter):
 
 
 class RibbonFormatter(JuniperFormatter):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._endofline_comment = "; # SECRET-DATA"
 
@@ -629,11 +651,11 @@ class JuniperList:
     Форматирует inline-листы в конфиге juniper
     """
 
-    def __init__(self, *args, spaces=True, **kwargs):
-        self._items = list(*args, **kwargs)
+    def __init__(self, *args: Any, spaces: bool = True, **kwargs: Any) -> None:
+        self._items: list[Any] = list(*args, **kwargs)
         self.spaces = spaces
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.spaces:
             return "[ %s ]" % " ".join(str(_) for _ in self._items)
         else:
@@ -643,12 +665,12 @@ class JuniperList:
 class NokiaFormatter(JuniperFormatter):
     patch_set_prefix = "/configure"
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._statement_end = ""
         self._endofline_comment = " ##"
 
-    def split(self, text):
+    def split(self, text: str) -> list[str]:
         ret = super().split(text)
         # NOCDEVDUTY-248 сдергиваем верхний configure-блок
         # NOCDEVDUTY-282 после configure {} блока могут идти еще блоки которые нам не нужны
@@ -668,7 +690,7 @@ class NokiaFormatter(JuniperFormatter):
         finish = finish if finish is not None else len(ret)
         return ret[start:finish]
 
-    def cmd_paths(self, patch, _prev=tuple()) -> NotUniquePatch:
+    def cmd_paths(self, patch: PatchTree, _prev: tuple[str, ...] = ()) -> NotUniquePatch:
         commands = self.cmd_path_cls()
         for item in patch.itms:
             key, childs, context = item.row, item.child, item.context
@@ -695,26 +717,28 @@ class NokiaFormatter(JuniperFormatter):
 class RosFormatter(CommonFormatter):
     patch_set_prefix = "set "
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._block_begin = "/"
 
-    def join(self, config):
+    def join(self, config: FormatterTree) -> str:
         return "\n".join(_filtered_block_marks(self._formatted_blocks(self._indented_blocks(config))))
 
-    def patch(self, patch):
+    def patch(self, patch: PatchTree) -> str:
         return "\n".join(" ".join(x) for x in self.cmd_paths(patch))
 
-    def patch_plain(self, patch):
+    def patch_plain(self, patch: PatchTree) -> list[tuple[str, ...]]:
         return list(self.cmd_paths(patch).keys())
 
-    def blocks_and_context(self, tree: PatchTree, is_patch: bool, context: Optional[FormatterContext] = None):
+    def blocks_and_context(
+        self, tree: FormatterTree, is_patch: bool, context: Optional[FormatterContext] = None
+    ) -> Iterator[BlockRowWithContext]:
         if is_patch:
             raise RuntimeError("Ros not supported blocks in patch")
 
         rows = []
 
-        items = ((row, child, {}) for row, child in tree.items())
+        items: Iterable[tuple[str, Any, dict[str, Any]]] = ((row, child, {}) for row, child in tree.items())
         for row, sub_config, row_context in items:
             rows.append((row, sub_config if sub_config else None, row_context))
 
@@ -737,7 +761,7 @@ class RosFormatter(CommonFormatter):
                         sub_config, is_patch, context=FormatterContext(parent=context, current=(row, row_context))
                     )
 
-    def _formatted_blocks(self, blocks):
+    def _formatted_blocks(self, blocks: Iterable[BlockRow]) -> Iterator[str]:
         line = None
         for new_line in blocks:
             if new_line is BlockBegin:
@@ -747,14 +771,14 @@ class RosFormatter(CommonFormatter):
                 yield line
             line = new_line
 
-    def _splitter_file(self, lines):
+    def _splitter_file(self, lines: Iterable[str]) -> list[str]:
         filedesrc_re = re.compile(
             r"^\s+(?P<num>\d+)\s+name=\"(?P<name>[^\"]+)\"\s+type=\"(?P<type>[^\"]+)\""
             r"\s+(size=(?P<size>.*))?creation-time=(?P<time>.*?)(contents=(?P<content>.*)?)?$"
         )
         file_content_indent = re.compile(r"^\s{5}")
         out = []
-        files = {}
+        files: dict[str, dict[str, Any]] = {}
         curfile = None
         for line in lines:
             match = filedesrc_re.search(line)
@@ -773,7 +797,7 @@ class RosFormatter(CommonFormatter):
                 out.append(f'set {file["name"]} contents="{text}"')
         return out
 
-    def _splitter_user_ssh_keys(self, lines):
+    def _splitter_user_ssh_keys(self, lines: Iterable[str]) -> list[str]:
         keydescr_re = re.compile(r"user=(?P<user>\w+).*key-owner=(?P<owner>.*)$")
         out = []
         for line in lines:
@@ -783,10 +807,10 @@ class RosFormatter(CommonFormatter):
 
         return out
 
-    def split(self, text):
+    def split(self, text: str) -> list[str]:
         split = []
         level = 0
-        postj = {}
+        postj: dict[str, list[str]] = {}
         curgroup = None
         for line in text.split("\n"):
             if line.startswith("/"):
@@ -822,7 +846,7 @@ class RosFormatter(CommonFormatter):
                 split.append(self._indent * level + row)
         return list(filter(None, split))
 
-    def cmd_paths(self, patch, _prev="") -> NotUniquePatch:
+    def cmd_paths(self, patch: PatchTree, _prev: str = "") -> NotUniquePatch:
         rm_regexs = (
             (re.compile(r"^add "), ""),
             (re.compile(r"^print file="), "name="),
@@ -833,8 +857,8 @@ class RosFormatter(CommonFormatter):
             key, childs, context = item.row, item.child, item.context
             if childs:
                 childs_prev = f"{_prev} {key.strip()}".lstrip()
-                for cmd, subcmds in self.cmd_paths(childs, _prev=childs_prev).items():
-                    commands[cmd] = subcmds
+                for path_key, subcmds in self.cmd_paths(childs, _prev=childs_prev).items():
+                    commands[path_key] = subcmds
             else:
                 if key.startswith("remove"):
                     find_cmd = key.removeprefix("remove").strip()
@@ -849,15 +873,17 @@ class RosFormatter(CommonFormatter):
 
 
 class SNRFormatter(BlockExitFormatter):
-    def split(self, text):
+    def split(self, text: str) -> list[str]:
         return self.split_remove_spaces(text)
 
 
 # ====
 
 
-def parse_to_tree(text: str, splitter: Callable[[str], Iterator[str]], comments: Iterable[str] = ("!", "#")):
-    tree = odict()
+def parse_to_tree(
+    text: str, splitter: Callable[[str], Iterable[str]], comments: Iterable[str] = ("!", "#")
+) -> odict[str, Any]:
+    tree: odict[str, Any] = odict()
     for stack in _stacked(splitter(text), tuple(comments)):
         local_tree = tree
         for key in stack:
@@ -871,9 +897,9 @@ SimpleTree: TypeAlias = list[tuple[str, "SimpleTree"]]
 
 
 def parse_to_tree_multi(
-    text: str, splitter: Callable[[str], Iterator[str]], comments: Iterable[str] = ("!", "#")
+    text: str, splitter: Callable[[str], Iterable[str]], comments: Iterable[str] = ("!", "#")
 ) -> SimpleTree:
-    tree = []
+    tree: SimpleTree = []
     for stack in _stacked(splitter(text), tuple(comments)):
         local_tree = tree
         for key in stack:
@@ -884,7 +910,7 @@ def parse_to_tree_multi(
 
 
 # =====
-def _stacked(lines: Iterator[str], comments: tuple[str, ...]) -> Iterator[tuple[str, ...]]:
+def _stacked(lines: Iterable[str], comments: tuple[str, ...]) -> Iterator[tuple[str, ...]]:
     stack: list[str] = []
     for level, line in _stripped_indents(lines, comments):
         level += 1
@@ -897,7 +923,7 @@ def _stacked(lines: Iterator[str], comments: tuple[str, ...]) -> Iterator[tuple[
         yield tuple(stack)
 
 
-def _stripped_indents(lines: Iterator[str], comments: tuple[str, ...]) -> Iterator[tuple[int, str]]:
+def _stripped_indents(lines: Iterable[str], comments: tuple[str, ...]) -> Iterator[tuple[int, str]]:
     indents: list[int] = []
     curr_level = 0
     g_level = None
@@ -928,7 +954,7 @@ def _stripped_indents(lines: Iterator[str], comments: tuple[str, ...]) -> Iterat
 
 
 def _parsed_indents(
-    lines: Iterator[str], comments: tuple[str, ...]
+    lines: Iterable[str], comments: tuple[str, ...]
 ) -> Iterator[tuple[int, str | type[BlockEnd] | type[_CommentOrEmpty]]]:
     for line in _filtered_lines(lines, comments):
         if isinstance(line, str):
@@ -938,7 +964,7 @@ def _parsed_indents(
 
 
 def _filtered_lines(
-    lines: Iterator[str], comments: tuple[str, ...]
+    lines: Iterable[str], comments: tuple[str, ...]
 ) -> Iterator[str | type[BlockEnd] | type[_CommentOrEmpty]]:
     for line in lines:
         stripped = line.strip()
@@ -951,8 +977,8 @@ def _filtered_lines(
             yield line
 
 
-def _filtered_block_marks(blocks):
-    return filter(lambda b: isinstance(b, str), blocks)
+def _filtered_block_marks(blocks: Iterable[object]) -> Iterator[str]:
+    return (b for b in blocks if isinstance(b, str))
 
 
 def _parse_indent(line: str) -> int:

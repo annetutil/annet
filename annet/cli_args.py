@@ -5,6 +5,7 @@ import argparse
 import enum
 import logging
 import os
+from typing import Any, cast
 
 from valkit.common import valid_string_list
 
@@ -15,25 +16,25 @@ from annet.storage import Query, get_storage
 
 
 # ====
-def valid_vendor(vendor):
+def valid_vendor(vendor: str) -> str:
     hw_provider = hardware_connector.get()
     hw = hw_provider.vendor_to_hw(vendor)
     if hw:
-        return hw.vendor
+        return cast(str, hw.vendor)
     return ""
 
 
-def convert_to_none(arg):
+def convert_to_none(arg: str) -> str | None:
     return None if arg == "-" else arg
 
 
-def valid_config_source(value):
+def valid_config_source(value: str) -> str:
     if value not in ["running", "empty", "-"] and not os.path.exists(value):
         raise ValueError("No such file or directory %r" % value)
     return value
 
 
-def valid_range(value: str):
+def valid_range(value: str) -> slice:
     if value.isdigit():
         return slice(0, int(value))
     elif ":" in value:
@@ -47,7 +48,7 @@ def valid_range(value: str):
     raise ValueError("Invalid range: %s" % value)
 
 
-def opt_query_factory(**kwargs):
+def opt_query_factory(**kwargs: Any) -> Arg[Any]:
     return Arg(
         "query",
         help="A query that defines a list of devices. The query's format depends on a selected storage adapter",
@@ -257,10 +258,10 @@ class EntireReloadFlag(enum.Enum):
     yes = "yes"
     force = "force"
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self is not self.no
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.value)
 
     __repr__ = __str__
@@ -313,10 +314,10 @@ class QueryOptionsBase(CacheOptions):
 
     @property
     @abc.abstractmethod
-    def hosts_range(self):
+    def hosts_range(self) -> slice | None:
         pass
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: ArgGroup, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         if not isinstance(self.query, Query):
             storage, _ = get_storage()
@@ -387,7 +388,7 @@ class FileOutOptions(ArgGroup):
     no_color = opt_no_color
     dest_force_create_dir = opt_dest_force_create_dir
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: ArgGroup, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         if self.dest:
             self.no_color = True
@@ -422,7 +423,7 @@ class ShowDiffOptions(DiffOptions, FileOutOptions):
     show_rules = opt_show_rules
     no_collapse = opt_no_collapse
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: ArgGroup, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         if self.dest:
             self.no_collapse = True
