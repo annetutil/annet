@@ -114,3 +114,88 @@ Normal layout. The screen with patches will be shown and the process of laying o
     annet deploy -g snmp $HOST
 
 Credentials will be used from the current user (username, ssh key, ssh agent).
+
+annet context
+******************
+
+The **context** command manages connection contexts for different device groups with varying connection requirements.
+
+Setting a context:
+
+.. code-block:: bash
+
+    # Set default SSH context
+    annet context set-context default
+
+    # Set telnet context for legacy devices
+    annet context set-context telnet
+
+    # Set custom SSH port context
+    annet context set-context ssh-10022
+
+Once a context is set, all subsequent annet commands will use that context's connection settings:
+
+.. code-block:: bash
+
+    # Using default SSH (port 22)
+    annet context set-context default
+    annet diff -g hostname router1.example.com
+    # -------------------- router1.example.com.cfg --------------------
+    - hostname Router1
+    + hostname router1.example.com
+
+    # Using telnet for legacy devices
+    annet context set-context telnet
+    annet diff -g hostname legacy-switch.example.com
+    # -------------------- legacy-switch.example.com.cfg --------------------
+    - hostname OldSwitch
+    + hostname legacy-switch.example.com
+
+    # Using custom SSH port
+    annet context set-context ssh-10022
+    annet diff -g hostname secure-device.example.com
+    # -------------------- secure-device.example.com.cfg --------------------
+    + system identity set name=secure-device.example.com
+
+Connection Method Examples
+**************************
+
+SSH with Standard Port (22)
+----------------------------
+
+This is the default connection method:
+
+.. code-block:: bash
+
+    annet context set-context default
+    annet gen router.example.com
+    annet diff router.example.com
+    annet patch router.example.com
+    annet deploy router.example.com
+
+SSH with Custom Port
+--------------------
+
+For devices using non-standard SSH ports:
+
+.. code-block:: bash
+
+    annet context set-context ssh-10022
+    annet gen secure-router.example.com
+    annet diff secure-router.example.com
+    annet deploy secure-router.example.com
+
+Telnet Connection
+-----------------
+
+For legacy devices that only support telnet:
+
+.. code-block:: bash
+
+    annet context set-context telnet
+    annet gen legacy-switch.example.com
+    annet diff legacy-switch.example.com
+    annet deploy legacy-switch.example.com
+
+.. warning::
+   Telnet transmits credentials and configuration data in clear text. Use SSH whenever possible for security.

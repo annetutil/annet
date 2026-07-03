@@ -98,3 +98,101 @@ Uses local file as storage.
         interfaces:
           - name: eth0
             description: test
+
+Fetcher Configuration
+************************
+
+The fetcher is responsible for connecting to devices and retrieving their configurations. Annet supports multiple connection methods including SSH (default), SSH on custom ports, and Telnet.
+
+SSH with default port
+----------------------
+
+Default SSH connection on port 22:
+
+.. code-block:: yaml
+
+    fetcher:
+      default:
+        adapter: gnetcli
+        params:
+          dev_login: username
+          dev_password: password
+
+SSH with custom port
+----------------------
+
+To connect to devices using a non-standard SSH port:
+
+.. code-block:: yaml
+
+    fetcher:
+      ssh-custom:
+        adapter: gnetcli
+        params:
+          dev_login: username
+          dev_password: password
+          dev_port: 10022
+          streamer_type: ssh
+
+Telnet support
+----------------------
+
+To connect to legacy devices using Telnet:
+
+.. code-block:: yaml
+
+    fetcher:
+      telnet:
+        adapter: gnetcli
+        params:
+          dev_login: username
+          dev_password: password
+          dev_port: 23
+          streamer_type: telnet
+
+.. warning::
+   Telnet transmits data in clear text. Use SSH whenever possible for security reasons.
+
+Multiple Contexts
+************************
+
+You can define multiple contexts to work with different device groups that require different connection methods:
+
+.. code-block:: yaml
+
+    context:
+      default:
+        fetcher: default
+        deployer: default
+        generators: default
+        storage: default
+
+      ssh-10022:
+        fetcher: ssh-custom
+        deployer: default
+        generators: default
+        storage: default
+
+      telnet:
+        fetcher: telnet
+        deployer: default
+        generators: default
+        storage: default
+
+    selected_context: default
+
+Switching between contexts:
+
+.. code-block:: bash
+
+    # Use default SSH context
+    annet context set-context default
+    annet diff -g hostname mydevice.example.com
+
+    # Switch to telnet context for legacy devices
+    annet context set-context telnet
+    annet diff -g hostname legacy-switch.example.com
+
+    # Use custom SSH port context
+    annet context set-context ssh-10022
+    annet diff -g hostname custom-ssh-device.example.com
