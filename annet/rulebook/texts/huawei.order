@@ -253,6 +253,15 @@ bgp
     # [NOCDEV-1182] у load-balancing есть несколько взаимоисключающих флейверов
     undo undo maximum load-balancing %order_reverse
     maximum load-balancing
+    # Tear down peers first: changing as-number of an existing IP peer on
+    # Huawei requires a prior `undo peer <ip>` (otherwise the device errors
+    # with "The peer already exists in AS <old>"), and changing a peer-group's
+    # as-number requires `undo peer <group> as-number` before re-declaring it
+    # (otherwise "The as-number for session group cannot be changed because
+    # some peer exists"). Both rules are end-anchored so they don't shadow
+    # the per-option undo rules at the bottom of the bgp block.
+    undo peer ~/[^\s]+$/ %order_reverse
+    undo peer * as-number %order_reverse
     # [NOCDEV-2043] Тут только декларируем пиров и группы
     # поскольку на них есть ссылки из family блоков
     group
@@ -272,7 +281,6 @@ bgp
     undo peer * description %order_reverse
     undo peer * * * %order_reverse
     undo peer * * %order_reverse
-    undo peer * %order_reverse
     undo group * %order_reverse
     peer * ~
 

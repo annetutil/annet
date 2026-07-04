@@ -1,0 +1,29 @@
+# Removing a peer from one vpn-instance must NOT touch the same IP in
+# another vpn-instance. Mirrors a lab transcript: `undo peer 192.0.2.1`
+# issued inside vpn-instance EXAMPLE2 wipes only that VRF's peer; the
+# identically-numbered peer in EXAMPLE (with its route-policy) survives.
+# This locks the per-vpn-instance scoping for the removal case — it is
+# critical that a peer in a different VRF is never deleted.
+- vendor: huawei
+  before: |
+    bgp 65536
+     ipv4-family vpn-instance EXAMPLE
+      peer 192.0.2.1 as-number 3
+      peer 192.0.2.1 route-policy DENY_ALL export
+     ipv4-family vpn-instance EXAMPLE2
+      peer 192.0.2.1 as-number 3
+  after: |
+    bgp 65536
+     ipv4-family vpn-instance EXAMPLE
+      peer 192.0.2.1 as-number 3
+      peer 192.0.2.1 route-policy DENY_ALL export
+     ipv4-family vpn-instance EXAMPLE2
+  patch: |
+    system-view
+    bgp 65536
+      ipv4-family vpn-instance EXAMPLE2
+        undo peer 192.0.2.1
+        quit
+      quit
+    q
+    save
