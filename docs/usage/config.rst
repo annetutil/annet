@@ -5,7 +5,10 @@ The path to the configuration file is searched in following order:
 
 * ``ANN_CONTEXT_CONFIG_PATH`` env.
 * ``~/.annet/context.yml``.
+* ``~/.annet/context.yaml``.
 * ``annet/configs/context.yml``.
+
+.. warning:: The simultaneous existence of ``~/.annet/context.yml`` and ``~/.annet/context.yaml`` is considered an error.
 
 Config example:
 
