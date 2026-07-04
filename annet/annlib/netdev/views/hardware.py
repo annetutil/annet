@@ -1,5 +1,5 @@
 import functools
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from annet.annlib.netdev.devdb import parse_hw_model
 
@@ -54,7 +54,16 @@ class HardwareLeaf(DumpableView):
         return ret
 
 
-class HardwareView(HardwareLeaf):
+if TYPE_CHECKING:
+    from annet.annlib.netdev.devdb.generated import FakeHardwareView
+
+    _HardwareViewExtraBase = FakeHardwareView
+
+else:
+    _HardwareViewExtraBase = object
+
+
+class HardwareView(HardwareLeaf, _HardwareViewExtraBase):
     def __init__(self, hw_model, sw_version: Optional[str] = None):
         true_sequences, false_sequences = parse_hw_model(hw_model or "")
         super().__init__((), true_sequences, false_sequences)
@@ -91,9 +100,9 @@ class HardwareView(HardwareLeaf):
 def lag_name(hw: HardwareView, nlagg: int) -> str:
     if hw.Huawei:
         return f"Eth-Trunk{nlagg}"
-    if hw.Cisco:
+    if hw.Cisco.Nexus:
         return f"port-channel{nlagg}"
-    if hw.Nexus:
+    if hw.Cisco:
         return f"port-channel{nlagg}"
     if hw.Arista:
         return f"Port-Channel{nlagg}"
@@ -105,8 +114,6 @@ def lag_name(hw: HardwareView, nlagg: int) -> str:
         return f"bond{nlagg}"
     if hw.PC:
         return f"lagg{nlagg}"
-    if hw.Nokia:
-        return f"lagg-{nlagg}"
     if hw.H3C:
         return f"Bridge-Aggregation{nlagg}"
     raise NotImplementedError(hw)
