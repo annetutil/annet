@@ -65,6 +65,32 @@ interface Ethernet1/1/1
 
 
 @pytest.fixture
+def cisco_banner_config():
+    return """\
+banner exec ^C
+********************************************************************************
+                             !!! WARNING MESSAGE !!!
+According            to Security Policies
+********************************************************************************
+
+^C\
+"""
+
+
+@pytest.fixture
+def nexus_banner_config():
+    return """\
+banner exec ^
+********************************************************************************
+                             !!! WARNING MESSAGE !!!
+According            to Security Policies
+********************************************************************************
+
+^\
+"""
+
+
+@pytest.fixture
 def nokia_config_info():
     """Конфиг нокии полученный через configure read-only; info | no-more"""
     return textwrap.dedent("""
@@ -451,6 +477,22 @@ def test_nexus_join(nexus_config):
     formatter = registry_connector.get().match(make_hw_stub("nexus")).make_formatter()
     config = parse_to_tree(nexus_config, formatter.split)
     assert formatter.join(config) == nexus_config
+
+
+def test_cisco_banner_split(cisco_banner_config):
+    # Cisco uses the "^C" delimiter; the banner block must stay a single tree row
+    # with significant whitespace in the body preserved.
+    formatter = registry_connector.get().match(make_hw_stub("cisco")).make_formatter()
+    config = parse_to_tree(cisco_banner_config, formatter.split)
+    assert list(config.keys()) == [cisco_banner_config]
+
+
+def test_nexus_banner_split(nexus_banner_config):
+    # NX-OS uses the plain "^" delimiter; the banner block must stay a single tree
+    # row with significant whitespace in the body preserved (issue #608).
+    formatter = registry_connector.get().match(make_hw_stub("nexus")).make_formatter()
+    config = parse_to_tree(nexus_banner_config, formatter.split)
+    assert list(config.keys()) == [nexus_banner_config]
 
 
 @pytest.mark.parametrize(

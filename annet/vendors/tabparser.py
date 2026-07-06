@@ -304,7 +304,41 @@ class OptixtransFormatter(CommonFormatter):
     pass
 
 
-class CiscoFormatter(BlockExitFormatter):
+class BannerHidingMixin:
+    """Hides multi-line banner blocks (Cisco/IOS-XR/NX-OS) during split.
+
+    A banner body is aligned with significant whitespace and must not be split
+    on newlines, so before splitting the block is replaced with a single-line
+    placeholder and restored afterwards.
+    """
+
+    # Delimiter alternation order matters: "^C" (Cisco/IOS-XR) is tried first,
+    # otherwise for NX-OS ("^" + newline) it falls back to "^". The \2
+    # backreference requires the closing delimiter to match the opening one.
+    _BANNER_RE = re.compile(
+        r"(^banner [a-z-]+) (\^C|\^).*?\2",
+        flags=re.MULTILINE | re.DOTALL,
+    )
+
+    def hide_banners(self, text: str) -> tuple[str, dict[str, str]]:
+        """Replaces banner blocks with a placeholder.
+
+        Returns (text, repl_map), where repl_map maps a placeholder
+        (e.g. "banner exec") to the original banner block in full.
+        """
+        repl_map = {m.group(1): m.group(0) for m in self._BANNER_RE.finditer(text)}
+        for placeholder, banner in repl_map.items():
+            text = text.replace(banner, placeholder)
+        return text, repl_map
+
+    def restore_banners(self, rows: list[str], repl_map: dict[str, str]) -> list[str]:
+        for i, row in enumerate(rows):
+            if row in repl_map:
+                rows[i] = repl_map[row]
+        return rows
+
+
+class CiscoFormatter(BannerHidingMixin, BlockExitFormatter):
     def _split_indent(self, line: str, indent: int, block_exit_strings: List[str]) -> Tuple[List[str], int]:
         """
         The small helper calculates indent shift based on block exit string.
@@ -344,10 +378,7 @@ class CiscoFormatter(BlockExitFormatter):
         block_exit_strings = [self.block_exit_command]
 
         # hide banner content
-        pattern = re.compile(r"((^banner [a-z-]+) \^C.*?\^C)", flags=re.MULTILINE | re.DOTALL)
-        repl_map = {replace_str: banner_str for banner_str, replace_str in pattern.findall(text)}
-        for replace_str, banner in repl_map.items():
-            text = text.replace(banner, replace_str)
+        text, repl_map = self.hide_banners(text)
 
         tree = self.split_remove_spaces(text)
         result: list[str] = []
@@ -371,11 +402,7 @@ class CiscoFormatter(BlockExitFormatter):
             additional_indent = new_indent
 
         # restore banner content
-        for i, item in enumerate(result):
-            if item in repl_map:
-                result[i] = repl_map[item]
-
-        return result
+        return self.restore_banners(result, repl_map)
 
     def block_exit(self, context: Optional[FormatterContext]) -> Iterable[Any]:
         current = context and context.row or ""
@@ -386,9 +413,11 @@ class CiscoFormatter(BlockExitFormatter):
             yield from super().block_exit(context)
 
 
-class NexusFormatter(BlockExitFormatter):
+class NexusFormatter(BannerHidingMixin, BlockExitFormatter):
     def split(self, text: str) -> list[str]:
-        return self.split_remove_spaces(text)
+        text, repl_map = self.hide_banners(text)
+        tree = self.split_remove_spaces(text)
+        return self.restore_banners(tree, repl_map)
 
 
 class B4comFormatter(BlockExitFormatter):
