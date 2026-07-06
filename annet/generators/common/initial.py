@@ -1,4 +1,7 @@
+from collections.abc import Iterator
+
 from annet.generators import PartialGenerator
+from annet.storage import Device, Storage
 
 
 class InitialConfig(PartialGenerator):
@@ -12,11 +15,11 @@ class InitialConfig(PartialGenerator):
     конфиг целиком.
     """
 
-    def __init__(self, storage, do_run: bool = False):
+    def __init__(self, storage: Storage, do_run: bool = False) -> None:
         super().__init__(storage=storage)
         self._do_run = do_run
 
-    def run_huawei(self, device):
+    def run_huawei(self, device: Device) -> Iterator[str]:
         if not self._do_run:
             return
         if device.hw.CE:

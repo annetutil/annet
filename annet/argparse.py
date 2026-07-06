@@ -1,45 +1,41 @@
+from __future__ import annotations
+
 import abc
 import argparse
 import contextlib
 import functools
 import os
 import sys
+from collections.abc import Callable, Iterable, Iterator
 from functools import lru_cache
-from typing import (
-    Callable,
-    ContextManager,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Any, ContextManager, Generic, TypeVar, cast, overload
 
 from annet.connectors import Connector
 
 
 T = TypeVar("T")
+_ArgT = TypeVar("_ArgT")
+_ArgX = TypeVar("_ArgX")
 
 _ARGS_ATTR_NAME = "_alan_opts"
 
 
 # =====
 class FuncMeta:
-    opts: List[Callable]
-    parent: Optional[Callable]
-    parser: Optional[argparse.ArgumentParser]
+    cmd_name: str
+    opts: list[Arg[Any] | type[ArgGroup]]
+    parent: Callable[..., Any] | None
+    parser: argparse.ArgumentParser | None
+    sub: argparse._SubParsersAction[Any] | None
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.cmd_name = ""
         self.opts = []
         self.parent = None
         self.parser = None
         self.sub = None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}("
             + ", ".join(
@@ -55,13 +51,13 @@ class FuncMeta:
         )
 
 
-def _get_meta(func: Callable) -> FuncMeta:
+def _get_meta(func: Callable[..., Any]) -> FuncMeta:
     if not hasattr(func, _ARGS_ATTR_NAME):
         _reset_meta(func)
-    return getattr(func, _ARGS_ATTR_NAME)
+    return cast(FuncMeta, getattr(func, _ARGS_ATTR_NAME))
 
 
-def _reset_meta(func: Callable):
+def _reset_meta(func: Callable[..., Any]) -> None:
     setattr(func, _ARGS_ATTR_NAME, FuncMeta())
 
 
@@ -86,10 +82,30 @@ class DefaultFromEnv(ConvertibleDefault):
             raise ValueError(f"invalid {function_name} in the {self.var_name} environment variable: {repr(self.value)}")
 
 
-class Arg:
-    """аргумент CLI"""
+class Arg(Generic[_ArgT]):
+    """CLI argument.
 
-    def __init__(self, *args, **kwargs):
+    Acts as a descriptor: declared as a class attribute ``foo = Arg(...)`` on an
+    ``ArgGroup``, attribute access on an instance yields the parsed value (like
+    ``dataclasses.field``). ``_ArgT`` is that value type, inferred from ``default``/``type``.
+    """
+
+    @overload
+    def __init__(  # noqa: E704
+        self: Arg[_ArgX | None], *args: Any, type: Callable[[str], _ArgX], default: None = ..., **kwargs: Any
+    ) -> None: ...
+
+    @overload
+    def __init__(  # noqa: E704
+        self: Arg[_ArgX], *args: Any, type: Callable[[str], _ArgX], default: _ArgX, **kwargs: Any
+    ) -> None: ...
+
+    @overload
+    def __init__(self: Arg[_ArgT], *args: Any, default: _ArgT, **kwargs: Any) -> None: ...  # noqa: E704
+    @overload
+    def __init__(self: Arg[Any], *args: Any, **kwargs: Any) -> None: ...  # noqa: E704
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Конструктор повторяет прототип parser.add_argument()"""
         if args and isinstance(args[0], type(self)):
             # copy constructor
@@ -98,22 +114,34 @@ class Arg:
             new_kwargs.update(kwargs)
             kwargs = new_kwargs
 
-        self.args = args
-        self.kwargs = kwargs
+        self.args: tuple[Any, ...] = args
+        self.kwargs: dict[str, Any] = kwargs
 
         self._prepared = False
-        self.default = None
+        self.default: Any = None
 
-        self.dest = None  # заполняется в attach()
+        self.dest: str | None = None  # заполняется в attach()
 
-    def _prepare(self):
+    @overload
+    def __get__(self, obj: None, owner: type[Any] | None = None) -> Arg[_ArgT]: ...  # noqa: E704
+    @overload
+    def __get__(self, obj: object, owner: type[Any] | None = None) -> _ArgT: ...  # noqa: E704
+
+    def __get__(self, obj: object | None, owner: type[Any] | None = None) -> Arg[_ArgT] | _ArgT:
+        # Instances store the parsed value in __dict__, which shadows this
+        # non-data descriptor, so this runs only for class-level access.
+        if obj is None:
+            return self
+        return cast(_ArgT, self.default)
+
+    def _prepare(self) -> None:
         if self._prepared:
             return
         self._prepared = True
         default = self.kwargs.get("default", None)
         if isinstance(default, ConvertibleDefault) and "type" in self.kwargs:
             default = self.kwargs["default"] = default.convert(self.kwargs["type"])
-        elif isinstance(default, Callable):
+        elif callable(default):
             default = self.kwargs["default"] = default()
         elif default is False and "action" not in self.kwargs:
             self.kwargs["action"] = "store_true"
@@ -124,7 +152,7 @@ class Arg:
                 self.kwargs["help"] = ""
             self.kwargs["help"] += " (default: %r)" % default
 
-    def attach(self, parser: argparse.ArgumentParser):
+    def attach(self, parser: argparse.ArgumentParser) -> None:
         self._prepare()
         arg = parser.add_argument(*self.args, **self.kwargs)
         self.dest = arg.dest
@@ -144,7 +172,7 @@ class ArgGroup:
     open(values.in)
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: ArgGroup, **kwargs: Any) -> None:
         """
         В kwargs - пары ключ-значение. Соотвествующие опции должны быть объявлены в классе
         """
@@ -162,7 +190,7 @@ class ArgGroup:
 
     @classmethod
     @lru_cache()
-    def _enum_args(cls) -> Dict[str, Arg]:
+    def _enum_args(cls) -> dict[str, Arg[Any]]:
         ret = {}
         for base in cls.__mro__:
             for name, value in vars(base).items():
@@ -171,19 +199,20 @@ class ArgGroup:
         return ret
 
     @classmethod
-    def attach(cls, parser: argparse.ArgumentParser):
+    def attach(cls, parser: argparse.ArgumentParser) -> None:
         for arg in cls._enum_args().values():
             arg.attach(parser)
 
     @classmethod
-    def construct_from(cls, ns: argparse.Namespace) -> "ArgGroup":
+    def construct_from(cls, ns: argparse.Namespace) -> ArgGroup:
         kwargs = {}
         for arg_name, arg in cls._enum_args().items():
+            assert arg.dest is not None
             kwargs[arg_name] = getattr(ns, arg.dest)
         return cls(**kwargs)
 
     @classmethod
-    def copy_from(cls, other: "ArgGroup", **more_kwargs) -> "ArgGroup":
+    def copy_from(cls, other: ArgGroup, **more_kwargs: Any) -> ArgGroup:
         kwargs = {}
         for arg_name in cls._enum_args():
             try:
@@ -194,14 +223,14 @@ class ArgGroup:
         kwargs.update(more_kwargs)
         return cls(**kwargs)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%(classname)s(%(params)s)" % dict(
             classname=type(self).__qualname__,
             params=", ".join("%s=%r" % (key, getattr(self, key)) for key in sorted(self._enum_args())),
         )
 
-    def stdin(self, **kwargs):
-        ret = {}
+    def stdin(self, **kwargs: str | None) -> dict[str, str | None]:
+        ret: dict[str, str | None] = {}
         stdin_used = False
         for arg, val in kwargs.items():
             if val == "-":
@@ -214,17 +243,17 @@ class ArgGroup:
                 ret[arg] = None
         return ret
 
-    def validate_stdin(self, arg, val, **kwargs):
+    def validate_stdin(self, arg: str, val: str | None, **kwargs: str | None) -> None:
         pass
 
 
 class _HelpFormatter(argparse.HelpFormatter):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         kwargs["width"] = self._get_term_width()
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def _get_term_width():
+    def _get_term_width() -> int | None:
         try:
             return int(os.environ["COLUMNS"])
         except (KeyError, ValueError):
@@ -248,8 +277,8 @@ class ArgDispatcher(abc.ABC):
         pass
 
     @contextlib.contextmanager
-    def func_opts(self, arg: Union[Arg, Type[ArgGroup]]) -> ContextManager[None]:
-        pass
+    def func_opts(self, arg: Arg[Any] | type[ArgGroup]) -> Iterator[None]:
+        yield
 
     @abc.abstractmethod
     def func(self, ns: argparse.Namespace) -> ContextManager[None]:
@@ -262,19 +291,19 @@ class NullArgDispatcher(ArgDispatcher):
         yield
 
     @contextlib.contextmanager
-    def exec(self) -> ContextManager[None]:
+    def exec(self) -> Iterator[None]:
         yield
 
     @contextlib.contextmanager
-    def pre_call(self) -> ContextManager[None]:
+    def pre_call(self) -> Iterator[None]:
         yield
 
     @contextlib.contextmanager
-    def func_opts(self, arg: Union[Arg, Type[ArgGroup]]) -> ContextManager[None]:
+    def func_opts(self, arg: Arg[Any] | type[ArgGroup]) -> Iterator[None]:
         yield
 
     @contextlib.contextmanager
-    def func(self, ns: argparse.Namespace) -> ContextManager[None]:
+    def func(self, ns: argparse.Namespace) -> Iterator[None]:
         yield
 
 
@@ -282,7 +311,7 @@ class _DispatcherConnector(Connector[ArgDispatcher]):
     name = "Dispatcher"
     ep_name = "dispatcher"
 
-    def _get_default(self) -> Type["ArgDispatcher"]:
+    def _get_default(self) -> type[ArgDispatcher]:
         return NullArgDispatcher
 
 
@@ -290,30 +319,30 @@ dispatcher_connector = _DispatcherConnector()
 
 
 class ArgParser(argparse.ArgumentParser):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         if "formatter_class" not in kwargs:
             kwargs["formatter_class"] = _HelpFormatter
         super().__init__(*args, **kwargs)
         self._dispatcher: ArgDispatcher = dispatcher_connector.get()
 
-    def argv(self):
+    def argv(self) -> list[str]:
         return sys.argv[1:]
 
-    def add_commands(self, commands: Iterable[Callable]):
+    def add_commands(self, commands: Iterable[Callable[..., Any]]) -> None:
         subparsers = self.add_subparsers()
-        commands = list(commands)
+        pending = list(commands)
         failcount = 0
-        while commands and failcount < len(commands):
-            func, commands = commands[0], commands[1:]
+        while pending and failcount < len(pending):
+            func, pending = pending[0], pending[1:]
             if not self.add_func(func, subparsers):
-                commands.append(func)
+                pending.append(func)
                 failcount += 1
             else:
                 failcount = 0
         if failcount:
             raise RuntimeError("Failed to resolve subparsers")
 
-    def add_func(self, func, sub):
+    def add_func(self, func: Callable[..., Any], sub: argparse._SubParsersAction[Any]) -> bool:
         meta = _get_meta(func)
         parent = meta.parent
         if parent:
@@ -322,6 +351,7 @@ class ArgParser(argparse.ArgumentParser):
                 return False
             if not parent_meta.sub:
                 parent_meta.sub = parent_meta.parser.add_subparsers()
+            assert parent_meta.sub is not None
             sub = parent_meta.sub
 
         sp = sub.add_parser(meta.cmd_name, help=func.__doc__)
@@ -335,7 +365,9 @@ class ArgParser(argparse.ArgumentParser):
     def set_dispatcher(self, dispatcher: ArgDispatcher) -> None:
         self._dispatcher = dispatcher
 
-    def dispatch(self, pre_call=None, add_help_command=False):
+    def dispatch(
+        self, pre_call: Callable[[argparse.Namespace], Any] | None = None, add_help_command: bool = False
+    ) -> Any:
         with self._dispatcher.setup():
             with self._dispatcher.exec():
                 argv = self.argv()
@@ -357,6 +389,7 @@ class ArgParser(argparse.ArgumentParser):
                 for arg in self.func_opts(ns.func):
                     with self._dispatcher.func_opts(arg):
                         if isinstance(arg, Arg):
+                            assert arg.dest is not None
                             values.append(getattr(ns, arg.dest))
                         else:
                             # arg is a ArgGroup-derived type
@@ -366,17 +399,19 @@ class ArgParser(argparse.ArgumentParser):
                     return ns.func(*values)
 
     @staticmethod
-    def find_subcommands(variables):
+    def find_subcommands(variables: dict[str, Any]) -> Iterator[Callable[..., Any]]:
         for var in variables.values():
             if callable(var) and hasattr(var, _ARGS_ATTR_NAME):
                 yield var
 
     @classmethod
-    def func_opts(cls, func):
+    def func_opts(cls, func: Callable[..., Any]) -> Iterator[Arg[Any] | type[ArgGroup]]:
         yield from _get_meta(func).opts
 
 
-def subcommand(*arg_list: Union[Arg, Type[ArgGroup]], parent: Callable = None, is_group: bool = False):
+def subcommand(
+    *arg_list: Arg[Any] | type[ArgGroup], parent: Callable[..., Any] | None = None, is_group: bool = False
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     декоратор, задающий cli-аргументы подпрограммы
 
@@ -402,13 +437,16 @@ def subcommand(*arg_list: Union[Arg, Type[ArgGroup]], parent: Callable = None, i
         pass
     """
 
-    def _amend_func(func):
+    def _amend_func(func: Callable[..., Any]) -> Callable[..., Any]:
         meta = _get_meta(func)
         if is_group:
 
             @functools.wraps(func)
-            def func():
+            def group_func() -> None:
+                assert meta.parser is not None
                 meta.parser.print_help()
+
+            func = group_func
 
         cmd_name = func.__name__
         if parent:
@@ -425,5 +463,5 @@ def subcommand(*arg_list: Union[Arg, Type[ArgGroup]], parent: Callable = None, i
 
 
 @functools.lru_cache()
-def _read_stdin_once():
+def _read_stdin_once() -> str:
     return sys.stdin.read()

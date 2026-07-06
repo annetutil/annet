@@ -1,15 +1,16 @@
 import ipaddress
 from collections.abc import Generator
+from typing import Any
 
 import colorama
 
-from ..types import Diff, DiffItem, Op
+from ..types import Diff, DiffItem, Op, OpType
 
 
 # NOCDEV-1720
 
 
-diff_ops: dict[str, Op] = {
+diff_ops: dict[str, OpType] = {
     "+": Op.ADDED,
     "-": Op.REMOVED,
     " ": Op.AFFECTED,
@@ -18,14 +19,14 @@ diff_ops: dict[str, Op] = {
 
 ops_sign = {v: k for k, v in diff_ops.items()}
 
-ops_order: dict[Op, int] = {
+ops_order: dict[OpType, int] = {
     Op.AFFECTED: 0,
     Op.REMOVED: 1,
     Op.ADDED: 2,
     Op.MOVED: 4,
 }
 
-ops_color: dict[Op, int] = {
+ops_color: dict[OpType, str] = {
     Op.REMOVED: colorama.Fore.RED,
     Op.ADDED: colorama.Fore.GREEN,
     Op.AFFECTED: colorama.Fore.CYAN,
@@ -90,7 +91,7 @@ def resort_diff(diff: Diff) -> Diff:
     return res
 
 
-def colorize_line_with_color(line: str, color: int, no_color: bool) -> str:
+def colorize_line_with_color(line: str, color: str, no_color: bool) -> str:
     stripped = line.rstrip("\n")
     add_newlines = len(line) - len(stripped)
     line = stripped
@@ -109,7 +110,7 @@ def colorize_line(line: str, no_color: bool = False) -> str:
 
 
 def gen_pre_as_diff(
-    pre: dict, show_rules: bool, indent: str, no_color: bool, _level: int = 0
+    pre: dict[str, Any], show_rules: bool, indent: str, no_color: bool, _level: int = 0
 ) -> Generator[str, None, None]:
     ops = [(order, op) for op, order in ops_order.items()]
     ops.sort()

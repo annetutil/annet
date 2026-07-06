@@ -1,3 +1,5 @@
+from typing import Any
+
 from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.vendors.base import AbstractVendor
@@ -9,7 +11,9 @@ from annet.vendors.tabparser import CiscoFormatter
 class CiscoVendor(AbstractVendor):
     NAME = "cisco"
 
-    def apply(self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str) -> tuple[CommandList, CommandList]:
+    def apply(
+        self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str | None
+    ) -> tuple[CommandList, CommandList]:
         before, after = CommandList(), CommandList()
 
         before.add_cmd(Command("conf t"))
@@ -34,7 +38,7 @@ class CiscoVendor(AbstractVendor):
     def svi_name(self, num: int) -> str:
         return f"Vlan{num}"
 
-    def make_formatter(self, **kwargs) -> CiscoFormatter:
+    def make_formatter(self, **kwargs: Any) -> CiscoFormatter:
         return CiscoFormatter(**kwargs)
 
     @property

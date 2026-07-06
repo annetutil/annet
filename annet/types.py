@@ -1,22 +1,26 @@
+from __future__ import annotations
+
 from collections import OrderedDict
-from typing import Any, Dict, List, MutableMapping, NamedTuple, Optional, Tuple, TypeAlias, Union
+from collections.abc import MutableMapping
+from typing import Any, NamedTuple, TypeAlias, cast
 
 from annet.annlib.jsontools import JsonFragmentAcl
-from annet.annlib.types import Op  # pylint: disable=unused-import
+from annet.annlib.types import Op as Op  # pylint: disable=unused-import
+from annet.annlib.types import OpType as OpType  # pylint: disable=unused-import
 from annet.storage import Device, Storage
 
 
 class PCDiffFile(NamedTuple):
     label: str
-    diff_lines: List[str]
+    diff_lines: list[str]
 
 
 class PCDiff(NamedTuple):
     hostname: str
-    diff_files: List[PCDiffFile]
+    diff_files: list[PCDiffFile]
 
 
-DiffItem: TypeAlias = tuple[Op, str, "Diff", dict]
+DiffItem: TypeAlias = tuple[OpType, str, "Diff", dict[Any, Any]]
 Diff: TypeAlias = list[DiffItem]
 ExitCode: TypeAlias = int
 
@@ -26,15 +30,13 @@ class GeneratorPerf:
     Рантайм статистика времени выполнения генератора
     """
 
-    def __init__(
-        self, total: float, rt: Optional[Dict[str, List[Dict[str, Any]]]], meta: Optional[Dict[str, Any]] = None
-    ):
+    def __init__(self, total: float, rt: dict[str, list[dict[str, Any]]] | None, meta: dict[str, Any] | None = None):
         self.total = total
         self.rt = rt
         self._meta = meta
 
     @property
-    def meta(self) -> Dict[str, Any]:
+    def meta(self) -> dict[str, Any]:
         return self._meta or {}
 
 
@@ -49,7 +51,7 @@ class GeneratorPartialRunArgs:
         use_acl: bool = False,
         use_acl_safe: bool = False,
         annotate: bool = False,
-        generators_context: Optional[str] = None,
+        generators_context: str | None = None,
         no_new: bool = False,
     ):
         self.device = device
@@ -68,14 +70,14 @@ class GeneratorPartialResult:
     def __init__(
         self,
         name: str,
-        tags: List[str],
+        tags: list[str],
         acl: str,
-        acl_rules: Dict[str, Any],  # OrderedDict
+        acl_rules: dict[str, OrderedDict[Any, Any]],
         acl_safe: str,
-        acl_safe_rules: Dict[str, Any],  # OrderedDict
+        acl_safe_rules: dict[str, OrderedDict[Any, Any]],
         output: str,
-        config: Dict[str, Any],  # OrderedDict
-        safe_config: Dict[str, Any],  # OrderedDict
+        config: OrderedDict[str, Any],
+        safe_config: OrderedDict[str, Any],
         perf: GeneratorPerf,
     ):
         self.name = name
@@ -98,8 +100,8 @@ class GeneratorEntireResult:
     def __init__(
         self,
         name: str,
-        tags: List[str],
-        path: Optional[str],
+        tags: list[str],
+        path: str | None,
         output: str,
         reload: str,
         prio: int,
@@ -124,11 +126,11 @@ class GeneratorJSONFragmentResult:
     def __init__(
         self,
         name: str,
-        tags: List[str],
+        tags: list[str],
         path: str,
-        acl: List[JsonFragmentAcl],
-        acl_safe: List[JsonFragmentAcl],
-        config: Dict[str, Any],
+        acl: list[JsonFragmentAcl],
+        acl_safe: list[JsonFragmentAcl],
+        config: dict[str, Any],
         reload: str,
         perf: GeneratorPerf,
         reload_prio: int,
@@ -144,7 +146,7 @@ class GeneratorJSONFragmentResult:
         self.reload_prio = reload_prio
 
 
-GeneratorResult = Union[GeneratorEntireResult, GeneratorPartialResult, GeneratorJSONFragmentResult]
+GeneratorResult = GeneratorEntireResult | GeneratorPartialResult | GeneratorJSONFragmentResult
 
 
 class OldNewResult:
@@ -153,76 +155,76 @@ class OldNewResult:
     # pylint: disable=too-many-arguments
     def __init__(
         self,
-        device=None,
-        old=None,
-        new=None,
-        acl_rules=None,
-        new_files=None,
-        old_files=None,
-        err=None,
-        partial_result=None,
-        entire_result=None,
-        old_json_fragment_files=None,
-        new_json_fragment_files=None,
-        json_fragment_result=None,
-        implicit_rules=None,
-        perf=None,
-        acl_safe_rules=None,
-        safe_old=None,
-        safe_new=None,
-        safe_new_files=None,
-        safe_new_json_fragment_files=None,
-        filter_acl_rules=None,
-    ):
-        self.device: Device = device
-        self.old: MutableMapping = old if old else OrderedDict()
-        self.new: MutableMapping = new if new else OrderedDict()
-        self.acl_rules: MutableMapping = acl_rules
-        self.new_files: MutableMapping = new_files if new_files else {}
-        self.old_files: MutableMapping = old_files if old_files else {}
-        self.err: Optional[Exception] = err
-        self.partial_results: Dict[str, GeneratorPartialResult] = partial_result or {}
-        self.entire_results: Dict[str, GeneratorEntireResult] = entire_result or {}
-        self.old_json_fragment_files: Dict[str, Any] = old_json_fragment_files or {}
-        self.new_json_fragment_files: Dict[str, Tuple[Any, Optional[str]]] = new_json_fragment_files or {}
-        self.json_fragment_results: Dict[str, GeneratorJSONFragmentResult] = json_fragment_result or {}
-        self.implicit_rules: Dict[str, Any] = implicit_rules or OrderedDict()
-        self.perf: Dict[str, Dict[str, float]] = perf or {}
+        device: Device | None = None,
+        old: MutableMapping[str, Any] | None = None,
+        new: MutableMapping[str, Any] | None = None,
+        acl_rules: MutableMapping[str, Any] | None = None,
+        new_files: MutableMapping[str, tuple[str, str]] | None = None,
+        old_files: MutableMapping[str, str | None] | None = None,
+        err: Exception | None = None,
+        partial_result: dict[str, GeneratorPartialResult] | None = None,
+        entire_result: dict[str, GeneratorEntireResult] | None = None,
+        old_json_fragment_files: dict[str, Any] | None = None,
+        new_json_fragment_files: dict[str, tuple[Any, str | None]] | None = None,
+        json_fragment_result: dict[str, GeneratorJSONFragmentResult] | None = None,
+        implicit_rules: dict[str, Any] | None = None,
+        perf: dict[str, dict[str, float]] | None = None,
+        acl_safe_rules: MutableMapping[str, Any] | None = None,
+        safe_old: MutableMapping[str, Any] | None = None,
+        safe_new: MutableMapping[str, Any] | None = None,
+        safe_new_files: MutableMapping[str, tuple[str, str]] | None = None,
+        safe_new_json_fragment_files: dict[str, tuple[Any, str | None]] | None = None,
+        filter_acl_rules: MutableMapping[str, Any] | None = None,
+    ) -> None:
+        self.device: Device = cast(Device, device)
+        self.old: MutableMapping[str, Any] = old if old else OrderedDict()
+        self.new: MutableMapping[str, Any] = new if new else OrderedDict()
+        self.acl_rules: MutableMapping[str, Any] = cast(MutableMapping[str, Any], acl_rules)
+        self.new_files: MutableMapping[str, tuple[str, str]] = new_files if new_files else {}
+        self.old_files: MutableMapping[str, str | None] = old_files if old_files else {}
+        self.err: Exception | None = err
+        self.partial_results: dict[str, GeneratorPartialResult] = partial_result or {}
+        self.entire_results: dict[str, GeneratorEntireResult] = entire_result or {}
+        self.old_json_fragment_files: dict[str, Any] = old_json_fragment_files or {}
+        self.new_json_fragment_files: dict[str, tuple[Any, str | None]] = new_json_fragment_files or {}
+        self.json_fragment_results: dict[str, GeneratorJSONFragmentResult] = json_fragment_result or {}
+        self.implicit_rules: dict[str, Any] = implicit_rules or OrderedDict()
+        self.perf: dict[str, dict[str, float]] = perf or {}
 
         # safe acl and configs with it applied
-        self.acl_safe_rules: MutableMapping = acl_safe_rules or {}
-        self.safe_old: MutableMapping = safe_old if safe_old else OrderedDict()
-        self.safe_new: MutableMapping = safe_new if safe_new else OrderedDict()
-        self.safe_new_files: MutableMapping = safe_new_files if safe_new_files else {}
-        self.safe_new_json_fragment_files: MutableMapping = safe_new_json_fragment_files or {}
+        self.acl_safe_rules: MutableMapping[str, Any] = acl_safe_rules or {}
+        self.safe_old: MutableMapping[str, Any] = safe_old if safe_old else OrderedDict()
+        self.safe_new: MutableMapping[str, Any] = safe_new if safe_new else OrderedDict()
+        self.safe_new_files: MutableMapping[str, tuple[str, str]] = safe_new_files if safe_new_files else {}
+        self.safe_new_json_fragment_files: dict[str, tuple[Any, str | None]] = safe_new_json_fragment_files or {}
 
-        self.filter_acl_rules: Optional[MutableMapping] = filter_acl_rules
+        self.filter_acl_rules: MutableMapping[str, Any] | None = filter_acl_rules
 
-    def get_old(self, safe: bool = False) -> MutableMapping:
+    def get_old(self, safe: bool = False) -> MutableMapping[str, Any]:
         if safe:
             return self.safe_old
 
         return self.old
 
-    def get_new(self, safe: bool = False) -> MutableMapping:
+    def get_new(self, safe: bool = False) -> MutableMapping[str, Any]:
         if safe:
             return self.safe_new
 
         return self.new
 
-    def get_acl_rules(self, safe: bool = False) -> MutableMapping:
+    def get_acl_rules(self, safe: bool = False) -> MutableMapping[str, Any]:
         if safe:
             return self.acl_safe_rules
 
         return self.acl_rules
 
-    def get_new_files(self, safe: bool = False) -> MutableMapping:
+    def get_new_files(self, safe: bool = False) -> MutableMapping[str, tuple[str, str]]:
         if safe:
             return self.safe_new_files
 
         return self.new_files
 
-    def get_new_file_fragments(self, safe: bool = False) -> Dict[str, Tuple[Any, Optional[str]]]:
+    def get_new_file_fragments(self, safe: bool = False) -> dict[str, tuple[Any, str | None]]:
         if safe:
             return self.safe_new_json_fragment_files
 

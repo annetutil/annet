@@ -16,43 +16,43 @@ class MatchExpr:
     def __init__(self, expr: Callable[[Any], Any] = identity):
         self.expr = expr
 
-    def __getattr__(self, item: str):
+    def __getattr__(self, item: str) -> "MatchExpr":
         return MatchExpr(lambda x: getattr(self.expr(x), item))
 
-    def __getitem__(self, item: Any):
+    def __getitem__(self, item: Any) -> "MatchExpr":
         return MatchExpr(lambda x: self.expr(x)[item])
 
-    def __eq__(self, other) -> "MatchExpr":  # type: ignore[override]  # https://github.com/python/mypy/issues/5951
+    def __eq__(self, other: Any) -> "MatchExpr":  # type: ignore[override]  # https://github.com/python/mypy/issues/5951
         if isinstance(other, MatchExpr):
             return MatchExpr(lambda x: self.expr(x) == other.expr(x))
         else:
             return MatchExpr(lambda x: self.expr(x) == other)
 
-    def __ne__(self, other) -> "MatchExpr":  # type: ignore[override]  # https://github.com/python/mypy/issues/5951
+    def __ne__(self, other: Any) -> "MatchExpr":  # type: ignore[override]  # https://github.com/python/mypy/issues/5951
         if isinstance(other, MatchExpr):
             return MatchExpr(lambda x: self.expr(x) != other.expr(x))
         else:
             return MatchExpr(lambda x: self.expr(x) != other)
 
-    def __lt__(self, other) -> "MatchExpr":
+    def __lt__(self, other: Any) -> "MatchExpr":
         if isinstance(other, MatchExpr):
             return MatchExpr(lambda x: self.expr(x) < other.expr(x))
         else:
             return MatchExpr(lambda x: self.expr(x) < other)
 
-    def __gt__(self, other) -> "MatchExpr":
+    def __gt__(self, other: Any) -> "MatchExpr":
         if isinstance(other, MatchExpr):
             return MatchExpr(lambda x: self.expr(x) > other.expr(x))
         else:
             return MatchExpr(lambda x: self.expr(x) > other)
 
-    def __le__(self, other) -> "MatchExpr":
+    def __le__(self, other: Any) -> "MatchExpr":
         if isinstance(other, MatchExpr):
             return MatchExpr(lambda x: self.expr(x) <= other.expr(x))
         else:
             return MatchExpr(lambda x: self.expr(x) <= other)
 
-    def __ge__(self, other) -> "MatchExpr":
+    def __ge__(self, other: Any) -> "MatchExpr":
         if isinstance(other, MatchExpr):
             return MatchExpr(lambda x: self.expr(x) >= other.expr(x))
         else:
@@ -80,11 +80,11 @@ Right = MatchExpr()[1]
 
 
 class PeerNameTemplate:
-    def __init__(self, raw_str):
+    def __init__(self, raw_str: str) -> None:
         self._str = str(raw_str)
         self._regex, self._types = self._compile(self._str)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self._str
 
     @staticmethod

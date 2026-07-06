@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 import abc
-import inspect
 import os
 import re
 import sys
 import time
 import warnings
 from collections import OrderedDict as odict
+from collections.abc import Callable, Iterator, MutableMapping
 from itertools import chain, groupby
 from operator import itemgetter
 from typing import (
@@ -16,6 +18,7 @@ from typing import (
     List,
     Mapping,
     Set,
+    TextIO,
     Tuple,
     Union,
     cast,
@@ -41,7 +44,7 @@ from annet.output import format_file_diff, output_driver_connector, print_err_la
 from annet.parallel import Parallel, TaskResult
 from annet.reference import RefTracker
 from annet.rulebook import deploying
-from annet.storage import Device, get_storage
+from annet.storage import Device, Storage, get_storage
 from annet.types import Diff, ExitCode, OldNewResult, Op, PCDiff
 from annet.vendors import registry_connector, tabparser
 
@@ -49,10 +52,17 @@ from annet.vendors import registry_connector, tabparser
 DEFAULT_INDENT = "  "
 
 
-def patch_from_pre(pre, hw, rb, add_comments, ref_track=None, do_commit=True):
+def patch_from_pre(
+    pre: Any,
+    hw: HardwareView,
+    rb: Any,
+    add_comments: bool,
+    ref_track: RefTracker | None = None,
+    do_commit: bool = True,
+) -> patching.PatchTree:
     if not ref_track:
         ref_track = RefTracker()
-    orderer = patching.Orderer(rb["ordering"], hw.vendor)
+    orderer = patching.Orderer(rb["ordering"], cast(str, hw.vendor))
     orderer.ref_insert(ref_track)
     return patching.make_patch(
         pre=pre,
@@ -65,8 +75,16 @@ def patch_from_pre(pre, hw, rb, add_comments, ref_track=None, do_commit=True):
 
 
 def _diff_and_patch(
-    device, old, new, acl_rules, filter_acl_rules, add_comments, ref_track=None, do_commit=True, rb=None
-) -> Tuple[Diff, Dict]:
+    device: Device,
+    old: Any,
+    new: Any,
+    acl_rules: Any,
+    filter_acl_rules: Any,
+    add_comments: bool,
+    ref_track: RefTracker | None = None,
+    do_commit: bool = True,
+    rb: Any = None,
+) -> tuple[Diff, patching.PatchTree]:
     if rb is None:
         rb = rulebook.get_rulebook(device.hw)
     # [NOCDEV-5532] Передаем в diff только релевантные для logic'a части конфига
@@ -83,7 +101,9 @@ def _diff_and_patch(
 
 
 # =====
-def _read_old_new_diff_patch(old: Dict[str, Dict], new: Dict[str, Dict], hw: HardwareView, add_comments: bool):
+def _read_old_new_diff_patch(
+    old: Dict[str, Dict[str, Any]], new: Dict[str, Dict[str, Any]], hw: HardwareView, add_comments: bool
+) -> tuple[rulebook.Rulebook, Diff, dict[str, Any], patching.PatchTree]:
     rb = rulebook.get_rulebook(hw)
     diff_obj = patching.make_diff(old, new, rb, [])
     diff_obj = patching.strip_unchanged(diff_obj)
@@ -106,15 +126,19 @@ def _read_old_new_configs(old_path: str, new_path: str, empty_missing: bool = Fa
         with open(path) as f:
             ret.append(f.read())
 
-    return tuple(ret)
+    return ret[0], ret[1]
 
 
-def _read_old_new_hw(old_path: str, old_config: str, new_path: str, new_config: str, args: cli_args.FileInputOptions):
+def _read_old_new_hw(
+    old_path: str, old_config: str, new_path: str, new_config: str, args: cli_args.FileInputOptions
+) -> tuple[Any, Any, HardwareView]:
     _logger = get_logger()
 
-    hw = args.hw
+    hw: HardwareView
     if isinstance(args.hw, str):
         hw = HardwareView(args.hw, "")
+    else:
+        hw = args.hw
 
     try:
         old, old_hw, old_score = _parse_device_config(old_config, hw)
@@ -138,7 +162,7 @@ def _read_old_new_hw(old_path: str, old_config: str, new_path: str, new_config: 
 
 
 @tracing.function
-def _read_old_new_cfgdumps(args: cli_args.FileInputOptions):
+def _read_old_new_cfgdumps(args: cli_args.FileInputOptions) -> Iterator[tuple[str, str]]:
     _logger = get_logger()
     old_path, new_path = os.path.normpath(args.old), os.path.normpath(args.new)
     if not os.path.isdir(old_path):
@@ -167,8 +191,8 @@ def _read_old_new_cfgdumps(args: cli_args.FileInputOptions):
         yield (old_path_name, new_path_name)
 
 
-def _parse_device_config(text, hw):
-    score = 1
+def _parse_device_config(text: str, hw: HardwareView) -> tuple[Any, HardwareView, float]:
+    score: float = 1
     vendor_registry = registry_connector.get()
 
     if not hw:
@@ -183,13 +207,15 @@ def _parse_device_config(text, hw):
 
 
 # =====
-def _format_patch_blocks(patch_tree, hw, indent):
+def _format_patch_blocks(patch_tree: patching.PatchTree, hw: HardwareView, indent: str) -> str:
     formatter = registry_connector.get().match(hw).make_formatter(indent=indent)
     return formatter.patch(patch_tree)
 
 
 # =====
-def _print_pre_as_diff(pre, show_rules, indent, file=None, _level=0):
+def _print_pre_as_diff(
+    pre: dict[str, Any], show_rules: bool, indent: str, file: TextIO | None = None, _level: int = 0
+) -> None:
     for raw_rule, content in sorted(pre.items(), key=itemgetter(0)):
         rule_printed = False
         for op, sign in [  # FIXME: Not very effective
@@ -227,7 +253,7 @@ class PoolProgressLogger:
     def __init__(self, device_fqdns: Dict[int, str]):
         self.device_fqdns = device_fqdns
 
-    def __call__(self, pool: Parallel, task_result: TaskResult):
+    def __call__(self, pool: Parallel, task_result: TaskResult) -> TaskResult:
         progress_logger = get_logger("progress")
         perc = int(pool.tasks_done / len(self.device_fqdns) * 100)
 
@@ -253,22 +279,25 @@ class PoolProgressLogger:
         return task_result
 
 
-def log_host_progress_cb(pool: Parallel, task_result: TaskResult):
+def log_host_progress_cb(pool: Parallel, task_result: TaskResult) -> None:
     warnings.warn(
         "log_host_progress_cb is deprecated, use PoolProgressLogger",
         DeprecationWarning,
         stacklevel=2,
     )
     args = cast(cli_args.QueryOptions, pool.args[0])
-    connector = get_storage()
+    connector, _ = get_storage()
     storage_opts = connector.opts().parse_params({}, args)
-    with connector.storage()(storage_opts) as storage:
+    storage_factory = cast(Callable[[Any], Storage], connector.storage())
+    with storage_factory(storage_opts) as storage:
         fqdns = storage.resolve_fdnds_by_query(args.query)
-    PoolProgressLogger(device_fqdns=fqdns)(pool, task_result)
+    # Deprecated path: PoolProgressLogger indexes by device_id, so preserve the
+    # historical positional lookup by keying the fqdns on their index.
+    PoolProgressLogger(device_fqdns=dict(enumerate(fqdns)))(pool, task_result)
 
 
 # =====
-def gen(args: cli_args.ShowGenOptions, loader: ann_gen.Loader):
+def gen(args: cli_args.ShowGenOptions, loader: ann_gen.Loader) -> tuple[Mapping[Any, Any], Mapping[Any, BaseException]]:
     """Сгенерировать конфиг для устройств"""
     stdin = args.stdin(filter_acl=args.filter_acl, config=None)
 
@@ -283,7 +312,9 @@ def gen(args: cli_args.ShowGenOptions, loader: ann_gen.Loader):
 # =====
 
 
-def patch(args: cli_args.ShowPatchOptions, loader: ann_gen.Loader):
+def patch(
+    args: cli_args.ShowPatchOptions, loader: ann_gen.Loader
+) -> tuple[Mapping[Any, Any], Mapping[Any, BaseException]]:
     """Сгенерировать патч для устройств"""
     current_state = annet.lib.do_async(
         ann_gen.get_current_state(
@@ -305,13 +336,13 @@ def patch(args: cli_args.ShowPatchOptions, loader: ann_gen.Loader):
 
 
 def _patch_worker(
-    device_id,
+    device_id: int,
     args: cli_args.ShowPatchOptions,
-    stdin,
+    stdin: dict[str, str | None],
     loader: ann_gen.Loader,
     filterer: filtering.Filterer,
     current_state: ann_gen.CurrentState,
-):
+) -> Iterator[tuple[str, str, bool]]:
     for res, _, patch_tree in res_diff_patch(device_id, args, stdin, loader, filterer, current_state):
         old_files = res.old_files
         new_files = res.get_new_files(args.acl_safe)
@@ -322,7 +353,7 @@ def _patch_worker(
                 if old_files.get(path) != cfg_text:
                     yield label, cfg_text, False
         elif res.old_json_fragment_files or new_json_fragment_files:
-            for path, (new_json_cfg, _cmds) in new_json_fragment_files.items():
+            for path, (new_json_cfg, _json_cmds) in new_json_fragment_files.items():
                 label = res.device.hostname + os.sep + path
                 old_json_cfg = res.old_json_fragment_files[path]
                 json_patch = jsontools.make_patch(old_json_cfg, new_json_cfg)
@@ -341,13 +372,13 @@ def _patch_worker(
 
 # =====
 def res_diff_patch(
-    device_id,
+    device_id: int,
     args: cli_args.ShowPatchOptions,
-    stdin,
+    stdin: dict[str, str | None],
     loader: ann_gen.Loader,
     filterer: filtering.Filterer,
     current_state: ann_gen.CurrentState,
-) -> Iterable[Tuple[OldNewResult, Dict, Dict]]:
+) -> Iterable[tuple[OldNewResult, Diff | None, patching.PatchTree | None]]:
     for res in ann_gen.old_new(
         args,
         config=args.config,
@@ -397,7 +428,10 @@ def diff(
         fqdns = {k: v for k, v in loader.device_fqdns.items() if k in device_ids}
         pool.add_callback(PoolProgressLogger(fqdns))
 
-    return pool.run(device_ids, args.tolerate_fails, args.strict_exit_code)
+    return cast(
+        "tuple[Mapping[Device, Union[Diff, PCDiff]], Mapping[Device, Exception]]",
+        pool.run(device_ids, args.tolerate_fails, args.strict_exit_code),
+    )
 
 
 def collapse_texts(texts: Mapping[str, str | Generator[str, None, None]]) -> Mapping[Tuple[str, ...], str]:
@@ -406,15 +440,15 @@ def collapse_texts(texts: Mapping[str, str | Generator[str, None, None]]) -> Map
     :param texts:
     :return: словарь с несколькими хостнеймами в ключе.
     """
-    diffs_with_orig = {}
+    diffs_with_orig: dict[str, tuple[str, list[str]]] = {}
     for key, value in texts.items():
-        if inspect.isgenerator(value):
-            lines = list(value)
-            diffs_with_orig[key] = ["".join(lines), lines]
+        if isinstance(value, str):
+            diffs_with_orig[key] = (value, value.splitlines())
         else:
-            diffs_with_orig[key] = [value, value.splitlines()]
+            lines = list(value)
+            diffs_with_orig[key] = ("".join(lines), lines)
 
-    res = {}
+    res: dict[tuple[str, ...], str] = {}
     for _, collapsed_diff_iter in groupby(
         sorted(diffs_with_orig.items(), key=lambda x: (x[0], x[1][1])), key=lambda x: x[1][1]
     ):
@@ -425,36 +459,36 @@ def collapse_texts(texts: Mapping[str, str | Generator[str, None, None]]) -> Map
 
 
 class DeployerJob(abc.ABC):
-    def __init__(self, device, args: cli_args.DeployOptions):
+    def __init__(self, device: Device, args: cli_args.DeployOptions) -> None:
         self.args = args
         self.device = device
         self.add_comments = False
-        self.diff_lines = []
+        self.diff_lines: list[str] = []
         self.cmd_lines: List[str] = []
-        self.deploy_cmds = odict()
-        self.diffs = {}
-        self.failed_configs = {}
+        self.deploy_cmds: odict[Device, Any] = odict()
+        self.diffs: dict[Device, Any] = {}
+        self.failed_configs: dict[str, Exception] = {}
         self._has_diff = False
 
     @abc.abstractmethod
-    def parse_result(self, res):
+    def parse_result(self, res: OldNewResult) -> None:
         pass
 
-    def collapseable_diffs(self):
+    def collapseable_diffs(self) -> Mapping[Device, Diff]:
         return {}
 
-    def has_diff(self):
+    def has_diff(self) -> bool:
         return self._has_diff
 
     @staticmethod
-    def from_device(device, args: cli_args.DeployOptions):
+    def from_device(device: Device, args: cli_args.DeployOptions) -> DeployerJob:
         if device.hw.vendor == "pc":
             return PCDeployerJob(device, args)
         return CliDeployerJob(device, args)
 
 
 class CliDeployerJob(DeployerJob):
-    def parse_result(self, res: OldNewResult):
+    def parse_result(self, res: OldNewResult) -> None:
         device = res.device
         old = res.get_old(self.args.acl_safe)
         new = res.get_new(self.args.acl_safe)
@@ -486,12 +520,12 @@ class CliDeployerJob(DeployerJob):
         for cmd in deployer_driver.build_exit_cmdlist(device.hw):
             self.deploy_cmds[device].add_cmd(cmd)
 
-    def collapseable_diffs(self):
+    def collapseable_diffs(self) -> Mapping[Device, Diff]:
         return self.diffs
 
 
 class PCDeployerJob(DeployerJob):
-    def parse_result(self, res: ann_gen.OldNewResult):
+    def parse_result(self, res: ann_gen.OldNewResult) -> None:
         device = res.device
         old_files = res.old_files
         new_files = res.get_new_files(self.args.acl_safe)
@@ -512,14 +546,17 @@ class PCDeployerJob(DeployerJob):
         reload_cmds: Dict[str, bytes] = {}
         generator_types: Dict[str, GeneratorType] = {}
         differ = file_differ_connector.get()
-        for generator_type, pc_files in [
+        pc_file_groups: list[tuple[GeneratorType, Mapping[str, tuple[Any, str | None]]]] = [
             (GeneratorType.ENTIRE, new_files),
             (GeneratorType.JSON_FRAGMENT, new_json_fragment_files),
-        ]:
+        ]
+        for generator_type, pc_files in pc_file_groups:
             for file, (file_content_or_json_cfg, cmds) in pc_files.items():
                 if generator_type == GeneratorType.ENTIRE:
                     file_content: str = file_content_or_json_cfg
-                    diff_content = "\n".join(differ.diff_file(res.device.hw, file, old_files.get(file), file_content))
+                    diff_content = "\n".join(
+                        differ.diff_file(res.device.hw, file, old_files.get(file) or "", file_content)
+                    )
                 else:  # generator_type == GeneratorType.JSON_FRAGMENT
                     vendor = registry_connector.get().match(res.device.hw)
                     old_json_cfg = old_json_fragment_files[file]
@@ -539,7 +576,7 @@ class PCDeployerJob(DeployerJob):
                     self.diff_lines.append("= %s/%s " % (device.hostname, file))
                     self.diff_lines.extend([diff_content, ""])
 
-                    if enable_reload:
+                    if enable_reload and cmds is not None:
                         reload_cmds[file] = cmds.encode()
                         self.cmd_lines.append("= Deploy cmds %s/%s " % (device.hostname, file))
                         self.cmd_lines.extend([cmds, ""])
@@ -558,7 +595,7 @@ class PCDeployerJob(DeployerJob):
             cmds_pre_files = {}
             rules = rulebook.get_rulebook(device.hw)["deploying"]
             for file, content in self.deploy_cmds[device]["files"].items():
-                rule = deploying.match_deploy_rule(rules, [file], content)
+                rule = deploying.match_deploy_rule(rules, (file,), content)
                 before_more, after_more = annet.deploy.make_apply_commands(
                     rule, res.device.hw, do_commit=True, do_finalize=True, path=file
                 )
@@ -574,17 +611,17 @@ class Deployer:
     def __init__(self, args: cli_args.DeployOptions):
         self.args = args
 
-        self.cmd_lines = []
-        self.deploy_cmds = odict()
-        self.diffs = {}
+        self.cmd_lines: list[str] = []
+        self.deploy_cmds: odict[Device, Any] = odict()
+        self.diffs: dict[Device, Any] = {}
         self.failed_configs: Dict[str, Exception] = {}
         self.fqdn_to_device: Dict[str, Device] = {}
         self.empty_diff_hostnames: Set[str] = set()
 
-        self._collapseable_diffs = {}
+        self._collapseable_diffs: dict[Device, Diff] = {}
         self._diff_lines: List[str] = []
 
-    def parse_result(self, job: DeployerJob, result: ann_gen.OldNewResult):
+    def parse_result(self, job: DeployerJob, result: ann_gen.OldNewResult) -> None:
         logger = get_logger(job.device.hostname)
 
         job.parse_result(result)
@@ -668,10 +705,13 @@ class Deployer:
             ans = ask.loop()
         return ans
 
-    def check_diff(self, result: annet.deploy.DeployResult, loader: ann_gen.Loader):
-        diff_args = self.args.copy_from(
-            self.args,
-            config="running",
+    def check_diff(self, result: annet.deploy.DeployResult, loader: ann_gen.Loader) -> None:
+        diff_args = cast(
+            cli_args.DeployOptions,
+            self.args.copy_from(
+                self.args,
+                config="running",
+            ),
         )
         if not diff_args.query:
             return
@@ -687,12 +727,14 @@ class Deployer:
             self.failed_configs[loader.get_device(device_id).fqdn] = exc
 
         # "collapse" non-PC diffs
-        diffs_by_device_id = ann_diff.collapse_diffs(
-            {
-                loader.get_device(device_id): diff
-                for device_id, diff in diffs.items()
-                if diff and not isinstance(diff, PCDiff)
-            }
+        diffs_by_device_id: dict[tuple[Device, ...], Diff | PCDiff] = dict(
+            ann_diff.collapse_diffs(
+                {
+                    loader.get_device(device_id): diff
+                    for device_id, diff in diffs.items()
+                    if diff and not isinstance(diff, PCDiff)
+                }
+            )
         )
         # add PC diffs as is
         diffs_by_device_id.update(
@@ -746,7 +788,7 @@ async def adeploy(
         max_slots=args.max_slots,
     )
 
-    device_ids = [d.id for d in loader.devices]
+    device_ids = cast("list[int]", [d.id for d in loader.devices])
     for res in ann_gen.old_new(
         args,
         config=args.config,
@@ -781,6 +823,7 @@ async def adeploy(
                 progress_bar.start_terminal_refresher()
                 result = await deploy_driver.bulk_deploy(deploy_cmds, args, progress_bar=progress_bar)
                 await progress_bar.wait_for_exit()
+            assert progress_bar.screen is not None
             progress_bar.screen.clear()
             progress_bar.stop_terminal_refresher()
         else:
@@ -809,7 +852,7 @@ async def adeploy(
     return ret
 
 
-def file_diff(args: cli_args.FileDiffOptions):
+def file_diff(args: cli_args.FileDiffOptions) -> tuple[Mapping[Any, Any], Mapping[Any, BaseException]]:
     """Создать дифф по рулбуку между файлами или каталогами"""
     old_new = list(_read_old_new_cfgdumps(args))
     pool = Parallel(file_diff_worker, args).tune_args(args)
@@ -820,15 +863,18 @@ def file_diff_worker(
     old_new: Tuple[str, str], args: cli_args.FileDiffOptions
 ) -> Generator[Tuple[str, str, bool], None, None]:
     old_path, new_path = old_new
-    hw = args.hw
+    hw: HardwareView
     if isinstance(args.hw, str):
         hw = HardwareView(args.hw, "")
+    else:
+        hw = args.hw
 
     if os.path.isdir(old_path) or os.path.isdir(new_path):
         if os.path.exists(old_path) or not args.include_missing:
             old_files = ann_gen.load_pc_config(old_path)
         else:
             old_files = {}
+        new_files: dict[str, tuple[str, str | None]]
         if os.path.exists(new_path) or not args.include_missing:
             new_files = {
                 relative_cfg_path: (cfg_text, "")
@@ -856,7 +902,7 @@ def file_diff_worker(
 
 
 @tracing.function
-def file_patch(args: cli_args.FilePatchOptions):
+def file_patch(args: cli_args.FilePatchOptions) -> tuple[Mapping[Any, Any], Mapping[Any, BaseException]]:
     """Создать патч между файлами или каталогами"""
     old_new = list(_read_old_new_cfgdumps(args))
     pool = Parallel(file_patch_worker, args).tune_args(args)
@@ -864,7 +910,7 @@ def file_patch(args: cli_args.FilePatchOptions):
 
 
 def file_patch_worker(
-    old_new: Tuple[str, str], args: cli_args.FileDiffOptions
+    old_new: Tuple[str, str], args: cli_args.FilePatchOptions
 ) -> Generator[Tuple[str, str, bool], None, None]:
     old_path, new_path = old_new
     if os.path.isdir(old_path) and os.path.isdir(new_path):
@@ -883,7 +929,7 @@ def file_patch_worker(
             yield os.path.basename(new_path), patch_text, False
 
 
-def guess_hw(config_text: str):
+def guess_hw(config_text: str) -> tuple[HardwareView, float]:
     """Пытаемся угадать вендора и hw на основе
     текста конфига и annet/rulebook/texts/*.rul"""
     scores = []
@@ -910,7 +956,7 @@ def guess_hw(config_text: str):
     return scores[0]
 
 
-def _count_pre_score(top_pre) -> float:
+def _count_pre_score(top_pre: dict[str, Any]) -> float:
     """Обходим вширь pre-конфиг
     и подсчитываем количество заматчившихся
     правил на каждом из уровней.
@@ -936,5 +982,5 @@ def _count_pre_score(top_pre) -> float:
         result <<= i.bit_length()
         result += i
     if result > 0:
-        result = 1 - (1 / result)
+        return 1.0 - (1 / result)
     return float(result)

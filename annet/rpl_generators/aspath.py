@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from typing import Any
 
 from annet.generators import PartialGenerator
 from annet.rpl import MatchField, RouteMap, RoutingPolicy
+from annet.storage import Device
 
 from .entities import AsPathFilter
 
@@ -38,33 +39,33 @@ class AsPathFilterGenerator(PartialGenerator, ABC):
         policies = self.get_policies(device)
         return get_used_as_path_filters(filters, policies)
 
-    def acl_huawei(self, _):
+    def acl_huawei(self, _: Device) -> str:
         return r"""
         ip as-path-filter
         """
 
-    def run_huawei(self, device: Any):
+    def run_huawei(self, device: Any) -> Iterator[Sequence[str]]:
         for as_path_filter in self.get_used_as_path_filters(device):
             values = "_".join((x for x in as_path_filter.filters if x != ".*"))
             yield "ip as-path-filter", as_path_filter.name, "index 10 permit", f"_{values}_"
 
-    def acl_arista(self, _):
+    def acl_arista(self, _: Device) -> str:
         return r"""
         ip as-path access-list
         """
 
-    def run_arista(self, device: Any):
+    def run_arista(self, device: Any) -> Iterator[Sequence[str]]:
         for as_path_filter in self.get_used_as_path_filters(device):
             values = "_".join((x for x in as_path_filter.filters if x != ".*"))
             yield "ip as-path access-list", as_path_filter.name, "permit", f"_{values}_"
 
-    def acl_iosxr(self, _):
+    def acl_iosxr(self, _: Device) -> str:
         return r"""
         as-path-set *
             ~ %global=1
         """
 
-    def run_iosxr(self, device: Any):
+    def run_iosxr(self, device: Any) -> Iterator[Sequence[str]]:
         for as_path_filter in self.get_used_as_path_filters(device):
             with self.block("as-path-set", as_path_filter.name):
                 for n, filter_item in enumerate(as_path_filter.filters):
@@ -74,18 +75,18 @@ class AsPathFilterGenerator(PartialGenerator, ABC):
                         comma = ""
                     yield "ios-regex", f"'{filter_item}'{comma}"
 
-    def acl_juniper(self, _):
+    def acl_juniper(self, _: Device) -> str:
         return r"""
         policy-options  %cant_delete
             as-path ~
         """
 
-    def _juniper_as_path(self, name: str, as_path_member: str):
+    def _juniper_as_path(self, name: str, as_path_member: str) -> Iterator[Sequence[str]]:
         if not as_path_member.isnumeric():
             as_path_member = f'"{as_path_member}"'
         yield "as-path", name, as_path_member
 
-    def run_juniper(self, device: Any):
+    def run_juniper(self, device: Any) -> Iterator[Sequence[str]]:
         for as_path_filter in self.get_used_as_path_filters(device):
             # TODO could be implemented via as-path-groups
             # But we need to provide as_path_filters to policy generator

@@ -1,16 +1,26 @@
 import copy
 import re
+from collections.abc import Iterator
+from typing import Any
 
 from annet.annlib.types import Op
 from annet.rulebook import common
 
 
-def rp_node(rule, key, diff, **_):
+def rp_node(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     # route-policy NAME ACTION node NUM
     (rp_name, node_id) = key
     if diff[Op.REMOVED]:
         if diff[Op.ADDED]:
-            sub_diff = {Op.AFFECTED: [], Op.ADDED: [], Op.REMOVED: [], Op.MOVED: [], Op.UNCHANGED: []}
+            sub_diff: dict[str, list[dict[str, Any]]] = {
+                Op.AFFECTED: [],
+                Op.ADDED: [],
+                Op.REMOVED: [],
+                Op.MOVED: [],
+                Op.UNCHANGED: [],
+            }
             sub_diff[Op.AFFECTED] = diff[Op.REMOVED]
             yield from common.default(rule, key, sub_diff)
         else:
@@ -20,11 +30,15 @@ def rp_node(rule, key, diff, **_):
         yield from common.default(rule, key, diff)
 
 
-def undo_redo(rule, key, diff, **_):
+def undo_redo(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     yield from common.undo_redo(rule, key, diff, **_)
 
 
-def prefix_list(rule, key, diff, **kwargs):
+def prefix_list(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **kwargs: Any
+) -> Iterator[tuple[bool, str, Any]]:
     # To determine whether the prefix list is being fully modified,
     # the key (family, name) is defined in the h3c.rul rulebook.
     # However, from the command’s point of view, each index represents a separate command.
@@ -37,7 +51,7 @@ def prefix_list(rule, key, diff, **kwargs):
             # ip ipv6-prefix PFXS_SPECIALv6 index 20 ..
             _ip, _family, _name, _index, index, *_ = row["row"].split()
             if index not in diff_by_index:
-                sub_diff = {op: [] for op in diff.keys()}
+                sub_diff: dict[str, list[dict[str, Any]]] = {op: [] for op in diff.keys()}
                 diff_by_index[index] = sub_diff
             diff_by_index[index][op].append(row)
 
@@ -69,7 +83,9 @@ def prefix_list(rule, key, diff, **kwargs):
             yield (False, f"undo ip {family}-prefix {name} index {stub_index}", None)
 
 
-def static(rule, key, diff, **_):
+def static(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     """
     To roll back a static route, we actually need to pass almost all arguments
     except for the various "track" options.
@@ -90,7 +106,9 @@ def static(rule, key, diff, **_):
     yield from common.default(rule, key, diff)
 
 
-def port_queue(rule, key, diff, **_):
+def port_queue(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     """
     To roll back the port-queue configuration on an interface, only a partial parameter specification is required.
     Example of disabling/enabling:
@@ -109,17 +127,21 @@ def port_queue(rule, key, diff, **_):
     yield from common.default(rule, key, diff)
 
 
-def netstream_undo(rule, key, diff, **_):
+def netstream_undo(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     if diff[Op.REMOVED]:
         # The only part we need is the last keyword: inbound or outbound
         # Unfortunately, key is a tuple so we cast it to a list and back
-        key = list(key)
-        key[1] = key[1].split(" ")[-1]
-        key = tuple(key)
+        key_parts = list(key)
+        key_parts[1] = key_parts[1].split(" ")[-1]
+        key = tuple(key_parts)
     yield from common.default(rule, key, diff)
 
 
-def snmpagent_sysinfo_version(rule, key, diff, **_):
+def snmpagent_sysinfo_version(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     """
     Special handling for SNMP sys-info version:
     If device has 'snmp-agent sys-info version v3' that must be removed,
@@ -136,7 +158,9 @@ def snmpagent_sysinfo_version(rule, key, diff, **_):
     yield from common.default(rule, key, diff)
 
 
-def vty_acl_undo(rule, key, diff, **_):
+def vty_acl_undo(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     if diff[Op.REMOVED]:
         chunks = key[0].split()
         result_chunks = ["undo acl"]
@@ -148,9 +172,11 @@ def vty_acl_undo(rule, key, diff, **_):
         yield from common.default(rule, key, diff)
 
 
-def port_split(rule, key, diff, **_):
+def port_split(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     # pylint: disable=unused-argument
-    def _port_split(old, new, old_row, new_row):
+    def _port_split(old: list[str], new: list[str], old_row: str, new_row: str) -> Iterator[tuple[bool, str, None]]:
         removed = set(old).difference(new)
         added = set(new).difference(old)
         if old and new:
@@ -163,7 +189,7 @@ def port_split(rule, key, diff, **_):
         elif new and not old:
             yield (True, new_row, None)
 
-    def _row_slot(row):
+    def _row_slot(row: str) -> int:
         res = ""
         for ch in row:
             if ch == "/":
@@ -183,7 +209,7 @@ def port_split(rule, key, diff, **_):
         yield (True, "port split refresh", None)
 
 
-def _expand_portsplit(row):
+def _expand_portsplit(row: str) -> list[str]:
     expanded = []
     row_parts = row.split()
     for index, part in enumerate(row_parts):
@@ -198,7 +224,9 @@ def _expand_portsplit(row):
     return expanded
 
 
-def classifier(rule, key, diff, **_):
+def classifier(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     # if type changes firstly remove all if-match
     # and then recreate classifier
     if diff[Op.ADDED] and diff[Op.REMOVED]:
@@ -206,16 +234,24 @@ def classifier(rule, key, diff, **_):
     yield from common.default(rule, key, diff)
 
 
-def undo_children(rule, key, diff, **_):
-    def removed_count(subdiff):
+def undo_children(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
+    def removed_count(subdiff: dict[str, Any]) -> int:
         ret = 0
         for child in subdiff["children"].values():
             for child_diff in child["items"].values():
                 ret += len(child_diff[Op.REMOVED])
         return ret
 
-    def common_default(op, subdiff):
-        newdiff = {Op.ADDED: [], Op.REMOVED: [], Op.MOVED: [], Op.AFFECTED: [], Op.UNCHANGED: []}
+    def common_default(op: str, subdiff: dict[str, Any]) -> Iterator[tuple[bool, str, Any]]:
+        newdiff: dict[str, list[dict[str, Any]]] = {
+            Op.ADDED: [],
+            Op.REMOVED: [],
+            Op.MOVED: [],
+            Op.AFFECTED: [],
+            Op.UNCHANGED: [],
+        }
         newdiff[op] = [subdiff]
         yield from common.default(rule, key, newdiff)
 
@@ -232,7 +268,9 @@ def undo_children(rule, key, diff, **_):
         yield from common_default(Op.ADDED, subdiff)
 
 
-def clear_instead_undo(rule, key, diff, **_):
+def clear_instead_undo(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     # For some configuration lines, a persistent diff occurs because the line in the config is either explicitly enabled
     # or explicitly disabled. If it is not described in the generator (i.e., we rely on the default),
     # then by using "clear" instead of "undo" we return the configuration to its default state.
@@ -245,7 +283,9 @@ def clear_instead_undo(rule, key, diff, **_):
         yield from common.default(rule, key, diff)
 
 
-def undo_port_link_mode(rule, key, diff, **_):
+def undo_port_link_mode(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     """
     Сhanging port mode from bridge to route and back
     """
@@ -260,7 +300,9 @@ def undo_port_link_mode(rule, key, diff, **_):
             yield (True, cmd, False)
 
 
-def hardware_resource_bfd(rule, key, diff, **_):
+def hardware_resource_bfd(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     """
     Changing hardware-resource firmware-mode from software
     to hardware and back without undo
@@ -276,7 +318,9 @@ def hardware_resource_bfd(rule, key, diff, **_):
             yield (True, cmd, False)
 
 
-def change_user_password(rule, key, diff, **_):
+def change_user_password(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     """
     If we have to change password hash
     then we just push new hash to configuration
@@ -293,7 +337,9 @@ def change_user_password(rule, key, diff, **_):
             yield (True, cmd, False)
 
 
-def remove_trunk_pvid(rule, key, diff, **_):
+def remove_trunk_pvid(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     """
     Special-case undo for H3C: "port trunk pvid vlan <num>" -> "undo port trunk pvid"
     Falls back to common.default for other cases.

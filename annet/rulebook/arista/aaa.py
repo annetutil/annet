@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+from typing import Any
 
+from annet.annlib.rulebook.common import DiffDict, LogicResult
 from annet.annlib.types import Op
 
 
@@ -12,7 +14,7 @@ class UserConfig:
     secret: str
 
 
-def _parse_user_config(config_line):
+def _parse_user_config(config_line: str) -> UserConfig:
     """Convert a user config line into a dataclass. Config example:
 
     username someuser privilege 15 role network-admin secret sha512 $6$....
@@ -40,7 +42,7 @@ def _parse_user_config(config_line):
     return UserConfig(name=name, privilege=priv, role=role, secret_type=secret_type, secret=secret)
 
 
-def user(key, diff, **_):
+def user(key: tuple[str, ...], diff: DiffDict, **_: Any) -> LogicResult:
     if diff[Op.ADDED] and not diff[Op.REMOVED]:
         for add in diff[Op.ADDED]:
             yield (True, add["row"], None)

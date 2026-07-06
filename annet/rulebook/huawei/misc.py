@@ -1,9 +1,12 @@
 import copy
 import re
 from collections import namedtuple
+from collections.abc import Iterator
+from typing import Any
 
 from contextlog import get_logger
 
+from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.types import Op
 from annet.rulebook import common
 
@@ -12,7 +15,7 @@ class VRPVersion(namedtuple("VRPVersionBase", ["V", "R", "C", "SPC"])):
     ANY = object()
     ATTR_NAMES = ["V", "R", "C", "SPC"]
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, type(self)):
             return False
 
@@ -29,7 +32,7 @@ class VRPVersion(namedtuple("VRPVersionBase", ["V", "R", "C", "SPC"])):
 
         return True
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
 
@@ -47,12 +50,18 @@ def parse_version(version: str) -> VRPVersion:
 
 
 # =====
-def rp_node(rule, key, diff, **_):
+def rp_node(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
     # route-policy NAME ACTION node NUM
     (rp_name, node_id) = key
     if diff[Op.REMOVED]:
         if diff[Op.ADDED]:
-            sub_diff = {Op.AFFECTED: [], Op.ADDED: [], Op.REMOVED: [], Op.MOVED: [], Op.UNCHANGED: []}
+            sub_diff: dict[str, list[dict[str, Any]]] = {
+                Op.AFFECTED: [],
+                Op.ADDED: [],
+                Op.REMOVED: [],
+                Op.MOVED: [],
+                Op.UNCHANGED: [],
+            }
             sub_diff[Op.AFFECTED] = diff[Op.REMOVED]
             yield from common.default(rule, key, sub_diff)
         else:
@@ -62,16 +71,16 @@ def rp_node(rule, key, diff, **_):
         yield from common.default(rule, key, diff)
 
 
-def undo_redo(rule, key, diff, **_):
+def undo_redo(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
     yield from common.undo_redo(rule, key, diff, **_)
 
 
-def prefix_list(rule, key, diff, **kwargs):
+def prefix_list(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:
     # для того чтобы опредилить полностью ли изменяется
     # префикс лист в рулбуке huawei.rul описан ключ (family, name)
     # однако с точки зрения команды каждый индекс - отдельная команда
     # поэтому мы группируем их по индексу тут и передаем в common
-    diff_by_index = {}
+    diff_by_index: dict[str, common.DiffDict] = {}
     for op, rows in diff.items():
         for row in rows:
             # ожидаемый формат команды префикс-листа
@@ -79,7 +88,7 @@ def prefix_list(rule, key, diff, **kwargs):
             # ip ipv6-prefix PFXS_SPECIALv6 index 20 ..
             _ip, _family, _name, _index, index, *_ = row["row"].split()
             if index not in diff_by_index:
-                sub_diff = {op: [] for op in diff.keys()}
+                sub_diff: dict[str, list[dict[str, Any]]] = {op: [] for op in diff.keys()}
                 diff_by_index[index] = sub_diff
             diff_by_index[index][op].append(row)
 
@@ -109,7 +118,7 @@ def prefix_list(rule, key, diff, **kwargs):
             yield (False, f"undo ip {family}-prefix {name} index {stub_index}", None)
 
 
-def static(rule, key, diff, **_):
+def static(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
     """
     Для отката статического маршрута фактически необходимо передавать почти все аргументы,
     кроме различных track ...
@@ -130,7 +139,9 @@ def static(rule, key, diff, **_):
     yield from common.default(rule, key, diff)
 
 
-def undo_trust(rule, key, diff, hw, **_):
+def undo_trust(
+    rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, hw: HardwareView, **_: Any
+) -> common.LogicResult:
     """на CE свитчах команда undo trust; на S undo trust *"""
     if diff[Op.REMOVED]:
         if hw.Quidway and not hw.S6700:
@@ -141,7 +152,7 @@ def undo_trust(rule, key, diff, hw, **_):
         yield from common.default(rule, key, diff)
 
 
-def port_queue(rule, key, diff, **_):
+def port_queue(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
     """
     Для отката конфигурации port-queue на интерфейсе требуется только частичное указание параметров.
     Пример отключения/включения:
@@ -160,17 +171,19 @@ def port_queue(rule, key, diff, **_):
     yield from common.default(rule, key, diff)
 
 
-def netstream_undo(rule, key, diff, **_):
+def netstream_undo(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
     if diff[Op.REMOVED]:
         # The only part we need is the last keyword: inbound or outbound
         # Unfortunately, key is a tuple so we cast it to a list and back
-        key = list(key)
-        key[1] = key[1].split(" ")[-1]
-        key = tuple(key)
+        key_parts = list(key)
+        key_parts[1] = key_parts[1].split(" ")[-1]
+        key = tuple(key_parts)
     yield from common.default(rule, key, diff)
 
 
-def old_snmp_iface_trap_undo(rule, key, diff, hw, **_):
+def old_snmp_iface_trap_undo(
+    rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, hw: HardwareView, **_: Any
+) -> common.LogicResult:
     # хитрая логика для старый хуавеев
     # тут вместо полной команды с undo нужно сгенерить не полную строку
     if diff[Op.REMOVED]:
@@ -182,7 +195,7 @@ def old_snmp_iface_trap_undo(rule, key, diff, hw, **_):
         yield from common.default(rule, key, diff)
 
 
-def stelnet(rule, key, diff, **_):
+def stelnet(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
     # не заменяем строки stelnet ipv4 server enable и stelnet ipv6 server enable на stelnet server enable
     # чтобы не дергать SSH
     if diff[Op.REMOVED] and diff[Op.ADDED]:
@@ -195,7 +208,9 @@ def stelnet(rule, key, diff, **_):
     yield from common.default(rule, key, diff)
 
 
-def snmpagent_sysinfo_version(rule, key, diff, hw, **_):
+def snmpagent_sysinfo_version(
+    rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, hw: HardwareView, **_: Any
+) -> common.LogicResult:
     if hw.Huawei.CE and (diff[Op.ADDED] or diff[Op.REMOVED]):
         assert len(diff[Op.AFFECTED]) == 0, "WTF? Affected not empty: %r" % (diff[Op.AFFECTED])
         versions = set(["v1", "v2c", "v3"])
@@ -230,7 +245,7 @@ def snmpagent_sysinfo_version(rule, key, diff, hw, **_):
         yield from common.default(rule, key, diff)
 
 
-def vty_acl_undo(rule, key, diff, **_):
+def vty_acl_undo(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
     if diff[Op.REMOVED]:
         chunks = key[0].split()
         result_chunks = ["undo acl"]
@@ -242,9 +257,9 @@ def vty_acl_undo(rule, key, diff, **_):
         yield from common.default(rule, key, diff)
 
 
-def port_split(rule, key, diff, **_):
+def port_split(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
     # pylint: disable=unused-argument
-    def _port_split(old, new, old_row, new_row):
+    def _port_split(old: list[str], new: list[str], old_row: str, new_row: str) -> Iterator[tuple[bool, str, None]]:
         removed = set(old).difference(new)
         added = set(new).difference(old)
         if old and new:
@@ -257,7 +272,7 @@ def port_split(rule, key, diff, **_):
         elif new and not old:
             yield (True, new_row, None)
 
-    def _row_slot(row):
+    def _row_slot(row: str) -> int:
         res = ""
         for ch in row:
             if ch == "/":
@@ -277,7 +292,7 @@ def port_split(rule, key, diff, **_):
         yield (True, "port split refresh", None)
 
 
-def _expand_portsplit(row):
+def _expand_portsplit(row: str) -> list[str]:
     expanded = []
     row_parts = row.split()
     for index, part in enumerate(row_parts):
@@ -292,7 +307,7 @@ def _expand_portsplit(row):
     return expanded
 
 
-def classifier(rule, key, diff, **_):
+def classifier(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
     # если type меняется нужно сначала удалить все if-match
     # а после этого пересоздать classifier
     if diff[Op.ADDED] and diff[Op.REMOVED]:
@@ -300,16 +315,22 @@ def classifier(rule, key, diff, **_):
     yield from common.default(rule, key, diff)
 
 
-def undo_children(rule, key, diff, **_):
-    def removed_count(subdiff):
+def undo_children(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
+    def removed_count(subdiff: dict[str, Any]) -> int:
         ret = 0
         for child in subdiff["children"].values():
             for child_diff in child["items"].values():
                 ret += len(child_diff[Op.REMOVED])
         return ret
 
-    def common_default(op, subdiff):
-        newdiff = {Op.ADDED: [], Op.REMOVED: [], Op.MOVED: [], Op.AFFECTED: [], Op.UNCHANGED: []}
+    def common_default(op: str, subdiff: dict[str, Any]) -> common.LogicResult:
+        newdiff: dict[str, list[dict[str, Any]]] = {
+            Op.ADDED: [],
+            Op.REMOVED: [],
+            Op.MOVED: [],
+            Op.AFFECTED: [],
+            Op.UNCHANGED: [],
+        }
         newdiff[op] = [subdiff]
         yield from common.default(rule, key, newdiff)
 
@@ -326,7 +347,9 @@ def undo_children(rule, key, diff, **_):
         yield from common_default(Op.ADDED, subdiff)
 
 
-def clear_instead_undo(rule, key, diff, **_):
+def clear_instead_undo(
+    rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any
+) -> common.LogicResult:
     # Для ряда конфигурационных строк возникает вечный diff, поскольку в конфиге строка либо явно включена,
     # либо явно выключена. Если она не описана в генераторе, т.е. мы полагаемся на дефолт, то используя clear
     # вместо undo мы возвращаем конфиг в дефолтное состояние.

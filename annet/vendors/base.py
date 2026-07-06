@@ -1,6 +1,6 @@
 import abc
 import json
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 import yaml
 
@@ -31,7 +31,7 @@ class AbstractVendor(abc.ABC):
         """
         if is_yaml_path(path):
             return yaml.safe_load(text) or {}
-        return json.loads(text)
+        return cast("dict[str, Any]", json.loads(text))
 
     def serialize_json_fragment(self, hw: HardwareView, path: str, config: dict[str, Any]) -> str:
         """Render the canonical dict form back into the file's on-device text."""
@@ -39,7 +39,9 @@ class AbstractVendor(abc.ABC):
             return yaml.safe_dump(config, sort_keys=False, default_flow_style=False)
         return jsontools.format_json(config)
 
-    def apply(self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str) -> tuple[CommandList, CommandList]:
+    def apply(
+        self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str | None
+    ) -> tuple[CommandList, CommandList]:
         return CommandList(), CommandList()
 
     @property
@@ -64,5 +66,5 @@ class AbstractVendor(abc.ABC):
         return f"vlan{num}"
 
     @abc.abstractmethod
-    def make_formatter(self, **kwargs) -> CommonFormatter:
+    def make_formatter(self, **kwargs: Any) -> CommonFormatter:
         raise NotImplementedError

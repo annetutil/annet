@@ -1,12 +1,16 @@
 import re
 from collections import OrderedDict
+from collections.abc import Iterator
 from typing import Any
 
+from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.types import Op
 from annet.rulebook import common
 
 
-def ssh_key(rule, key, diff, hw, **_):
+def ssh_key(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], hw: HardwareView, **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     """
     При включении ssh надо еще сгенерировать ключ. По конфигу никак не понять есть ли ключ на свитче или нет.
     """
@@ -24,7 +28,9 @@ def ssh_key(rule, key, diff, hw, **_):
     yield from common.default(rule, key, diff)
 
 
-def no_ipv6_nd_suppress_ra(rule, key, diff, **_):
+def no_ipv6_nd_suppress_ra(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     """
     При конфигурации ipv6 nd на нексусах нужно добавлять
     no ipv6 nd suppress-ra
@@ -37,7 +43,9 @@ def no_ipv6_nd_suppress_ra(rule, key, diff, **_):
     yield from common.default(rule, key, diff)
 
 
-def no_ntp_distribute(rule, key, diff, **_):
+def no_ntp_distribute(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     """
     Для того, чтобы удалить NTP из CFS, сначала нужно сбросить активные
     NTP сессии.
@@ -47,7 +55,9 @@ def no_ntp_distribute(rule, key, diff, **_):
     yield from common.default(rule, key, diff)
 
 
-def banner_any(rule, key, diff, **_):
+def banner_any(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     if diff[Op.ADDED]:
         # Убираем дополнительный экранирующий сиимвол
         banner = re.sub(r"\^C", "^", diff[Op.ADDED][0]["row"])

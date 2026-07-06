@@ -1,12 +1,15 @@
-from typing import Any, Dict, Optional
+from __future__ import annotations
+
+from typing import Any, cast
 
 from dataclass_rest.exceptions import ClientError, ClientLibraryError
 
-from annet.connectors import AdapterWithConfig, AdapterWithName, T
-from annet.storage import Storage, StorageProvider
+from annet.connectors import AdapterWithConfig, AdapterWithName
+from annet.storage import Storage, StorageOpts, StorageProvider
 
 from .common.query import NetboxQuery
 from .common.status_client import NetboxStatusClient
+from .common.storage_base import BaseNetboxStorage
 from .common.storage_opts import NetboxStorageOpts
 from .v37.storage import NetboxStorageV37
 from .v41.storage import NetboxStorageV41
@@ -15,7 +18,7 @@ from .v42.storage import NetboxStorageV42
 
 def storage_factory(opts: NetboxStorageOpts) -> Storage:
     client = NetboxStatusClient(opts.url, opts.token, opts.insecure)
-    version_class_map = {
+    version_class_map: dict[str, type[BaseNetboxStorage[Any, Any, Any, Any, Any, Any]]] = {
         "3.4": NetboxStorageV37,
         "3.7": NetboxStorageV37,
         "4.0": NetboxStorageV41,
@@ -42,11 +45,11 @@ def storage_factory(opts: NetboxStorageOpts) -> Storage:
     raise Exception(f"Unsupported version: {status.netbox_version}")
 
 
-class NetboxProvider(StorageProvider, AdapterWithName, AdapterWithConfig):
+class NetboxProvider(StorageProvider, AdapterWithName, AdapterWithConfig["NetboxProvider"]):
     def __init__(
         self,
-        url: Optional[str] = None,
-        token: Optional[str] = None,
+        url: str | None = None,
+        token: str | None = None,
         insecure: bool = False,
         exact_host_filter: bool = False,
         threads: int = 1,
@@ -62,16 +65,16 @@ class NetboxProvider(StorageProvider, AdapterWithName, AdapterWithConfig):
         self.all_hosts_filter = all_hosts_filter
 
     @classmethod
-    def with_config(cls, **kwargs: Dict[str, Any]) -> T:
+    def with_config(cls, **kwargs: Any) -> "NetboxProvider":
         return cls(**kwargs)
 
-    def storage(self):
-        return storage_factory
+    def storage(self) -> type[Storage]:
+        return cast("type[Storage]", storage_factory)
 
-    def opts(self):
-        return NetboxStorageOpts
+    def opts(self) -> type[StorageOpts]:
+        return cast("type[StorageOpts]", NetboxStorageOpts)
 
-    def query(self):
+    def query(self) -> type[NetboxQuery]:
         return NetboxQuery
 
     @classmethod

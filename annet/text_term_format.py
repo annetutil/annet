@@ -1,12 +1,13 @@
+from collections.abc import Iterable, Mapping
 from itertools import groupby
 from operator import itemgetter
-from typing import Dict, List
+from typing import Any
 
 from pygments import lex
 from pygments.formatter import Formatter
 from pygments.lexer import RegexLexer
 from pygments.lexers import DiffLexer, YamlLexer  # pylint: disable=no-name-in-module
-from pygments.token import Token
+from pygments.token import Token, _TokenType
 
 from .output import TextArgs
 
@@ -46,42 +47,42 @@ class SwitchOutputLexer(RegexLexer):
     }
 
 
-class CursesFormatter(Formatter):
-    def __init__(self, **options):
-        self.colorscheme = options.pop("scheme")
+class CursesFormatter(Formatter[str]):
+    def __init__(self, **options: Any) -> None:
+        self.colorscheme: Mapping[_TokenType, str] = options.pop("scheme")
         Formatter.__init__(self, **options)
 
-    def format(self, tokensource, outfile="") -> Dict[int, List[TextArgs]]:
-        res = {}
-        tokensource = list(tokensource)
-        tmp_res = {}
+    def format_tokens(self, tokensource: Iterable[tuple[_TokenType, str]]) -> dict[int, list[TextArgs]]:
+        res: dict[int, list[TextArgs]] = {}
+        tokens = list(tokensource)
+        tmp_res: dict[int, list[tuple[str | None, str]]] = {}
         line_no = 0
-        for ttype, values in groupby(tokensource, itemgetter(0)):
+        for ttype, values in groupby(tokens, itemgetter(0)):
             color = self.colorscheme.get(ttype)
             for value in values:
                 if line_no not in tmp_res:
                     tmp_res[line_no] = []
                 if value[1].endswith("\n"):
                     if len(value[1]) > 1:
-                        tmp_res[line_no].append([color, value[1].rstrip()])
+                        tmp_res[line_no].append((color, value[1].rstrip()))
                     line_no += 1
                 else:
-                    tmp_res[line_no].append([color, value[1]])
+                    tmp_res[line_no].append((color, value[1]))
 
         for line_no, color_values in tmp_res.items():
             res[line_no] = []
-            for color, values in groupby(color_values, itemgetter(0)):
-                str_values = "".join([v[1] for v in values])
+            for color, grouped in groupby(color_values, itemgetter(0)):
+                str_values = "".join(v[1] for v in grouped)
                 res[line_no].append(TextArgs(str_values, color))
         return res
 
 
-def format_yaml(txt):
-    return CursesFormatter(scheme=YAML_TERMINAL_COLORS).format(lex(txt, YamlLexer()))
+def format_yaml(txt: str) -> dict[int, list[TextArgs]]:
+    return CursesFormatter(scheme=YAML_TERMINAL_COLORS).format_tokens(lex(txt, YamlLexer()))
 
 
-def format_diff(txt):
-    return CursesFormatter(scheme=DIFF_TERMINAL_COLORS).format(lex(txt, DiffLexer()))
+def format_diff(txt: str) -> dict[int, list[TextArgs]]:
+    return CursesFormatter(scheme=DIFF_TERMINAL_COLORS).format_tokens(lex(txt, DiffLexer()))
 
 
 LEXERS = {
@@ -91,5 +92,5 @@ LEXERS = {
 }
 
 
-def curses_format(txt, lexer) -> Dict[int, List[TextArgs]]:
-    return CursesFormatter(scheme=LEXERS[lexer][1]).format(lex(txt, LEXERS[lexer][0]()))
+def curses_format(txt: str, lexer: str) -> dict[int, list[TextArgs]]:
+    return CursesFormatter(scheme=LEXERS[lexer][1]).format_tokens(lex(txt, LEXERS[lexer][0]()))

@@ -66,16 +66,16 @@ class PatchRule(TypedDict):
 
 
 class PatchIgnoreRuleAttrs(TypedDict):
-    regexp: Pattern
-    diff_logic: Callable
+    regexp: Pattern[str]
+    diff_logic: Callable[..., Any]
     parent: bool
     context: dict[str, str]
 
 
 class PatchNormalRuleAttrs(TypedDict):
-    logic: Callable
-    diff_logic: Callable
-    regexp: Pattern
+    logic: Callable[..., Any]
+    diff_logic: Callable[..., Any]
+    regexp: Pattern[str]
     reverse: str
     comment: list[str]
     multiline: bool
@@ -176,7 +176,7 @@ class DeployRule(TypedDict):
 class DeployRuleAttrs(TypedDict):
     regexp: Pattern[str]
     timeout: int
-    apply_logic: Callable
+    apply_logic: Callable[..., Any]
     apply_logic_name: str
     dialogs: "Dialogs"
     ifcontext: list[str]

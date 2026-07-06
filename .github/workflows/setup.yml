@@ -36,7 +36,4 @@ jobs:
         tox -e ci
     - name: Run mypy
       run: |
-        tox -e mypy_ignore
-    - name: Run mypy
-      run: |
         tox -e mypy

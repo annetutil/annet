@@ -1,8 +1,12 @@
+from typing import Any
+
 from annet.annlib.types import Op
 from annet.rulebook import common
 
 
-def undo_username(rule, key, diff, **kwargs):
+def undo_username(
+    rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any
+) -> common.LogicResult:
     if diff[Op.REMOVED]:
         unchanged = kwargs["rule_pre"]["items"][key]["unchanged"]
         added = kwargs["rule_pre"]["items"][key]["added"]
@@ -18,7 +22,7 @@ def undo_username(rule, key, diff, **kwargs):
         yield from common.default(rule, key, diff)
 
 
-def undo_syslog(rule, key, diff, **kwargs):
+def undo_syslog(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:
     if diff[Op.REMOVED]:
         parts = key[1].split()
         ip = parts[0]
@@ -31,7 +35,9 @@ def undo_syslog(rule, key, diff, **kwargs):
         yield from common.default(rule, key, diff, **kwargs)
 
 
-def undo_snmp_cmnt(rule, key, diff, **kwargs):
+def undo_snmp_cmnt(
+    rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any
+) -> common.LogicResult:
     if diff[Op.REMOVED]:
         parts = key[0].split()
         community = parts[0]

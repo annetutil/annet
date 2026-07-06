@@ -1,3 +1,5 @@
+from typing import Any
+
 from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.vendors.base import AbstractVendor
@@ -9,7 +11,9 @@ from annet.vendors.tabparser import RosFormatter
 class RouterOSVendor(AbstractVendor):
     NAME = "routeros"
 
-    def apply(self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str) -> tuple[CommandList, CommandList]:
+    def apply(
+        self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str | None
+    ) -> tuple[CommandList, CommandList]:
         before, after = CommandList(), CommandList()
 
         # FIXME: пока не удалось победить \x1b[c после включения safe mode
@@ -32,7 +36,7 @@ class RouterOSVendor(AbstractVendor):
     def hardware(self) -> HardwareView:
         return HardwareView("RouterOS")
 
-    def make_formatter(self, **kwargs) -> RosFormatter:
+    def make_formatter(self, **kwargs: Any) -> RosFormatter:
         return RosFormatter(**kwargs)
 
     @property

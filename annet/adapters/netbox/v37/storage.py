@@ -1,5 +1,5 @@
 import ssl
-from typing import Callable
+from typing import Callable, cast
 
 from adaptix import P
 from adaptix.conversion import allow_unlinked_optional, get_converter, link, link_constant, link_function
@@ -101,7 +101,7 @@ class NetboxV37Adapter(
         return self.convert_device(self.netbox.dcim_device(device_id))
 
     def get_site(self, site_id: int) -> api_models.Site:
-        return self.netbox.dcim_site(site_id)
+        return cast(api_models.Site, self.netbox.dcim_site(site_id))
 
     def list_sites(self) -> list[api_models.Site]:
         return self.netbox.dcim_all_sites().results
@@ -132,13 +132,13 @@ class NetboxV37Adapter(
         return self.convert_fhrp_groups(raw_groups.results)
 
     def get_circuit(self, circuit_id: int) -> api_models.Circuit:
-        return self.netbox.circuit(circuit_id)
+        return cast(api_models.Circuit, self.netbox.circuit(circuit_id))
 
     def list_circuits(self, query: dict[str, list[str]]) -> list[api_models.Circuit]:
         return self.netbox.circuits_all(**query).results
 
     def trace_interface(self, iface_id: int) -> list[api_models.TraceTuple]:
-        return self.netbox.dcim_interface_trace(iface_id)
+        return cast(list[api_models.TraceTuple], self.netbox.dcim_interface_trace(iface_id))
 
 
 class NetboxStorageV37(

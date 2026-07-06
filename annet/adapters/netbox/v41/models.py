@@ -16,6 +16,7 @@ from annet.adapters.netbox.common.models import (
     Label,
     NetboxDevice,
     Prefix,
+    Vrf,
 )
 
 
@@ -47,7 +48,7 @@ class FHRPGroupAssignmentV41(FHRPGroupAssignment[FHRPGroupV41]):
 
 @dataclass
 class InterfaceV41(Interface[IpAddressV41, FHRPGroupAssignmentV41]):
-    def _add_new_addr(self, address_mask: str, vrf: Entity | None, family: IpFamily) -> None:
+    def _add_new_addr(self, address_mask: str, vrf: Vrf | None, family: IpFamily) -> None:
         self.ip_addresses.append(
             IpAddressV41(
                 id=0,
@@ -70,11 +71,11 @@ class NetboxDeviceV41(NetboxDevice[InterfaceV41, DeviceIpV41]):
     role: EntityWithSlug
 
     @property
-    def device_role(self):
+    def device_role(self) -> EntityWithSlug:
         warnings.warn("'device_role' is deprecated, use 'role' instead.", DeprecationWarning, stacklevel=2)
         return self.role
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.id, type(self)))
 
     def _make_interface(self, name: str, type: InterfaceType) -> InterfaceV41:

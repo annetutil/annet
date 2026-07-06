@@ -1,3 +1,5 @@
+annetbox[sync]>=1.0.0
+requests-cache>=1.2.1
 types-PyYAML
 types-Pygments
 types-colorama

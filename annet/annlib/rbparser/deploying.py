@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import functools
 import re
 from collections import OrderedDict as odict
 from collections import namedtuple
-from typing import Callable
+from typing import Any, Callable
 
 from annet.annlib.rbparser.exceptions import RulebookSyntaxError
 
@@ -10,8 +12,8 @@ from annet.annlib.rbparser.exceptions import RulebookSyntaxError
 Answer = namedtuple("Answer", ("text", "send_nl"))
 
 
-def compile_messages(tree):
-    dialogs = odict()
+def compile_messages(tree: dict[str, Any]) -> odict[MakeMessageMatcher, Answer]:
+    dialogs: odict[MakeMessageMatcher, Answer] = odict()
     for attrs in tree.values():
         if attrs["type"] == "normal":
             row: str = attrs["row"]
@@ -40,7 +42,7 @@ class MakeMessageMatcher:
         self.__text = text.strip()
         if self.__text.startswith("/") and self.__text.endswith("/"):
             regexp = re.compile(self.__text[1:-1].strip(), flags=re.I)
-            self._fn: Callable = regexp.match
+            self._fn: Callable[[str], re.Match[str] | bool | None] = regexp.match
         else:
             self._fn = lambda arg: _simplify_text(self.__text) in _simplify_text(arg)
 
@@ -48,21 +50,23 @@ class MakeMessageMatcher:
     def text(self) -> str:
         return self.__text
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "%s(%r)" % (self.__class__.__name__, self.__text)
 
     __repr__ = __str__
 
-    def __call__(self, intext):
+    def __call__(self, intext: str) -> re.Match[str] | bool | None:
         return self._fn(intext)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, MakeMessageMatcher):
+            return NotImplemented
         return type(other) is type(self) and self.__text == other.text
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash("%s_%s" % (self.__class__.__name__, self.__text))
 
 
 @functools.lru_cache()
-def _simplify_text(text):
+def _simplify_text(text: str) -> str:
     return re.sub(r"\s", "", text).lower()

@@ -48,7 +48,7 @@ class IpPrefixListMember:
     prefix: IPv4Network | IPv6Network
     or_longer: OrLonger = (None, None)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.prefix = ip_network(self.prefix)
 
 
@@ -57,10 +57,10 @@ class IpPrefixList:
     name: str
     members: list[IpPrefixListMember]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for i, m in enumerate(self.members):
             if isinstance(m, str):
-                self.members[i] = IpPrefixListMember(m)
+                self.members[i] = IpPrefixListMember(ip_network(m))
 
 
 def ip_prefix_list(

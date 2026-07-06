@@ -9,7 +9,7 @@ from annet.lib import get_context
 
 
 @functools.lru_cache(None)
-def parse_hw_model(hw_model):
+def parse_hw_model(hw_model: str) -> tuple[list[tuple[str, ...]], set[tuple[str, ...]]]:
     prepared = _prepare_db()
     (tree, all_sequences) = get_db(prepared)
     true_sequences = find_true_sequences(hw_model, tree)
