@@ -2,9 +2,7 @@ import abc
 import json
 from typing import Any, ClassVar, cast
 
-import yaml
-
-from annet.annlib import jsontools
+from annet.annlib import jsontools, yamltools
 from annet.annlib.command import CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.vendors.tabparser import CommonFormatter
@@ -30,13 +28,13 @@ class AbstractVendor(abc.ABC):
         several device kinds (or several files) can branch on hardware or file.
         """
         if is_yaml_path(path):
-            return yaml.safe_load(text) or {}
+            return yamltools.load(text) or {}
         return cast("dict[str, Any]", json.loads(text))
 
     def serialize_json_fragment(self, hw: HardwareView, path: str, config: dict[str, Any]) -> str:
         """Render the canonical dict form back into the file's on-device text."""
         if is_yaml_path(path):
-            return yaml.safe_dump(config, sort_keys=False, default_flow_style=False)
+            return yamltools.dump(config)
         return jsontools.format_json(config)
 
     def apply(
