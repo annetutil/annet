@@ -101,7 +101,11 @@ class DefaultRulebookProvider(RulebookProvider):
     }
 
     def __init__(self) -> None:
-        self.rulebook_module = get_context().get("rulebook", {}).get("module") or self.DEFAULT_RULEBOOK_MODULE
+        try:
+            context_module = get_context().get("rulebook", {}).get("module")
+        except FileNotFoundError:
+            context_module = None
+        self.rulebook_module = context_module or self.DEFAULT_RULEBOOK_MODULE
         self._rulebook_cache: dict[HardwareView, Rulebook] = {}
         self._rulebook_text_cache: dict[tuple[str, Extension, HardwareView], AnyRulebookText] = {}
 
