@@ -61,6 +61,20 @@ def test_nvos_round_trip_preserves_content_and_order():
     assert list(restored.keys()) == list(cfg.keys())
 
 
+def test_nvos_yaml_uses_1_2_typing_for_on_off():
+    # YAML 1.2 (unlike PyYAML's 1.1) keeps on/off/yes/no as strings, not booleans;
+    # they must survive the round trip as strings and not gain a version directive.
+    cfg = {"set": {"interface": {"eth0": {"link": {"state": "on", "auto-negotiate": "off"}}}}}
+    parsed = nvos_yaml_to_dict(
+        "- set:\n    interface:\n      eth0:\n        link:\n          state: on\n          auto-negotiate: off\n"
+    )
+    link = parsed["set"]["interface"]["eth0"]["link"]
+    assert link == {"state": "on", "auto-negotiate": "off"}
+    text = dict_to_nvos_yaml(cfg)
+    assert "%YAML" not in text
+    assert nvos_yaml_to_dict(text) == cfg
+
+
 def test_json_path_uses_json_codec():
     vendor = PCVendor()
     cfg = {"set": {"interface": {"eth0": None}}}

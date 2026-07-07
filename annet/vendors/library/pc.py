@@ -2,8 +2,7 @@ import os
 from collections import OrderedDict
 from typing import Any, cast
 
-import yaml
-
+from annet.annlib import yamltools
 from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.vendors.base import AbstractVendor, is_yaml_path
@@ -65,7 +64,7 @@ def nvos_yaml_to_dict(text: str) -> dict[str, Any]:
     ``[{'header': {...}}, {'set': {...}}]``. The list is order-significant and the
     keys are unique, so it maps losslessly onto an ordered dict.
     """
-    doc = yaml.safe_load(text)
+    doc = yamltools.load(text)
     if doc is None:
         return OrderedDict()
     if isinstance(doc, list):
@@ -80,4 +79,4 @@ def nvos_yaml_to_dict(text: str) -> dict[str, Any]:
 def dict_to_nvos_yaml(config: dict[str, Any]) -> str:
     """Render the canonical dict form back into NVOS' top-level list-of-maps YAML."""
     doc = [{key: value} for key, value in config.items()]
-    return yaml.safe_dump(doc, sort_keys=False, default_flow_style=False)
+    return yamltools.dump(doc)
