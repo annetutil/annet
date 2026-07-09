@@ -1,0 +1,105 @@
+test_case_1:
+    child: |
+        %inherit_from=parent
+        some 1
+            some 2
+                some 3 %not_inherit
+                    some 4
+                    some 5 %not_inherit
+    parent: |
+        some 2
+    expected: |
+        some 2
+        some 1
+            some 2
+                some 3
+                    some 4
+
+test_case_2:
+    child: |
+      %inherit_from=parent
+      rule 1
+          dialog: Child1 ::: Answer
+      rule 2
+          dialog: Parent2 ::: Answer %not_inherit
+          subrule 1 %not_inherit
+              dialog: Child3 ::: Answer
+          dialog: Child4 ::: Answer
+    parent: |
+      rule 1
+          dialog: Parent1 ::: Answer
+      rule 2
+          dialog: Parent2 ::: Answer
+          subrule 1
+              dialog: Parent3 ::: Answer
+          dialog: Parent4 ::: Answer
+    expected: |
+      rule 1
+          dialog: Child1 ::: Answer
+          dialog: Parent1 ::: Answer
+      rule 2
+          subrule 1
+            dialog: Child3 ::: Answer
+          dialog: Parent4 ::: Answer
+          dialog: Child4 ::: Answer
+ 
+test_case_3:
+  child: |
+      %inherit_from=parent
+      rule 1
+          rule 2 %not_inherit
+            dialog: Child1 ::: Answer
+            rule 3
+          rule 4
+            dialog: Parent4 ::: Answer %not_inherit
+            rule 4.1
+              dialog: Child2 ::: Answer
+          rule 5
+            dialog: Child3 ::: Answer
+            rule 5.1 %not_inherit
+  parent: |
+      rule 1
+          dialog: Parent1 ::: Answer
+          rule 2
+              dialog: Parent2 ::: Answer
+              rule 3
+                  dialog: Parent3 ::: Answer
+          rule 4
+            dialog: Parent4 ::: Answer
+            rule 4.1
+                dialog: Parent5 ::: Answer
+          rule 5
+              rule 5.1
+                  dialog: Parent6 ::: Answer
+  expected: |
+      rule 1
+          dialog: Parent1 ::: Answer
+          rule 2
+              dialog: Child1 ::: Answer
+              rule 3
+          rule 4
+              rule 4.1
+                  dialog: Parent5 ::: Answer
+                  dialog: Child2 ::: Answer
+          rule 5
+              dialog: Child3 ::: Answerd
+
+test_case_4:
+    child: |
+        %inherit_from=parent
+        rule 1 %ifcontext=some:context
+            subrule 1
+        rule 2 %ifcontext=some:context2 %not_inherit
+    parent: |
+        rule 1 %ifcontext=some:context
+            subrule 2
+        rule 2 %ifcontext=some:context2
+            subrule 1
+        rule 2
+        rule 3 %ifcontext=some:context2
+    expected: |
+        rule 1 %ifcontext=some:context
+            subrule 1
+            subrule 2
+        rule 2
+        rule 3 %ifcontext=some:context2

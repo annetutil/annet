@@ -1,9 +1,19 @@
 from abc import ABC
 from copy import copy
+from dataclasses import MISSING, fields, is_dataclass, replace
 from enum import Enum
-from dataclasses import is_dataclass, replace, fields, MISSING
 from typing import (
-    TypeVar, Any, Annotated, get_origin, get_type_hints, get_args, Callable, Union, ClassVar, overload, cast,
+    Annotated,
+    Any,
+    Callable,
+    ClassVar,
+    TypeVar,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+    get_type_hints,
+    overload,
 )
 
 
@@ -49,21 +59,17 @@ class ForbidChange(Merger):
     def _merge(self, name: str, x: T, y: T) -> T:
         if x == y:
             return x
-        raise MergeForbiddenError(
-            f"Override with different value is forbidden for field {name}:\n"
-            f"Old: {x}\n"
-            f"New: {y}"
-        )
+        raise MergeForbiddenError(f"Override with different value is forbidden for field {name}:\nOld: {x}\nNew: {y}")
 
 
 class Concat(Merger):
     def _merge(self, name: str, x: T, y: T) -> T:
-        return x + y  # type: ignore[operator]
+        return cast(T, x + y)  # type: ignore[operator]
 
 
 class Unite(Merger):
     def _merge(self, name: str, x: T, y: T) -> T:
-        return x | y  # type: ignore[operator]
+        return cast(T, x | y)  # type: ignore[operator]
 
 
 class Merge(Merger):
@@ -75,7 +81,7 @@ class DictMerge(Merger):
     def __init__(self, value_merger: Merger = Forbid()):
         self.value_merger = value_merger
 
-    def _merge(self, name: str, x: dict, y: dict) -> dict:  # type: ignore[override]
+    def _merge(self, name: str, x: dict[Any, Any], y: dict[Any, Any]) -> dict[Any, Any]:  # type: ignore[override]
         result = copy(x)
         for key, value in y.items():
             if key in result:
@@ -86,7 +92,7 @@ class DictMerge(Merger):
 
 
 class ApplyFunc(Merger):
-    def __init__(self, func: Callable):
+    def __init__(self, func: Callable[..., Any]):
         self.func = func
 
     def __call__(self, name: str, x: Union[T, Special], y: Union[T, Special]) -> Union[T, Special]:
@@ -94,10 +100,10 @@ class ApplyFunc(Merger):
             return y
         if y is Special.NOT_SET:
             return x
-        return self.func(x, y)
+        return cast(Union[T, Special], self.func(x, y))
 
 
-def _get_merger(hint: Any):
+def _get_merger(hint: Any) -> Merger:
     if get_origin(hint) is not Annotated:
         return ForbidChange()
     for arg in get_args(hint):
@@ -109,32 +115,30 @@ def _get_merger(hint: Any):
 class BaseMeshModel:
     _field_mergers: ClassVar[dict[str, Merger]]
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         if extra_keys := (kwargs.keys() - self._field_mergers.keys()):
             raise ValueError(f"Extra arguments: {extra_keys}")
         self.__dict__.update(kwargs)
 
-    def unset_attrs(self):
+    def unset_attrs(self) -> set[str]:
         return type(self)._field_mergers.keys() - vars(self).keys()
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}(" + ", ".join(
-            f"{key}={value}" for key, value in vars(self).items()
-        ) + ")"
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(" + ", ".join(f"{key}={value}" for key, value in vars(self).items()) + ")"
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         cls._field_mergers = {
             field: _get_merger(hint)
             for field, hint in get_type_hints(cls, include_extras=True).items()
             if get_origin(hint) is not ClassVar
         }
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value: Any) -> None:
         if key not in self._field_mergers:
             raise AttributeError(f"{self.__class__.__name__} has no field {key}")
         super().__setattr__(key, value)
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         return not self.__dict__
 
 
@@ -158,17 +162,17 @@ def _merge(a: ModelT, b: BaseMeshModel) -> ModelT:
 
 @overload
 def merge(first: Special, second: ModelT, /, *others: BaseMeshModel) -> ModelT:
-    ...
+    pass
 
 
 @overload
 def merge(first: ModelT, /, *others: BaseMeshModel) -> ModelT:
-    ...
+    pass
 
 
 @overload
 def merge(first: Special, /) -> Special:
-    ...
+    pass
 
 
 def merge(first: Any, /, *others: Any) -> Any:
@@ -183,11 +187,7 @@ def merge(first: Any, /, *others: Any) -> Any:
 
 def merge_dataclass(a: Any, b: Any) -> Any:
     if a.__class__ != b.__class__:
-        raise MergeForbiddenError(
-            f"Dataclasses belonging to different instaces can't be merged:\n"
-            f"Old: {a}\n"
-            f"New: {b}"
-        )
+        raise MergeForbiddenError(f"Dataclasses belonging to different instaces can't be merged:\nOld: {a}\nNew: {b}")
 
     if a == b:
         return replace(a)
@@ -208,9 +208,7 @@ def merge_dataclass(a: Any, b: Any) -> Any:
             merged[f.name] = merge_dataclass(aval, bval)
         else:
             raise MergeForbiddenError(
-                f"Dataclasses with non-equal field {f.name} can't be merged:\n"
-                f"Old: {aval}\n"
-                f"New: {bval}"
+                f"Dataclasses with non-equal field {f.name} can't be merged:\nOld: {aval}\nNew: {bval}"
             )
 
     return replace(empty, **merged)
@@ -239,11 +237,11 @@ def dataclass_default(dataclass_cls: type[T]) -> T:
     return cast(T, dataclass_cls())
 
 
-class KeyDefaultDict(dict):
+class KeyDefaultDict(dict[str, Any]):
     def __init__(self, factory: Callable[[str], Any]):
         super().__init__()
         self.factory = factory
 
-    def __missing__(self, key):
+    def __missing__(self, key: str) -> Any:
         x = self[key] = self.factory(key)
         return x

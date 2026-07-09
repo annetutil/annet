@@ -78,3 +78,25 @@
     delete system hostname "foo"
     commit
     exit
+- vendor: juniper
+  before: |-
+    system {
+        services {
+            ssh {
+                hostkey-algorithm { ## Warning: 'hostkey-algorithm' is deprecated
+                    ssh-ed25519;
+                }
+            }
+        }
+    }
+  after: |-
+    system {
+        services {
+            ssh {
+                hostkey-algorithm {
+                    ssh-ed25519;
+                }
+            }
+        }
+    }
+  patch: ""

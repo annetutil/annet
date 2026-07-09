@@ -1,0 +1,21 @@
+test_case_1:
+  child: |
+    %inherit_from=parent
+    rule 1
+  parent: |
+  expected: |
+    rule 1
+
+test_case_2:
+  child: |
+    %inherit_from=parent
+  parent: |
+    rule 1
+  expected: |
+    rule 1
+
+test_case_3:
+  child: |
+    %inherit_from=parent
+  parent: |
+  expected: |

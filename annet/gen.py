@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import dataclasses
 import itertools
-import json
 import os
 import sys
 import textwrap
 import time
 from collections import OrderedDict as odict
+from collections.abc import Callable, Mapping
 from operator import itemgetter
 from typing import (
     Any,
@@ -20,14 +20,14 @@ from typing import (
     Optional,
     Tuple,
     Union,
+    cast,
 )
 
 import tabulate
 from contextlog import get_logger
 
-from annet import generators, implicit, patching, tracing
-from annet.vendors import tabparser
-from annet.annlib import jsontools
+from annet import generators, implicit, patching, rulebook, tracing
+from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.rbparser.acl import compile_acl_text
 from annet.cli_args import DeployOptions, GenOptions, ShowGenOptions
 from annet.deploy import get_fetcher, scrub_config
@@ -45,15 +45,13 @@ from annet.lib import do_async, merge_dicts, percentile
 from annet.output import output_driver_connector
 from annet.storage import Device, Storage
 from annet.tracing import tracing_connector
-from annet.types import OldNewResult
-from annet.vendors import registry_connector
+from annet.types import OldNewResult as OldNewResult
+from annet.vendors import registry_connector, tabparser
 
 
 # Вывод всех генераторов вместе.
 # Значение такое же, как для аналогичной константы в ЧК.
 ALL_GENS = "_all_gens"
-
-live_configs = None
 
 
 @dataclasses.dataclass
@@ -112,7 +110,7 @@ class OldNewDeviceContext:
     args: GenOptions
     downloaded_files: Dict[Device, DeviceDownloadedFiles]
     failed_files: Dict[Device, Exception]
-    running: Dict[Device, Dict[str, str]]
+    running: dict[Device, str]
     failed_running: Dict[Device, Exception]
     no_new: bool
     stdin: Optional[Dict[str, Optional[str]]]
@@ -120,7 +118,7 @@ class OldNewDeviceContext:
     add_implicit: bool
     do_files_download: bool
     gens: DeviceGenerators
-    fetched_packages: Dict[Device, FrozenSet[str]]
+    fetched_packages: dict[Device, frozenset[str]]
     failed_packages: Dict[Device, Exception]
     device_count: int
     do_print_perf: bool
@@ -133,25 +131,31 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
     start = time.monotonic()
     acl_rules = None
     acl_safe_rules = None
-    old = odict()
-    safe_old = odict()
+    old: dict[str, Any] = odict()
+    safe_old: dict[str, Any] = odict()
     old_files = DeviceDownloadedFiles()
-    new = odict()
-    safe_new = odict()
-    combined_perf = {}
-    partial_results = []
-    entire_results = []
+    new: dict[str, Any] = odict()
+    safe_new: dict[str, Any] = odict()
+    combined_perf: dict[str, Any] = {}
+    partial_results: dict[str, generators.GeneratorPartialResult] = {}
+    entire_results: dict[str, generators.GeneratorEntireResult] = {}
     implicit_rules: Optional[Dict[str, Any]] = None
     filter_acl_rules: Optional[Dict[str, Any]] = None
-    old_json_fragment_files: Dict[str, Dict[str, Any]] = {}
-    new_json_fragment_files: Dict[str, Dict[str, Any]] = {}
-    json_fragment_results: Dict[str, generators.GeneratorJSONFragmentResult] = {}
+    old_json_fragment_files: dict[str, dict[str, Any] | None] = {}
+    new_json_fragment_files: dict[str, tuple[Any, str | None]] = {}
+    json_fragment_results: dict[str, generators.GeneratorJSONFragmentResult] = {}
 
     if not device.is_pc():
         try:
             text = _old_new_get_config_cli(ctx, device)
         except Exception as exc:
             return OldNewResult(device=device, err=exc)
+
+        if text is None:
+            return OldNewResult(
+                device=device,
+                err=Exception("could not read existing config (method: %s)" % ctx.config),
+            )
 
         if not text and ctx.args.fail_on_empty_config:
             return OldNewResult(
@@ -201,13 +205,15 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
 
         implicit_rules = implicit.compile_rules(device)
         if ctx.add_implicit:
-            old = merge_dicts(old, implicit.config(old, implicit_rules))
-            new = merge_dicts(new, implicit.config(new, implicit_rules))
-            safe_new = merge_dicts(safe_new, implicit.config(safe_new, implicit_rules))
+            # implicit.config is typed to accept OrderedDict; config_tree() returns a plain
+            # dict at runtime, so bridge the invariant-mapping mismatch here.
+            old = merge_dicts(old, implicit.config(cast("odict[str, Any]", old), implicit_rules))
+            new = merge_dicts(new, implicit.config(cast("odict[str, Any]", new), implicit_rules))
+            safe_new = merge_dicts(safe_new, implicit.config(cast("odict[str, Any]", safe_new), implicit_rules))
 
         if not ctx.args.no_acl:
             acl_rules = generators.compile_acl_text(res.acl_text(), device.hw.vendor)
-            old = (old and patching.apply_acl(old, acl_rules))
+            old = old and patching.apply_acl(old, acl_rules)
 
             new = patching.apply_acl(
                 new,
@@ -217,7 +223,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
             )
             if ctx.args.acl_safe:
                 acl_safe_rules = generators.compile_acl_text(res.acl_safe_text(), device.hw.vendor)
-                safe_old = (old and patching.apply_acl(old, acl_safe_rules))
+                safe_old = old and patching.apply_acl(old, acl_safe_rules)
                 safe_new = patching.apply_acl(
                     safe_new,
                     acl_safe_rules,
@@ -227,12 +233,17 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
 
         filter_acl_rules = build_filter_acl(filterer, device, ctx.stdin, ctx.args, ctx.config)
         if filter_acl_rules is not None:
-            old = (old and patching.apply_acl(old, filter_acl_rules, fatal_acl=False))
+            rb = rulebook.get_rulebook(device.hw)
+            # apply_acl types rb as a plain dict; get_rulebook returns a Rulebook mapping.
+            rb_dict = cast("dict[str, Any]", rb)
+            old = old and patching.apply_acl(old, filter_acl_rules, fatal_acl=False, forbid_ordered=True, rb=rb_dict)
             new = patching.apply_acl(
                 new,
                 filter_acl_rules,
                 fatal_acl=False,
                 with_annotations=ctx.add_annotations,
+                forbid_ordered=True,
+                rb=rb_dict,
             )
     else:  # vendor == pc
         try:
@@ -246,8 +257,9 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
     if not ctx.no_new:
         if device in ctx.fetched_packages:
             if ctx.args.required_packages_check:
-                errors = generators.check_entire_generators_required_packages(ctx.gens.entire[device.fqdn],
-                                                                              ctx.fetched_packages[device])
+                errors = generators.check_entire_generators_required_packages(
+                    ctx.gens.entire[device.fqdn], ctx.fetched_packages[device]
+                )
                 if errors:
                     error_msg = "; ".join(errors)
                     get_logger(host=device.hostname).error(error_msg)
@@ -267,11 +279,20 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
             filters = filters_text.removesuffix("\n").split("\n")
 
         old_json_fragment_files = old_files.json_fragment_files.copy()
-        new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files, filters=filters)
+        new_json_fragment_files = res.new_json_fragment_files(
+            old_json_fragment_files,
+            use_acl=not ctx.args.no_acl,
+            filters=filters,
+        )
 
         if ctx.args.acl_safe:
             safe_new_files = res.new_files(safe=True)
-            safe_new_json_fragment_files = res.new_json_fragment_files(old_json_fragment_files, safe=True, filters=filters)
+            safe_new_json_fragment_files = res.new_json_fragment_files(
+                old_json_fragment_files,
+                use_acl=not ctx.args.no_acl,
+                safe=True,
+                filters=filters,
+            )
 
     if ctx.args.profile:
         perf = res.perf_mesures()
@@ -306,31 +327,43 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
 @dataclasses.dataclass
 class DeviceDownloadedFiles:
     # map file path to file content for entire generators
-    entire_files: Dict[str, str] = dataclasses.field(default_factory=dict)
+    entire_files: dict[str, str | None] = dataclasses.field(default_factory=dict)
 
     # map file path to file content for json fragment generators
-    json_fragment_files: Dict[str, Dict[str, Any]] = dataclasses.field(default_factory=dict)
+    json_fragment_files: dict[str, dict[str, Any] | None] = dataclasses.field(default_factory=dict)
 
     def is_empty(self) -> bool:
         return not self.entire_files and not self.json_fragment_files
 
 
 def split_downloaded_files(
-        device_flat_files: Dict[str, Optional[str]],
-        gens: DeviceGenerators,
-        device: Device,
+    device_flat_files: Mapping[str, str | None],
+    gens: DeviceGenerators,
+    device: Device,
 ) -> DeviceDownloadedFiles:
     """Split downloaded files per generator type: entire/json_fragment."""
     ret = DeviceDownloadedFiles()
+    vendor = registry_connector.get().match(device.hw)
 
     for gen in gens.file_gens(device):
         filepath = gen.path(device)
-        if filepath in device_flat_files:
+        if filepath is not None and filepath in device_flat_files:
+            content = device_flat_files[filepath]
             if isinstance(gen, Entire):
-                ret.entire_files[filepath] = device_flat_files[filepath]
+                ret.entire_files[filepath] = content
+
             elif isinstance(gen, JSONFragment):
-                if device_flat_files[filepath] is not None:  # file exists
-                    ret.json_fragment_files[filepath] = json.loads(device_flat_files[filepath])
+                if content is not None:  # file exists
+                    try:
+                        ret.json_fragment_files[filepath] = vendor.deserialize_json_fragment(
+                            device.hw, filepath, content
+                        )
+
+                    except Exception as exc:
+                        raise GeneratorError(
+                            f"failed to parse file {filepath!r} from generator {gen.get_name()}"
+                        ) from exc
+
                 else:
                     ret.json_fragment_files[filepath] = None
 
@@ -338,10 +371,10 @@ def split_downloaded_files(
 
 
 def split_downloaded_files_multi_device(
-        flat_downloaded_files: Dict[Device, Dict[str, Optional[str]]],
-        gens: DeviceGenerators,
-        devices: List[Device],
-) -> Dict[str, DeviceDownloadedFiles]:
+    flat_downloaded_files: dict[Device, dict[str, str | None]],
+    gens: DeviceGenerators,
+    devices: list[Device],
+) -> dict[Device, DeviceDownloadedFiles]:
     """Split downloaded files per generator type: entire/json_fragment."""
     return {
         device: split_downloaded_files(flat_downloaded_files[device], gens, device)
@@ -357,27 +390,27 @@ def old_new(
     config: str,
     loader: "Loader",
     filterer: Filterer,
-    add_implicit=True,
-    add_annotations=False,
-    stdin=None,
-    device_ids: List[int] = None,
-    no_new=False,
-    do_files_download=False,
-    do_print_perf=True,
-):
+    current_state: "CurrentState",
+    add_implicit: bool = True,
+    add_annotations: bool = False,
+    stdin: dict[str, str | None] | None = None,
+    device_ids: list[int] | None = None,
+    no_new: bool = False,
+    do_files_download: bool = False,
+    do_print_perf: bool = True,
+) -> Iterator[OldNewResult]:
     if device_ids is None:
         devices = loader.devices
     else:
         devices = [loader.get_device(device_id) for device_id in device_ids]
 
     gens = loader.resolve_gens(devices)
-    running, failed_running = _old_resolve_running(config, devices)
-    downloaded_files, failed_files = _old_resolve_files(config, devices, gens, do_files_download)
 
     if stdin is None:
         stdin = args.stdin(filter_acl=args.filter_acl, config=config)
 
-    fetched_packages, failed_packages = {}, {}
+    fetched_packages: dict[Device, frozenset[str]] = {}
+    failed_packages: dict[Device, Any] = {}
     if do_files_download and config == "running":
         files_to_download = _get_files_to_download(devices, gens)
         devices_with_files = [device for device in devices if device in files_to_download]
@@ -387,10 +420,10 @@ def old_new(
     ctx = OldNewDeviceContext(
         config=config,
         args=args,
-        downloaded_files=split_downloaded_files_multi_device(downloaded_files, gens, devices),
-        failed_files=failed_files,
-        running=running,
-        failed_running=failed_running,
+        downloaded_files=split_downloaded_files_multi_device(current_state.downloaded_files, gens, devices),
+        failed_files=current_state.failed_files,
+        running=current_state.running,
+        failed_running=current_state.failed_running,
         no_new=no_new,
         stdin=stdin,
         add_annotations=add_annotations,
@@ -415,23 +448,26 @@ def old_new(
 
 @tracing.function
 def old_raw(
-        args: GenOptions, loader: Loader, config, stdin=None,
-        do_files_download=False, use_mesh=True,
-) -> Iterable[Tuple[Device, Union[str, Dict[str, str]]]]:
+    args: GenOptions,
+    loader: Loader,
+    config: str,
+    current_state: "CurrentState",
+    stdin: dict[str, str | None] | None = None,
+) -> Iterable[Tuple[Device, Union[str, Dict[str, str | None]]]]:
     device_gens = loader.resolve_gens(loader.devices)
-    running, failed_running = _old_resolve_running(config, loader.devices)
-    downloaded_files, failed_files = _old_resolve_files(config, loader.devices, device_gens, do_files_download)
     if stdin is None:
         stdin = args.stdin(filter_acl=args.filter_acl, config=config)
     ctx = OldNewDeviceContext(
         config=config,
         args=args,
-        downloaded_files=split_downloaded_files_multi_device(downloaded_files, device_gens, loader.devices),
-        failed_files=failed_files,
-        running=running,
-        failed_running=failed_running,
+        downloaded_files=split_downloaded_files_multi_device(
+            current_state.downloaded_files, device_gens, loader.devices
+        ),
+        failed_files=current_state.failed_files,
+        running=current_state.running,
+        failed_running=current_state.failed_running,
         stdin=stdin,
-        do_files_download=do_files_download,
+        do_files_download=True,
         device_count=len(loader.devices),
         no_new=True,
         add_annotations=False,
@@ -443,22 +479,33 @@ def old_raw(
     )
     for device in loader.devices:
         if not device.is_pc():
-            config = _old_new_get_config_cli(ctx, device)
-            config = scrub_config(config, device.breed)
-            yield device, config
+            device_config = _old_new_get_config_cli(ctx, device)
+            if device_config is None:
+                continue
+            yield device, scrub_config(device_config, device.breed)
         else:
             files = _old_new_get_config_files(ctx, device)
             if files.entire_files:
                 yield device, files.entire_files
             if files.json_fragment_files:
-                yield device, {
-                    path: jsontools.format_json(data)
-                    for path, data in files.json_fragment_files.items()
-                }
+                vendor = registry_connector.get().match(device.hw)
+                yield (
+                    device,
+                    {
+                        path: vendor.serialize_json_fragment(device.hw, path, cast("dict[str, Any]", data))
+                        for path, data in files.json_fragment_files.items()
+                    },
+                )
 
 
 @tracing.function
-def worker(device_id, args: ShowGenOptions, stdin, loader: "Loader", filterer: Filterer) -> Generator[Tuple[str, str, bool], None, None]:
+def worker(
+    device_id: int,
+    args: ShowGenOptions,
+    stdin: dict[str, str | None] | None,
+    loader: "Loader",
+    filterer: Filterer,
+) -> Generator[Tuple[str, str, bool], None, None]:
     span = tracing_connector.get().get_current_span()
     if span:
         span.set_attribute("device.id", device_id)
@@ -468,6 +515,7 @@ def worker(device_id, args: ShowGenOptions, stdin, loader: "Loader", filterer: F
         config="/dev/null",
         loader=loader,
         filterer=filterer,
+        current_state=CurrentState(),
         add_implicit=False,
         add_annotations=args.annotate,
         stdin=stdin,
@@ -480,25 +528,23 @@ def worker(device_id, args: ShowGenOptions, stdin, loader: "Loader", filterer: F
         device = res.device
         if new is None:
             continue
-        for (entire_path, (entire_data, _)) in sorted(new_files.items(), key=itemgetter(0)):
+        for entire_path, (entire_data, _) in sorted(new_files.items(), key=itemgetter(0)):
             yield (output_driver.entire_config_dest_path(device, entire_path), entire_data, False)
 
-        for (path, (data, _)) in sorted(new_file_fragments.items(), key=itemgetter(0)):
-            dumped_data = json.dumps(data, indent=4, sort_keys=True, ensure_ascii=False)
+        vendor = registry_connector.get().match(device.hw)
+        for path, (data, _) in sorted(new_file_fragments.items(), key=itemgetter(0)):
+            dumped_data = vendor.serialize_json_fragment(device.hw, path, data)
             yield (output_driver.entire_config_dest_path(device, path), dumped_data, False)
         # Consider result of partial run empty and create an empty dest file
         # only if there are some acl rules that has been matched.
         # Otherwise treat it as if no supported generators have been found.
-        acl_rules = res.get_acl_rules(args.acl_safe)
-        if acl_rules:
+        if args.no_acl or res.get_acl_rules(args.acl_safe):
             orderer = patching.Orderer.from_hw(device.hw)
-            yield (output_driver.cfg_file_names(device)[0],
-                   format_config_blocks(
-                       orderer.order_config(new),
-                       device.hw,
-                       args.indent
-                   ),
-                   False)
+            yield (
+                output_driver.cfg_file_names(device)[0],
+                format_config_blocks(orderer.order_config(cast("dict[str, Any]", new)), device.hw, args.indent),
+                False,
+            )
 
 
 @dataclasses.dataclass
@@ -508,8 +554,8 @@ class DeviceFilesToDownload:
 
 
 @tracing.function
-def _get_files_to_download(devices: List[Device], gens: DeviceGenerators) -> Dict[Device, Any]:
-    files_to_download = {}
+def _get_files_to_download(devices: list[Device], gens: DeviceGenerators) -> dict[Device, list[str] | Exception]:
+    files_to_download: dict[Device, list[str] | Exception] = {}
     for device in devices:
         paths = set()
         try:
@@ -528,29 +574,30 @@ def _get_files_to_download(devices: List[Device], gens: DeviceGenerators) -> Dic
     return files_to_download
 
 
-def _print_perf(gen_type, perf):
+def _print_perf(gen_type: str, perf: dict[str, dict[str, Any]]) -> None:
     print(file=sys.stderr)
     print(
-        tabulate.tabulate([
+        tabulate.tabulate(
+            [
                 (
                     (gen if not method else None),
                     (method or "." * 30),
-                    sum(map(itemgetter("time"), stat) if stat else None),
+                    (sum(map(itemgetter("time"), stat)) if stat else None),
                     (min(map(itemgetter("time"), stat)) if stat else None),
                     (percentile(stat, 0.95, itemgetter("time")) if stat else None),
                     (max(map(itemgetter("time"), stat)) if stat else None),
                     (len(stat) if stat else None),
-                    (len(list(filter(
-                                     lambda item: item in ["call", "disk_write"],
-                                     map(itemgetter("op"), stat)))) if stat else None),
+                    (
+                        len(list(filter(lambda item: item in ["call", "disk_write"], map(itemgetter("op"), stat))))
+                        if stat
+                        else None
+                    ),
                 )
-
                 for (gen, gen_perf) in sorted(
                     perf.items(),
                     key=(lambda item: item[1]["total"]),
                     reverse=True,
                 )
-
                 for (method, stat) in sorted(
                     [(None, [{"time": gen_perf["total"], "op": None}])] + list(gen_perf["rt"].items()),
                     key=(lambda item: sum(map(itemgetter("time"), item[1]))),
@@ -558,24 +605,32 @@ def _print_perf(gen_type, perf):
                 )
             ],
             [gen_type + "-Generator", "RT", "Total", "Min", "95%", "Max", "Calls", "Direct"],
-            tablefmt="orgtbl", floatfmt=".4f",
+            tablefmt="orgtbl",
+            floatfmt=".4f",
         ),
         file=sys.stderr,
     )
     print(file=sys.stderr)
 
 
-def build_filter_text(filterer, device, stdin, args, config):
-    filter_acl_text = None
+def build_filter_text(
+    filterer: Filterer,
+    device: Device,
+    stdin: dict[str, str | None] | None,
+    args: GenOptions,
+    config: str,
+) -> str | None:
+    filter_acl_text: str | None = None
     if args.filter_acl:
+        assert stdin is not None
         filter_acl_text = stdin["filter_acl"]
-    if args.filter_acl and not stdin["filter_acl"]:
-        if os.path.isdir(args.filter_acl):
-            filename = os.path.join(config, "%s.acl" % device.hostname)
-        else:
-            filename = args.filter_acl
-        with open(filename) as fh:
-            filter_acl_text = fh.read()
+        if not filter_acl_text:
+            if os.path.isdir(args.filter_acl):
+                filename = os.path.join(config, "%s.acl" % device.hostname)
+            else:
+                filename = args.filter_acl
+            with open(filename) as fh:
+                filter_acl_text = fh.read()
 
     if args.filter_ifaces:
         filter_acl_text = filter_acl_text + "\n" if filter_acl_text else ""
@@ -591,7 +646,13 @@ def build_filter_text(filterer, device, stdin, args, config):
     return filter_acl_text
 
 
-def build_filter_acl(filterer, device, stdin, args, config):
+def build_filter_acl(
+    filterer: Filterer,
+    device: Device,
+    stdin: dict[str, str | None] | None,
+    args: GenOptions,
+    config: str,
+) -> dict[str, Any] | None:
     filter_acl_text = build_filter_text(filterer, device, stdin, args, config)
     if filter_acl_text is not None:
         return compile_acl_text(
@@ -599,9 +660,10 @@ def build_filter_acl(filterer, device, stdin, args, config):
             device.hw.vendor,
             allow_ignore=True,
         )
+    return None
 
 
-def _existing_cfg_file_name(config_dir: str, device) -> Optional[str]:
+def _existing_cfg_file_name(config_dir: str, device: Device) -> Optional[str]:
     cfg_files = output_driver_connector.get().cfg_file_names(device)
     last: Optional[str] = None
     for cfg_file in cfg_files:
@@ -612,18 +674,20 @@ def _existing_cfg_file_name(config_dir: str, device) -> Optional[str]:
     return last
 
 
-def format_config_blocks(config, hw, indent, _level=0):
+def format_config_blocks(config: dict[str, Any], hw: HardwareView, indent: str, _level: int = 0) -> str:
     formatter = registry_connector.get().match(hw).make_formatter(indent=indent)
     return formatter.join(config)
 
 
-def format_files(files):
-    lines = []
+def format_files(files: dict[str, str]) -> str:
+    lines: list[str] = []
     for path in sorted(files):
-        lines.extend((
-            "# %s" % path,
-            files[path],
-        ))
+        lines.extend(
+            (
+                "# %s" % path,
+                files[path],
+            )
+        )
     return "\n".join(lines)
 
 
@@ -636,7 +700,7 @@ def find_files_relative(path: str) -> Generator[str, None, None]:
             yield os.path.relpath(full_path, root_abs_path)
 
 
-def load_pc_config(path: str, set_root=False) -> Dict[str, str]:
+def load_pc_config(path: str, set_root: bool = False) -> Dict[str, str]:
     """Подхватываем локально сохраненные файлы конфигов для вайтбоксов"""
     ret: Dict[str, str] = {}
     for relative_cfg_path in find_files_relative(path):
@@ -649,18 +713,21 @@ def load_pc_config(path: str, set_root=False) -> Dict[str, str]:
 
 
 @tracing.function
-def _old_new_get_config_cli(ctx: OldNewDeviceContext, device: Device) -> str:
+def _old_new_get_config_cli(ctx: OldNewDeviceContext, device: Device) -> str | None:
     if ctx.config == "empty":
         text = ""
     elif ctx.config == "running":
-        text = ctx.running.get(device)
-        if text is None:
-            exc = (ctx.failed_running.get(device) or
-                   Exception("I can't get device config and I don't know why"))
+        running_text = ctx.running.get(device)
+        if running_text is None:
+            exc = ctx.failed_running.get(device) or Exception("I can't get device config and I don't know why")
             get_logger(host=device.hostname).error("config error %r", exc)
             raise exc
+        text = running_text
     elif ctx.config == "-":
-        text = ctx.stdin["config"]
+        assert ctx.stdin is not None
+        stdin_text = ctx.stdin["config"]
+        assert stdin_text is not None
+        text = stdin_text
         if ctx.device_count > 1:
             raise ValueError("stdin config can not be used with multiple devices")
     else:
@@ -668,6 +735,7 @@ def _old_new_get_config_cli(ctx: OldNewDeviceContext, device: Device) -> str:
             filename = _existing_cfg_file_name(ctx.config, device)
         else:
             filename = ctx.config
+        assert filename is not None
         try:
             with open(filename) as fh:
                 text = fh.read()
@@ -688,7 +756,7 @@ def _old_new_get_config_files(ctx: OldNewDeviceContext, device: Device) -> Devic
     for attr in ("failed_files", "failed_running", "failed_packages"):
         if device in getattr(ctx, attr):
             exc = getattr(ctx, attr).get(device)
-            exc = exc or Exception(f"I can't get device {attr[len('failed_'):]} and I don't know why")
+            exc = exc or Exception(f"I can't get device {attr[len('failed_') :]} and I don't know why")
             get_logger(host=device.hostname).error(str(exc))
             raise exc
 
@@ -718,8 +786,8 @@ def _old_new_get_config_files(ctx: OldNewDeviceContext, device: Device) -> Devic
 @tracing.function
 def _old_resolve_gens(args: GenOptions, storage: Storage, devices: Iterable[Device]) -> DeviceGenerators:
     per_device_gens = DeviceGenerators()
-    devices = devices or [None]  # get all generators if no devices provided
-    for device in devices:
+    device_list: list[Device | None] = list(devices) or [None]  # get all generators if no devices provided
+    for device in device_list:
         gens = generators.build_generators(storage, gens=args, device=device)
         per_device_gens.partial[device] = gens.partial
         per_device_gens.entire[device] = gens.entire
@@ -728,42 +796,12 @@ def _old_resolve_gens(args: GenOptions, storage: Storage, devices: Iterable[Devi
     return per_device_gens
 
 
-@tracing.function
-def _old_resolve_running(config: str, devices: List[Device]) -> Tuple[Dict[Device, str], Dict[Device, Exception]]:
-    running, failed_running = {}, {}
-    if config == "running":
-        global live_configs  # pylint: disable=global-statement
-        if live_configs is None:
-            # предварительно прочесть все конфиги прямо по ssh
-            fetcher = get_fetcher()
-            running, failed_running = do_async(fetcher.fetch(devices), new_thread=True)
-        else:
-            running, failed_running = live_configs  # pylint: disable=unpacking-non-sequence
-    return running, failed_running
-
-
-@tracing.function
-def _old_resolve_files(config: str,
-                       devices: List[Device],
-                       gens: DeviceGenerators,
-                       do_files_download: bool,
-                       ) -> Tuple[Dict[Device, Dict[str, Optional[str]]], Dict[Device, Exception]]:
-    downloaded_files, failed_files = {}, {}
-    if do_files_download and config == "running":
-        files_to_download = _get_files_to_download(devices, gens)
-        devices_with_files = [device for device in devices if device in files_to_download]
-        if devices_with_files:
-            fetcher = get_fetcher()
-            fetch_coro = fetcher.fetch(devices_with_files, files_to_download=files_to_download)
-            downloaded_files, failed_files = do_async(fetch_coro, new_thread=True)
-    return downloaded_files, failed_files
-
-
 class Loader:
     def __init__(
-            self, *storages: Storage,
-            args: GenOptions,
-            no_empty_warning: bool = False,
+        self,
+        *storages: Storage,
+        args: GenOptions,
+        no_empty_warning: bool = False,
     ) -> None:
         self._args = args
         self._storages = storages
@@ -793,10 +831,7 @@ class Loader:
 
     @property
     def device_fqdns(self) -> Dict[Any, str]:
-        return {
-            device_id: d.fqdn
-            for device_id, d in self._devices_map.items()
-        }
+        return {device_id: d.fqdn for device_id, d in self._devices_map.items()}
 
     def get_device(self, device_id: Any) -> Device:
         if device_id not in self._devices_map:
@@ -818,3 +853,49 @@ class Loader:
 
     def iter_all_gens(self) -> Iterator[BaseGenerator]:
         return self._gens.iter_gens()
+
+
+@dataclasses.dataclass
+class CurrentState:
+    running: dict[Device, str] = dataclasses.field(default_factory=dict)
+    failed_running: dict[Device, Exception] = dataclasses.field(default_factory=dict)
+    downloaded_files: dict[Device, dict[str, str | None]] = dataclasses.field(default_factory=dict)
+    failed_files: dict[Device, Exception] = dataclasses.field(default_factory=dict)
+
+
+async def get_current_state(
+    config: str,
+    devices: List[Device],
+    gens: DeviceGenerators,
+    do_files_download: bool,
+    processes: int = 1,
+    max_slots: int = 0,
+) -> CurrentState:
+    if config != "running":
+        return CurrentState()
+
+    fetcher = get_fetcher()
+    running, failed_running = await fetcher.fetch(
+        devices,
+        processes=processes,
+        max_slots=max_slots,
+    )
+    downloaded_files: dict[Device, dict[str, str | None]] = {}
+    failed_files: dict[Device, Exception] = {}
+    if do_files_download:
+        files_to_download = _get_files_to_download(devices, gens)
+        devices_with_files = [device for device in devices if device in files_to_download]
+        if devices_with_files:
+            downloaded_files, failed_files = await fetcher.fetch(
+                devices_with_files,
+                files_to_download=files_to_download,
+                processes=processes,
+                max_slots=max_slots,
+            )
+
+    return CurrentState(
+        running=running,
+        failed_running=failed_running,
+        downloaded_files=downloaded_files,
+        failed_files=failed_files,
+    )

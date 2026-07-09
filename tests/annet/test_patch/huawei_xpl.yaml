@@ -228,3 +228,89 @@
       end-filter
     q
     save
+- vendor: Huawei
+  before: |
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 10
+    xpl as-path-list XXX_AS_FILTERS
+      origin '123'
+  after: |
+    xpl route-filter XXX
+  patch: |+
+    system-view
+    undo xpl as-path-list XXX_AS_FILTERS
+    xpl route-filter XXX
+      end-filter
+    q
+    save
+- vendor: Huawei
+  before: |
+    xpl route-filter XXX
+  after: |
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 10
+    xpl as-path-list XXX_AS_FILTERS
+      origin '123'
+  patch: |+
+    system-view
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 10
+      endif
+      end-filter
+    xpl as-path-list XXX_AS_FILTERS
+      origin '123'
+      end-list
+    q
+    save
+- vendor: Huawei
+  before: |
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 10
+    xpl as-path-list XXX_AS_FILTERS
+      origin '123'
+  after: |
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 100
+    xpl as-path-list XXX_AS_FILTERS
+      origin '123'
+  patch: |+
+    system-view
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 100
+      endif
+      end-filter
+    q
+    save
+- vendor: Huawei
+  before: |
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 10
+    xpl as-path-list XXX_AS_FILTERS
+      origin '123'
+  after: |
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 10
+      if as-path in YYY_AS_FILTERS then
+        apply local-preference 20
+    xpl as-path-list XXX_AS_FILTERS
+      origin '123'
+  patch: |+
+    system-view
+    xpl route-filter XXX
+      if as-path in XXX_AS_FILTERS then
+        apply local-preference 10
+      endif
+      if as-path in YYY_AS_FILTERS then
+        apply local-preference 20
+      endif
+      end-filter
+    q
+    save

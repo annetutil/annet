@@ -1,0 +1,9 @@
+test_case_1:
+  child: |
+    %inherit_from=parent
+    rule 1 %scope=scope1,scope2
+      some 1 %scope=scope3
+  parent: |
+    rule 1 %scope=scope1,scope2
+      some 1 %scope=scope4
+  error_message: The rule some 1 %scope=scope3 specifies a %scope not present in the parent rules.

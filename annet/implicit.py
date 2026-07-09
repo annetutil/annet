@@ -1,27 +1,35 @@
+from __future__ import annotations
+
 from collections import OrderedDict as odict
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, cast
 
 from annet.annlib.rbparser import syntax
 
 
-def config(config_tree, rules):
+if TYPE_CHECKING:
+    from annet.storage import Device
+
+
+def config(config_tree: Mapping[str, Any], rules: Mapping[str, Any]) -> odict[str, Any]:
     implicit_config_tree = odict()
-    for (row, rule) in rules.items():
+    for row, rule in rules.items():
         matched_lines = [line for line in config_tree.keys() if rule["regexp"].match(line)]
         if rule["type"] != "ignore":
             if not any(matched_lines) and row not in config_tree:
-                implicit_config_tree[row] = odict()
+                implicit_config_tree[row] = config(odict(), rule["children"])
         for line in matched_lines:
             implicit_config_tree[line] = config(config_tree[line], rule["children"])
     return implicit_config_tree
 
 
-def compile_rules(device):
+def compile_rules(device: Device) -> odict[str, Any]:
     return compile_tree(_implicit_tree(device))
 
 
-def compile_tree(tree):
+def compile_tree(tree: odict[Any, Any]) -> odict[str, Any]:
     rules = odict()
-    for (_, attrs) in tree.items():
+    for _, attrs in tree.items():
         rule = {
             "type": attrs["type"],
             "children": compile_tree(attrs["children"]) if attrs.get("children") else odict(),
@@ -31,7 +39,7 @@ def compile_tree(tree):
     return rules
 
 
-def _implicit_tree(device):
+def _implicit_tree(device: Device) -> odict[Any, Any]:
     text = ""
     if device.hw.Huawei:
         if device.hw.Huawei.CE:
@@ -65,7 +73,7 @@ def _implicit_tree(device):
                  """
         elif device.hw.Huawei.Quidway.S5700.S5735I:
             text = """
-                !interface (?!Vlanif).*
+                !interface (?!Vlanif|10GE1/0/[56]|Stack-Port).*
                     port link-type access %regexp=port link-type .*
                 interface NULL0
             """
@@ -84,19 +92,28 @@ def _implicit_tree(device):
             """
     elif device.hw.Arista:
         # This part of configuration will not be visible in configuration
-        text = r"""
-                ip load-sharing trident fields ipv6 destination-port source-ip ingress-interface destination-ip source-port flow-label
-                ip load-sharing trident fields ip source-ip source-port destination-ip destination-port ingress-interface
-        """
+        text = "\n".join(
+            (
+                "ip load-sharing trident fields ipv6 destination-port source-ip ingress-interface destination-ip "
+                "source-port flow-label",
+                "ip load-sharing trident fields ip source-ip source-port destination-ip destination-port "
+                "ingress-interface",
+            )
+        )
     elif device.hw.Nexus:
         text = r"""
                 # This part of configuration will not be visible in configuration if enabled
                 snmp-server enable traps link linkDown
                 snmp-server enable traps link linkUp
         """
-        if device.hw.Nexus.N3x.N3432 \
-            or (device.hw.Nexus.N9x.N9500 and "spine1" in device.tags) \
-            or device.hw.Nexus.N9x.N9316 or device.hw.Cisco.Nexus.N9x.N9364:
+        if (
+            device.hw.Nexus.N3x.N3432
+            # ``tags`` is not declared on the Device protocol (annet/storage.py) but is
+            # present on concrete device implementations.
+            or (device.hw.Nexus.N9x.N9500 and "spine1" in cast(Any, device).tags)
+            or device.hw.Nexus.N9x.N9316
+            or device.hw.Cisco.Nexus.N9x.N9364
+        ):
             text += r"""
                 # SVI
                 !interface Vlan*
@@ -146,14 +163,29 @@ def _implicit_tree(device):
             """
     elif device.hw.Cisco:
         # C2900/C3500/C3600/AIR does not support the MTU on a per-interface basis
-        if device.hw.Cisco.Catalyst.C2900 or device.hw.Cisco.Catalyst.C3500 \
-           or device.hw.Cisco.Catalyst.C3600 or device.hw.Cisco.AIR:
+        if (
+            device.hw.Cisco.Catalyst.C2900
+            or device.hw.Cisco.Catalyst.C3500
+            or device.hw.Cisco.Catalyst.C3600
+            or device.hw.Cisco.AIR
+        ):
             text += r"""
                 !interface */\S*Ethernet\S+/
                     no shutdown
                 !interface */Loopback[0-9.]+/
                     no shutdown
                 !interface */port-channel[0-9.]+/
+                    no shutdown
+            """
+        elif device.hw.Cisco.XR:
+            text += r"""
+                !interface */\S*Ethernet\S+/
+                    mtu 1500
+                    no shutdown
+                !interface */Loopback[0-9.]+/
+                    no shutdown
+                !interface */port-channel[0-9.]+/
+                    mtu 1500
                     no shutdown
             """
         else:
@@ -179,14 +211,30 @@ def _implicit_tree(device):
                 system mtu routing 1500
                 system mtu jumbo 9000
             """
+    elif device.hw.RouterOS:
+        text = """
+            tool
+                mac-server
+                    ping
+                        set enabled=yes %regexp=set enabled=.*
+        """
+    elif device.hw.Aruba:
+        text = """
+            !arm
+                no 80mhz-support
+                no 160mhz-support
+        """
 
     return parse_text(text)
 
 
-def parse_text(text):
-    return syntax.parse_text(text, {
-        "regexp": {
-            "default": None,
-            "validator": lambda x: syntax.compile_row_regexp(x),
+def parse_text(text: str) -> odict[Any, Any]:
+    return syntax.parse_text(
+        text,
+        {
+            "regexp": {
+                "default": None,
+                "validator": lambda x: syntax.compile_row_regexp(x),
+            },
         },
-    })
+    )

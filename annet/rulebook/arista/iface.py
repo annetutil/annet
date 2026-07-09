@@ -1,10 +1,11 @@
 import re
+from typing import Any
 
 from annet.rulebook import common
 
 
 # Добавление возможности удаления агрегатов, лупбэков, SVI и сабинтерфейсов
-def permanent(rule, key, diff, **kwargs):  # pylint: disable=redefined-outer-name
+def permanent(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:  # pylint: disable=redefined-outer-name  # noqa: E501
     ifname = key[0]
     # Match group examples:
     # Group 01: Port-Channel10, Loopback1, Vlan800

@@ -1,15 +1,19 @@
+from typing import Any
+
 from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.vendors.tabparser import NexusFormatter
 from annet.vendors.base import AbstractVendor
 from annet.vendors.registry import registry
+from annet.vendors.tabparser import NexusFormatter
 
 
 @registry.register
 class NexusVendor(AbstractVendor):
     NAME = "nexus"
 
-    def apply(self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str) -> tuple[CommandList, CommandList]:
+    def apply(
+        self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str | None
+    ) -> tuple[CommandList, CommandList]:
         before, after = CommandList(), CommandList()
 
         before.add_cmd(Command("conf t"))
@@ -30,7 +34,7 @@ class NexusVendor(AbstractVendor):
     def hardware(self) -> HardwareView:
         return HardwareView("Cisco Nexus")
 
-    def make_formatter(self, **kwargs) -> NexusFormatter:
+    def make_formatter(self, **kwargs: Any) -> NexusFormatter:
         return NexusFormatter(**kwargs)
 
     @property

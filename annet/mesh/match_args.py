@@ -2,7 +2,8 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, Sequence, Optional
+from typing import Any, Optional, Sequence
+
 
 MatchedArgs = SimpleNamespace
 
@@ -15,43 +16,43 @@ class MatchExpr:
     def __init__(self, expr: Callable[[Any], Any] = identity):
         self.expr = expr
 
-    def __getattr__(self, item: str):
+    def __getattr__(self, item: str) -> "MatchExpr":
         return MatchExpr(lambda x: getattr(self.expr(x), item))
 
-    def __getitem__(self, item: Any):
+    def __getitem__(self, item: Any) -> "MatchExpr":
         return MatchExpr(lambda x: self.expr(x)[item])
 
-    def __eq__(self, other) -> "MatchExpr":  # type: ignore[override]  # https://github.com/python/mypy/issues/5951
+    def __eq__(self, other: Any) -> "MatchExpr":  # type: ignore[override]  # https://github.com/python/mypy/issues/5951
         if isinstance(other, MatchExpr):
             return MatchExpr(lambda x: self.expr(x) == other.expr(x))
         else:
             return MatchExpr(lambda x: self.expr(x) == other)
 
-    def __ne__(self, other) -> "MatchExpr":  # type: ignore[override]  # https://github.com/python/mypy/issues/5951
+    def __ne__(self, other: Any) -> "MatchExpr":  # type: ignore[override]  # https://github.com/python/mypy/issues/5951
         if isinstance(other, MatchExpr):
             return MatchExpr(lambda x: self.expr(x) != other.expr(x))
         else:
             return MatchExpr(lambda x: self.expr(x) != other)
 
-    def __lt__(self, other) -> "MatchExpr":
+    def __lt__(self, other: Any) -> "MatchExpr":
         if isinstance(other, MatchExpr):
             return MatchExpr(lambda x: self.expr(x) < other.expr(x))
         else:
             return MatchExpr(lambda x: self.expr(x) < other)
 
-    def __gt__(self, other) -> "MatchExpr":
+    def __gt__(self, other: Any) -> "MatchExpr":
         if isinstance(other, MatchExpr):
             return MatchExpr(lambda x: self.expr(x) > other.expr(x))
         else:
             return MatchExpr(lambda x: self.expr(x) > other)
 
-    def __le__(self, other) -> "MatchExpr":
+    def __le__(self, other: Any) -> "MatchExpr":
         if isinstance(other, MatchExpr):
             return MatchExpr(lambda x: self.expr(x) <= other.expr(x))
         else:
             return MatchExpr(lambda x: self.expr(x) <= other)
 
-    def __ge__(self, other) -> "MatchExpr":
+    def __ge__(self, other: Any) -> "MatchExpr":
         if isinstance(other, MatchExpr):
             return MatchExpr(lambda x: self.expr(x) >= other.expr(x))
         else:
@@ -79,11 +80,11 @@ Right = MatchExpr()[1]
 
 
 class PeerNameTemplate:
-    def __init__(self, raw_str):
+    def __init__(self, raw_str: str) -> None:
         self._str = str(raw_str)
         self._regex, self._types = self._compile(self._str)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self._str
 
     @staticmethod
@@ -93,23 +94,16 @@ class PeerNameTemplate:
         regex_string = re.sub(r"{(?P<group_name>\w+)}", r"(?P<\g<group_name>>\\d+)", value)
         # '{name:regex}' -> (?P<name>regex)
         regex_string = re.sub(
-            r"{(?P<group_name>\w+):(?P<custom_regex>.*?)}", r"(?P<\g<group_name>>\g<custom_regex>)",
-            regex_string
+            r"{(?P<group_name>\w+):(?P<custom_regex>.*?)}", r"(?P<\g<group_name>>\g<custom_regex>)", regex_string
         )
         pattern = re.compile(regex_string)
-        types: dict[str, type] = {
-            name: (int if name in int_groups else str)
-            for name in pattern.groupindex
-        }
+        types: dict[str, type] = {name: (int if name in int_groups else str) for name in pattern.groupindex}
         return pattern, types
 
     def match(self, hostname: str) -> Optional[dict[str, str]]:
         reg_match = self._regex.fullmatch(hostname)
         if reg_match:
-            return {
-                key: self._types[key](value)
-                for key, value in reg_match.groupdict().items()
-            }
+            return {key: self._types[key](value) for key, value in reg_match.groupdict().items()}
         return None
 
 

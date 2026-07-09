@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import enum
+from collections.abc import Iterator
 from operator import itemgetter
+from typing import Any, overload
 
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.vendors.tabparser import CommonFormatter
@@ -23,7 +27,7 @@ class GenericVendor(AbstractVendor):
     def hardware(self) -> HardwareView:
         return HardwareView("")
 
-    def make_formatter(self, **kwargs) -> CommonFormatter:
+    def make_formatter(self, **kwargs: Any) -> CommonFormatter:
         return CommonFormatter(**kwargs)
 
     @property
@@ -35,9 +39,9 @@ GENERIC_VENDOR = GenericVendor()
 
 
 class Registry:
-    def __init__(self):
+    def __init__(self) -> None:
         self.vendors: dict[str, AbstractVendor] = {}
-        self._matchers = {}
+        self._matchers: dict[str, AbstractVendor] = {}
 
     def register(self, cls: type[AbstractVendor]) -> type[AbstractVendor]:
         if not cls.NAME:
@@ -48,18 +52,26 @@ class Registry:
 
         return cls
 
-    def __add__(self, other: "Registry"):
+    def __add__(self, other: "Registry") -> None:
         self.vendors = dict(**other.vendors, **self.vendors)
 
-    def __getitem__(self, item) -> AbstractVendor:
+    def __getitem__(self, item: str) -> AbstractVendor:
         if item in self.vendors:
             return self.vendors[item]
         raise RuntimeError(f"Unknown vendor {item}")
 
+    @overload
+    def match(self, hw: HardwareView | str) -> AbstractVendor: ...  # noqa: E704
+    @overload
+    def match(self, hw: HardwareView | str, default: _SENTINEL) -> AbstractVendor: ...  # noqa: E704
+
+    @overload
+    def match(  # noqa: E704
+        self, hw: HardwareView | str, default: _SENTINEL | AbstractVendor | None
+    ) -> AbstractVendor | None: ...
+
     def match(
-        self,
-        hw: HardwareView | str,
-        default: _SENTINEL | AbstractVendor | None = sentinel
+        self, hw: HardwareView | str, default: _SENTINEL | AbstractVendor | None = sentinel
     ) -> AbstractVendor | None:
         if isinstance(hw, str):
             hw = HardwareView(hw, "")
@@ -76,6 +88,16 @@ class Registry:
             return GENERIC_VENDOR
         return default
 
+    @overload
+    def get(self, item: str) -> AbstractVendor: ...  # noqa: E704
+    @overload
+    def get(self, item: str, default: _SENTINEL) -> AbstractVendor: ...  # noqa: E704
+
+    @overload
+    def get(  # noqa: E704
+        self, item: str, default: _SENTINEL | AbstractVendor | None
+    ) -> AbstractVendor | None: ...
+
     def get(self, item: str, default: _SENTINEL | AbstractVendor | None = sentinel) -> AbstractVendor | None:
         if item in self:
             return self[item]
@@ -83,10 +105,10 @@ class Registry:
             return GENERIC_VENDOR
         return default
 
-    def __contains__(self, item):
+    def __contains__(self, item: str) -> bool:
         return item in self.vendors
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return iter(self.vendors)
 
 

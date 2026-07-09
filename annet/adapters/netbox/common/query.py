@@ -1,11 +1,12 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import cast, List, Union, Iterable, Optional, TypedDict
+from typing import Iterable, List, Optional, TypedDict, Union, cast
 
 from annet.storage import Query
 
+
 FIELD_VALUE_SEPARATOR = ":"
-ALLOWED_GLOB_GROUPS = ["site", "tag", "role", "device_type", "status", "tenant"]
+ALLOWED_GLOB_GROUPS = ["site", "tag", "role", "device_type", "status", "tenant", "asset_tag", "platform"]
 
 
 class Filter(TypedDict, total=False):
@@ -16,6 +17,8 @@ class Filter(TypedDict, total=False):
     device_type: list[str]
     status: list[str]
     tenant: list[str]
+    asset_tag: list[str]
+    platform: list[str]
 
 
 @dataclass
@@ -24,15 +27,16 @@ class NetboxQuery(Query):
 
     @classmethod
     def new(
-            cls, query: Union[str, Iterable[str]],
-            hosts_range: Optional[slice] = None,
+        cls,
+        query: Union[str, Iterable[str]],
+        hosts_range: Optional[slice] = None,
     ) -> "NetboxQuery":
         if hosts_range is not None:
             raise ValueError("host_range is not supported")
         return cls(query=list(query))
 
     @property
-    def globs(self):
+    def globs(self) -> list[str]:
         # We process every query host as a glob
         return self.query
 

@@ -1,12 +1,15 @@
+import re
 from collections import OrderedDict as odict
 from textwrap import dedent
 
 import pytest
-from annet.rulebook.common import default, default_diff, ordered_diff
 
+from annet.annlib.rbparser import syntax
 from annet.patching import PatchTree, make_diff
-from annet.vendors.tabparser import CommonFormatter
+from annet.rulebook.common import default, default_diff, ordered_diff
+from annet.rulebook.patching import _make_reverse
 from annet.types import Op
+from annet.vendors.tabparser import CommonFormatter
 
 
 @pytest.fixture
@@ -26,24 +29,29 @@ def reversed_tree(config_tree):
 
 @pytest.fixture
 def rb(request):
-    import re
     return {
         "patching": {
             "local": odict(),
-            "global": odict([
-                ("~", {
-                    "attrs": {
-                        "logic": default,
-                        "diff_logic": request.param,
-                        "direct": True,
-                        "regexp": re.compile(r"^([^\s]+)"),
-                        "multiline": False,
-                        "ignore_case": False,
-                    },
-                    "children": {"global": odict(), "local": odict()},
-                    "type": "normal",
-                }),
-            ]),
+            "global": odict(
+                [
+                    (
+                        "~",
+                        {
+                            "attrs": {
+                                "logic": default,
+                                "diff_logic": request.param,
+                                "direct": True,
+                                "regexp": re.compile(r"^([^\s]+)"),
+                                "multiline": False,
+                                "ignore_case": False,
+                            },
+                            "children": {"global": odict(), "local": odict()},
+                            "type": "normal",
+                            "rule": "~",
+                        },
+                    ),
+                ]
+            ),
         },
     }
 
@@ -52,19 +60,29 @@ def rb(request):
 def test_diff_keeping_order(empty_config_tree, config_tree, rb):
     assert make_diff(empty_config_tree, config_tree, rb, []) == [
         (Op.ADDED, "z", [], _make_match(rb, "z")),
-        (Op.ADDED, "a", [
-            (Op.ADDED, "b", [], _make_match(rb, "b")),
-        ], _make_match(rb, "a")),
+        (
+            Op.ADDED,
+            "a",
+            [
+                (Op.ADDED, "b", [], _make_match(rb, "b")),
+            ],
+            _make_match(rb, "a"),
+        ),
     ]
 
 
 @pytest.mark.parametrize("rb", [ordered_diff], indirect=["rb"])
 def test_ordered_diff_block(config_tree, reversed_tree, rb):
     assert make_diff(config_tree, reversed_tree, rb, []) == [
-        (Op.MOVED, "a", [
-            (Op.MOVED, "b", [], _make_match(rb, "b")),
-        ], _make_match(rb, "a")),
-        (Op.MOVED, "z", [], _make_match(rb, "z"))
+        (
+            Op.MOVED,
+            "a",
+            [
+                (Op.MOVED, "b", [], _make_match(rb, "b")),
+            ],
+            _make_match(rb, "a"),
+        ),
+        (Op.MOVED, "z", [], _make_match(rb, "z")),
     ]
 
 
@@ -72,6 +90,7 @@ def _make_match(rb, *key):
     return {
         "attrs": rb["patching"]["global"]["~"]["attrs"],
         "raw_rule": "~",
+        "rule": "~",
         "key": key,
     }
 
@@ -93,14 +112,12 @@ def test_patch_class_tree():
     tree.add_block("a").add("b", {})
     tree.add_block("a").add("c", {})
     fmtr = CommonFormatter("  ")
-    assert fmtr.patch(tree) + "\n" == dedent(
-        """\
+    assert fmtr.patch(tree) + "\n" == dedent("""\
     a
       b
     a
       c
-    """
-    )
+    """)
 
 
 def test_patch_class_to_from_json():
@@ -110,3 +127,30 @@ def test_patch_class_to_from_json():
 
     json = tree.to_json()
     assert json == PatchTree.from_json(json).to_json()
+
+
+@pytest.mark.parametrize(
+    ("row", "expected"),
+    [
+        # plain word/tail captures keep one {} each
+        ("snmp-agent sys-info *", "no snmp-agent sys-info {}"),
+        ("* permit ~", "no {} permit {}"),
+        # */{regex}/ and ~/{regex}/ are both capturing -> one {} each
+        ("*/(.*)/permit ~", "no {}permit {}"),
+        ("*/syslog-level/ ~/(emergency|alert|info)/ *", "no {} {} {}"),
+        ("~/(a|b)/ permit", "no {} permit"),
+        ("~/(a|b)/ permit ~", "no {} permit {}"),
+        # ?/{regex}/ is non-capturing -> no {}, and the * inside it must not leak out
+        ("?/(.*)/permit ~", "no permit {}"),
+        # the * inside a ~/{regex}/ regexp must not leak out as an extra {}
+        ("~/(a*)/permit ~", "no {}permit {}"),
+        # an existing reverse prefix is stripped rather than doubled
+        ("no permit *", "permit {}"),
+    ],
+)
+def test_make_reverse(row, expected):
+    reverse = _make_reverse(row, "no")
+    assert reverse == expected
+    # the number of {} must match the number of capturing groups produced for the
+    # row, since reverse.format(*match.groups()) relies on that invariant
+    assert reverse.count("{}") == syntax.compile_row_regexp(row).groups

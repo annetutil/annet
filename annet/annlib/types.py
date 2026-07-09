@@ -1,17 +1,19 @@
 import enum
-from typing import List, Tuple
-
-Diff = List[Tuple]
+from typing import Final, Literal, get_args
 
 
-# Операции отмечающие роль команды в дифе
-# XXX надо отдельно переделать на enum
+OpType = Literal["added", "removed", "affected", "moved", "unchanged"]
+
+
 class Op:
-    ADDED = "added"
-    REMOVED = "removed"
-    AFFECTED = "affected"
-    MOVED = "moved"
-    UNCHANGED = "unchanged"
+    ADDED: Final = "added"
+    REMOVED: Final = "removed"
+    AFFECTED: Final = "affected"
+    MOVED: Final = "moved"
+    UNCHANGED: Final = "unchanged"
+
+
+assert set(get_args(OpType)) == {Op.ADDED, Op.REMOVED, Op.AFFECTED, Op.MOVED, Op.UNCHANGED}
 
 
 class GeneratorType(enum.Enum):

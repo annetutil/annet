@@ -1,0 +1,36 @@
+vendor: sitonica
+before: |
+  bgp 4200000000
+    bmp server 1 monitor all-vpn-instance route-mode adj-rib-in both
+    graceful-restart
+    non-stop-routing
+    router-id 192.0.2.69
+    address-family ipv6 unicast
+      balance 128
+      balance as-path-relax
+      balance ebgp 4
+      forwarding-conversational-learning route-policy RM6_BEISH
+      import-route direct route-policy RM6_JER
+      network 2001:DB8:1:: 64 route-policy RM6_TOZOK
+      aggregate 2001:DB8:1:: 64 detail-suppressed
+after: |
+  bgp 4200000000
+    address-family ipv6 unicast
+patch: |
+  system-view
+  bgp 4200000000
+    undo graceful-restart
+    undo non-stop-routing
+    undo router-id
+    undo bmp server 1 monitor all-vpn-instance route-mode adj-rib-in both
+    address-family ipv6 unicast
+      undo balance
+      undo balance as-path-relax
+      undo balance ebgp
+      undo forwarding-conversational-learning
+      undo import-route direct
+      undo network 2001:DB8:1:: 64
+      undo aggregate 2001:DB8:1:: 64
+      quit
+    quit
+  save force

@@ -1,11 +1,21 @@
-from typing import Annotated
 from dataclasses import dataclass, field
+from typing import Annotated
 
 import pytest
 
 from annet.mesh.basemodel import (
-    UseFirst, UseLast, Special, Forbid, ForbidChange, Concat, DictMerge, BaseMeshModel, MergeForbiddenError, merge,
-    Merge, merge_dataclass, MergeForbiddenError
+    BaseMeshModel,
+    Concat,
+    DictMerge,
+    Forbid,
+    ForbidChange,
+    Merge,
+    MergeForbiddenError,
+    Special,
+    UseFirst,
+    UseLast,
+    merge,
+    merge_dataclass,
 )
 
 
@@ -24,7 +34,7 @@ from annet.mesh.basemodel import (
         ("a", "b", Concat(), "ab"),
         ({"x": 1}, {"y": 2}, DictMerge(), {"x": 1, "y": 2}),
         ({"x": "a"}, {"x": "b"}, DictMerge(Concat()), {"x": "ab"}),
-    ]
+    ],
 )
 def test_merger_class(first, second, merger, expected):
     assert expected == merger("name", first, second)
@@ -35,7 +45,7 @@ def test_merger_class(first, second, merger, expected):
     [
         ("a", "b", Forbid()),
         ("a", "b", ForbidChange()),
-    ]
+    ],
 )
 def test_merger_class_raise(first, second, merger):
     with pytest.raises(MergeForbiddenError):
@@ -105,19 +115,19 @@ def test_merge_dataclass():
     m = merge_dataclass(b1, b2)
     assert m.a.x == 123
     assert m.a.y == "YYY"
-    assert m.b == True
+    assert m.b is True
 
     b1, b2 = B(a=A(x=1)), B(b=False)
     m = merge_dataclass(b1, b2)
     assert m.a.x == 1
     assert m.a.y == "YYY"
-    assert m.b == False
+    assert m.b is False
 
     b1, b2 = B(b=False), B(a=A(x=1))
     m = merge_dataclass(b1, b2)
     assert m.a.x == 1
     assert m.a.y == "YYY"
-    assert m.b == False
+    assert m.b is False
 
     a1, a2 = A(x=1), A(x=2)
     with pytest.raises(MergeForbiddenError):
@@ -146,7 +156,7 @@ def test_merge_model_with_dataclasses():
 
     assert merge(A(), A()) == A()
     assert merge(A(x=X()), A(x=X())) == A(x=X())
-    assert merge(A(x=X(m=1)), A(x=X(n=2))) == A(x=X(m=1,n=2))
+    assert merge(A(x=X(m=1)), A(x=X(n=2))) == A(x=X(m=1, n=2))
     with pytest.raises(MergeForbiddenError):
         merge(A(x=X(m=1)), A(x=X(m=2)))
 

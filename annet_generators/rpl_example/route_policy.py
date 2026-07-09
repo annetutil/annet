@@ -1,12 +1,16 @@
-from typing import Optional
+from typing import Any, Optional
 
-from annet.adapters.netbox.common.models import NetboxDevice
-from annet.rpl import R, RouteMap, Route
-
-routemap = RouteMap[NetboxDevice]()
+from annet.adapters.netbox.common.models import DeviceIp, Interface, NetboxDevice
+from annet.rpl import R, Route, RouteMap
 
 
-def find_loopback(device: NetboxDevice) -> Optional[str]:
+# The example is device-agnostic, so the interface/IP type parameters are unconstrained.
+ExampleDevice = NetboxDevice[Interface[Any, Any], DeviceIp]
+
+routemap = RouteMap[ExampleDevice]()
+
+
+def find_loopback(device: ExampleDevice) -> Optional[str]:
     for iface in device.interfaces:
         if iface.name.lower().startswith("lo"):
             return iface.name
@@ -17,7 +21,7 @@ SOME_CONDITION = (R.rd.has_any("RD_EXAMPLE1")) & (R.protocol == "bgp")
 
 
 @routemap
-def example1(device: NetboxDevice, route: Route):
+def example1(device: ExampleDevice, route: Route) -> None:
     # condition can be referenced as global constant
     with route(SOME_CONDITION, number=1, name="n1") as rule:
         rule.set_local_pref(100)
@@ -30,9 +34,10 @@ def example1(device: NetboxDevice, route: Route):
     loopback = find_loopback(device)
     if loopback:  # rules can be generated dynamically
         with route(
-                R.community.has("COMMUNITY_EXAMPLE_REMOVE"),
-                R.interface == loopback,  # conditions can reference calculated values
-                number=2, name="n2",
+            R.community.has("COMMUNITY_EXAMPLE_REMOVE"),
+            R.interface == loopback,  # conditions can reference calculated values
+            number=2,
+            name="n2",
         ) as rule:
             rule.set_local_pref(100)
             rule.add_metric(200)
@@ -45,7 +50,7 @@ def example1(device: NetboxDevice, route: Route):
 
 
 @routemap
-def example2(device: NetboxDevice, route: Route):
+def example2(device: ExampleDevice, route: Route) -> None:
     with route(R.as_path_filter("ASP_EXAMPLE"), number=3, name="n3") as rule:
         rule.deny()
     with route(R.match_v6("IPV6_LIST_EXAMPLE"), number=4, name="n4") as rule:
@@ -62,6 +67,6 @@ def example2(device: NetboxDevice, route: Route):
 
 # this policy is not used in mesh model, so will be filtered out
 @routemap
-def unused(device: NetboxDevice, route: Route):
+def unused(device: ExampleDevice, route: Route) -> None:
     with route(number=3, name="n3") as rule:
         rule.deny()

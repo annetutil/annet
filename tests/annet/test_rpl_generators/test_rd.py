@@ -2,9 +2,10 @@ from unittest.mock import Mock
 
 import pytest
 
-from annet.rpl import R, RouteMap, Route
+from annet.rpl import R, Route, RouteMap
 from annet.rpl_generators import RDFilter
-from .helpers import scrub, iosxr, generate, juniper
+
+from .helpers import generate, iosxr, juniper, scrub
 
 
 def test_iosxr_rd_match():
@@ -19,7 +20,7 @@ def test_iosxr_rd_match():
     def policy(device: Mock, route: Route):
         with route(R.rd.has("rd1", "rd2"), name="n20", number=20) as rule:
             rule.allow()
-        with route(R.rd.has_any("rd1", "rd2"), name="n20", number=20) as rule:
+        with route(R.rd.has_any("rd1", "rd2"), name="n21", number=21) as rule:
             rule.allow()
 
     result = generate(routemaps=routemaps, rd_filters=rd_filters, dev=iosxr())
@@ -92,4 +93,4 @@ def test_juniper_both_rd_match_and_not_supported():
             rule.allow()
 
     with pytest.raises(NotImplementedError):
-      generate(routemaps=routemaps, rd_filters=rd_filters, dev=juniper())
+        generate(routemaps=routemaps, rd_filters=rd_filters, dev=juniper())

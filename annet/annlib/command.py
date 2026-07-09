@@ -1,6 +1,7 @@
-from dataclasses import dataclass, field
+from __future__ import annotations
 
-from typing import List, Optional
+from collections.abc import Iterator
+from dataclasses import dataclass, field
 
 
 FIRST_EXCEPTION = 1
@@ -11,19 +12,21 @@ ALL_COMPLETED = 2
 class Question:
     question: str  # frame it using / if it is a regular expression
     answer: str
-    is_regexp: Optional[bool] = False
+    is_regexp: bool | None = False
     not_send_nl: bool = False
 
 
 @dataclass
 class Command:
     cmd: str | bytes
-    questions: Optional[List[Question]] = None
-    exc_handler: Optional[List[Question]] = None
-    timeout: Optional[int] = None  # total timeout
-    read_timeout: Optional[int] = None  # timeout between consecutive reads
+    questions: list[Question] | None = None
+    exc_handler: list[Question] | None = None
+    timeout: int | None = None  # total timeout
+    read_timeout: int | None = None  # timeout between consecutive reads
     suppress_nonzero: bool = False
     suppress_eof: bool = False
+    suppress_errors: bool = False
+    level: int = 0  # block nesting depth, set by the patch builder
 
     def __str__(self) -> str:
         if isinstance(self.cmd, bytes):
@@ -33,13 +36,13 @@ class Command:
 
 @dataclass
 class CommandList:
-    cmss: List[Command] = field(default_factory=list)
+    cmss: list[Command] = field(default_factory=list)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.cmss:
             self.cmss = []
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Command]:
         return iter(self.cmss)
 
     def __len__(self) -> int:
@@ -49,5 +52,5 @@ class CommandList:
         assert isinstance(cmd, Command)
         self.cmss.append(cmd)
 
-    def as_list(self) -> List[Command]:  # TODO: delete
+    def as_list(self) -> list[Command]:  # TODO: delete
         return self.cmss

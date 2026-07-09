@@ -2,7 +2,8 @@ from dataclasses import dataclass
 
 import pytest
 
-from annet.rpl import Route, RouteMap, R, SingleAction, ActionType, SingleCondition, ConditionOperator
+from annet.rpl import ActionType, ConditionOperator, R, Route, RouteMap, SingleAction, SingleCondition
+
 
 DEVICE_NAME = "dev1"
 
@@ -70,11 +71,14 @@ def test_routemap():
     )
 
 
-@pytest.mark.parametrize(["allowed_rules", "expected_rules"], [
-    (["example_rule1"], ["example_rule1"]),
-    (["invalid"], []),
-    (["invalid", "example_rule1"], ["example_rule1"]),
-])
+@pytest.mark.parametrize(
+    ["allowed_rules", "expected_rules"],
+    [
+        (["example_rule1"], ["example_rule1"]),
+        (["invalid"], []),
+        (["invalid", "example_rule1"], ["example_rule1"]),
+    ],
+)
 def test_routemap_filter(allowed_rules, expected_rules):
     subroutemap = RouteMap[Device]()
     subroutemap(example_rule1)
@@ -86,3 +90,27 @@ def test_routemap_filter(allowed_rules, expected_rules):
     res = routemap.apply(device, allowed_rules)
     found_rules = [r.name for r in res]
     assert found_rules == expected_rules
+
+
+def conflict_number(device: Device, route: Route):
+    with route(number=1) as rule:
+        rule.allow()
+    with route(number=1) as rule:
+        rule.deny()
+
+
+def conflict_name(device: Device, route: Route):
+    with route(name="xxx") as rule:
+        rule.allow()
+    with route(name="xxx") as rule:
+        rule.deny()
+
+
+@pytest.mark.parametrize("func", [conflict_number, conflict_name])
+def test_conflict(func):
+    routemap = RouteMap[Device]()
+    routemap(func)
+
+    device = Device(DEVICE_NAME)
+    with pytest.raises(ValueError):
+        routemap.apply(device)

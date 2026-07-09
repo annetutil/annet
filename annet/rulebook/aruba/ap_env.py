@@ -1,18 +1,26 @@
 # pylint: disable=unused-argument
 
-from annet.annlib.types import Op
+from collections.abc import Iterator
+from typing import Any
+
 from annet.annlib.command import Command, CommandList
+from annet.annlib.netdev.views.hardware import HardwareView
+from annet.annlib.rulebook.common import DiffDict
+from annet.annlib.types import Op
 
 
-def apply(hw, do_commit, do_finalize, **_):
+def apply(hw: HardwareView, do_commit: bool, do_finalize: bool, **_: Any) -> tuple[CommandList, CommandList]:
     before, after = CommandList(), CommandList()
     if do_commit:
         after.add_cmd(Command("write memory"))
     return (before, after)
 
 
-def patch_flag(rule, key, diff, **_):
-    direct, cmd = None, ""
+def patch_flag(
+    rule: dict[str, Any], key: tuple[str, ...], diff: DiffDict, **_: Any
+) -> Iterator[tuple[bool, str, None]]:
+    direct: bool | None = None
+    cmd = ""
     if diff[Op.ADDED]:
         row, _ = diff[Op.ADDED][0]["row"].split(":")
         cmd = row.replace("_", "-")
@@ -22,21 +30,24 @@ def patch_flag(rule, key, diff, **_):
         cmd = "no " + row.replace("_", "-")
         direct = False
     if cmd:
+        assert direct is not None
         yield direct, cmd, None
 
 
-def hostname(rule, key, diff, **_):
+def hostname(rule: dict[str, Any], key: tuple[str, ...], diff: DiffDict, **_: Any) -> Iterator[tuple[bool, str, None]]:
     if diff[Op.ADDED]:
         yield True, "hostname %s" % key, None
 
 
-def mgmt(rule, key, diff, rule_pre, **_):
+def mgmt(
+    rule: dict[str, Any], key: tuple[str, ...], diff: DiffDict, rule_pre: dict[str, Any], **_: Any
+) -> Iterator[tuple[bool, str, None]]:
     if not diff[Op.ADDED] and not diff[Op.REMOVED]:
         return
     pre_items = rule_pre["items"]
     unchanged = {k[0]: v[Op.UNCHANGED][0]["row"].split(":")[1] for k, v in pre_items.items() if v[Op.UNCHANGED]}
     added = {k[0]: v[Op.ADDED][0]["row"].split(":")[1] for k, v in pre_items.items() if v[Op.ADDED]}
-    params = {
+    params: dict[str, str | None] = {
         "ipaddr": None,
         "netmask": None,
         "gatewayip": None,
@@ -48,10 +59,17 @@ def mgmt(rule, key, diff, rule_pre, **_):
     empty = {k: v for k, v in params.items() if v is None}
     if empty:
         raise RuntimeError("Failed to determine params %s" % ",".join(empty.keys()))
-    yield True, f"ip-address {params['ipaddr']} {params['netmask']} {params['gatewayip']} {params['dnsip']} {params['domainname']}", None
+    yield (
+        True,
+        f"ip-address {params['ipaddr']} {params['netmask']} {params['gatewayip']} {params['dnsip']} "
+        f"{params['domainname']}",
+        None,
+    )
 
 
-def swarm_mode(rule, key, diff, **_):
+def swarm_mode(
+    rule: dict[str, Any], key: tuple[str, ...], diff: DiffDict, **_: Any
+) -> Iterator[tuple[bool, str, None]]:
     if diff[Op.ADDED]:
         row = diff[Op.ADDED][0]["row"]
         mode = row.split("_")[0]
@@ -60,13 +78,16 @@ def swarm_mode(rule, key, diff, **_):
         yield True, "swarm-mode cluster", None
 
 
-def iap_zone(rule, key, diff, **_):
+def iap_zone(rule: dict[str, Any], key: tuple[str, ...], diff: DiffDict, **_: Any) -> Iterator[tuple[bool, str, None]]:
     if diff[Op.ADDED]:
         yield True, "zone %s" % key, None
 
 
-def dot11_radio(rule, key, diff, **_):
-    direct, cmd = None, ""
+def dot11_radio(
+    rule: dict[str, Any], key: tuple[str, ...], diff: DiffDict, **_: Any
+) -> Iterator[tuple[bool, str, None]]:
+    direct: bool | None = None
+    cmd = ""
     if diff[Op.ADDED]:
         direct, cmd = True, diff[Op.ADDED][0]["row"]
     elif diff[Op.REMOVED]:
@@ -74,10 +95,13 @@ def dot11_radio(rule, key, diff, **_):
     if cmd:
         cmd = cmd.replace("_", "-")
         cmd = cmd.replace(":", "-")
+        assert direct is not None
         yield direct, cmd, None
 
 
-def installation_type(rule, key, diff, **_):
+def installation_type(
+    rule: dict[str, Any], key: tuple[str, ...], diff: DiffDict, **_: Any
+) -> Iterator[tuple[bool, str, None]]:
     if diff[Op.ADDED]:
         row = diff[Op.ADDED][0]["row"]
         _, installation_place = row.split(":")
@@ -86,7 +110,9 @@ def installation_type(rule, key, diff, **_):
         yield True, "ap-installation default", None
 
 
-def wifi_arm(rule, key, diff, root_pre, **_):
+def wifi_arm(
+    rule: dict[str, Any], key: tuple[str, ...], diff: DiffDict, root_pre: dict[str, Any], **_: Any
+) -> Iterator[tuple[bool, str, None]]:
     if key[0].startswith("wifi0"):
         prefix, cmd = "wifi0", "a-channel"
     elif key[0].startswith("wifi1"):
@@ -107,8 +133,11 @@ def wifi_arm(rule, key, diff, root_pre, **_):
     yield True, f"{cmd} {arm_channel} {arm_power}", None
 
 
-def ant_gain(rule, key, diff, root_pre, **_):
-    row, value, direct = "", "", None
+def ant_gain(
+    rule: dict[str, Any], key: tuple[str, ...], diff: DiffDict, root_pre: dict[str, Any], **_: Any
+) -> Iterator[tuple[bool, str, None]]:
+    row, value = "", ""
+    direct: bool | None = None
     if diff[Op.ADDED]:
         row = diff[Op.ADDED][0]["row"]
         _, value = row.split(":")
@@ -124,11 +153,15 @@ def ant_gain(rule, key, diff, root_pre, **_):
             cmd = "g-external-antenna"
         else:
             raise ValueError("Unknown row '%s'" % row)
+        assert direct is not None
         yield direct, f"{cmd} {value}", None
 
 
-def ant_pol(rule, key, diff, root_pre, **_):
-    row, value, direct = "", "", None
+def ant_pol(
+    rule: dict[str, Any], key: tuple[str, ...], diff: DiffDict, root_pre: dict[str, Any], **_: Any
+) -> Iterator[tuple[bool, str, None]]:
+    row, value = "", ""
+    direct: bool | None = None
     if diff[Op.ADDED]:
         row, value = diff[Op.ADDED][0]["row"].split(":")
         direct = True
@@ -138,4 +171,5 @@ def ant_pol(rule, key, diff, root_pre, **_):
         direct = False
     if row:
         cmd = row.replace("_", "-")
+        assert direct is not None
         yield direct, f"{cmd} {value}", None

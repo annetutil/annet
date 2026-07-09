@@ -1,18 +1,20 @@
-from abc import abstractmethod, ABC
-from typing import Generic, TypeVar
+from abc import ABC, abstractmethod
+from typing import Any, Generic, TypeVar
 
 from annet.annlib.netdev.views.hardware import HardwareView
-from .manufacturer import get_breed, get_hw
-from .models import NetboxDevice, Interface, IpAddress, Prefix, \
-    FHRPGroupAssignment, FHRPGroup
 
-NetboxDeviceT = TypeVar("NetboxDeviceT", bound=NetboxDevice)
-InterfaceT = TypeVar("InterfaceT", bound=Interface)
-IpAddressT = TypeVar("IpAddressT", bound=IpAddress)
+from .manufacturer import get_breed, get_hw
+from .models import FHRPGroup, FHRPGroupAssignment, Interface, IpAddress, NetboxDevice, Prefix
+
+
+NetboxDeviceT = TypeVar("NetboxDeviceT", bound=NetboxDevice[Any, Any])
+InterfaceT = TypeVar("InterfaceT", bound=Interface[Any, Any])
+IpAddressT = TypeVar("IpAddressT", bound=IpAddress[Any])
 PrefixT = TypeVar("PrefixT", bound=Prefix)
-FHRPGroupT = TypeVar("FHRPGroupT", bound=FHRPGroup)
+FHRPGroupT = TypeVar("FHRPGroupT", bound=FHRPGroup[Any])
 FHRPGroupAssignmentT = TypeVar(
-    "FHRPGroupAssignmentT", bound=FHRPGroupAssignment,
+    "FHRPGroupAssignmentT",
+    bound=FHRPGroupAssignment[Any],
 )
 
 
@@ -76,12 +78,14 @@ class NetboxAdapter(
 
     @abstractmethod
     def list_fhrp_group_assignments(
-            self, iface_ids: list[int],
+        self,
+        iface_ids: list[int],
     ) -> list[FHRPGroupAssignmentT]:
         raise NotImplementedError()
 
     @abstractmethod
     def list_fhrp_groups(
-            self, ids: list[int],
+        self,
+        ids: list[int],
     ) -> list[FHRPGroupT]:
         raise NotImplementedError()

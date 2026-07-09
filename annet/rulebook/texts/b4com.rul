@@ -12,26 +12,86 @@
 # -----
 # Physical
 feature ~
+hostname
+logging */(timestamp|cli|console|monitor)/
+logging logfile *
+logging level *
+%if hw.B4com.CS2148P:
+logging server address *
+%else:
+logging remote */(server|facility|authpriv)/ ~  %logic=annet.rulebook.b4com.misc.undo_syslog
+%endif
+clock *
 ntp ~
-sflow
+snmp-server enable ~
+snmp-server view ~
+snmp-server community ~           %logic=annet.rulebook.b4com.misc.undo_snmp_cmnt
+sflow collector *
+sflow agent-ip
+ip domain-lookup ~
+ip vrf *
+    ~
+username * */(sshkey|role|privilege|assign)/       %logic=annet.rulebook.b4com.misc.undo_username
+%if hw.B4com.CS2148P:
+rsa key *
+    ~ %global                     %diff_logic=annet.rulebook.b4com.aaa.rsa_key_diff
+%endif
+key chain *
 aaa group server tacacs\+ *
-    ~ %global
-ip prefix-list *
-    ~ %global
-ipv6 prefix-list *
-    ~ %global
+    ~                             %global
+* prefix-list *
+    description *
+    seq * */(deny|permit)/ *
 route-map ~
-    ~ %global
-interface */(ce|xe|po|eth(-0-)?|vlan1\.)[0-9\/]+$/     %logic=common.permanent %diff_logic=b4com.iface.diff
+    %if hw.B4com.CS2148P:
+    set community
+    %endif
+    ~                             %global
+ip community-list ~
+ip dhcp relay address *
+ipv6 dhcp relay address *
+ip route ~
+ipv6 route ~
+interface */vlan1\.[0-9\/]+$/    %diff_logic=annet.rulebook.b4com.iface.diff
     description
     ip vrf forwarding *
     ip address *
+    ip dhcp
     ipv6 address *
     ipv6 nd *
+    ipv6 dhcp relay *
     mtu
-    sflow *                       %logic=b4com.iface.sflow
+    sflow *                       %logic=annet.rulebook.b4com.iface.sflow
+    shutdown
     lldp-agent
-        ~ %global                 %logic=b4com.iface.lldp
+        ~ %global                 %logic=annet.rulebook.b4com.iface.lldp
         !dcbx *
         !exit
-ip community-list ~
+interface */(ce|xe|po|eth(-0-)?)[0-9\/]+$/     %logic=annet.rulebook.common.permanent %diff_logic=annet.rulebook.b4com.iface.diff
+    description
+    ip vrf forwarding *
+    ip address *
+    ip dhcp
+    ipv6 address *
+    ipv6 nd *
+    ipv6 dhcp relay *
+    mtu
+    sflow *                       %logic=annet.rulebook.b4com.iface.sflow
+    shutdown
+    lldp-agent
+        ~ %global                 %logic=annet.rulebook.b4com.iface.lldp
+        !dcbx *
+        !exit
+router bgp *
+    bgp ~
+    max-paths ebgp
+    no neighbor * send-community extended
+    neighbor ~                                  %logic=annet.rulebook.b4com.bgp.undo_peer
+    address-family ~
+        no neighbor * send-community extended
+        network *
+        max-paths ebgp
+        neighbor ~                              %logic=annet.rulebook.b4com.bgp.undo_peer
+line ~
+    exec-timeout
+    ~                             %global

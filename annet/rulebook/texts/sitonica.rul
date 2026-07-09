@@ -1,0 +1,38 @@
+# Операторы:
+#   *  Один аргумент в undo
+#   ~  Несколько аргументов (минимум один) в undo
+#
+# Параметры:
+#   %global         Команда действует на любом уровне ниже
+#   %logic=...      Кастомная функция обработки правила
+#   %diff_logic=... Кастомная функция построения диффа.
+#                   данная функция работает для подблоков (в отличие от %logic)
+#   %comment=...    Добавить коммент после строки который будет видно с опцией patch --add-comments
+#                   Сделано в основном для того чтобы генерировать специальные команды для наливки
+# -----
+
+lldp ~
+ntp ~
+interface
+    mtu
+bgp
+    bmp ~
+    graceful-restart
+    non-stop-routing
+    router-id
+    group ~                                         %logic=annet.rulebook.sitonica.bgp.undo_peer
+    peer ~                                          %logic=annet.rulebook.sitonica.bgp.undo_peer
+    address-family ~
+        balance *                                   %logic=annet.rulebook.sitonica.undo.strange
+        forwarding-conversational-learning
+        import-route *
+        network ~                                   %logic=annet.rulebook.sitonica.undo.two
+        aggregate ~                                 %logic=annet.rulebook.sitonica.undo.two
+        peer ~                                      %logic=annet.rulebook.sitonica.bgp.undo_peer
+    ip vpn-instance *
+        bmp ~
+        graceful-restart
+        non-stop-routing
+        router-id
+        group ~                                     %logic=annet.rulebook.sitonica.bgp.undo_peer
+        peer ~                                      %logic=annet.rulebook.sitonica.bgp.undo_peer

@@ -2,10 +2,11 @@ from logging import getLogger
 
 from annet.annlib.netdev.views.hardware import HardwareView
 
+
 logger = getLogger(__name__)
 
 
-def get_hw(manufacturer: str, model: str, platform_name: str):
+def get_hw(manufacturer: str, model: str, platform_name: str) -> HardwareView:
     # By some reason Netbox calls Mellanox SN as MSN, so we fix them here
     if manufacturer == "Mellanox" and model.startswith("MSN"):
         model = model.replace("MSN", "SN", 1)
@@ -13,7 +14,7 @@ def get_hw(manufacturer: str, model: str, platform_name: str):
     return HardwareView(manufacturer + " " + model, platform_name)
 
 
-def get_breed(manufacturer: str, model: str):
+def get_breed(manufacturer: str, model: str) -> str:
     hw = get_hw(manufacturer, model, "")
     if hw.Huawei.CE:
         return "vrp85"
@@ -27,6 +28,8 @@ def get_breed(manufacturer: str, model: str):
         return "cuml2"
     elif hw.Juniper:
         return "jun10"
+    elif hw.Cisco.NCS:
+        return "ios12"
     elif hw.Cisco.Nexus:
         return "nxos"
     elif hw.Cisco:
@@ -41,4 +44,8 @@ def get_breed(manufacturer: str, model: str):
         return "moxa"
     elif hw.PC:
         return "pc"
+    elif hw.Aruba:
+        return "aruos"
+    elif hw.Sitonica:
+        return "ipn"
     return ""

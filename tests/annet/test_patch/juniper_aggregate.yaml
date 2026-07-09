@@ -1,0 +1,358 @@
+- vendor: juniper
+  diff: |-
+    routing-options {
+        rib inet.0 {
+            aggregate {
+                + route 10.0.1.0/24 discard;
+            }
+        }
+        rib inet6.0 {
+            aggregate {
+                + route 2001:db8:1::/40 discard;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    set routing-options rib inet.0 aggregate route 10.0.1.0/24 discard
+    set routing-options rib inet6.0 aggregate route 2001:db8:1::/40 discard
+    commit
+    exit
+
+
+- vendor: juniper
+  diff: |-
+    routing-options {
+        rib inet.0 {
+            aggregate {
+                - route 10.0.1.0/24 discard;
+                + route 10.0.1.0/24 brief;
+            }
+        }
+        rib inet6.0 {
+            aggregate {
+                - route 2001:db8:1::/40 discard;
+                + route 2001:db8:1::/40 brief;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-options rib inet.0 aggregate route 10.0.1.0/24
+    set routing-options rib inet.0 aggregate route 10.0.1.0/24 brief
+    delete routing-options rib inet6.0 aggregate route 2001:db8:1::/40
+    set routing-options rib inet6.0 aggregate route 2001:db8:1::/40 brief
+    commit
+    exit
+
+
+- vendor: juniper
+  diff: |-
+    routing-options {
+        rib inet.0 {
+            aggregate {
+                - route 10.0.1.0/24 discard;
+                + route 10.0.2.0/24 discard;
+            }
+        }
+        rib inet6.0 {
+            aggregate {
+                - route 2001:db8:1::/40 discard;
+                + route 2001:db8:2::/40 discard;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-options rib inet.0 aggregate route 10.0.1.0/24
+    set routing-options rib inet.0 aggregate route 10.0.2.0/24 discard
+    delete routing-options rib inet6.0 aggregate route 2001:db8:1::/40
+    set routing-options rib inet6.0 aggregate route 2001:db8:2::/40 discard
+    commit
+    exit
+
+
+- vendor: juniper
+  diff: |-
+    routing-options {
+        rib inet.0 {
+            aggregate {
+                - route 10.0.1.0/24 discard;
+                - route 10.0.2.0/24;
+            }
+        }
+        rib inet6.0 {
+            aggregate {
+                - route 2001:db8:1::/40 discard;
+                - route 2001:db8:2::/40;
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-options rib inet.0 aggregate route 10.0.1.0/24
+    delete routing-options rib inet.0 aggregate route 10.0.2.0/24
+    delete routing-options rib inet6.0 aggregate route 2001:db8:1::/40
+    delete routing-options rib inet6.0 aggregate route 2001:db8:2::/40
+    commit
+    exit
+
+
+- vendor: juniper
+  before: |-
+    routing-options {
+        rib inet.0 {
+            aggregate {
+                route 10.0.2.0/24 discard;
+            }
+        }
+    }
+  after: |-
+    routing-options {
+        rib inet.0 {
+            aggregate {
+                route 10.0.2.0/24 {
+                    as-path {
+                        origin igp;
+                        atomic-aggregate;
+                    }
+                    discard;
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-options rib inet.0 aggregate route 10.0.2.0/24
+    set routing-options rib inet.0 aggregate route 10.0.2.0/24 as-path origin igp
+    set routing-options rib inet.0 aggregate route 10.0.2.0/24 as-path atomic-aggregate
+    set routing-options rib inet.0 aggregate route 10.0.2.0/24 discard
+    commit
+    exit
+
+
+- vendor: juniper
+  before: |-
+    routing-options {
+        rib inet.0 {
+            aggregate {
+                route 10.0.2.0/24 discard;
+            }
+        }
+    }
+  after: |-
+    routing-options {
+        rib inet.0 {
+            aggregate {
+                route 10.0.2.0/24 {
+                    as-path {
+                        origin igp;
+                        atomic-aggregate;
+                    }
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-options rib inet.0 aggregate route 10.0.2.0/24
+    set routing-options rib inet.0 aggregate route 10.0.2.0/24 as-path origin igp
+    set routing-options rib inet.0 aggregate route 10.0.2.0/24 as-path atomic-aggregate
+    commit
+    exit
+
+
+- vendor: juniper
+  diff: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    aggregate {
+                        + route 10.0.1.0/24 discard;
+                    }
+                }
+                rib VRF_A.inet6.0 {
+                    aggregate {
+                        + route 2001:db8:1::/40 discard;
+                    }
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    set routing-instances VRF_A routing-options rib VRF_A.inet.0 aggregate route 10.0.1.0/24 discard
+    set routing-instances VRF_A routing-options rib VRF_A.inet6.0 aggregate route 2001:db8:1::/40 discard
+    commit
+    exit
+
+
+- vendor: juniper
+  diff: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    aggregate {
+                        - route 10.0.1.0/24 discard;
+                        + route 10.0.1.0/24 brief;
+                    }
+                }
+                rib VRF_A.inet6.0 {
+                    aggregate {
+                        - route 2001:db8:1::/40 discard;
+                        + route 2001:db8:1::/40 brief;
+                    }
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-instances VRF_A routing-options rib VRF_A.inet.0 aggregate route 10.0.1.0/24
+    set routing-instances VRF_A routing-options rib VRF_A.inet.0 aggregate route 10.0.1.0/24 brief
+    delete routing-instances VRF_A routing-options rib VRF_A.inet6.0 aggregate route 2001:db8:1::/40
+    set routing-instances VRF_A routing-options rib VRF_A.inet6.0 aggregate route 2001:db8:1::/40 brief
+    commit
+    exit
+
+
+- vendor: juniper
+  diff: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    aggregate {
+                        - route 10.0.1.0/24 discard;
+                        + route 10.0.2.0/24 discard;
+                    }
+                }
+                rib VRF_A.inet6.0 {
+                    aggregate {
+                        - route 2001:db8:1::/40 discard;
+                        + route 2001:db8:2::/40 discard;
+                    }
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-instances VRF_A routing-options rib VRF_A.inet.0 aggregate route 10.0.1.0/24
+    set routing-instances VRF_A routing-options rib VRF_A.inet.0 aggregate route 10.0.2.0/24 discard
+    delete routing-instances VRF_A routing-options rib VRF_A.inet6.0 aggregate route 2001:db8:1::/40
+    set routing-instances VRF_A routing-options rib VRF_A.inet6.0 aggregate route 2001:db8:2::/40 discard
+    commit
+    exit
+
+
+- vendor: juniper
+  diff: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    aggregate {
+                        - route 10.0.1.0/24 discard;
+                        - route 10.0.2.0/24;
+                    }
+                }
+                rib VRF_A.inet6.0 {
+                    aggregate {
+                        - route 2001:db8:1::/40 discard;
+                        - route 2001:db8:2::/40;
+                    }
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-instances VRF_A routing-options rib VRF_A.inet.0 aggregate route 10.0.1.0/24
+    delete routing-instances VRF_A routing-options rib VRF_A.inet.0 aggregate route 10.0.2.0/24
+    delete routing-instances VRF_A routing-options rib VRF_A.inet6.0 aggregate route 2001:db8:1::/40
+    delete routing-instances VRF_A routing-options rib VRF_A.inet6.0 aggregate route 2001:db8:2::/40
+    commit
+    exit
+
+
+- vendor: juniper
+  before: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    aggregate {
+                        route 10.0.2.0/24 discard;
+                    }
+                }
+            }
+        }
+    }
+  after: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    aggregate {
+                        route 10.0.2.0/24 {
+                            as-path {
+                                origin igp;
+                                atomic-aggregate;
+                            }
+                            discard;
+                        }
+                    }
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-instances VRF_A routing-options rib VRF_A.inet.0 aggregate route 10.0.2.0/24
+    set routing-instances VRF_A routing-options rib VRF_A.inet.0 aggregate route 10.0.2.0/24 as-path origin igp
+    set routing-instances VRF_A routing-options rib VRF_A.inet.0 aggregate route 10.0.2.0/24 as-path atomic-aggregate
+    set routing-instances VRF_A routing-options rib VRF_A.inet.0 aggregate route 10.0.2.0/24 discard
+    commit
+    exit
+
+
+- vendor: juniper
+  before: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    aggregate {
+                        route 10.0.2.0/24 discard;
+                    }
+                }
+            }
+        }
+    }
+  after: |-
+    routing-instances {
+        VRF_A {
+            routing-options {
+                rib VRF_A.inet.0 {
+                    aggregate {
+                        route 10.0.2.0/24 {
+                            as-path {
+                                origin igp;
+                                atomic-aggregate;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete routing-instances VRF_A routing-options rib VRF_A.inet.0 aggregate route 10.0.2.0/24
+    set routing-instances VRF_A routing-options rib VRF_A.inet.0 aggregate route 10.0.2.0/24 as-path origin igp
+    set routing-instances VRF_A routing-options rib VRF_A.inet.0 aggregate route 10.0.2.0/24 as-path atomic-aggregate
+    commit
+    exit

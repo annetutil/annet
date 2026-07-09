@@ -1,15 +1,19 @@
+from typing import Any
+
 from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.vendors.tabparser import AristaFormatter
 from annet.vendors.base import AbstractVendor
 from annet.vendors.registry import registry
+from annet.vendors.tabparser import AristaFormatter
 
 
 @registry.register
 class AristaVendor(AbstractVendor):
     NAME = "arista"
 
-    def apply(self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str) -> tuple[CommandList, CommandList]:
+    def apply(
+        self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str | None
+    ) -> tuple[CommandList, CommandList]:
         before, after = CommandList(), CommandList()
 
         before.add_cmd(Command("conf s"))
@@ -36,7 +40,7 @@ class AristaVendor(AbstractVendor):
     def svi_name(self, num: int) -> str:
         return f"Vlan{num}"
 
-    def make_formatter(self, **kwargs) -> AristaFormatter:
+    def make_formatter(self, **kwargs: Any) -> AristaFormatter:
         return AristaFormatter(**kwargs)
 
     @property

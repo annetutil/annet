@@ -1,15 +1,19 @@
+from typing import Any
+
 from annet.annlib.command import Command, CommandList
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.vendors.tabparser import B4comFormatter
 from annet.vendors.base import AbstractVendor
 from annet.vendors.registry import registry
+from annet.vendors.tabparser import B4comFormatter
 
 
 @registry.register
 class B4ComVendor(AbstractVendor):
     NAME = "b4com"
 
-    def apply(self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str) -> tuple[CommandList, CommandList]:
+    def apply(
+        self, hw: HardwareView, do_commit: bool, do_finalize: bool, path: str | None
+    ) -> tuple[CommandList, CommandList]:
         before, after = CommandList(), CommandList()
 
         if hw.B4com.CS2148P:
@@ -38,7 +42,7 @@ class B4ComVendor(AbstractVendor):
     def hardware(self) -> HardwareView:
         return HardwareView("B4com")
 
-    def make_formatter(self, **kwargs) -> B4comFormatter:
+    def make_formatter(self, **kwargs: Any) -> B4comFormatter:
         return B4comFormatter(**kwargs)
 
     @property

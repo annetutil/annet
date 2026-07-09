@@ -252,3 +252,35 @@
       end-policy
     commit show-error
     exit
+
+# https://github.com/annetutil/annet/issues/495
+- vendor: asr
+  before: ""
+  after: |
+    route-policy TEST-IN
+      if destination in IPV4-DEFAULT or destination in IPV6-DEFAULT then
+        drop
+      elseif destination in TEST-DENY then
+        drop
+      elseif community in CUSTOMERS then
+        set local-preference 110
+        done
+      else
+        set local-preference 110
+    end-policy
+  patch: |
+    configure exclusive
+    route-policy TEST-IN
+      if destination in IPV4-DEFAULT or destination in IPV6-DEFAULT then
+        drop
+      elseif destination in TEST-DENY then
+        drop
+      elseif community in CUSTOMERS then
+        set local-preference 110
+        done
+      else
+        set local-preference 110
+        endif
+      end-policy
+    commit show-error
+    exit

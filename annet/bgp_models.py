@@ -1,6 +1,9 @@
-from collections.abc import Sequence, Iterable
+from __future__ import annotations
+
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
-from typing import Literal, Union, Optional, Annotated
+from enum import Enum
+from typing import Annotated, Literal, Optional, Union
 
 
 class VidRange:
@@ -8,18 +11,18 @@ class VidRange:
         self.start = start
         self.stop = stop
 
-    def is_single(self):
+    def is_single(self) -> bool:
         return self.start == self.stop
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[int]:
         return iter(range(self.start, self.stop + 1))
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.is_single():
             return str(self.start)
         return f"{self.start}-{self.stop}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"VlanRange({self.start}, {self.stop})"
 
     def __eq__(self, other: object) -> bool:
@@ -58,13 +61,13 @@ class VidCollection:
     def __init__(self, ranges: list[VidRange]) -> None:
         self.ranges = ranges
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ",".join(map(str, self.ranges))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"VlanCollection({str(self)!r})"
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[int]:
         for range in self.ranges:
             yield from range
 
@@ -80,9 +83,10 @@ class ASN(int):
     None is treated like 0. Supports integer operations
     Supported formats: https://tools.ietf.org/html/rfc5396#section-1
     """
+
     PLAIN_MAX = 0x10000
 
-    def __new__(cls, asn: Union[int, str, None, "ASN"]):
+    def __new__(cls, asn: Union[int, str, None, "ASN"]) -> "ASN":
         if isinstance(asn, ASN):
             return asn
         elif asn is None:
@@ -94,17 +98,17 @@ class ASN(int):
                     raise ValueError("Invalid ASN asn %r" % asn)
                 asn = (high << 16) + low
             asn = int(asn)
-        if not 0 <= asn <= 0xffffffff:
+        if not 0 <= asn <= 0xFFFFFFFF:
             raise ValueError("Invalid ASN asn %r" % asn)
         return int.__new__(cls, asn)
 
-    def __add__(self, other: int):
+    def __add__(self, other: int) -> "ASN":
         return ASN(super().__add__(other))
 
-    def __sub__(self, other: int):
+    def __sub__(self, other: int) -> "ASN":
         return ASN(super().__sub__(other))
 
-    def __mul__(self, other: int):
+    def __mul__(self, other: int) -> "ASN":
         return ASN(super().__mul__(other))
 
     def is_plain(self) -> bool:
@@ -153,6 +157,7 @@ Family = Literal[
 @dataclass(frozen=True)
 class PeerOptions:
     """The same options as for group but any field is optional"""
+
     local_as: Optional[ASN] = None
     unnumbered: Optional[bool] = None
     rr_client: Optional[bool] = None
@@ -221,9 +226,16 @@ class PeerFamilyOptions:
     l2vpn_evpn: PeerFamilyOption = field(default_factory=PeerFamilyOption)
 
 
+class SpecialAddr(Enum):
+    UNNUMBERED = "UNNUMBERED"
+
+
+UNNUMBERED = SpecialAddr.UNNUMBERED
+
+
 @dataclass
 class Peer:
-    addr: str
+    addr: str | SpecialAddr
     interface: Optional[str]
     remote_as: ASN
     families: set[Family] = field(default_factory=set)

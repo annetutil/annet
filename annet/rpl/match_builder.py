@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Generic, Sequence, Callable, Optional, TypeVar, Any
+from typing import Any, Callable, Generic, Optional, Sequence, TypeVar
 
-from .condition import SingleCondition, ConditionOperator, AndCondition
+from .condition import AndCondition, ConditionOperator, SingleCondition
 
 
 class MatchField(str, Enum):
@@ -28,7 +28,7 @@ ValueT = TypeVar("ValueT")
 _ConditionMethod = Callable[["ConditionFactory[ValueT]", ValueT], SingleCondition[ValueT]]
 
 
-def condition_method(operator: ConditionOperator) -> _ConditionMethod:
+def condition_method(operator: ConditionOperator) -> _ConditionMethod[Any]:
     def method(self: "ConditionFactory[ValueT]", other: ValueT) -> SingleCondition[ValueT]:
         if operator.value not in self.supported_ops:
             raise NotImplementedError(f"Operator {operator.value} is not supported for field {self.field}")
@@ -75,7 +75,7 @@ class PrefixMatchValue:
 
 
 class Checkable:
-    def __init__(self):
+    def __init__(self) -> None:
         self.community = SetConditionFactory[str](MatchField.community)
         self.large_community = SetConditionFactory[str](MatchField.large_community)
         self.extcommunity_rt = SetConditionFactory[str](MatchField.extcommunity_rt)
@@ -93,9 +93,9 @@ class Checkable:
         return SingleCondition(MatchField.as_path_filter, ConditionOperator.EQ, name)
 
     def match_v6(
-            self,
-            *names: str,
-            or_longer: bool | OrLonger = (None, None),
+        self,
+        *names: str,
+        or_longer: bool | OrLonger = (None, None),
     ) -> SingleCondition[PrefixMatchValue]:
         if or_longer is True:
             or_longer = (None, 128)
@@ -108,9 +108,9 @@ class Checkable:
         )
 
     def match_v4(
-            self,
-            *names: str,
-            or_longer: bool | OrLonger = (None, None),
+        self,
+        *names: str,
+        or_longer: bool | OrLonger = (None, None),
     ) -> SingleCondition[PrefixMatchValue]:
         if or_longer is True:
             or_longer = (None, 32)

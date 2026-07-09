@@ -1,65 +1,81 @@
+from __future__ import annotations
 
-import re
-import tempfile
-import os
-import sys
-import math
 import asyncio
+import io
+import math
+import os
 import platform
+import re
+import sys
+import tempfile
 import textwrap
 import time
 import traceback
+import types
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Any
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from contextlog import get_logger
 
 from annet import text_term_format
 from annet.deploy import ProgressBar
 from annet.output import TextArgs
-try:
+
+
+if TYPE_CHECKING:
     import curses
-except ImportError:
-    curses = None
+else:
+    try:
+        import curses
+    except ImportError:
+        curses = None
 
 uname = platform.uname()[0]
-NCURSES_SIZE_T = 2 ** 15 - 1
+NCURSES_SIZE_T = 2**15 - 1
 MIN_CONTENT_HEIGHT = 20
 
 
 class AskConfirm:
     CUT_WARN_MSG = "WARNING: the text was cut because of curses limits."
 
-    def __init__(self, text: str, text_type="diff", alternative_text: str = "",
-                 alternative_text_type: str = "diff", allow_force_yes: bool = False):
+    def __init__(
+        self,
+        text: str,
+        text_type: str = "diff",
+        alternative_text: str = "",
+        alternative_text_type: str = "diff",
+        allow_force_yes: bool = False,
+    ) -> None:
         self.text = [text, text_type]
         self.alternative_text = [alternative_text, alternative_text_type]
         self.color_to_curses: Dict[Optional[str], int] = {}
         self.lines: Dict[int, List[TextArgs]] = {}
         self.rows = 0
-        self.cols = None
+        self.cols: int | None = None
         self.top = 0
         self.left = 0
-        self.pad: Optional["curses.window"] = None
-        self.screen = None
+        self.pad: curses.window | None = None
+        self.screen: curses.window | None = None
         self.found_pos: dict[int, list[TextArgs]] = {}
-        self.curses_lines = None
+        self.curses_lines: int | None = None
         self.debug_prompt = TextArgs("")
         self.page_position = TextArgs("")
         s_force = "/f" if allow_force_yes else ""
         self.prompt = [
             TextArgs("Execute these commands? [Y%s/q] (/ - search, a - patch/cmds)" % s_force, "blue", offset=0),
             self.page_position,
-            self.debug_prompt]
+            self.debug_prompt,
+        ]
 
-    def _parse_text(self):
+    def _parse_text(self) -> None:
         txt = self.text[0]
         txt_split = txt.splitlines()
         # curses pad, который тут используется, имеет ограничение на количество линий
         if (len(txt_split) + 1) >= NCURSES_SIZE_T:  # +1 для того чтобы курсор можно было переместить на пустую строку
-            del txt_split[NCURSES_SIZE_T - 3:]
+            del txt_split[NCURSES_SIZE_T - 3 :]
             txt_split.insert(0, self.CUT_WARN_MSG)
             txt_split.append(self.CUT_WARN_MSG)
             txt = "\n".join(txt_split)
@@ -77,29 +93,31 @@ class AskConfirm:
         except Exception:
             return None
         lines = self.text[0].splitlines()
-        for (line_no, line) in enumerate(lines):
+        for line_no, line in enumerate(lines):
             for match in re.finditer(expr, line):
                 if line_no not in self.found_pos:
                     self.found_pos[line_no] = []
                 self.found_pos[line_no].append(TextArgs(match.group(0), "highlight", match.start()))
 
-    def _init_colors(self):
+    def _init_colors(self) -> None:
         self.color_to_curses = init_colors()
 
-    def _init_pad(self):
+    def _init_pad(self) -> None:
         import curses
 
+        assert self.cols is not None
         with self._store_xy():
             self.pad = curses.newpad(self.rows + 1, self.cols)
             self.pad.keypad(True)  # accept arrow keys
             self._render_to_pad(self.lines)
 
-    def _render_to_pad(self, lines: dict):
+    def _render_to_pad(self, lines: dict[int, list[TextArgs]]) -> None:
         """
         Рендерим данный на pad
         :param lines: словарь проиндексированный по номерам линий
         :return:
         """
+        assert self.pad is not None
         with self._store_xy():
             for line_no, line_data in sorted(lines.items()):
                 line_pos_calc = 0
@@ -114,7 +132,9 @@ class AskConfirm:
                         self.pad.addstr(line_no, line_pos, line_part.text)
                     line_pos_calc += len(line_part.text)
 
-    def _add_prompt(self):
+    def _add_prompt(self) -> None:
+        assert self.screen is not None
+        assert self.curses_lines is not None
         for prompt_part in self.prompt:
             if not prompt_part:
                 continue
@@ -124,19 +144,23 @@ class AskConfirm:
                 offset = prompt_part.offset
             self.screen.addstr(self.curses_lines - 1, offset, prompt_part.text, self.color_to_curses[prompt_part.color])
 
-    def _clear_prompt(self):
+    def _clear_prompt(self) -> None:
+        assert self.screen is not None
+        assert self.curses_lines is not None
         with self._store_xy():
             self.screen.move(self.curses_lines - 1, 0)
             self.screen.clrtoeol()
 
-    def show(self):
+    def show(self) -> None:
+        assert self.screen is not None
+        assert self.pad is not None
         self._add_prompt()
         self.screen.refresh()
         size = self.screen.getmaxyx()
         self.pad.refresh(self.top, self.left, 0, 0, size[0] - 2, size[1] - 2)
 
     @contextmanager
-    def _store_xy(self):
+    def _store_xy(self) -> Iterator[tuple[int, int] | None]:
         if self.pad is not None:
             current_y, current_x = self.pad.getyx()
             yield current_y, current_x
@@ -146,14 +170,17 @@ class AskConfirm:
 
             self.pad.move(current_y, current_x)
         else:
-            yield
+            yield None
 
-    def search_next(self, prev=False):
+    def search_next(self, prev: bool = False) -> tuple[int, int]:
+        assert self.pad is not None
         to = None
         current_y, current_x = self.pad.getyx()
         if prev:
             for line_index in sorted(self.found_pos, reverse=True):
                 for text_args in self.found_pos[line_index]:
+                    # search hits always carry a concrete offset
+                    assert text_args.offset is not None
                     if line_index > current_y:
                         continue
 
@@ -165,6 +192,8 @@ class AskConfirm:
         else:
             for line_index in sorted([i for i in self.found_pos if i >= current_y]):
                 for text_args in self.found_pos[line_index]:
+                    # search hits always carry a concrete offset
+                    assert text_args.offset is not None
                     if line_index > current_y or line_index == current_y and text_args.offset > current_x:
                         to = line_index, text_args.offset
                         break
@@ -181,6 +210,7 @@ class AskConfirm:
         search_prompt = [TextArgs("Search: ", "green_bold", offset=0)]
         current_prompt = self.prompt
         self.prompt = search_prompt
+        assert self.screen is not None
         with self._store_xy():
             self._clear_prompt()
             self.show()
@@ -199,6 +229,9 @@ class AskConfirm:
     def _do_commands(self) -> str:
         import curses
 
+        assert self.pad is not None
+        assert self.screen is not None
+        assert self.cols is not None
         while True:
             self._clear_prompt()
             try:
@@ -282,8 +315,16 @@ class AskConfirm:
                 self.pad.move(y, x)
 
             if self.debug_prompt.text != "":
-                debug_line = "y=%s x=%s, x_delta=%s y_delta=%s top=%s, max_y=%s max_x=%s lines=%s" % \
-                             (y, x, x_delta, y_delta, self.top, max_y, max_x, len(self.lines))
+                debug_line = "y=%s x=%s, x_delta=%s y_delta=%s top=%s, max_y=%s max_x=%s lines=%s" % (
+                    y,
+                    x,
+                    x_delta,
+                    y_delta,
+                    self.top,
+                    max_y,
+                    max_x,
+                    len(self.lines),
+                )
                 self.debug_prompt.text = debug_line
                 self.debug_prompt.color = "green_bold"
                 self.debug_prompt.offset = max_x - len(debug_line) - 1
@@ -314,6 +355,7 @@ class AskConfirm:
             self._init_colors()
             self._parse_text()
             self._init_pad()
+            assert self.pad is not None
             self.pad.move(0, 0)
             self.show()
             res = self._do_commands()
@@ -328,7 +370,7 @@ class AskConfirm:
         return res
 
 
-def init_colors():
+def init_colors() -> dict[str | None, int]:
     import curses
 
     curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
@@ -358,7 +400,7 @@ def init_colors():
 class Tile:
     win: "curses.window | None"
     content: list[list[TextArgs]]
-    title: list[str]
+    title: list[str | TextArgs]
     height: int
     width: int
     need_draw: bool = True
@@ -386,18 +428,18 @@ class ProgressBars(ProgressBar):
         self.screen: "curses.window | None" = None
         self.tiles: dict[str, Tile] = {}
         self.offset = [0, 0]
-        self.terminal_refresher_coro = None
+        self.terminal_refresher_coro: asyncio.Task[None] | None = None
         self.color_to_curses: dict[Optional[str], int] = {}
         self.state: UiState = UiState.INIT
         self.active_tile: int = len(tiles_params) - 1  # tiles with content have numbers from 1
 
         # context
         self.enter_ok = False
-        self._new_stderr = None
-        self._saved_stderr_fd = None
+        self._new_stderr: io.BufferedRandom | None = None
+        self._saved_stderr_fd: int | None = None
         self.progress_length = 10
 
-    def __enter__(self):
+    def __enter__(self) -> "ProgressBars":
         self.enter_ok = False
         sys.stderr.flush()
         self._new_stderr = tempfile.TemporaryFile()
@@ -411,19 +453,27 @@ class ProgressBars(ProgressBar):
             raise
         return self
 
-    def __exit__(self, exc_type, exc_value, trace):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        trace: types.TracebackType | None,
+    ) -> bool | None:
         try:
             self.stop_curses()
         except Exception:
             pass
         if self.enter_ok:
             sys.stderr.flush()
+            assert self._new_stderr is not None
+            assert self._saved_stderr_fd is not None
             self._new_stderr.seek(0)
             stderr_data = self._new_stderr.read().decode()
             os.dup2(self._saved_stderr_fd, sys.stderr.fileno())
             sys.stderr.write(stderr_data)
+        return None
 
-    def evaluate_mode(self, scree_size):
+    def evaluate_mode(self, scree_size: tuple[int, int]) -> TailMode:
         height = scree_size[0] // len(self.tiles_params)
         if height > MIN_CONTENT_HEIGHT:
             return TailMode.UNIFORM
@@ -434,9 +484,10 @@ class ProgressBars(ProgressBar):
         else:
             return TailMode.NO_CONTENT
 
-    def make_tiles(self):
+    def make_tiles(self) -> None:
         import curses
 
+        assert self.screen is not None
         i = 0
         scree_size = self.screen.getmaxyx()
         scree_size = scree_size[0] - 1, scree_size[1]
@@ -450,8 +501,12 @@ class ProgressBars(ProgressBar):
         tile_no = 0
         status_bar_win = curses.newwin(1, width, scree_size[0], 0)
         self.tiles["status:"] = Tile(
-            win=status_bar_win, content=[], title=[""],
-            height=1, width=width, need_draw=True,
+            win=status_bar_win,
+            content=[],
+            title=[""],
+            height=1,
+            width=width,
+            need_draw=True,
         )
         max_tile_name_len = max(len(tile_name) for tile_name in self.tiles_params)
 
@@ -474,8 +529,9 @@ class ProgressBars(ProgressBar):
 
                 if tile_no < max_height:
                     begin_y = scree_offset[0] + begin_y
-                    get_logger().debug("newwin height=%s, width=%s, begin_y=%s, begin_x=%s", height, width, begin_y,
-                                       begin_x)
+                    get_logger().debug(
+                        "newwin height=%s, width=%s, begin_y=%s, begin_x=%s", height, width, begin_y, begin_x
+                    )
                     win = curses.newwin(height, width, begin_y, begin_x)
                 if tile_no == max_height:
                     left = len(self.tiles_params) - max_height + 1
@@ -483,22 +539,26 @@ class ProgressBars(ProgressBar):
                         win=curses.newwin(height, width, begin_y, begin_x),
                         content=[],
                         title=["... and %s more" % left],
-                        height=height, width=width, need_draw=True,
+                        height=height,
+                        width=width,
+                        need_draw=True,
                     )
 
             self.tiles[tile_name] = Tile(
                 win=win,
                 content=[],
                 title=[("{:<%s}" % (max_tile_name_len)).format(tile_name)],
-                height=height, width=width, need_draw=True,
+                height=height,
+                width=width,
+                need_draw=True,
             )
             i += 1
             begin_y += height
 
-    def _next_active_tile(self):
+    def _next_active_tile(self) -> None:
         self._set_active_tile((self.active_tile + 1) % len(self.tiles_params))
 
-    def _prev_active_tile(self):
+    def _prev_active_tile(self) -> None:
         self._set_active_tile((self.active_tile - 1) % len(self.tiles_params))
 
     def _set_active_tile(self, active_tile: int) -> None:
@@ -506,6 +566,7 @@ class ProgressBars(ProgressBar):
         if self.mode is TailMode.ONE_CONTENT:
             return
 
+        assert self.screen is not None
         scree_size = self.screen.getmaxyx()
         scree_offset = self.screen.getbegyx()
         tiles_count = len(self.tiles_params)
@@ -518,16 +579,17 @@ class ProgressBars(ProgressBar):
             else:
                 height = 1
             tile.height = height
+            assert tile.win is not None
             tile.win.resize(height, width)
             tile.win.mvwin(begin_y, scree_offset[1])
             begin_y += tile.height
             tile.need_draw = True
         self.refresh_all()
 
-    def set_status(self):
+    def set_status(self) -> None:
         total = 0
         iteration = 0
-        done_percent = 0
+        done_percent: float = 0
         for tile_name, tile in self.tiles.items():
             if tile_name == "status:":
                 continue
@@ -542,19 +604,19 @@ class ProgressBars(ProgressBar):
             msg = "Deploying... %3.0f%%" % math.floor(done_percent)
         self.set_title("status:", msg)
 
-    def start_terminal_refresher(self, max_refresh_rate=200):
+    def start_terminal_refresher(self, max_refresh_rate: int = 200) -> None:
         if self.terminal_refresher_coro:
             return
         self.terminal_refresher_coro = asyncio.ensure_future(self._terminal_refresher(max_refresh_rate))
 
-    def stop_terminal_refresher(self):
+    def stop_terminal_refresher(self) -> None:
         if not self.terminal_refresher_coro:
             return
         self.terminal_refresher_coro.cancel()
         self.terminal_refresher_coro = None
         self.refresh_all()
 
-    async def _terminal_refresher(self, max_refresh_rate: int):
+    async def _terminal_refresher(self, max_refresh_rate: int) -> None:
         sleep = 1 / max_refresh_rate
         try:
             while True:
@@ -563,7 +625,7 @@ class ProgressBars(ProgressBar):
         except asyncio.CancelledError:
             return
 
-    def init(self):
+    def init(self) -> None:
         import curses
 
         self.screen = curses.initscr()
@@ -571,8 +633,9 @@ class ProgressBars(ProgressBar):
         curses.noecho()
         curses.cbreak()
         scree_size = self.screen.getmaxyx()
-        get_logger().debug("orig scree_size y=%s, x=%s offset=%s %s", scree_size[0], scree_size[1], self.offset[0],
-                           self.offset[1])
+        get_logger().debug(
+            "orig scree_size y=%s, x=%s offset=%s %s", scree_size[0], scree_size[1], self.offset[0], self.offset[1]
+        )
 
         if self.offset[0] == 0:
             new_y = 0
@@ -605,7 +668,7 @@ class ProgressBars(ProgressBar):
         self.make_tiles()
         self.progress_length = scree_size[1] // 3
 
-    def stop_curses(self):
+    def stop_curses(self) -> None:
         import curses
 
         curses.curs_set(1)
@@ -614,16 +677,17 @@ class ProgressBars(ProgressBar):
         curses.endwin()
         self.state = UiState.CLOSED
 
-    def draw_content(self, tile_name):
+    def draw_content(self, tile_name: str) -> None:
         tile = self.tiles[tile_name]
         win = tile.win
+        assert win is not None
         size = win.getmaxyx()
         margin = 1
         if (size[0] - 2 * margin) <= 0:
             return
         draw_lines_in_win(tile.content, win, color_to_curses=self.color_to_curses, margin=margin)
 
-    def draw_title(self, tile_name):
+    def draw_title(self, tile_name: str) -> None:
         tile = self.tiles[tile_name]
         title = tile.title
         win = tile.win
@@ -631,7 +695,7 @@ class ProgressBars(ProgressBar):
             title = [title]
         draw_lines_in_win([title], win, color_to_curses=self.color_to_curses, x_margin=1)
 
-    def refresh(self, tile_name: str, noutrefresh: bool = False):
+    def refresh(self, tile_name: str, noutrefresh: bool = False) -> None:
         # see noutrefresh in curses doc
         tile = self.tiles[tile_name]
         win = tile.win
@@ -648,7 +712,7 @@ class ProgressBars(ProgressBar):
             win.refresh()
         tile.need_draw = False
 
-    def refresh_all(self):
+    def refresh_all(self) -> None:
         if self.state is UiState.CLOSED:
             return
         if self.state is UiState.OK:
@@ -657,6 +721,7 @@ class ProgressBars(ProgressBar):
                 self._next_active_tile()
             if "\x1b[Z" in ch_list:  # shift-Tab
                 self._prev_active_tile()
+        assert self.screen is not None
         self.screen.refresh()
         self.set_status()
         tile_name = None
@@ -665,7 +730,7 @@ class ProgressBars(ProgressBar):
         if tile_name is not None:
             self.refresh(tile_name, False)
 
-    def set_title(self, tile_name, title):
+    def set_title(self, tile_name: str, title: str | TextArgs) -> None:
         tile = self.tiles[tile_name]
         # в 0 элементе хранится выровненный хостнейм
         title0 = tile.title[0]
@@ -677,7 +742,7 @@ class ProgressBars(ProgressBar):
         if not self.terminal_refresher_coro:
             self.refresh(tile_name)
 
-    def set_content(self, tile_name: str, content: str):
+    def set_content(self, tile_name: str, content: str) -> None:
         tile = self.tiles[tile_name]
         new_content = list(text_term_format.curses_format(content, "switch_out").values())
         if new_content == tile.content:
@@ -687,29 +752,30 @@ class ProgressBars(ProgressBar):
         if not self.terminal_refresher_coro:
             self.refresh(tile_name)
 
-    def add_content(self, tile_name: str, content: str):
+    def add_content(self, tile_name: str, content: str) -> None:
         tile = self.tiles[tile_name]
         tile.need_draw = True
         tile.content.extend(text_term_format.curses_format(content, "switch_out").values())
         if not self.terminal_refresher_coro:
             self.refresh(tile_name)
 
-    def reset_content(self, tile_name: str):
+    def reset_content(self, tile_name: str) -> None:
         tile = self.tiles[tile_name]
         tile.need_draw = True
         tile.content = []
         if not self.terminal_refresher_coro:
             self.refresh(tile_name)
 
-    def set_progress(self,
-                     tile_name: str,
-                     iteration: int,
-                     total: int,
-                     prefix="",
-                     suffix="",
-                     fill="█",
-                     error=False,
-                     ):
+    def set_progress(
+        self,
+        tile_name: str,
+        iteration: int,
+        total: int,
+        prefix: str = "",
+        suffix: str = "",
+        fill: str = "█",
+        error: bool = False,
+    ) -> None:
         """
         Call in a loop to create terminal progress bar
         @params:
@@ -729,19 +795,17 @@ class ProgressBars(ProgressBar):
         tile = self.tiles[tile_name]
         tile.total = total
         tile.iteration = iteration
-        if error:
-            res = TextArgs(res, "red")
-        else:
-            res = TextArgs(res, "cyan")
-        self.set_title(tile_name, res)
+        title = TextArgs(res, "red") if error else TextArgs(res, "cyan")
+        self.set_title(tile_name, title)
 
-    def set_exception(self, tile_name: str, cmd_exc: str, last_cmd: str, progress_max: int, content: str = ""):
+    def set_exception(self, tile_name: str, cmd_exc: str, last_cmd: str, progress_max: int, content: str = "") -> None:
         suffix = "cmd error: %s %s" % (str(cmd_exc).strip().replace("\n", "--"), last_cmd)
         self.set_progress(tile_name, progress_max, progress_max, suffix=suffix, error=True)
         if content:
             self.add_content(tile_name, content)
 
-    def get_pressed_keys(self):
+    def get_pressed_keys(self) -> str:
+        assert self.screen is not None
         ch_list = ""
         while True:
             try:
@@ -752,7 +816,7 @@ class ProgressBars(ProgressBar):
                 break
         return ch_list
 
-    async def wait_for_exit(self):
+    async def wait_for_exit(self) -> None:
         self.state = UiState.WAIT_INPUT
         while True:
             ch_list = self.get_pressed_keys()
@@ -769,12 +833,12 @@ class ProgressBars(ProgressBar):
 
 
 def draw_lines_in_win(
-        lines: list[list[TextArgs]],
-        win: "curses.window | None",
-        color_to_curses: dict[Optional[str], int],
-        margin: int = 0,
-        x_margin: int = 0,
-        y_margin: int = 0,
+    lines: Sequence[Sequence[TextArgs | str]],
+    win: "curses.window | None",
+    color_to_curses: dict[Optional[str], int],
+    margin: int = 0,
+    x_margin: int = 0,
+    y_margin: int = 0,
 ) -> None:
     if win is None:
         return

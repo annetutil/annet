@@ -1,11 +1,12 @@
 import socket
+from collections.abc import Iterator
+from typing import Any
 
 from annet.annlib.types import Op
-
 from annet.rulebook import common
 
 
-def undo_commit(rule, key, diff, **_):
+def undo_commit(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
     # Huawei не даёт снести конфигурацию bgp и написать заново одним коммитом. Говорит:
     #    Invalid configuration. BGP is under undo.
     # при попытке создать новую после удаления
@@ -17,19 +18,19 @@ def undo_commit(rule, key, diff, **_):
     yield from common.default(rule, key, diff)
 
 
-def peer(rule, key, diff, **_):  # pylint: disable=unused-argument
+def peer(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:  # pylint: disable=unused-argument  # noqa: E501
     """
-        Особенность peer-команд в том, что
-            peer IP as-number N
-        является основной командой, и отменить её можно только через
-            undo peer IP
-        , то есть полностью удалив все настройки пира.
+    Особенность peer-команд в том, что
+        peer IP as-number N
+    является основной командой, и отменить её можно только через
+        undo peer IP
+    , то есть полностью удалив все настройки пира.
 
-        При этом, as-number может выставляться и для группы:
-            group SPINES
-            peer SPINES as-number 13238
-        в таком случае игнорим, позволяем удалить эту настройку поскольку она не дефайнит группу
-            undo peer SPINES as-number
+    При этом, as-number может выставляться и для группы:
+        group SPINES
+        peer SPINES as-number 13238
+    в таком случае игнорим, позволяем удалить эту настройку поскольку она не дефайнит группу
+        undo peer SPINES as-number
     """
 
     assert not diff[Op.AFFECTED], "Peer commands could not contain subcommands"
@@ -54,7 +55,7 @@ def peer(rule, key, diff, **_):  # pylint: disable=unused-argument
         yield (True, action["row"], None)
 
 
-def bfd(rule, key, diff, **_):
+def bfd(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
     """
     [*vla-1x1-bgp]undo peer SPINE1 bfd min-tx-interval 500 min-rx-interval 500 detect-multiplier 4
     │Error: Unrecognized command found at '^' position.
@@ -76,7 +77,7 @@ def bfd(rule, key, diff, **_):
         yield from common.default(rule, key, diff, **_)
 
 
-def _is_ip_addr(addr_or_string):
+def _is_ip_addr(addr_or_string: str) -> bool:
     ret = None
     for af in (socket.AF_INET6, socket.AF_INET):
         try:
@@ -88,7 +89,7 @@ def _is_ip_addr(addr_or_string):
     return bool(ret)
 
 
-def _bfd_params_used(row):
+def _bfd_params_used(row: str) -> Iterator[str]:
     prev = None
     for token in row.split():
         if prev and token.isnumeric():

@@ -1,28 +1,30 @@
 from dataclasses import dataclass
 from functools import wraps
-from typing import Generic, Optional, List, TypeVar, Callable
+from typing import Any, Callable, Generic, TypeVar, cast
 
 from dataclass_rest.http.requests import RequestsClient
 from requests import Session
+
 
 Model = TypeVar("Model")
 
 
 @dataclass
 class PagingResponse(Generic[Model]):
-    next: Optional[str]
-    previous: Optional[str]
+    next: str | None
+    previous: str | None
     count: int
-    results: List[Model]
+    results: list[Model]
 
 
-Func = TypeVar("Func", bound=Callable)
+Func = TypeVar("Func", bound=Callable[..., Any])
 
 
 def _collect_by_pages(func: Func) -> Func:
     """Collect all results using only pagination."""
+
     @wraps(func)
-    def wrapper(self, *args, **kwargs):
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> PagingResponse[Any]:
         kwargs.setdefault("offset", 0)
         limit = kwargs.setdefault("limit", 100)
         results = []
@@ -40,7 +42,7 @@ def _collect_by_pages(func: Func) -> Func:
             results=results,
         )
 
-    return wrapper
+    return cast(Func, wrapper)
 
 
 # default batch size 100 is calculated to fit list of UUIDs in 4k URL length
@@ -57,15 +59,15 @@ def collect(func: Func, field: str = "", batch_size: int = 100) -> Func:
         return func
 
     @wraps(func)
-    def wrapper(self, *args, **kwargs):
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> PagingResponse[Any]:
         value = kwargs.get(field)
         if not value:
-            return func(*args, **kwargs)
+            return cast(PagingResponse[Any], func(*args, **kwargs))
 
         method = func.__get__(self, self.__class__)
         results = []
         for offset in range(0, len(value), batch_size):
-            kwargs[field] = value[offset:offset + batch_size]
+            kwargs[field] = value[offset : offset + batch_size]
             page = method(*args, **kwargs)
             results.extend(page.results)
         return PagingResponse(
@@ -75,7 +77,7 @@ def collect(func: Func, field: str = "", batch_size: int = 100) -> Func:
             results=results,
         )
 
-    return wrapper
+    return cast(Func, wrapper)
 
 
 class BaseNetboxClient(RequestsClient):

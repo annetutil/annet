@@ -14,19 +14,19 @@
 ip domain-name *
 hostname *
 
-banner * %logic=cisco.misc.banner_any
+banner * %logic=annet.rulebook.cisco.misc.banner_any
 
 ip community-list standard ~
 
 !vrf context management
 vrf context *
 
-vlan group * vlan-list %logic=cisco.vlandb.simple
+vlan group * vlan-list %logic=annet.rulebook.cisco.vlandb.simple
 vlan */[^\d].*/
-vlan %logic=cisco.vlandb.simple
+vlan %logic=annet.rulebook.cisco.vlandb.simple
     name
 
-ip ssh version 2 %logic=cisco.misc.ssh_key
+ip ssh version 2 %logic=annet.rulebook.cisco.misc.ssh_key
 
 # ordering of SNMP blocks
 ip access-list ~
@@ -42,33 +42,33 @@ no snmp-server sysobjectid type stack-oid
 
 # SVI/Subifs/Lagg
 interface */(Loopback|vasileft|vasiright|Tunnel|BDI|multiservice|Virtual-Template|Vlan|\w*Ethernet.*\.|[Pp]ort-channel.*\.?)\d+/
-    ip vrf forwarding        %diff_logic=cisco.iface.diff
-    vrf forwarding        %diff_logic=cisco.iface.diff
-    ip address ~        %diff_logic=cisco.iface.diff
-    ip unnumbered *        %diff_logic=cisco.iface.diff
+    ip vrf forwarding        %diff_logic=annet.rulebook.cisco.iface.diff
+    vrf forwarding        %diff_logic=annet.rulebook.cisco.iface.diff
+    ip address ~        %diff_logic=annet.rulebook.cisco.iface.diff
+    ip unnumbered *        %diff_logic=annet.rulebook.cisco.iface.diff
     ! no ip address
     ipv6 link-local
-    ipv6 address ~        %diff_logic=cisco.iface.diff
-    ipv6 unnumbered *        %diff_logic=cisco.iface.diff
-    ipv6 enable        %diff_logic=cisco.iface.diff
-    ipv6 nd ~                      %logic=cisco.misc.no_ipv6_nd_suppress_ra
+    ipv6 address ~        %diff_logic=annet.rulebook.cisco.iface.diff
+    ipv6 unnumbered *        %diff_logic=annet.rulebook.cisco.iface.diff
+    ipv6 enable        %diff_logic=annet.rulebook.cisco.iface.diff
+    ipv6 nd ~                      %logic=annet.rulebook.cisco.misc.no_ipv6_nd_suppress_ra
     mtu
 
 # Physical
-interface */\w*Ethernet[0-9\/]+$/        %logic=common.permanent %diff_logic=cisco.iface.diff
+interface */\w*Ethernet[0-9\/]+$/        %logic=annet.rulebook.common.permanent %diff_logic=annet.rulebook.cisco.iface.diff
     switchport mode
     switchport trunk native vlan
     switchport access vlan
-    switchport trunk allowed vlan %logic=cisco.vlandb.swtrunk
-    ip vrf forwarding        %diff_logic=cisco.iface.diff
-    vrf forwarding        %diff_logic=cisco.iface.diff
-    ip address ~        %diff_logic=cisco.iface.diff
-    ip unnumbered *        %diff_logic=cisco.iface.diff
+    switchport trunk allowed vlan %logic=annet.rulebook.cisco.vlandb.swtrunk
+    ip vrf forwarding        %diff_logic=annet.rulebook.cisco.iface.diff
+    vrf forwarding        %diff_logic=annet.rulebook.cisco.iface.diff
+    ip address ~        %diff_logic=annet.rulebook.cisco.iface.diff
+    ip unnumbered *        %diff_logic=annet.rulebook.cisco.iface.diff
     ! no ip address
     ipv6 link-local
-    ipv6 address ~        %diff_logic=cisco.iface.diff
-    ipv6 unnumbered *        %diff_logic=cisco.iface.diff
-    ipv6 enable        %diff_logic=cisco.iface.diff
+    ipv6 address ~        %diff_logic=annet.rulebook.cisco.iface.diff
+    ipv6 unnumbered *        %diff_logic=annet.rulebook.cisco.iface.diff
+    ipv6 enable        %diff_logic=annet.rulebook.cisco.iface.diff
     channel-group
     mtu
     storm-control * level

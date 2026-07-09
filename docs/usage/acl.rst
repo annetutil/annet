@@ -1,68 +1,131 @@
-> Genesis Test Bot:
-
 ACL Language
 ============
 
-In Annet, there is a special language used for searching and filtering parts of the configuration, called ACL. It is used for:
-- Generators, to describe which part of the config they are responsible for (``acl_<vendor>`` and ``acl_safe_<vendor>`` methods);
-- Additional config filtering if the ``--filer-acl`` argument is used;
-- Rulebooks, to describe how to generate a patch from a diff;
-- ``RefGenerator``, to specify which part of the configuration the generator refers to.
+The ACL language is a small, indentation-based language for **selecting lines of a device
+configuration**. You write a list of patterns, Annet matches them against the config, and the
+lines that match are the ones Annet works with.
 
-ACL consists of strings. For example, the ACL string:
+You will meet ACLs in a few places:
 
-.. code-block::
+- in generators, where the ``acl_<vendor>`` and ``acl_safe_<vendor>`` methods declare which
+  part of the config a generator is responsible for;
+- when you pass ``--filter-acl`` to limit a command to part of the config;
+- in rulebooks, to describe how to turn a diff into a patch;
+- in a ``RefGenerator``, to point at the part of the config it refers to.
+
+You do not need to know any of those places to learn the language. This page starts from the
+very basics and adds the advanced features at the end.
+
+
+The basics
+----------
+
+Your first rule
+~~~~~~~~~~~~~~~
+
+An ACL is just text. Each non-empty line is one **rule** — a pattern that Annet tries to match
+against a line of the device config.
+
+The simplest rule is a plain word:
+
+.. code-block:: text
 
     mpls
 
+A rule matches a config line if the line **starts with the rule, on a word boundary**. So the
+rule ``mpls`` above matches all of these config lines:
 
-will match both the line ``mpls`` and ``mpls ldp``, and any string fitting the regex ``^mpls(?:\s|$)``.
+.. code-block:: text
 
-If you want to match only the string ``mpls``, you need to specify it explicitly:
+    mpls
+    mpls ldp
+    mpls te
 
-.. code-block::
+…but it does **not** match this one, because ``mplsx`` is a different word:
+
+.. code-block:: text
+
+    mplsx
+
+Think of a bare rule as saying *"this word, and anything that comes after it"*.
+
+.. note::
+
+   Under the hood every rule is turned into a regular expression. ``mpls`` becomes
+   ``^mpls(?:\s|$)`` — "starts with ``mpls``, followed by whitespace or the end of the line".
+   You never have to write this yourself, but it explains the word-boundary behaviour.
+
+
+Matching the whole line only
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Sometimes you want to match a line *exactly* and nothing longer. Add a ``$`` at the end:
+
+.. code-block:: text
 
     mpls$
 
+Now:
 
-In ACL strings, placeholders can be used:
-- ``*`` matches a single word (``[^\s]+`` in regex terms);
-- ``~`` matches any non-zero number of words (``.+``).
+- ``mpls`` → matches
+- ``mpls ldp`` → does **not** match
 
-Example:
+
+Wildcards
+~~~~~~~~~
+
+Most real rules need to match a value that changes — an interface name, an IP address, a VRF.
+Two wildcards cover almost everything:
+
+``*`` — match **one word**
+    .. code-block:: text
+
+        dns domain *
+
+    matches ``dns domain example.com`` and ``dns domain corp.local``, but not ``dns domain``
+    (there is no word) and not ``dns domain a b`` (that is two words).
+
+``~`` — match **the rest of the line** (one or more words)
+    .. code-block:: text
+
+        header login information ~
+
+    matches ``header login information Welcome to the router!`` — everything after
+    ``information``.
+
+You can use several ``*`` in one rule:
 
 .. code-block:: text
 
-    dns domain *
-    header login information ~
     info-center source * channel *
 
+matches ``info-center source NTP channel 5``.
 
-Placeholders can match by regular expressions:
-
-.. code-block:: text
-
-    */(ftp|FTP)/ server acl
-    ip routing vrf ~/(?!MEth|MGMT)/
+Because ``~`` swallows everything to the end of the line, it only makes sense as the **last**
+token of a rule.
 
 
-If you want a case-insensitive match, you can specify it with the ``(?i)`` prefix, for example:
+Grouping lines into blocks
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: text
-
-    (?i)interface */((LoopBack|Eth-Trunk|.*GE[^.]*|static|.*Ether[^.]*)[^.]\d*$)/
-
-
-Strings can be combined into hierarchical blocks, such as:
+Network configs are nested: an interface has settings underneath it, a routing protocol has
+sub-settings, and so on. ACLs mirror that nesting with **indentation**.
 
 .. code-block:: text
 
     system
         host-name
 
+This reads as: *match a ``system`` block, and inside it match the ``host-name`` line.* A child
+rule is only considered after its parent has matched, so the structure follows the config:
 
-or
+.. code-block:: text
 
+    system
+        host-name router1
+        domain-name corp.local
+
+You can nest as deep as you like, and combine blocks with wildcards:
 
 .. code-block:: text
 
@@ -70,11 +133,132 @@ or
         configuration-database
             ~
 
+Indentation defines nesting for **all** vendors, including JunOS (even though JunOS configs use
+braces). Spaces and tabs both work, but the convention in Annet is **four spaces**.
 
-Indentation defines nesting for all vendors, including JunOS. Both spaces and tabs can be used, but it is customary in Annet to use four spaces.
 
-Only in ``--filer-acl`` mode can you use the ``!`` prefix, which indicates that a string should not be displayed.
+Comments
+~~~~~~~~
 
+Anything after a ``#`` is a comment and is ignored:
+
+.. code-block:: text
+
+    system
+        host-name      # the device hostname
+        # this whole line is a comment too
+
+Extra spaces and tabs inside a rule do not matter — they are collapsed — so you can align
+things for readability.
+
+
+Putting it together
+~~~~~~~~~~~~~~~~~~~
+
+A small but complete ACL might look like this:
+
+.. code-block:: text
+
+    # everything this generator manages
+    interfaces
+        *                       # any interface
+            description ~
+            mtu *
+    routing-options
+        static
+            route *
+
+Read top to bottom: it selects every interface's ``description`` and ``mtu`` lines, plus every
+static route under ``routing-options``.
+
+That is enough to write useful ACLs. The rest of this page covers features you will reach for
+less often.
+
+
+Advanced features
+-----------------
+
+Capturing a word by name
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+``<name>`` works like ``*`` (it matches one word), but it also remembers the matched word under
+that name so other parts of Annet can read it back:
+
+.. code-block:: text
+
+    interface <ifname>
+
+This matches ``interface Eth0`` and captures ``Eth0`` as ``ifname``.
+
+.. note::
+
+   Capturing only matters in :doc:`rulebooks <rulebooks>`, where the captured values are passed
+   to the patch and diff logic. In all other uses of ACL (generator ACLs, ``--filter-acl``,
+   references) a captured word behaves exactly like a plain ``*`` wildcard, so there is no
+   reason to capture. The same applies to the capturing regex forms below (``*/{regex}/`` and
+   ``~/{regex}/``).
+
+
+Regular-expression placeholders
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When plain ``*`` is not precise enough, you can drop a real regular expression into a rule.
+There are three forms.
+
+``*/{regex}/`` — match **one word** against a regex, and capture it
+    .. code-block:: text
+
+        */(ftp|FTP)/ server acl
+
+    The first word must be ``ftp`` or ``FTP``.
+
+``~/{regex}/`` — match against a regex **without** capturing
+    .. code-block:: text
+
+        ip routing vrf ~/(?!MEth|MGMT)/
+
+    Here ``(?!MEth|MGMT)`` is a negative look-ahead: match any VRF *except* ones named
+    ``MEth`` or ``MGMT``.
+
+``?/{regex}/`` — like ``~/`` but it can be combined with a trailing ``~``
+    .. code-block:: text
+
+        ?/(.*)/permit ~
+
+    This matches a line such as ``0 permit udp any 10.212.32.224 0.0.0.31``: ``?/(.*)/`` eats
+    the leading ``0 `` and then ``permit ~`` matches the rest. Inside a ``?/.../`` the ``*``
+    and ``(...)`` stay part of the regex instead of being treated as wildcards.
+
+A few rules of thumb for the regex forms:
+
+- The ``?`` in ``?/`` is attached to the ``/``, so it does **not** clash with literal slashes
+  in things like interface names (``Eth0/0/1``).
+- A ``?/`` or ``~/`` regex matches **greedily up to the last** ``/`` on the line, so it can
+  contain anything — slashes, spaces, groups. Because of that, a single rule may contain **at
+  most one** ``?/`` or ``~/`` placeholder. Put everything into one regex rather than chaining
+  several. (The ``*``, ``*/{regex}/`` and ``<name>`` forms have no such limit and may repeat,
+  e.g. ``* * something ~``.)
+- Any capturing groups you write inside a ``~/`` or ``?/`` regex are quietly turned into
+  non-capturing groups, so only the placeholder itself captures.
+
+
+Case-insensitive matching
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Put ``(?i)`` anywhere in a rule to make the whole rule case-insensitive:
+
+.. code-block:: text
+
+    (?i)interface */((LoopBack|Eth-Trunk|.*GE[^.]*|static|.*Ether[^.]*)[^.]\d*$)/
+
+Now ``loopback0`` and ``LoopBack0`` match the same way.
+
+
+Hiding lines with ``!`` (filter-acl only)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ``--filter-acl`` mode you can prefix a rule with ``!`` to say *"match this, but do not
+display it"*:
 
 .. code-block:: text
 
@@ -82,11 +266,23 @@ Only in ``--filer-acl`` mode can you use the ``!`` prefix, which indicates that 
         *
             !description
 
+This shows every interface but hides its ``description``. The ``!`` prefix only works in
+``--filter-acl``; elsewhere it is rejected, because ACLs from different generators get merged
+and a hide rule could unpredictably swallow another generator's output.
 
-Strings can have modifiers:
 
-- ``%global`` (or ``%global=1``) indicates that the specified string and all nested blocks should be matched. For example, the following ACL:
+Modifiers
+~~~~~~~~~
 
+A rule can carry **modifiers**, written after it as ``%name`` or ``%name=value``. They tweak how
+the rule behaves.
+
+``%global`` — match a whole sub-tree at once
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Normally Annet walks into a block and checks each child line against the child rules. ``%global``
+(or ``%global=1``) says *"once this line matches, accept everything underneath it without looking
+further"*. This is handy when a whole sub-tree belongs to one generator:
 
 .. code-block:: text
 
@@ -94,8 +290,7 @@ Strings can have modifiers:
         tacplus-server
             ~ %global
 
-
-would match the following configuration:
+matches the whole block, no matter what is inside it:
 
 .. code-block:: text
 
@@ -108,9 +303,14 @@ would match the following configuration:
         }
     }
 
+A ``%global`` rule has no children of its own — the sub-tree is taken as-is.
 
-- ``%cant_delete`` (or ``%cant_delete=1``) indicates that delete commands should not be generated for these strings, even if they are not in the generation result. Let's take for example of JunOS BMP's generator with such an ``acl``:
+``%cant_delete`` — keep a line even when the generator stops producing it
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+By default, if a generator's ACL covers a line but the generator stops emitting it, Annet
+generates a command to **delete** it. Sometimes that is wrong. Take a JunOS BMP generator with
+this ACL:
 
 .. code-block:: text
 
@@ -118,9 +318,9 @@ would match the following configuration:
         bmp
             ~ %global
 
-
-If the generator outputs nothing, ``ann patch`` would generate a delete command ``delete routing-options``. If we want to avoid this, we must use the ``%cant_delete`` modifier:
-
+If the generator outputs nothing, ``ann patch`` would emit ``delete routing-options`` — far too
+much. ``%cant_delete`` (or ``%cant_delete=1``) tells Annet *"never generate a delete for these
+lines"*:
 
 .. code-block:: text
 
@@ -128,9 +328,8 @@ If the generator outputs nothing, ``ann patch`` would generate a delete command 
         bmp
             ~ %global
 
-
-This modifier is **enabled by default** for blocks starting with ``interface``, so if the generator should be allowed to delete interfaces, the modifier must be **explicitly disabled**, for example:
-
+This modifier is **on by default** for any block starting with ``interface`` — Annet will not
+delete interfaces unless you opt in. To allow deletion, turn it off explicitly:
 
 .. code-block:: text
 
@@ -139,185 +338,65 @@ This modifier is **enabled by default** for blocks starting with ``interface``, 
             interface * %cant_delete=0
                 ~ %global
 
+When ACLs from several generators are merged, a line is protected only if **every** generator
+that matched it asked to protect it. If even one matching generator left ``%cant_delete`` off,
+the line stays deletable.
 
-In rulebooks, other modifiers are available depending on the type of rulebook. In a diff rulebook (``<vendor>.rul``), you can use:
-- ``%logic=`` - custom patch logic;
-- ``%diff_logic=`` - custom diff logic;
-- ``%comment=`` - adds special commands for injection when invoking ``patch`` with ``--add-comments``, for example:
+``%prio`` — break ties between overlapping rules
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. code-block:: text
-
-    stp enable %comment=!!question!![Y/N]!!answer!!Y!!
-
-
-Custom patch logic function overrides ``def default()``. It is invoked for each command with a unique key and should return the generated patch text based on the provided diff. Furthermore, it may need to handle processing of child rules/data if necessary.
-
-The first argument (``rule``) it accepts is a dictionary containing the rule:
-
-.. code-block:: python
-
-    {
-        # Single-line command, not a block, has no children
-        "logic": <function default at 0x7fe22ea83510>,  # Function for processing the rule
-        "provides": [],  # Macros implemented by this rule
-        "requires": [],  # Macros required for the rule
-
-        # Regular expression for parsing the line
-        "regexp": re.compile(r"^snmp-agent\s+sys-info\s+([^\s]+).*$"),
-
-        # Template for command reversal (arguments should use the key)
-        "reverse": "undo snmp-agent sys-info {}",
-    }
-
-
-The second argument (``key``) is a tuple consisting of the key parsed from the line using the regexp:
-
-.. code-block:: python
-
-    ("contact",)  # Example for parsing the line "snmp-agent sys-info contact"
-
-
-The third argument is a dictionary containing the diff:
-
-.. code-block:: python
-
-    {
-        # Commands/blocks added in the new configuration
-        Op.ADDED: [{"children": None, "row": "undo snmp-agent sys-info version all"}],
-
-        # Only occurs in blocks, contains changed children within blocks
-        Op.AFFECTED: [],
-
-        # Removed commands/blocks
-        Op.REMOVED: [{"children": None, "row": "undo snmp-agent sys-info version v3"}],
-
-        # Commands that remain unchanged (but may be needed for other commands)
-        Op.UNCHANGED: [{"children": None, "row": "snmp all-interfaces"}]
-    }
-
-Example of custom patch function:
-
-.. code-block:: python
-
-    def vty_acl_undo(rule, key, diff, **_):
-        if diff[Op.REMOVED]:
-            chunks = key[0].split()
-            result_chunks = ["undo acl"]
-            if len(chunks) == 3 and chunks[0] == "ipv6":
-                result_chunks.append("ipv6")
-            result_chunks.append(chunks[-1])
-            yield False, " ".join(result_chunks), None
-        else:
-            yield from common.default(rule, key, diff)
-
-
-Custom diff logic function overrides ``def default_diff()``, where the ``old`` and ``new`` matched config parts (including subblocks) and the calculated diff are passed. It is invoked for each command with a unique key and should return the generated patch text based on the provided diff. Furthermore, it may need to handle processing of child rules/data if necessary.
-
-Example of custom diff function:
-
-.. code-block:: python
-
-    def vlan_diff(old, new, diff_pre, _pops):
-        batch_new = set()  # vlan batch ... vlan ids
-        for row in new:
-            prefix, vlans = _parse_vlancfg(row)
-            if prefix == "vlan batch":
-                batch_new.update(vlans)
-        ret = []
-        for item in common.default_diff(old, new, diff_pre, _pops):
-            prefix, vlan_ids = _parse_vlancfg(item.row)
-
-            # if the vlan was declared globally and remains in the batch
-            # the command undo vlan ... will attempt to completely remove it from the device
-            # and from the batch too. At the same time, doing undo vlan ... ; vlan batch ... is not a solution
-            # because to delete cli requires to remove all vlanif's and so on
-            if prefix == "vlan" and item.op == Op.REMOVED and batch_new.intersection(vlan_ids):
-                result_item = common.DiffItem(Op.AFFECTED, item.row, item.children, item.diff_pre)
-
-            # if the vlan is declared globally and simultaneously in the batch
-            # and there are no options in the global declaration block
-            # do not add it as it will just hang unnecessarily - this way we will preserve
-            # symmetry with the previous logic, both invariants will yield an empty patch
-            elif prefix == "vlan" and batch_new.intersection(vlan_ids) and not item.children:
-                result_item = None
-
-            # vlan batch and everything else we do not touch
-            else:
-                result_item = item
-            if result_item:
-                ret.append(result_item)
-        return ret
-
-
-If a command in a diff rulebook is specified without placeholders, an undo command will not be generated for it. For example, if in the rulebook it is written:
+When two rules both match the same line, Annet picks a winner by ranking them on
+``(prio, specificity)`` — highest ``%prio`` first, and on a tie the rule that shares more
+characters with the line (the more specific one). ``%prio`` defaults to ``0``; raise it to force
+a rule to win:
 
 .. code-block:: text
 
-    syslog-server
+    (?i)interface */({iface_match})/ %cant_delete={cant_delete} %prio=100
 
 
-and the diff is:
+Reverse (delete) commands
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Every ACL is compiled **for a single vendor** — that is why a generator has a separate
+``acl_huawei``, ``acl_cisco``, ``acl_juniper`` and so on. Each rule then matches in **two**
+ways: the line as written, and that vendor's way of **removing** the line (``undo …`` on Huawei,
+``no …`` on Cisco, ``delete …`` on Juniper — Annet knows the right prefix for each vendor). So in
+a Huawei ACL the rule ``shutdown`` also matches ``undo shutdown``, and in a Juniper ACL the rule
+``protocols`` also matches ``delete protocols``.
+
+This mostly matters for :doc:`rulebooks <rulebooks>`, which turn a diff into the actual
+``undo`` / ``no`` / ``delete`` commands. In a generator ACL you can rely on it too — you may write
+a rule directly against the removal form, e.g. ``undo shutdown`` in a Huawei ACL — but you must
+use the prefix that belongs to that ACL's vendor.
 
 
-.. code-block:: diff
+Generator ACLs must not overlap
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    - syslog-server 192.168.18.1
-    + syslog-server 192.168.18.2
+A core principle of Annet is that **exactly one generator is responsible for each section of the
+config**. Two generators' ACLs should therefore never select the same line: if they do,
+generation stops with an error telling you which generators collide. This keeps responsibility
+clear — there is always a single place that owns (and may delete) a given piece of config.
 
-
-then the patch will be:
-
-.. code-block:: text
-
-    syslog-server 192.168.18.2
-
-
-But if the rulebook contains:
-
-.. code-block:: text
-
-    syslog-server *
-
-
-then the patch will be:
-
-.. code-block:: text
-
-    undo syslog-server 192.168.18.1
-    syslog-server 192.168.18.2
-
-
-In an order rulebook (``<vendor>.order``), you can use the ``%order_reverse`` modifier. It is necessary when you want the undo command to be executed in the reverse order specified in the rulebook. For example, the rulebook may state:
+The way to avoid collisions is to **scope your ACL precisely to the part you own**. Do not grab a
+whole block when you only manage a piece of it. For example, a BGP generator should declare just
+the ``bgp`` subtree, not all of ``protocols``:
 
 .. code-block:: text
 
-    tacacs-server
-    aaa
+    protocols
+        bgp
+            ~                  %global=1
 
+Here ``protocols`` is only a path to the part this generator owns. Other generators are free to
+manage ``protocols ospf``, ``protocols isis`` and so on under the very same parent, and Annet
+will not delete the ``protocols`` section just because this generator produced no ``bgp`` — it
+never claimed ``protocols`` as a whole. (If you ever *do* need to keep a shared parent line from
+being deleted when your part is empty, that is what ``%cant_delete`` above is for.)
 
-This means that we first describe the tacacs server and then reference it in ``aaa``. But deletion should occur in reverse order, for which we can use ``%order_reverse``:
+.. note::
 
-.. code-block:: text
-
-    tacacs-server
-    aaa
-    no tacacs-server %order_reverse
-
-
-As a result, ``no server ...`` will occur inside the ``aaa`` block first, followed by ``no tacacs-server ...``.
-
-If you are describing custom logic (``%logic=`` or ``%diff_logic=``), it is advisable to describe these commands in the order rulebook.
-
-In the deploy rulebook (``<vendor>.deploy``), you can use:
-- ``%timeout=`` - command execution timeout in seconds (default is ``30``);
-- ``%send_nl`` - whether to send a newline after the response (default is ``true``).
-
-Additionally, rulebooks can use `Mako template <https://www.makotemplates.org>`_ expressions, where the ``hw`` object is available. For example:
-
-.. code-block:: text
-
-    %if hw.Huawei.Quidway:
-    snmp-agent protocol source-interface %logic=huawei.misc.undo_redo
-    %else:
-    snmp-agent protocol source-interface *
-    %endif
+   This check can be turned off with ``--no-acl-exclusive``, but that flag exists only for
+   debugging. Relying on overlapping ACLs goes against Annet's design, so you should never use
+   it in production.

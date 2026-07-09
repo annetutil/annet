@@ -1,22 +1,24 @@
-from typing import List
+from collections.abc import Iterator
+from typing import Any, List
 
 from annet.adapters.netbox.common.models import NetboxDevice
-from annet.generators import PartialGenerator, BaseGenerator
+from annet.generators import BaseGenerator, PartialGenerator
 from annet.mesh import MeshExecutor
 from annet.storage import Storage
+
 from .mesh_logic import registry
 
 
 class Bgp(PartialGenerator):
     TAGS = ["mgmt", "bgp"]
 
-    def acl_huawei(self, device):
+    def acl_huawei(self, device: Any) -> str:
         return """
         bgp
             peer
         """
 
-    def run_huawei(self, device: NetboxDevice):
+    def run_huawei(self, device: NetboxDevice[Any, Any]) -> Iterator[str]:
         executor = MeshExecutor(registry, device.storage)
         res = executor.execute_for(device)
         yield f"bgp {res.global_options.local_as}"

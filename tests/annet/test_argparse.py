@@ -86,6 +86,7 @@ class CmdBuilder:
     def __init__(self, name, parent=None):
         class Group(ArgGroup):
             pass
+
         self.cls = Group
         self.name = name
         self.parent = parent

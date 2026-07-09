@@ -53,21 +53,35 @@ selected_context: default
 
 Environment variable `ANN_SELECTED_CONTEXT` can be used to override `selected_context` parameter.
 
+## Installation
+
+Install from PyPI:
+```shell
+pip install annet
+```
+
+Or install from source:
+```shell
+git clone https://github.com/annetutil/annet
+cd annet
+pip install -e .
+```
+
 ## Building doc
-
 1. Install dependencies:
-
 ```shell
 pip install -r requirements-doc.txt
 ```
-
 2. Build
-
 ```shell
 sphinx-build -M html docs docs-build
 ```
-
-3. Open rendered html in browser docs-build/html/index.html
+3. Open rendered html in browser
+```shell
+open docs-build/html/index.html  # macOS
+xdg-open docs-build/html/index.html  # Linux
+start docs-build/html/index.html  # Windows
+```
 
 ## Links
 

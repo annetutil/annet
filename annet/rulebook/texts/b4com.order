@@ -5,13 +5,26 @@
 
 # Фичи должны быть включены прежде всего
 feature %order_reverse
+hostname
+clock ~
+logging
 ntp enable
 ntp server
 # Далее нужно будет указать команды и их порядок
+no key %order_reverse
+no username %order_reverse
+no rsa %order_reverse
+snmp-server enable
+snmp-server view
+snmp-server community
 sflow
 ip prefix-list
 ipv6 prefix-list
 route-map
+ip vrf
+ip domain-lookup
+ip route
+ipv6 route
 interface *
     description
     ip vrf forwarding
@@ -24,3 +37,25 @@ interface *
         exit
     sflow
 ip community-list
+router bgp *
+    bgp ~
+    neighbor * fall-over bfd
+    neighbor * advertisement-interval *
+    neighbor */[0-9a-fA-F\.\:]+/ peer-group %order_reverse
+    neighbor */[0-9a-fA-F\.\:]+/ remote-as  %order_reverse
+    neighbor */(\w+_?-?)+/ peer-group       %order_reverse
+    neighbor */(\w+_?-?)+/ remote-as        %order_reverse
+    neighbor * description *
+    network *
+    address-family ~
+        max-paths ebgp *
+        neighbor * fall-over bfd
+        neighbor * advertisement-interval *
+        neighbor */[0-9a-fA-F\.\:]+/ peer-group  %order_reverse
+        neighbor */[0-9a-fA-F\.\:]+/ remote-as   %order_reverse
+        neighbor */(\w+_?-?)+/ peer-group        %order_reverse
+        neighbor */(\w+_?-?)+/ remote-as         %order_reverse
+        neighbor * description *
+        neighbor * activate
+        network *
+line

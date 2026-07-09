@@ -1,0 +1,327 @@
+port split mode
+port split dimension
+port split refresh
+dfs-group
+assign forward
+
+port mode 200GE
+
+ip vpn-instance */[Mm][Ee][Tt]h.*/
+
+ip */(ip|ipv6)/-prefix * index 99999999
+undo ip */(ip|ipv6)/-prefix * index *   %order_reverse
+ip */(ip|ipv6)/-prefix
+xpl
+
+ip as-path-filter
+ip community-filter
+ip extcommunity-filter
+
+tunnel-policy
+
+evpn-overlay *
+
+route-policy */VRF_.*/
+ip vpn-instance
+    ipv4-family
+        route-distinguisher
+        ~
+    ipv6-family
+        route-distinguisher
+        ~
+    ~
+
+ntp
+
+acl port-pool
+acl ip-pool
+acl ipv6-pool
+acl ~
+    undo rule * description %order_reverse
+    undo rule ~ %order_reverse
+    rule * */deny|permit/
+    rule * description
+
+system tcam
+
+undo system tcam acl template * all %order_reverse
+undo system tcam acl template * %order_reverse
+undo system tcam acl$ %order_reverse
+
+traffic classifier
+traffic behavior
+traffic policy
+qos group
+qos schedule-profile
+port-wred
+
+dhcp
+
+vlan reserved
+vlan batch
+vlan pool
+vlan
+
+hwtacacs-server
+hwtacacs server
+radius-server
+
+aaa
+    undo local-user policy security-enhance
+    undo user-password complexity-check
+
+    undo user-group %order_reverse
+    undo task-group %order_reverse
+
+    local-user ~
+
+    */(authentication|authorization|accounting)-scheme/ *
+
+    domain *
+
+    task-group
+    user-group
+
+    undo local-user * ftp-directory %order_reverse
+    undo local-user * privilege %order_reverse
+    undo local-user * level %order_reverse
+    undo local-user * %order_reverse
+    ~
+
+
+user-interface
+drop-profile
+
+interface */(?i)meth[\d\/]+/
+FTP client
+ftp client
+sflow
+
+segment-routing
+    sr-te policy *
+        candidate-path * *
+            undo segment-list * %order_reverse
+    undo segment-list *  %order_reverse
+
+mpls
+    mpls te cspf
+    mpls te cspf preferred-igp
+
+mpls ldp
+mpls ldp remote-peer *
+
+explicit-path
+
+route-policy EXPORT_ISIS
+
+isis
+
+bridge-domain *
+    vxlan
+    evpn
+    undo evpn
+    undo vxlan
+
+diffserv domain *
+
+interface */Vbdif\d+/
+interface */Eth-Trunk\d+/
+interface */LoopBack\d+/
+interface */Tunnel.*/
+    tunnel-protocol
+    mpls te signal-protocol segment-routing
+    statistic enable
+    mpls te path
+    mpls te path metric-type
+
+interface *
+    undo mac-address learning     %order_reverse
+    undo portswitch
+    undo ip address * * sub  %order_reverse
+    undo ip address * *  %order_reverse
+    portswitch  %order_reverse
+    ip binding
+    ipv6 enable
+    ipv6 nd ra prefix
+    ipv6
+    ip address * *
+    ip address * * sub
+    dhcpv6
+    isis enable
+    isis
+    undo isis *
+    undo isis enable  %order_reverse
+    mpls
+    mpls ldp
+    mpls ldp transport-address interface
+    mpls rsvp-te
+    mpls rsvp-te bfd
+    port link-type
+    port trunk pvid
+    port trunk allow-pass
+    undo port trunk allow-pass vlan all
+    undo port trunk allow-pass vlan 1 %order_reverse
+    port hybrid
+    undo port hybrid vlan
+    port hybrid tagged
+    port hybrid untagged
+    port hybrid vlan
+    port hybrid pvid
+    voice-vlan */\d+/
+    voice-vlan
+    undo eth-trunk
+    eth-trunk
+    mode
+    qos (wfq|drr)
+    qos queue
+    vrrp6 vrid [11|12] virtual-ip FE80*
+    vrrp6 vrid [11|12] virtual-ip
+    vrrp6 vrid [11|12]
+    vrrp vrid [11|12] virtual-ip
+    vrrp vrid [11|12]
+    ~
+    poe
+interface */\S+\.\d+/
+
+interface */Vlanif\d+/
+
+undo qos group          %order_reverse
+undo qos schedule-profile	%order_reverse
+undo traffic policy     %order_reverse
+undo traffic behavior   %order_reverse
+undo traffic classifier %order_reverse
+
+undo diffserv domain * 	%order_reverse
+
+ip route-static
+ipv6 route-static
+
+route-policy
+    apply ~
+    if-match ~
+
+
+ospf
+    opaque-capability enable
+    area
+
+bgp
+    router-id
+    undo undo maximum load-balancing %order_reverse
+    maximum load-balancing
+    group
+    peer * as-number *
+    peer * local-as *
+    ipv[46]-family|link-state-family unicast|l2vpn-family evpn
+        undo undo maximum load-balancing %order_reverse
+        maximum load-balancing
+        group
+        peer * as-number *
+        peer * enable
+        peer * ~
+    l2vpn-ad-family
+        peer * enable
+        peer * ~
+    undo peer * description %order_reverse
+    undo peer * * * %order_reverse
+    undo peer * * %order_reverse
+    undo peer * %order_reverse
+    undo group * %order_reverse
+    peer * ~
+
+
+undo bfd * %order_reverse
+undo bfd %order_reverse
+
+undo ip vpn-instance %order_reverse
+undo route-policy %order_reverse
+undo route-policy */VRF_.*/ %order_reverse
+undo ip community-filter %order_reverse
+undo ip extcommunity-filter %order_reverse
+undo ip as-path-filter %order_reverse
+
+undo bfd * %order_reverse
+undo bfd %order_reverse
+
+info-center
+
+snmp-agent sys-info
+snmp-agent mib-view
+snmp-agent community complexity-check
+snmp-agent community
+snmp-agent target-host
+snmp-agent trap source
+snmp-agent
+
+cpu-defend policy
+cpu-defend-policy
+slot *
+    cpu-defend-policy %order_reverse
+undo cpu-defend policy  %order_reverse
+
+ssh server rsa-key min-length
+rsa peer-public-key
+ssh user
+ssh user * assign
+ssh user * authentication-type
+ssh user * service-type
+
+local-user * password
+local-user * service-type
+local-user * level
+local-user * ftp-directory
+
+stelnet server
+stelnet ipv4 server
+stelnet ipv6 server
+
+telnet server acl
+ssh server acl
+*/(ftp|FTP)/ server acl
+*/(ftp|FTP)/ acl
+telnet ipv6 server acl
+ssh ipv6 server acl
+*/(ftp|FTP)/ ipv6 server acl
+*/(ftp|FTP)/ ipv6 acl
+
+ssh server-source all-interface
+ssh ipv6 server-source all-interface
+telnet server-source all-interface
+telnet ipv6 server-source all-interface
+
+domain
+default-domain
+telemetry
+    sensor-group *
+    destination-group *
+    subscription *
+
+diffserv domain *
+    ip-dscp-inbound ~
+
+undo acl                %order_reverse
+
+undo interface */.*[.]\d+/ %order_reverse
+undo interface */Vlanif\d+/ %order_reverse
+undo interface */Vbdif\d+/ %order_reverse
+
+undo interface */Eth-Trunk\d+/  %order_reverse
+undo interface             %order_reverse
+
+undo interface */Tunnel.*/ %order_reverse
+undo explicit-path %order_reverse
+
+undo drop-profile %order_reverse
+
+undo vlan %order_reverse
+undo vlan batch %order_reverse
+undo observe-port %order_reverse
+
+undo sflow %order_reverse
+
+undo ip */(ip|ipv6)/-prefix * index 99999999  %order_reverse
+
+undo radius-server template %order_reverse
+undo hwtacacs-server template %order_reverse
+
+~

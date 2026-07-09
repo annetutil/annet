@@ -1,25 +1,36 @@
+from collections import OrderedDict as odict
+from collections.abc import Iterator
+from typing import Any, cast
+
 from annet.annlib.lib import huawei_collapse_vlandb as collapse_vlandb
 from annet.annlib.lib import huawei_expand_vlandb as expand_vlandb
 from annet.annlib.types import Op
-
 from annet.rulebook import common
 from annet.rulebook.common import DiffItem
 
 
 # =====
-def single(rule, key, diff, **_):
+def single(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     yield from _process_vlandb(rule, key, diff, False, False, None)
 
 
-def multi(rule, key, diff, **_):
+def multi(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     yield from _process_vlandb(rule, key, diff, True, False, 10)
 
 
-def multi_all(rule, key, diff, **_):
+def multi_all(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
     yield from _process_vlandb(rule, key, diff, True, True, 10)
 
 
-def vlan_diff(old, new, diff_pre, _pops):
+def vlan_diff(
+    old: odict[str, Any], new: odict[str, Any], diff_pre: odict[str, Any], _pops: tuple[str, ...]
+) -> list[DiffItem]:
     batch_new = set()  # vlan batch ... vlan ids
     for row in new:
         prefix, vlans = _parse_vlancfg(row)
@@ -52,7 +63,14 @@ def vlan_diff(old, new, diff_pre, _pops):
 
 
 # =====
-def _process_vlandb(rule, key, diff, multi, multi_all, multi_chunk):  # pylint: disable=unused-argument,redefined-outer-name
+def _process_vlandb(
+    rule: dict[str, Any],
+    key: tuple[str, ...],
+    diff: dict[str, list[dict[str, Any]]],
+    multi: bool,
+    multi_all: bool,
+    multi_chunk: int | None,
+) -> Iterator[tuple[bool, str, None]]:
     assert len(diff[Op.AFFECTED]) == 0, "WTF? Affected signle: %r" % (diff[Op.AFFECTED])
     if not multi:
         for op in (Op.ADDED, Op.REMOVED):
@@ -73,44 +91,45 @@ def _process_vlandb(rule, key, diff, multi, multi_all, multi_chunk):  # pylint: 
 
     if removed:
         collapsed = collapse_vlandb(removed)
-        for chunk in (_chunked(collapsed, multi_chunk) if multi else [collapsed]):
+        # multi implies multi_chunk is not None (see single/multi/multi_all callers)
+        for chunk in _chunked(collapsed, cast(int, multi_chunk)) if multi else [collapsed]:
             yield (False, "undo %s %s" % (prefix_del, " ".join(chunk)), None)
 
     if added:
         collapsed = collapse_vlandb(added)
-        for chunk in (_chunked(collapsed, multi_chunk) if multi else [collapsed]):
+        for chunk in _chunked(collapsed, cast(int, multi_chunk)) if multi else [collapsed]:
             yield (True, "%s %s" % (prefix_add, " ".join(chunk)), None)
 
 
-def _chunked(items, size):
+def _chunked(items: list[str], size: int) -> Iterator[list[str]]:
     for offset in range(0, len(items), size):
-        yield items[offset:offset + size]
+        yield items[offset : offset + size]
 
 
-def _parse_vlancfg_actions(actions):
+def _parse_vlancfg_actions(actions: list[dict[str, Any]]) -> tuple[str | None, set[int]]:
     prefix = None
-    vlandb = set()
+    vlandb: set[int] = set()
     for action in actions:
         (prefix, part) = _parse_vlancfg(action["row"])
         vlandb.update(part)
     return (prefix, vlandb)
 
 
-def _parse_vlancfg(row):
+def _parse_vlancfg(row: str) -> tuple[str, set[int]]:
     parts = row.split()
     assert len(parts) > 0, row
-    index = None
-    for (index, item) in reversed(list(enumerate(parts))):
+    index = 0  # parts is non-empty, so the loop below always reassigns index
+    for index, item in reversed(list(enumerate(parts))):
         if not (item.isdigit() or item == "to"):
             break
-    prefix = " ".join(parts[:index + 1])
-    vlandb = expand_vlandb(" ".join(parts[index + 1:]))
+    prefix = " ".join(parts[: index + 1])
+    vlandb = expand_vlandb(" ".join(parts[index + 1 :]))
     return (prefix, vlandb)
 
 
-def _find_new_vlans(root_pre):
-    ret = set()
-    for (rule, pre) in root_pre.items():
+def _find_new_vlans(root_pre: dict[str, Any]) -> set[int]:
+    ret: set[int] = set()
+    for rule, pre in root_pre.items():
         if not rule.startswith("vlan batch"):
             continue
         new = _parse_vlancfg_actions(pre["items"][tuple()][Op.ADDED])[1]

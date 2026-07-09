@@ -1,7 +1,7 @@
-from collections.abc import Iterator, Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from enum import Enum
-from typing import Generic, TypeVar, Any
+from typing import Any, Generic, TypeVar
 
 
 class ActionType(Enum):
@@ -29,7 +29,7 @@ class Action:
     def append(self, action: SingleAction[Any]) -> None:
         self.actions.append(action)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         actions = ", ".join(repr(c) for c in self.actions)
         return f"Action({actions})"
 

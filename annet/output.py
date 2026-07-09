@@ -2,23 +2,43 @@ import abc
 import os
 import posixpath
 import sys
-from typing import Dict, List, Optional, Tuple, Type
+import traceback
+from collections.abc import Iterable, Iterator, Mapping
+from typing import Any, Dict, List, Optional, Tuple, Type, cast
 from urllib.parse import urlparse
 
 import colorama
 from contextlog import get_logger
 
 from annet.annlib.output import (  # pylint: disable=unused-import
-    LABEL_NEW_PREFIX,
-    OutputWriter,
-    TextArgs,
-    capture_output,
-    dir_or_file_output,
-    format_file_diff,
-    print_as_json,
-    print_as_yaml,
-    print_err_label,
-    print_label,
+    LABEL_NEW_PREFIX as LABEL_NEW_PREFIX,
+)
+from annet.annlib.output import (
+    OutputWriter as OutputWriter,
+)
+from annet.annlib.output import (
+    TextArgs as TextArgs,
+)
+from annet.annlib.output import (
+    capture_output as capture_output,
+)
+from annet.annlib.output import (
+    dir_or_file_output as dir_or_file_output,
+)
+from annet.annlib.output import (
+    format_file_diff as format_file_diff,
+)
+from annet.annlib.output import (
+    print_as_json as print_as_json,
+)
+from annet.annlib.output import (
+    print_as_yaml as print_as_yaml,
+)
+from annet.annlib.output import (
+    print_err_label as print_err_label,
+)
+from annet.annlib.output import (
+    print_label as print_label,
 )
 from annet.cli_args import FileOutOptions, QueryOptions
 from annet.connectors import Connector
@@ -40,13 +60,25 @@ class _DriverConnector(Connector["OutputDriver"]):
 output_driver_connector = _DriverConnector()
 
 
+def _format_fail_exception(exc: object) -> str:
+    if formatted_output := getattr(exc, "formatted_output", None):
+        return cast(str, formatted_output)
+    if isinstance(exc, BaseException) and exc.__traceback__ is not None:
+        return "".join(traceback.format_exception(exc))
+    return f"{repr(exc)} (formatted_output is absent)"
+
+
 class OutputDriver(abc.ABC):
     @abc.abstractmethod
-    def write_output(self, arg_out: FileOutOptions, items, query_result_count=1) -> None:
+    def write_output(
+        self, arg_out: FileOutOptions, items: Iterable[Tuple[str, Any, bool]], query_result_count: int = 1
+    ) -> None:
         pass
 
     @abc.abstractmethod
-    def format_fails(self, fail, fqdns: Optional[Dict[int, str]] = None) -> Tuple[str, str]:
+    def format_fails(
+        self, fail: Mapping[Any, BaseException], fqdns: Optional[Dict[int, str]] = None
+    ) -> list[tuple[str, str, bool]]:
         pass
 
     @abc.abstractmethod
@@ -59,7 +91,9 @@ class OutputDriver(abc.ABC):
 
 
 class OutputDriverBasic(OutputDriver):
-    def write_output(self, arg_out: FileOutOptions, items, query_result_count=1):
+    def write_output(
+        self, arg_out: FileOutOptions, items: Iterable[Tuple[str, Any, bool]], query_result_count: int = 1
+    ) -> None:
         """
         пишет результаты генерации в файл или директорию :dest
         :dest - это директория в случаях:
@@ -77,7 +111,7 @@ class OutputDriverBasic(OutputDriver):
             # нет результатов, ничего не пишем и не создаём
             return
 
-        def _reassemble_items():
+        def _reassemble_items() -> Iterator[Tuple[str, Any, bool]]:
             yield first_result
             yield from items_iter
 
@@ -109,7 +143,7 @@ class OutputDriverBasic(OutputDriver):
                     label = os.path.join(label, BLACKBOX_FILENAME)
 
                 if label.startswith(LABEL_NEW_PREFIX):
-                    label = label[len(LABEL_NEW_PREFIX):]
+                    label = label[len(LABEL_NEW_PREFIX) :]
                 if label.startswith(os.sep):
                     # just in case.
                     label = label.lstrip(os.sep)
@@ -141,10 +175,12 @@ class OutputDriverBasic(OutputDriver):
                 with open(dest, "w") as file:
                     writer.write(file)
 
-    def format_fails(self, fail, fqdns: Optional[Dict[int, str]] = None):
-        ret = []
+    def format_fails(
+        self, fail: Mapping[Any, BaseException], fqdns: Optional[Dict[int, str]] = None
+    ) -> list[tuple[str, str, bool]]:
+        ret: list[tuple[str, str, bool]] = []
         fqdns = fqdns or {}
-        for (assignment, exc) in fail.items():
+        for assignment, exc in fail.items():
             label = assignment
             if assignment in fqdns:
                 label = fqdns[assignment]
@@ -152,7 +188,7 @@ class OutputDriverBasic(OutputDriver):
                 label = assignment[0]
             else:
                 ValueError("Failed to parse failed assignment %r" % assignment)
-            ret.append((label, getattr(exc, "formatted_output", f"{repr(exc)} (formatted_output is absent)"), True))
+            ret.append((label, _format_fail_exception(exc), True))
         return ret
 
     def cfg_file_names(self, device: Device) -> list[str]:
@@ -165,7 +201,7 @@ class OutputDriverBasic(OutputDriver):
             raise RuntimeError("Neither hostname nor id is known for device")
         return res
 
-    def entire_config_dest_path(self, device, config_path: str) -> str:
+    def entire_config_dest_path(self, device: Device, config_path: str) -> str:
         """Формирует путь к конфигу в директории destname.
 
         Например, для устройства с hostname `my-device`:
@@ -188,7 +224,9 @@ class OutputDriverBasic(OutputDriver):
 
         relative_config_path = posixpath.relpath(config_path, "/")
         if scheme != "file":
-            host = parsed_config_path.hostname + f":{parsed_config_path.port}" if parsed_config_path.port else ""
+            host = (
+                (parsed_config_path.hostname or "") + f":{parsed_config_path.port}" if parsed_config_path.port else ""
+            )
             relative_config_path = os.path.join(host, relative_config_path)
 
         dest_config_path_parts = [cfg_files[0]] + relative_config_path.split(posixpath.sep)

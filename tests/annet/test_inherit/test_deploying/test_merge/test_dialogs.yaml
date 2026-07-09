@@ -1,0 +1,154 @@
+test_case_1:
+    child: |
+        %inherit_from=parent
+        rule 1
+            dialog: Message1 ::: Answer1
+            dialog: Message2 ::: Answer1
+            dialog: Message3 ::: Answer1
+    parent: |
+        rule 1
+            dialog: Message1 ::: Answer2
+            dialog: Message2 ::: Answer2
+            dialog: Message4 ::: Answer2
+    expected: |
+        rule 1
+            dialog: Message1 ::: Answer1
+            dialog: Message2 ::: Answer1
+            dialog: Message4 ::: Answer2
+            dialog: Message3 ::: Answer1
+
+test_case_2:
+    child: |
+        %inherit_from=parent
+        rule 1
+            dialog: Message1 ::: Answer1
+            dialog: Message2 ::: Answer1 %not_inherit
+            dialog: Message3 ::: Answer1
+    parent: |
+        rule 1
+            dialog: Message1 ::: Answer2
+            dialog: Message2 ::: Answer2
+    expected: |
+        rule 1
+            dialog: Message1 ::: Answer1
+            dialog: Message3 ::: Answer1
+test_case_3:
+    child: |
+        %inherit_from=parent
+        rule 1 %not_inherit
+            dialog: Message1 ::: Answer1
+            dialog: Message2 ::: Answer1    
+    parent: |
+        rule 1
+            dialog: Message3 ::: Answer1
+            dialog: Message4 ::: Answer1
+    expected: |
+        rule 1
+            dialog: Message1 ::: Answer1
+            dialog: Message2 ::: Answer1
+test_case_4:
+    child: |
+        %inherit_from=parent
+        rule 1
+            dialog: Message1 ::: Answer1 %not_inherit
+            rule 2
+                dialog: Message2 ::: Answer1
+    parent: |
+        rule 1
+            dialog: Message1 ::: Answer1
+            rule 2
+                dialog: Message4 ::: Answer1
+    expected: |
+        rule 1
+            rule 2
+                dialog: Message2 ::: Answer1
+                dialog: Message4 ::: Answer1
+test_case_5:
+    child: |
+        %inherit_from=parent
+        rule 1
+            dialog: Message1 ::: Answer1
+            rule 2 %not_inherit
+    parent: |
+        rule 1
+            dialog: Message2 ::: Answer1
+            rule 2
+                dialog: Message3 ::: Answer1
+    expected: |
+        rule 1
+            dialog: Message2 ::: Answer1
+            dialog: Message1 ::: Answer1
+test_case_6:
+    child: |
+        %inherit_from=parent
+        rule 1 %not_inherit
+            dialog: Message1 ::: Answer1
+            rule 2
+                dialog: Message2 ::: Answer1
+    parent: |
+        rule 1
+            dialog: Message3 ::: Answer1
+            rule 2
+                dialog: Message4 ::: Answer1
+    expected: |
+        rule 1
+            dialog: Message1 ::: Answer1
+            rule 2
+                dialog: Message2 ::: Answer1
+
+test_case_7:
+    child: |
+        %inherit_from=parent
+        rule 1
+            dialog: Message1 ::: Answer1 %send_nl
+            dialog: Message2 ::: Answer1 %send_nl=0
+            dialog: Message3 ::: Answer1 %send_nl=0
+            dialog: Message4 ::: Answer1 %send_nl=1
+            dialog: Message5 ::: Answer1
+            dialog: Message6 ::: Answer1
+            dialog: Message7 ::: Answer1
+            dialog: Message8 ::: Answer1
+            dialog: Message9 ::: Answer1 %send_nl
+            dialog: Message10 ::: Answer1 %send_nl=0
+            dialog: Message11 ::: Answer1 %send_nl=1
+            dialog: Message12 ::: Answer1
+    parent: |
+        rule 1
+            dialog: Message1 ::: Answer1 %send_nl=0
+            dialog: Message2 ::: Answer1
+            dialog: Message3 ::: Answer1 %send_nl=1
+            dialog: Message4 ::: Answer1 %send_nl=0
+            dialog: Message5 ::: Answer1 %send_nl=0
+            dialog: Message6 ::: Answer1 %send_nl=1
+            dialog: Message7 ::: Answer1 %send_nl
+            dialog: Message8 ::: Answer1
+            dialog: Message9 ::: Answer1
+            dialog: Message10 ::: Answer1
+            dialog: Message11 ::: Answer1
+            dialog: Message12 ::: Answer1
+    expected: |
+        rule 1
+            dialog: Message1 ::: Answer1
+            dialog: Message2 ::: Answer1 %send_nl=0
+            dialog: Message3 ::: Answer1 %send_nl=0
+            dialog: Message4 ::: Answer1
+            dialog: Message5 ::: Answer1 %send_nl=0
+            dialog: Message6 ::: Answer1
+            dialog: Message7 ::: Answer1
+            dialog: Message8 ::: Answer1
+            dialog: Message9 ::: Answer1
+            dialog: Message10 ::: Answer1 %send_nl=0
+            dialog: Message11 ::: Answer1
+            dialog: Message12 ::: Answer1
+
+test_case_8:
+    child: |
+        %inherit_from=parent
+        rule 1
+            dialog: Message1 ::: Answer1
+    parent: |
+        rule 1
+            dialog: Message1 ::: Answer2
+    expected: |
+        rule 1
+            dialog: Message1 ::: Answer1

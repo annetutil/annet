@@ -1,10 +1,15 @@
 import ipaddress
+from collections import OrderedDict as odict
+from typing import Any
+
 from annet.annlib.types import Op
 from annet.rulebook import common
 from annet.rulebook.common import DiffItem
 
 
-def ipv6_addr(old, new, diff_pre, _pops):
+def ipv6_addr(
+    old: odict[str, Any], new: odict[str, Any], diff_pre: odict[str, Any], _pops: tuple[str, ...]
+) -> list[DiffItem]:
     """
     Приводим все ipv6-адреса в объекты IPv6Interface и далее сравниваем
     """
@@ -27,7 +32,7 @@ def ipv6_addr(old, new, diff_pre, _pops):
     return ret
 
 
-def _parse_ipv6(row):
+def _parse_ipv6(row: str) -> ipaddress.IPv6Interface | None:
     """
     Парсит IPv6-интерфейс из строки, предполагая, что адрес находится на втором месте.
     Возвращает объект IPv6Interface или None.
