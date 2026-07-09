@@ -22,6 +22,7 @@
     "Cisco.Catalyst.C3700": "37\\d\\d",
     "Cisco.Catalyst.C4900": "49\\d\\d",
     "Cisco.Catalyst.C6500": "65\\d\\d",
+    "Cisco.Catalyst.C9300": "93\\d\\d",
 
     "Cisco.Nexus": " [Nn](exus)?",
     "Cisco.Nexus.N3x": " (N3K-[A-Z])?3\\d\\d\\d",
@@ -40,6 +41,7 @@
     "Cisco.Nexus.N9x.N9316": "9316",
     "Cisco.Nexus.N9x.N9500": "95\\d\\d",
     "Cisco.Nexus.N9x.N9364": "9364",
+    "Cisco.Nexus.N9x.C93240": "93240",
     "Cisco.Nexus.N9x.N9336": "9336",
 
     "Huawei": "^[Hh]uawei",
