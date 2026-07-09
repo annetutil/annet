@@ -47,9 +47,9 @@ def prefix_list(
     for op, rows in diff.items():
         for row in rows:
             # prefix list format:
-            # ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 15 ..
-            # ip ipv6-prefix PFXS_SPECIALv6 index 20 ..
-            _ip, _family, _name, _index, index, *_ = row["row"].split()
+            # ip prefix-list PRFX_CT_LU_ALLOWED_ROUTES index 15 ..
+            # ipv6 prefix-list PFXS_SPECIALv6 index 20 ..
+            _family, _prefix_list, _name, _index, index, *_ = row["row"].split()
             if index not in diff_by_index:
                 sub_diff: dict[str, list[dict[str, Any]]] = {op: [] for op in diff.keys()}
                 diff_by_index[index] = sub_diff
@@ -62,12 +62,12 @@ def prefix_list(
         # Since the rule key originally doesn’t include the index,
         # we need to add it; otherwise, the undo rule will be missing it.
         indexed_rule = copy.deepcopy(rule)
-        indexed_rule["reverse"] = "undo ip {}-prefix {} index {}"
+        indexed_rule["reverse"] = "undo {} prefix-list {} index {}"
 
         # The stub_index is referenced in the h3c.order rulebook
         # to ensure that the stub is added or removed first or last in order.
 
-        stub, stub_index = "", 99999999
+        stub, stub_index = "", 65535
 
         # If we’re only adding new commands (for example, creating entries) in the prefix list,
         # or deleting/moving them while keeping some parts unchanged,
@@ -76,11 +76,11 @@ def prefix_list(
         if (diff[Op.REMOVED] or diff[Op.MOVED]) and not diff[Op.UNCHANGED]:
             stub = "deny 0.0.0.0 32" if family == "ip" else "deny :: 128"
         if stub:
-            yield (True, f"ip {family}-prefix {name} index {stub_index} {stub}", None)
+            yield (True, f"{family} prefix-list {name} index {stub_index} {stub}", None)
         for index, sub_diff in diff_by_index.items():
             yield from common.undo_redo(indexed_rule, (family, name, index), sub_diff, **kwargs)
         if stub:
-            yield (False, f"undo ip {family}-prefix {name} index {stub_index}", None)
+            yield (False, f"undo {family} prefix-list {name} index {stub_index}", None)
 
 
 def static(

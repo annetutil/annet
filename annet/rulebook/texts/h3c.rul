@@ -141,7 +141,7 @@ ip vpn-instance *
         route-distinguisher *
         export route-policy
 
-ip */(ip|ipv6)/-prefix * %logic=annet.rulebook.h3c.misc.prefix_list
+*/(ip|ipv6)/ prefix-list * %logic=annet.rulebook.h3c.misc.prefix_list
 ip as-path-filter * index *
 ip community-filter * * index *
 ip extcommunity-filter * * index *

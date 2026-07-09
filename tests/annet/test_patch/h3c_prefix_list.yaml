@@ -1,0 +1,27 @@
+# H3C deletes prefix-list entries by index only.
+
+- vendor: h3c
+  before: |
+    ipv6 prefix-list ipv6_local index 30 permit FD00:1:1201:1000:: 56
+  after: |
+    ipv6 prefix-list ipv6_local index 30 deny FD00:1:1201:1000:: 56
+  patch: |
+    system-view
+    ipv6 prefix-list ipv6_local index 65535 deny :: 128
+    undo ipv6 prefix-list ipv6_local index 30
+    ipv6 prefix-list ipv6_local index 30 deny FD00:1:1201:1000:: 56
+    undo ipv6 prefix-list ipv6_local index 65535
+    save force
+
+- vendor: h3c
+  before: |
+    ip prefix-list local index 10 permit 10.0.0.0 8
+    ip prefix-list local index 20 permit 172.16.0.0 12
+  after: |
+    ip prefix-list local index 10 permit 10.0.0.0 8
+    ip prefix-list local index 30 permit 192.168.0.0 16
+  patch: |
+    system-view
+    undo ip prefix-list local index 20
+    ip prefix-list local index 30 permit 192.168.0.0 16
+    save force
