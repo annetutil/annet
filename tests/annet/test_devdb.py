@@ -285,7 +285,7 @@ MODELS = [
     ("Cisco Catalyst 4948", "Cisco.Catalyst.C4900"),
     ("Cisco Catalyst 4948E", "Cisco.Catalyst.C4900"),
     ("Cisco Catalyst 6513", "Cisco.Catalyst.C6500"),
-    ("Cisco Catalyst 9300-24U", "Cisco.Catalyst"),
+    ("Cisco Catalyst 9300-24U", "Cisco.Catalyst.C9300"),
     ("Cisco Catalyst C2960CG-8TC-L", "Cisco.Catalyst.C2900.C2960"),
     ("Cisco Catalyst CBS3030-DEL", "Cisco.Catalyst"),
     ("Cisco Catalyst Express 500-24LC", "Cisco.Catalyst"),
