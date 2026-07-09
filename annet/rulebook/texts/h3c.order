@@ -32,7 +32,7 @@ ip vpn-instance */[OoMm][OoLl][BbAa].*/
 # в таком случае нужно расскомментить эту строчку, но она не позволяет снести plist целиком
 # сначала мы добавляем stub-правило в рулсет чтобы оно не позволяло prefix-list'у "пропасть"
 # индекс референсится в логике патчинга префикс-листа h3c.misc.prefix_list
-*/(ip|ipv6)/ prefix-list * index 99999999
+*/(ip|ipv6)/ prefix-list * index 65535
 undo */(ip|ipv6)/ prefix-list * index *   %order_reverse
 */(ip|ipv6)/ prefix-list
 
@@ -377,7 +377,7 @@ undo sflow %order_reverse
 # поскольку если префикс-лист должен уходить из конфигурации полностью
 # перед этим должны быть удалены все его референсы в конфиге
 # индекс референсится в логике патчинга префикс-листа h3c.misc.prefix_list
-undo */(ip|ipv6)/ prefix-list * index 99999999  %order_reverse
+undo */(ip|ipv6)/ prefix-list * index 65535  %order_reverse
 
 #remove template only after all references will be cleared
 undo radius-server template %order_reverse
