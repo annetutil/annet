@@ -478,6 +478,7 @@ def on_unnumbered(
     neighbor: DirectPeer | VirtualPeer | IndirectPeer,
     session: MeshSession,
 ):
+    local.vrf = VRF
     local.addr = UNNUMBERED
     neighbor.addr = UNNUMBERED
     session.asnum = 12345
@@ -504,6 +505,7 @@ def test_unnumbered(storage, direct, device1, device2, device_neighbor):
     assert peer.addr is UNNUMBERED
     assert peer.vrf_name == ""
     assert device1.find_interface("Vlan1").addrs == []
+    assert device1.find_interface("Vlan1").vrf == VRF
 
     res_dev2 = r.execute_for(connected_device)
     assert len(res_dev2.peers) == 1
@@ -511,6 +513,7 @@ def test_unnumbered(storage, direct, device1, device2, device_neighbor):
     assert peer.addr is UNNUMBERED
     assert peer.vrf_name == ""
     assert connected_device.find_interface("Vlan2").addrs == []
+    assert connected_device.find_interface("Vlan2").vrf is None
 
 
 def on_one_unnumbered(

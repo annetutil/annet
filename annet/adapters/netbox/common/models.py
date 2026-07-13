@@ -202,6 +202,11 @@ class Interface(Entity, Generic[_IpAddressT, _FHRPGroupAssignmentT]):
     fhrp_groups: List[_FHRPGroupAssignmentT] = field(default_factory=list)
     count_fhrp_groups: int = 0
 
+    def set_vrf(self, vrf: str | None) -> None:
+        if self.vrf is not None and self.vrf.name == vrf:
+            return
+        self.vrf = vrf_object(vrf)
+
     def add_addr(self, address_mask: str, vrf: str | None) -> None:
         addr = ip_interface(address_mask)
 

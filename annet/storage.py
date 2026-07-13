@@ -119,6 +119,10 @@ class Interface(Protocol):
     def add_addr(self, address_mask: str, vrf: str | None) -> None:
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def set_vrf(self, vrf: str | None) -> None:
+        raise NotImplementedError
+
 
 class Device(Protocol):
     @property
