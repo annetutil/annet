@@ -384,12 +384,14 @@ def test_2vrfs(storage, direct, device1, device_neighbor, device2):
     peer = res_dev1.peers[0]
     assert peer.vrf_name == VRF
     assert device1.find_interface("Vlan1").addrs == [("192.168.1.254", "testvrf")]
+    assert device1.find_interface("Vlan1").vrf == VRF
 
     res_dev2 = r.execute_for(connected_device)
     assert len(res_dev2.peers) == 1
     peer = res_dev2.peers[0]
     assert peer.vrf_name == ""
     assert connected_device.find_interface("Vlan2").addrs == [("192.168.1.1", None)]
+    assert connected_device.find_interface("Vlan2").vrf is None
 
 
 @pytest.fixture
@@ -478,8 +480,8 @@ def on_unnumbered(
     neighbor: DirectPeer | VirtualPeer | IndirectPeer,
     session: MeshSession,
 ):
-    local.vrf = VRF
     local.addr = UNNUMBERED
+    neighbor.vrf = VRF
     neighbor.addr = UNNUMBERED
     session.asnum = 12345
     local.af_loops = 42
@@ -503,7 +505,7 @@ def test_unnumbered(storage, direct, device1, device2, device_neighbor):
     assert len(res_dev1.peers) == 1
     peer = res_dev1.peers[0]
     assert peer.addr is UNNUMBERED
-    assert peer.vrf_name == ""
+    assert peer.vrf_name == VRF
     assert device1.find_interface("Vlan1").addrs == []
     assert device1.find_interface("Vlan1").vrf == VRF
 

@@ -23,7 +23,7 @@ class FakeInterface(Interface):
         self.vrf = vrf
 
     def __repr__(self):
-        return f"FakeInterface(name={self.name!r}, addrs={self.addrs!r})"
+        return f"FakeInterface(name={self.name!r}, addrs={self.addrs!r}, vrf={self.vrf!r})"
 
 
 class FakeDevice(Device):
