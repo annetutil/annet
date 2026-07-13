@@ -10,6 +10,7 @@ class FakeInterface(Interface):
         self.addrs: list[tuple[str, Optional[str]]] = []
         self.neighbor_fqdn = neighbor_fqdn
         self.neighbor_port = neighbor_port
+        self.vrf: str | None = None
 
     @property
     def name(self) -> str:
@@ -18,8 +19,11 @@ class FakeInterface(Interface):
     def add_addr(self, address_mask: str, vrf: Optional[str]) -> None:
         self.addrs.append((address_mask, vrf))
 
+    def set_vrf(self, vrf: str | None) -> None:
+        self.vrf = vrf
+
     def __repr__(self):
-        return f"FakeInterface(name={self.name!r}, addrs={self.addrs!r})"
+        return f"FakeInterface(name={self.name!r}, addrs={self.addrs!r}, vrf={self.vrf!r})"
 
 
 class FakeDevice(Device):

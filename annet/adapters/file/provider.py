@@ -25,10 +25,14 @@ class Interface(DumpableView):
     name: str
     description: str
     enabled: bool = True
+    vrf: str | None = None
 
     @property
     def _dump__list_key(self) -> str:
         return self.name
+
+    def set_vrf(self, vrf: str | None) -> None:
+        self.vrf = vrf
 
 
 @dataclass
