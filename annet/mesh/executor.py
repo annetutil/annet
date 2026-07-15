@@ -361,7 +361,8 @@ class MeshExecutor:
             target_interface, _ = port_pairs[0]
         if changes.addr is not UNNUMBERED and changes.addr is not None:
             target_interface.add_addr(changes.addr, changes.vrf)
-        target_interface.set_vrf(changes.vrf)
+        if changes.vrf is not None:
+            target_interface.set_vrf(changes.vrf)
         return target_interface.name
 
     def _apply_nondirect_interface_changes(
@@ -387,7 +388,8 @@ class MeshExecutor:
             target_interface = found_interface
         if changes.addr is not UNNUMBERED and changes.addr is not None:
             target_interface.add_addr(changes.addr, changes.vrf)
-        target_interface.set_vrf(changes.vrf)
+        if changes.vrf is not None:
+            target_interface.set_vrf(changes.vrf)
         return target_interface.name
 
     def execute_for(self, device: MeshDevice) -> BgpConfig:
