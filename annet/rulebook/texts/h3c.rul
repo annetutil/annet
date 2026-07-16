@@ -306,6 +306,7 @@ bridge-domain *
         vxlan vni *
 
 route-policy * (?:permit|deny) node * %logic=annet.rulebook.h3c.misc.rp_node
+    if-match */(ip|ipv6)/ address prefix-list
     if-match cost
     if-match protocol
     apply community

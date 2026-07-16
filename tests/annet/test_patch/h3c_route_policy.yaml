@@ -1,0 +1,35 @@
+- vendor: h3c
+  name: change IPv4 route-policy action
+  before: |
+    route-policy test_policy_v4 permit node 10
+      if-match ip address prefix-list test_prefix_list_v4
+  after: |
+    route-policy test_policy_v4 deny node 10
+      if-match ip address prefix-list test_prefix_list_v4
+  patch: |
+    system-view
+    route-policy test_policy_v4 permit node 10
+      undo if-match ip address prefix-list
+      quit
+    route-policy test_policy_v4 deny node 10
+      if-match ip address prefix-list test_prefix_list_v4
+      quit
+    save force
+
+- vendor: h3c
+  name: change IPv6 route-policy action
+  before: |
+    route-policy test_policy_v6 permit node 10
+      if-match ipv6 address prefix-list test_prefix_list_v6
+  after: |
+    route-policy test_policy_v6 deny node 10
+      if-match ipv6 address prefix-list test_prefix_list_v6
+  patch: |
+    system-view
+    route-policy test_policy_v6 permit node 10
+      undo if-match ipv6 address prefix-list
+      quit
+    route-policy test_policy_v6 deny node 10
+      if-match ipv6 address prefix-list test_prefix_list_v6
+      quit
+    save force
