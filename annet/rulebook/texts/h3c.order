@@ -84,11 +84,20 @@ ntp
 acl port-pool
 acl ip-pool
 acl ipv6-pool
-acl ~
-    undo rule * description %order_reverse
+acl */(advanced|basic|mac|user-defined|name|number)/ ~
+    undo rule * comment %order_reverse
     undo rule ~ %order_reverse
+    undo description %order_reverse
+    description
     rule * */deny|permit/
-    rule * description
+    rule * comment
+acl ipv6 */(advanced|basic|name|number)/ ~
+    undo rule * comment %order_reverse
+    undo rule ~ %order_reverse
+    undo description %order_reverse
+    description
+    rule * */deny|permit/
+    rule * comment
 
 system tcam
 

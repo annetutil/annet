@@ -106,11 +106,13 @@ acl ip-pool *
 acl ipv6-pool *
     ~ %global
 
-acl */(name|number)/ *
-    rule * description
+acl */(advanced|basic|mac|user-defined|name|number)/ ~
+    description
+    rule * comment
     rule * %logic=annet.rulebook.h3c.misc.undo_redo
-acl ipv6 */(name|number)/ *
-    rule * description
+acl ipv6 */(advanced|basic|name|number)/ ~
+    description
+    rule * comment
     rule * %logic=annet.rulebook.h3c.misc.undo_redo
 
 */(ftp|FTP|ssh|telnet)/ server acl

@@ -1,0 +1,135 @@
+- vendor: h3c
+  name: create rule before adding its comment
+  before: |
+    acl advanced name mgmt
+  after: |
+    acl advanced name mgmt
+      rule 8 comment test_rule
+      rule 8 permit tcp source 10.10.10.10 0 destination-port eq 22
+  patch: |
+    system-view
+    acl advanced name mgmt
+      rule 8 permit tcp source 10.10.10.10 0 destination-port eq 22
+      rule 8 comment test_rule
+      quit
+    save force
+
+- vendor: h3c
+  name: remove comment before deleting its rule
+  before: |
+    acl advanced name mgmt
+      rule 8 comment test_rule
+      rule 8 permit tcp source 10.10.10.10 0 destination-port eq 22
+  after: |
+    acl advanced name mgmt
+  patch: |
+    system-view
+    acl advanced name mgmt
+      undo rule 8 comment
+      undo rule 8
+      quit
+    save force
+
+- vendor: h3c
+  name: keep ACL logging command in system view
+  before: ""
+  after: |
+    acl logging interval 10
+  patch: |
+    system-view
+    acl logging interval 10
+    save force
+
+- vendor: h3c
+  name: create IPv6 advanced named rule before adding its comment
+  before: |
+    acl ipv6 advanced name mgmt_ipv6
+  after: |
+    acl ipv6 advanced name mgmt_ipv6
+      rule 8 comment test_rule_ipv6
+      rule 8 permit tcp source fd00::1/128 destination-port eq 22
+  patch: |
+    system-view
+    acl ipv6 advanced name mgmt_ipv6
+      rule 8 permit tcp source fd00::1/128 destination-port eq 22
+      rule 8 comment test_rule_ipv6
+      quit
+    save force
+
+- vendor: h3c
+  name: support numbered basic ACL rules
+  before: |
+    acl basic 2000
+  after: |
+    acl basic 2000
+      rule 5 comment trusted_host
+      rule 5 permit source 10.10.10.10 0
+  patch: |
+    system-view
+    acl basic 2000
+      rule 5 permit source 10.10.10.10 0
+      rule 5 comment trusted_host
+      quit
+    save force
+
+- vendor: h3c
+  name: support legacy numbered IPv6 ACL rules
+  before: |
+    acl ipv6 number 3000
+  after: |
+    acl ipv6 number 3000
+      rule 5 comment trusted_host_ipv6
+      rule 5 permit tcp source fd00::1/128 destination-port eq 22
+  patch: |
+    system-view
+    acl ipv6 number 3000
+      rule 5 permit tcp source fd00::1/128 destination-port eq 22
+      rule 5 comment trusted_host_ipv6
+      quit
+    save force
+
+- vendor: h3c
+  name: support named MAC ACL rules
+  before: |
+    acl mac name layer2
+  after: |
+    acl mac name layer2
+      rule 5 comment allow_arp
+      rule 5 permit type 0806 ffff
+  patch: |
+    system-view
+    acl mac name layer2
+      rule 5 permit type 0806 ffff
+      rule 5 comment allow_arp
+      quit
+    save force
+
+- vendor: h3c
+  name: support user-defined ACL rules
+  before: |
+    acl user-defined 5000
+  after: |
+    acl user-defined 5000
+      rule 5 comment custom_rule
+      rule 5 permit ipv4 0808 ffff 2
+  patch: |
+    system-view
+    acl user-defined 5000
+      rule 5 permit ipv4 0808 ffff 2
+      rule 5 comment custom_rule
+      quit
+    save force
+
+- vendor: h3c
+  name: remove ACL description without its text
+  before: |
+    acl basic name trusted
+      description Trusted management hosts
+  after: |
+    acl basic name trusted
+  patch: |
+    system-view
+    acl basic name trusted
+      undo description
+      quit
+    save force
