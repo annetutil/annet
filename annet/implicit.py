@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, cast
 
 from annet.annlib.rbparser import syntax
+from annet.rulebook.huawei.misc import parse_version
 
 
 if TYPE_CHECKING:
@@ -72,9 +73,14 @@ def _implicit_tree(device: Device) -> odict[Any, Any]:
                  netconf
                  """
         elif device.hw.Huawei.Quidway.S5700.S5735I:
-            text = """
+            # Starting with R024, this platform has no implicit port link type,
+            # so access mode must remain explicit in generated patches.
+            if parse_version(device.hw.soft).R <= 23:
+                text = """
                 !interface (?!Vlanif|10GE1/0/[56]|Stack-Port).*
                     port link-type access %regexp=port link-type .*
+                """
+            text += """
                 interface NULL0
             """
         elif device.hw.Huawei.Quidway.S2x:
