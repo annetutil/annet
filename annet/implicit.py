@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, cast
 
 from annet.annlib.rbparser import syntax
+from annet.rulebook.huawei.misc import parse_version
 
 
 if TYPE_CHECKING:
@@ -42,6 +43,22 @@ def compile_tree(tree: odict[Any, Any]) -> odict[str, Any]:
 def _implicit_tree(device: Device) -> odict[Any, Any]:
     text = ""
     if device.hw.Huawei:
+        # Docs on different software versions of "S300, S500, S2700, S5700, and S6700" series:
+
+        # V200R022C00: https://support.huawei.com/enterprise/en/doc/EDOC1100277028/
+        # V200R023C00: https://support.huawei.com/enterprise/en/doc/EDOC1100333460/
+        # V200R024C00: https://support.huawei.com/enterprise/en/doc/EDOC1100410513/
+        # V200R025C00: https://support.huawei.com/enterprise/en/doc/EDOC1100514531/
+
+        # V600R022C00: https://support.huawei.com/enterprise/en/doc/EDOC1100278261/
+        # V600R022C10: https://support.huawei.com/enterprise/en/doc/EDOC1100304982/
+        # V600R023C00: https://support.huawei.com/enterprise/en/doc/EDOC1100334388/
+        # V600R023C10: https://support.huawei.com/enterprise/en/doc/EDOC1100366634/
+        # V600R024C00: https://support.huawei.com/enterprise/en/doc/EDOC1100412328/
+        # V600R024C10: https://support.huawei.com/enterprise/en/doc/EDOC1100458999/
+        # V600R025C00: https://support.huawei.com/enterprise/en/doc/EDOC1100515500/
+        # V600R025C10: https://support.huawei.com/enterprise/en/doc/EDOC1100559678/
+
         if device.hw.Huawei.CE:
             text = """
                 stp mode mstp
@@ -72,17 +89,29 @@ def _implicit_tree(device: Device) -> odict[Any, Any]:
                  netconf
                  """
         elif device.hw.Huawei.Quidway.S5700.S5735I:
-            text = """
+            if parse_version(device.hw.soft).R <= 23:
+                text = """
                 !interface (?!Vlanif|10GE1/0/[56]|Stack-Port).*
                     port link-type access %regexp=port link-type .*
+                """
+
+            elif parse_version(device.hw.soft).R >= 24:
+                text = """
+                !interface (?!Vlanif|10GE1/0/[56]|Stack-Port).*
+                    port link-type negotiation-auto %regexp=port link-type .*
+                """
+
+            text += """
                 interface NULL0
             """
+
         elif device.hw.Huawei.Quidway.S2x:
             text = """
                 !interface (?!Vlanif).*
                     port link-type hybrid %regexp=port link-type .*
                 interface NULL0
             """
+
         else:
             text = """
                 stp mode mstp
