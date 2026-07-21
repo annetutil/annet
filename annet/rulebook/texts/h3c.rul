@@ -144,6 +144,7 @@ ip vpn-instance *
         export route-policy
 
 */(ip|ipv6)/ prefix-list * %logic=annet.rulebook.h3c.misc.prefix_list
+ip community-list ~
 ip as-path-filter * index *
 ip community-filter * * index *
 ip extcommunity-filter * * index *

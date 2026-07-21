@@ -35,6 +35,7 @@ ip vpn-instance */[OoMm][OoLl][BbAa].*/
 */(ip|ipv6)/ prefix-list * index 65535
 undo */(ip|ipv6)/ prefix-list * index *   %order_reverse
 */(ip|ipv6)/ prefix-list
+ip community-list
 
 # common block для фабрики
 bfd peer-ip
@@ -280,6 +281,7 @@ undo bfd %order_reverse
 undo ip vpn-instance %order_reverse
 undo route-policy %order_reverse
 undo route-policy */VRF_.*/ %order_reverse
+undo ip community-list %order_reverse
 undo ip community-filter %order_reverse
 undo ip extcommunity-filter %order_reverse
 undo ip as-path-filter %order_reverse
