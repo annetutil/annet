@@ -222,7 +222,7 @@
     "SNR.S5310G": "[-\\s]S5310G",
 
     "Sitonica": "^[Ss]itonica",
-    "Sitonica.SW5560": "[Ss][Ww]5560 ",
-    "Sitonica.SW6850": "[Ss][Ww]6850 ",
-    "Sitonica.SW9850": "[Ss][Ww]9850 "
+    "Sitonica.SW5560": "[Ss][Ww]5560",
+    "Sitonica.SW6850": "[Ss][Ww]6850",
+    "Sitonica.SW9850": "[Ss][Ww]9850"
 }
