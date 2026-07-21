@@ -24,6 +24,9 @@ peer * enable
     dialog: Warning: This operation will reset the peer session. Continue? [Y/N]: ::: Y
     dialog: Warning:This operation might reset the peer session. Continue? [Y/N]: ::: Y
     dialog: Warning:This operation might reset the peer session in the peer group. Continue? [Y/N]: ::: Y
+undo peer * enable
+    dialog: Warning:This operation might reset the peer session. Continue? [Y/N]: ::: Y
+    dialog: Warning:This operation might reset the peer session in the peer group. Continue? [Y/N]: ::: Y
 save
     dialog: The current configuration will be written to the device. Are you sure? [Y/N]: ::: Y
     dialog: /Please input the file name\(\*\.cfg\).*/ ::: startup.cfg
