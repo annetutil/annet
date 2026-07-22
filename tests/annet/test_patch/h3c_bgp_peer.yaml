@@ -1,0 +1,575 @@
+- vendor: h3c
+  name: add a new IPv4 peer with all settings
+  before: |
+    bgp 64496
+  after: |
+    bgp 64496
+      group SPINES external
+      peer 192.0.2.3 as-number 64497
+      peer 192.0.2.3 local-as 64500
+      peer 192.0.2.3 group SPINES
+      peer 192.0.2.3 connect-interface LoopBack0
+      peer 192.0.2.3 description TEST
+      peer 192.0.2.3 bfd
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+        peer 192.0.2.3 route-policy IMPORT import
+        peer 192.0.2.3 advertise-community
+  patch: |
+    system-view
+    bgp 64496
+      group SPINES external
+      peer 192.0.2.3 as-number 64497
+      peer 192.0.2.3 local-as 64500
+      peer 192.0.2.3 group SPINES
+      peer 192.0.2.3 connect-interface LoopBack0
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+        peer 192.0.2.3 route-policy IMPORT import
+        peer 192.0.2.3 advertise-community
+        quit
+      peer 192.0.2.3 bfd
+      peer 192.0.2.3 description TEST
+      quit
+    save force
+
+- vendor: h3c
+  name: replace a bare IPv4 peer ASN
+  before: |
+    bgp 64496
+      peer 192.0.2.3 as-number 64497
+  after: |
+    bgp 64496
+      peer 192.0.2.3 as-number 64498
+  patch: |
+    system-view
+    bgp 64496
+      undo peer 192.0.2.3
+      peer 192.0.2.3 as-number 64498
+      quit
+    save force
+
+- vendor: h3c
+  name: restore all unchanged IPv4 peer settings after replacing its ASN
+  before: |
+    bgp 64496
+      group SPINES external
+      peer 192.0.2.3 as-number 64497
+      peer 192.0.2.3 local-as 64500
+      peer 192.0.2.3 group SPINES
+      peer 192.0.2.3 connect-interface LoopBack0
+      peer 192.0.2.3 description TEST
+      peer 192.0.2.3 bfd
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+        peer 192.0.2.3 route-policy IMPORT import
+        peer 192.0.2.3 advertise-community
+  after: |
+    bgp 64496
+      group SPINES external
+      peer 192.0.2.3 as-number 64498
+      peer 192.0.2.3 local-as 64500
+      peer 192.0.2.3 group SPINES
+      peer 192.0.2.3 connect-interface LoopBack0
+      peer 192.0.2.3 description TEST
+      peer 192.0.2.3 bfd
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+        peer 192.0.2.3 route-policy IMPORT import
+        peer 192.0.2.3 advertise-community
+  patch: |
+    system-view
+    bgp 64496
+      undo peer 192.0.2.3
+      peer 192.0.2.3 as-number 64498
+      peer 192.0.2.3 local-as 64500
+      peer 192.0.2.3 group SPINES
+      peer 192.0.2.3 connect-interface LoopBack0
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+        peer 192.0.2.3 route-policy IMPORT import
+        peer 192.0.2.3 advertise-community
+        quit
+      peer 192.0.2.3 bfd
+      peer 192.0.2.3 description TEST
+      quit
+    save force
+
+- vendor: h3c
+  name: suppress removed settings while replacing an IPv4 peer ASN
+  before: |
+    bgp 64496
+      group SPINES external
+      peer 192.0.2.3 as-number 64497
+      peer 192.0.2.3 group SPINES
+      peer 192.0.2.3 description TEST
+      peer 192.0.2.3 bfd
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+        peer 192.0.2.3 route-policy IMPORT import
+  after: |
+    bgp 64496
+      group SPINES external
+      peer 192.0.2.3 as-number 64498
+      peer 192.0.2.3 group SPINES
+      peer 192.0.2.3 description TEST
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+  patch: |
+    system-view
+    bgp 64496
+      undo peer 192.0.2.3
+      peer 192.0.2.3 as-number 64498
+      peer 192.0.2.3 group SPINES
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+        quit
+      peer 192.0.2.3 description TEST
+      quit
+    save force
+
+- vendor: h3c
+  name: apply changed and added settings while replacing an IPv4 peer ASN
+  before: |
+    bgp 64496
+      group SPINES external
+      peer 192.0.2.3 as-number 64497
+      peer 192.0.2.3 group SPINES
+      peer 192.0.2.3 description OLD
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+        peer 192.0.2.3 route-policy OLD_IMPORT import
+  after: |
+    bgp 64496
+      group SPINES external
+      peer 192.0.2.3 as-number 64498
+      peer 192.0.2.3 group SPINES
+      peer 192.0.2.3 description NEW
+      peer 192.0.2.3 bfd
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+        peer 192.0.2.3 route-policy NEW_IMPORT import
+        peer 192.0.2.3 advertise-community
+  patch: |
+    system-view
+    bgp 64496
+      undo peer 192.0.2.3
+      peer 192.0.2.3 as-number 64498
+      peer 192.0.2.3 group SPINES
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+        peer 192.0.2.3 route-policy NEW_IMPORT import
+        peer 192.0.2.3 advertise-community
+        quit
+      peer 192.0.2.3 bfd
+      peer 192.0.2.3 description NEW
+      quit
+    save force
+
+- vendor: h3c
+  name: delete one IPv4 peer while preserving its address-family and another peer
+  before: |
+    bgp 64496
+      peer 192.0.2.3 as-number 64497
+      peer 192.0.2.3 description DELETE
+      peer 192.0.2.4 as-number 64499
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+        peer 192.0.2.4 enable
+  after: |
+    bgp 64496
+      peer 192.0.2.4 as-number 64499
+      address-family ipv4 unicast
+        peer 192.0.2.4 enable
+  patch: |
+    system-view
+    bgp 64496
+      undo peer 192.0.2.3
+      quit
+    save force
+
+- vendor: h3c
+  name: delete the last IPv4 peer and its empty address-family
+  before: |
+    bgp 64496
+      peer 192.0.2.3 as-number 64497
+      peer 192.0.2.3 description DELETE
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+  after: |
+    bgp 64496
+  patch: |
+    system-view
+    bgp 64496
+      undo address-family ipv4 unicast
+      undo peer 192.0.2.3
+      quit
+    save force
+
+- vendor: h3c
+  name: replace ASN for two IPv4 peers in one patch
+  before: |
+    bgp 64496
+      peer 192.0.2.3 as-number 64497
+      peer 192.0.2.3 description FIRST
+      peer 192.0.2.4 as-number 64499
+      peer 192.0.2.4 description SECOND
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+        peer 192.0.2.4 enable
+  after: |
+    bgp 64496
+      peer 192.0.2.3 as-number 64498
+      peer 192.0.2.3 description FIRST
+      peer 192.0.2.4 as-number 64501
+      peer 192.0.2.4 description SECOND
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+        peer 192.0.2.4 enable
+  patch: |
+    system-view
+    bgp 64496
+      undo peer 192.0.2.3
+      undo peer 192.0.2.4
+      peer 192.0.2.3 as-number 64498
+      peer 192.0.2.4 as-number 64501
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+        peer 192.0.2.4 enable
+        quit
+      peer 192.0.2.3 description FIRST
+      peer 192.0.2.4 description SECOND
+      quit
+    save force
+
+- vendor: h3c
+  name: add a new IPv6 peer with all settings
+  before: |
+    bgp 64496
+  after: |
+    bgp 64496
+      group SPINES external
+      peer 2001:DB8::3 as-number 64497
+      peer 2001:DB8::3 local-as 64500
+      peer 2001:DB8::3 group SPINES
+      peer 2001:DB8::3 connect-interface LoopBack0
+      peer 2001:DB8::3 description TEST
+      peer 2001:DB8::3 bfd
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+        peer 2001:DB8::3 route-policy IMPORT import
+        peer 2001:DB8::3 advertise-community
+  patch: |
+    system-view
+    bgp 64496
+      group SPINES external
+      peer 2001:DB8::3 as-number 64497
+      peer 2001:DB8::3 local-as 64500
+      peer 2001:DB8::3 group SPINES
+      peer 2001:DB8::3 connect-interface LoopBack0
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+        peer 2001:DB8::3 route-policy IMPORT import
+        peer 2001:DB8::3 advertise-community
+        quit
+      peer 2001:DB8::3 bfd
+      peer 2001:DB8::3 description TEST
+      quit
+    save force
+
+- vendor: h3c
+  name: replace a bare IPv6 peer ASN
+  before: |
+    bgp 64496
+      peer 2001:DB8::3 as-number 64497
+  after: |
+    bgp 64496
+      peer 2001:DB8::3 as-number 64498
+  patch: |
+    system-view
+    bgp 64496
+      undo peer 2001:DB8::3
+      peer 2001:DB8::3 as-number 64498
+      quit
+    save force
+
+- vendor: h3c
+  name: restore all unchanged IPv6 peer settings after replacing its ASN
+  before: |
+    bgp 64496
+      group SPINES external
+      peer 2001:DB8::3 as-number 64497
+      peer 2001:DB8::3 local-as 64500
+      peer 2001:DB8::3 group SPINES
+      peer 2001:DB8::3 connect-interface LoopBack0
+      peer 2001:DB8::3 description TEST
+      peer 2001:DB8::3 bfd
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+        peer 2001:DB8::3 route-policy IMPORT import
+        peer 2001:DB8::3 advertise-community
+  after: |
+    bgp 64496
+      group SPINES external
+      peer 2001:DB8::3 as-number 64498
+      peer 2001:DB8::3 local-as 64500
+      peer 2001:DB8::3 group SPINES
+      peer 2001:DB8::3 connect-interface LoopBack0
+      peer 2001:DB8::3 description TEST
+      peer 2001:DB8::3 bfd
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+        peer 2001:DB8::3 route-policy IMPORT import
+        peer 2001:DB8::3 advertise-community
+  patch: |
+    system-view
+    bgp 64496
+      undo peer 2001:DB8::3
+      peer 2001:DB8::3 as-number 64498
+      peer 2001:DB8::3 local-as 64500
+      peer 2001:DB8::3 group SPINES
+      peer 2001:DB8::3 connect-interface LoopBack0
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+        peer 2001:DB8::3 route-policy IMPORT import
+        peer 2001:DB8::3 advertise-community
+        quit
+      peer 2001:DB8::3 bfd
+      peer 2001:DB8::3 description TEST
+      quit
+    save force
+
+- vendor: h3c
+  name: suppress removed settings while replacing an IPv6 peer ASN
+  before: |
+    bgp 64496
+      group SPINES external
+      peer 2001:DB8::3 as-number 64497
+      peer 2001:DB8::3 group SPINES
+      peer 2001:DB8::3 description TEST
+      peer 2001:DB8::3 bfd
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+        peer 2001:DB8::3 route-policy IMPORT import
+  after: |
+    bgp 64496
+      group SPINES external
+      peer 2001:DB8::3 as-number 64498
+      peer 2001:DB8::3 group SPINES
+      peer 2001:DB8::3 description TEST
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+  patch: |
+    system-view
+    bgp 64496
+      undo peer 2001:DB8::3
+      peer 2001:DB8::3 as-number 64498
+      peer 2001:DB8::3 group SPINES
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+        quit
+      peer 2001:DB8::3 description TEST
+      quit
+    save force
+
+- vendor: h3c
+  name: apply changed and added settings while replacing an IPv6 peer ASN
+  before: |
+    bgp 64496
+      group SPINES external
+      peer 2001:DB8::3 as-number 64497
+      peer 2001:DB8::3 group SPINES
+      peer 2001:DB8::3 description OLD
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+        peer 2001:DB8::3 route-policy OLD_IMPORT import
+  after: |
+    bgp 64496
+      group SPINES external
+      peer 2001:DB8::3 as-number 64498
+      peer 2001:DB8::3 group SPINES
+      peer 2001:DB8::3 description NEW
+      peer 2001:DB8::3 bfd
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+        peer 2001:DB8::3 route-policy NEW_IMPORT import
+        peer 2001:DB8::3 advertise-community
+  patch: |
+    system-view
+    bgp 64496
+      undo peer 2001:DB8::3
+      peer 2001:DB8::3 as-number 64498
+      peer 2001:DB8::3 group SPINES
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+        peer 2001:DB8::3 route-policy NEW_IMPORT import
+        peer 2001:DB8::3 advertise-community
+        quit
+      peer 2001:DB8::3 bfd
+      peer 2001:DB8::3 description NEW
+      quit
+    save force
+
+- vendor: h3c
+  name: delete one IPv6 peer while preserving its address-family and another peer
+  before: |
+    bgp 64496
+      peer 2001:DB8::3 as-number 64497
+      peer 2001:DB8::3 description DELETE
+      peer 2001:DB8::4 as-number 64499
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+        peer 2001:DB8::4 enable
+  after: |
+    bgp 64496
+      peer 2001:DB8::4 as-number 64499
+      address-family ipv6 unicast
+        peer 2001:DB8::4 enable
+  patch: |
+    system-view
+    bgp 64496
+      undo peer 2001:DB8::3
+      quit
+    save force
+
+- vendor: h3c
+  name: delete the last IPv6 peer and its empty address-family
+  before: |
+    bgp 64496
+      peer 2001:DB8::3 as-number 64497
+      peer 2001:DB8::3 description DELETE
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+  after: |
+    bgp 64496
+  patch: |
+    system-view
+    bgp 64496
+      undo address-family ipv6 unicast
+      undo peer 2001:DB8::3
+      quit
+    save force
+
+- vendor: h3c
+  name: replace ASN for two IPv6 peers in one patch
+  before: |
+    bgp 64496
+      peer 2001:DB8::3 as-number 64497
+      peer 2001:DB8::3 description FIRST
+      peer 2001:DB8::4 as-number 64499
+      peer 2001:DB8::4 description SECOND
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+        peer 2001:DB8::4 enable
+  after: |
+    bgp 64496
+      peer 2001:DB8::3 as-number 64498
+      peer 2001:DB8::3 description FIRST
+      peer 2001:DB8::4 as-number 64501
+      peer 2001:DB8::4 description SECOND
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+        peer 2001:DB8::4 enable
+  patch: |
+    system-view
+    bgp 64496
+      undo peer 2001:DB8::3
+      undo peer 2001:DB8::4
+      peer 2001:DB8::3 as-number 64498
+      peer 2001:DB8::4 as-number 64501
+      address-family ipv6 unicast
+        peer 2001:DB8::3 enable
+        peer 2001:DB8::4 enable
+        quit
+      peer 2001:DB8::3 description FIRST
+      peer 2001:DB8::4 description SECOND
+      quit
+    save force
+
+- vendor: h3c
+  name: replace peer-group ASN without removing the group
+  before: |
+    bgp 64496
+      group SPINES external
+      peer SPINES as-number 64497
+  after: |
+    bgp 64496
+      group SPINES external
+      peer SPINES as-number 64498
+  patch: |
+    system-view
+    bgp 64496
+      undo peer SPINES as-number
+      peer SPINES as-number 64498
+      quit
+    save force
+
+- vendor: h3c
+  name: remove peer-group ASN without removing the group
+  before: |
+    bgp 64496
+      group SPINES external
+      peer SPINES as-number 64497
+  after: |
+    bgp 64496
+      group SPINES external
+  patch: |
+    system-view
+    bgp 64496
+      undo peer SPINES as-number
+      quit
+    save force
+
+- vendor: h3c
+  name: restore unchanged settings for two IPv6 peers after replacing their group
+  before: |
+    bgp 64496
+      group OLD_SPINES external
+      peer OLD_SPINES as-number 64497
+      peer 2001:DB8::3 as-number 64497
+      peer 2001:DB8::3 group OLD_SPINES
+      peer 2001:DB8::3 description FIRST
+      peer 2001:DB8::3 bfd
+      peer 2001:DB8::4 as-number 64497
+      peer 2001:DB8::4 group OLD_SPINES
+      peer 2001:DB8::4 description SECOND
+      peer 2001:DB8::4 bfd
+      address-family ipv6 unicast
+        peer OLD_SPINES enable
+  after: |
+    bgp 64496
+      group NEW_SPINES external
+      peer NEW_SPINES as-number 64497
+      peer 2001:DB8::3 as-number 64497
+      peer 2001:DB8::3 group NEW_SPINES
+      peer 2001:DB8::3 description FIRST
+      peer 2001:DB8::3 bfd
+      peer 2001:DB8::4 as-number 64497
+      peer 2001:DB8::4 group NEW_SPINES
+      peer 2001:DB8::4 description SECOND
+      peer 2001:DB8::4 bfd
+      address-family ipv6 unicast
+        peer NEW_SPINES enable
+  patch: |
+    system-view
+    bgp 64496
+      undo peer 2001:DB8::3 group OLD_SPINES
+      undo peer 2001:DB8::4 group OLD_SPINES
+      undo peer OLD_SPINES as-number
+      group NEW_SPINES external
+      peer NEW_SPINES as-number 64497
+      peer 2001:DB8::3 as-number 64497
+      peer 2001:DB8::4 as-number 64497
+      peer 2001:DB8::3 group NEW_SPINES
+      peer 2001:DB8::4 group NEW_SPINES
+      address-family ipv6 unicast
+        undo peer OLD_SPINES enable
+        peer NEW_SPINES enable
+        quit
+      undo group OLD_SPINES
+      peer 2001:DB8::3 bfd
+      peer 2001:DB8::4 bfd
+      peer 2001:DB8::3 description FIRST
+      peer 2001:DB8::4 description SECOND
+      quit
+    save force

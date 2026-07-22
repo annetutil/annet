@@ -249,6 +249,9 @@ bgp
     # [NOCDEV-2043] Тут только декларируем пиров и группы
     # поскольку на них есть ссылки из family блоков
     group
+    # При смене ASN сначала удаляем старое значение, затем создаем пир заново.
+    undo peer * as-number
+    undo peer *
     peer * as-number *
     peer * local-as *
     peer * group *
