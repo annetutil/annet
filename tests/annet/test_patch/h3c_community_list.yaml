@@ -1,0 +1,27 @@
+- vendor: h3c
+  name: create community-list before referencing route-policy
+  before: ""
+  after: |
+    route-policy test_policy permit node 10
+      if-match community name test_community
+    ip community-list basic test_community permit 65000:10
+  patch: |
+    system-view
+    ip community-list basic test_community permit 65000:10
+    route-policy test_policy permit node 10
+      if-match community name test_community
+      quit
+    save force
+
+- vendor: h3c
+  name: remove referencing route-policy before community-list
+  before: |
+    route-policy test_policy permit node 10
+      if-match community name test_community
+    ip community-list basic test_community permit 65000:10
+  after: ""
+  patch: |
+    system-view
+    undo route-policy test_policy node 10
+    undo ip community-list basic test_community permit 65000:10
+    save force
