@@ -9,7 +9,7 @@ from pygments.lexer import RegexLexer
 from pygments.lexers import DiffLexer, YamlLexer  # pylint: disable=no-name-in-module
 from pygments.token import Token, _TokenType
 
-from .output import TextArgs
+from .annlib.output import TextArgs
 
 
 # =====
