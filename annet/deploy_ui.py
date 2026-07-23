@@ -22,7 +22,7 @@ from contextlog import get_logger
 
 from annet import text_term_format
 from annet.deploy import ProgressBar
-from annet.output import TextArgs
+from annet.annlib.output import TextArgs
 
 
 if TYPE_CHECKING:
