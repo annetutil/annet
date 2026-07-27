@@ -17,16 +17,16 @@ class PCVendor(AbstractVendor):
     def match(self) -> list[str]:
         return ["PC"]
 
-    def _is_nvos(self, hw: HardwareView) -> bool:
-        return hw.soft.startswith("nvos")
+    def _is_nvos_config(self, hw: HardwareView, path: str) -> bool:
+        return hw.soft.startswith("nvos") and is_yaml_path(path)
 
     def deserialize_json_fragment(self, hw: HardwareView, path: str, text: str) -> dict[str, Any]:
-        if self._is_nvos(hw) and is_yaml_path(path):
+        if self._is_nvos_config(hw, path):
             return nvos_yaml_to_dict(text)
         return super().deserialize_json_fragment(hw, path, text)
 
     def serialize_json_fragment(self, hw: HardwareView, path: str, config: dict[str, Any]) -> str:
-        if self._is_nvos(hw) and is_yaml_path(path):
+        if self._is_nvos_config(hw, path):
             return dict_to_nvos_yaml(config)
         return super().serialize_json_fragment(hw, path, config)
 
