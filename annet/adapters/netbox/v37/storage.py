@@ -106,6 +106,33 @@ class NetboxV37Adapter(
     def list_sites(self) -> list[api_models.Site]:
         return self.netbox.dcim_all_sites().results
 
+    def get_site_group(self, site_group_id: int) -> api_models.SiteGroup:
+        return cast(api_models.SiteGroup, self.netbox.dcim_site_group(site_group_id))
+
+    def list_site_groups(self) -> list[api_models.SiteGroup]:
+        return self.netbox.dcim_all_site_groups().results
+
+    def get_location(self, location_id: int) -> api_models.Location:
+        return cast(api_models.Location, self.netbox.dcim_location(location_id))
+
+    def list_locations(self) -> list[api_models.Location]:
+        return self.netbox.dcim_all_locations().results
+
+    def get_region(self, region_id: int) -> api_models.Region:
+        return cast(api_models.Region, self.netbox.dcim_region(region_id))
+
+    def list_regions(self) -> list[api_models.Region]:
+        return self.netbox.dcim_all_regions().results
+
+    def get_tenant(self, tenant_id: int) -> api_models.Tenant:
+        return cast(api_models.Tenant, self.netbox.tenancy_tenant(tenant_id))
+
+    def list_tenants(self) -> list[api_models.Tenant]:
+        return self.netbox.tenancy_all_tenants().results
+
+    def get_tenant_group(self, tenant_group_id: int) -> api_models.TenantGroup:
+        return cast(api_models.TenantGroup, self.netbox.tenancy_tenant_group(tenant_group_id))
+
     def list_interfaces_by_devices(self, device_ids: list[int]) -> list[InterfaceV37]:
         return self.convert_interfaces(self.netbox.dcim_all_interfaces(device_id=device_ids).results)
 
