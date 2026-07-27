@@ -560,11 +560,9 @@ class PCDeployerJob(DeployerJob):
                 else:  # generator_type == GeneratorType.JSON_FRAGMENT
                     vendor = registry_connector.get().match(res.device.hw)
                     old_json_cfg = old_json_fragment_files[file]
-                    json_patch = jsontools.make_patch(old_json_cfg, file_content_or_json_cfg)
-                    file_content = jsontools.format_json(json_patch)
                     old_text = vendor.serialize_json_fragment(res.device.hw, file, old_json_cfg)
-                    new_text = vendor.serialize_json_fragment(res.device.hw, file, file_content_or_json_cfg)
-                    diff_content = "\n".join(differ.diff_file(res.device.hw, file, old_text, new_text))
+                    file_content = vendor.serialize_json_fragment(res.device.hw, file, file_content_or_json_cfg)
+                    diff_content = "\n".join(differ.diff_file(res.device.hw, file, old_text, file_content))
 
                 if diff_content or force_reload:
                     self._has_diff |= True
