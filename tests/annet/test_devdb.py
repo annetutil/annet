@@ -1,9 +1,8 @@
+import importlib.resources
 import keyword
-import pathlib
 
 import pytest
 
-import annet.annlib.netdev.devdb.generated
 from annet.annlib.netdev.devdb import prepare_db, prepare_raw_db
 from annet.annlib.netdev.devdb.codegen import codegen
 from annet.annlib.netdev.views.hardware import HardwareView
@@ -743,14 +742,16 @@ def test_devdb_valid_identifiers():
         )  # fmt: skip
 
 
-def test_devdb_annotations_no_diff() -> None:
+def test_devdb_stub_no_diff() -> None:
     raw_db = prepare_raw_db()
 
-    actual_content = pathlib.Path(annet.annlib.netdev.devdb.generated.__file__).read_text()
+    actual_content = (
+        importlib.resources.files("annet.annlib.netdev.devdb.generated").joinpath("__init__.pyi").read_text()
+    )
     expected_content = codegen(raw_db)
 
     if actual_content != expected_content:
         pytest.fail(
-            "Generated annotations for device.hw are outdated. \n"
+            "Generated stub for device.hw is outdated. \n"
             "Please run `just gen` to regenerate them."
         )  # fmt: skip

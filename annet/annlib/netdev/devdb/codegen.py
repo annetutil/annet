@@ -25,9 +25,14 @@ def codegen(devdb: dict[str, str]) -> str:
     code += "# DO NOT MODIFY!\n"
     code += "from __future__ import annotations\n"
     code += "\n"
+    code += "from typing import Any\n"
+    code += "\n"
+    code += "\n"
     code += "class _Node:\n"
-    code += "    def __bool__(self) -> bool: return False\n"
-    code += "    def dump(self, prefix, **kwargs) -> list[str]: return []\n"
+    code += "    def __bool__(self) -> bool: ...\n"
+    code += (
+        "    def dump(self, prefix: str = ..., value: Any = ..., seen: dict[int, str] | None = ...) -> list[str]: ...\n"
+    )
     code += "\n"
 
     for node in sorted(devdb.keys()):
@@ -51,7 +56,6 @@ def codegen(devdb: dict[str, str]) -> str:
     if not children:
         # devdb is empty?
         code += "    ...\n"
-    code += "\n"
 
     return code
 
@@ -61,7 +65,7 @@ def _main() -> None:
     import sys
 
     if len(sys.argv) != 3:
-        print(f"Usage: {sys.executable} {sys.argv[0]} <devdb.json> <generated.py>")
+        print(f"Usage: {sys.executable} {sys.argv[0]} <devdb.json> <generated.pyi>")
         sys.exit(2)
 
     file_devdb = sys.argv[1]
