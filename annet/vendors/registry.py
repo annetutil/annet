@@ -46,8 +46,6 @@ class Registry:
     def register(self, cls: type[AbstractVendor]) -> type[AbstractVendor]:
         if not cls.NAME:
             raise RuntimeError(f"{cls.__name__} has empty NAME field")
-        if cls.NAME in self.vendors:
-            raise RuntimeError(f"{cls.__name__} with name {cls.NAME} already registered")
         self.vendors[cls.NAME] = cls()
 
         return cls
