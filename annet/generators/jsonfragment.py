@@ -94,7 +94,16 @@ class JSONFragment(TreeGenerator):
             self._set_dict(cast("dict[str, Any]", self._json_config), pointer, value)
 
     def process_scalar_value(self, value: Any) -> Any:
-        return str(value)
+        if value is None:
+            return value
+        elif isinstance(value, bool):
+            return value
+        elif isinstance(value, int):
+            return value
+        elif isinstance(value, float):
+            return value
+        else:
+            return str(value)
 
     def process_value(self, value: Any) -> Any:
         if isinstance(value, (list, set, frozenset)):
