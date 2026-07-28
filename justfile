@@ -2,7 +2,7 @@ file_devdb := "annet/annlib/netdev/devdb/data/devdb.json"
 file_devdb_gen := "annet/annlib/netdev/devdb/generated/__init__.pyi"
 
 gen_devdb:
-    python annet/annlib/netdev/devdb/codegen.py {{file_devdb}} {{file_devdb_gen}}
+    python annet/annlib/netdev/devdb/generate_stubs.py {{file_devdb}} {{file_devdb_gen}}
 
 gen: gen_devdb
 

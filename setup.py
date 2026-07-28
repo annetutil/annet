@@ -28,9 +28,9 @@ if __name__ == "__main__":
             ]
         ),
         package_data={
-            "annet": ["configs/*", "py.typed"],
+            "annet": ["configs/*", "py.typed", "**/*.pyi"],
             "annet.rulebook": ["texts/*.rul", "texts/*.order", "texts/*.deploy"],
-            "annet.annlib.netdev.devdb": ["data/*.json", "generated/*.pyi"],
+            "annet.annlib.netdev.devdb": ["data/*.json"],
         },
         entry_points={
             "console_scripts": [

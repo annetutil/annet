@@ -4,8 +4,20 @@ import keyword
 import pytest
 
 from annet.annlib.netdev.devdb import prepare_db, prepare_raw_db
-from annet.annlib.netdev.devdb.codegen import codegen
+from annet.annlib.netdev.devdb.generate_stubs import generate_stubs
 from annet.annlib.netdev.views.hardware import HardwareView
+from annet.storage import Device
+
+
+# this is for type-checking purposes only
+def _(dev: Device) -> None:
+    # work:
+    dev.hw.Huawei
+    dev.hw.Huawei.CE
+
+    # do not work:
+    dev.hw.DoesntExist  # type: ignore
+    dev.hw.CE  # type: ignore
 
 
 MODELS = [
@@ -748,7 +760,7 @@ def test_devdb_stub_no_diff() -> None:
     actual_content = (
         importlib.resources.files("annet.annlib.netdev.devdb.generated").joinpath("__init__.pyi").read_text()
     )
-    expected_content = codegen(raw_db)
+    expected_content = generate_stubs(raw_db)
 
     if actual_content != expected_content:
         pytest.fail(

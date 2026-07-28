@@ -20,7 +20,7 @@ def ssh_key(
             # Отсыпаем mpdaemon-у подсказок для дополнительной команды при наливке
             comment = rule["comment"]
             rule["comment"] = ["!!suppress_errors!!", "!!timeout=240!!"]
-            if hw.Cisco.C2960:
+            if hw.Cisco.Catalyst.C2900.C2960:
                 yield (False, "crypto key generate rsa modulus 2048", None)
             else:
                 yield (False, "crypto key generate rsa general-keys modulus 2048", None)

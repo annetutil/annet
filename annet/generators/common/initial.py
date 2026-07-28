@@ -22,7 +22,7 @@ class InitialConfig(PartialGenerator):
     def run_huawei(self, device: Device) -> Iterator[str]:
         if not self._do_run:
             return
-        if device.hw.CE:
+        if device.hw.Huawei.CE:
             yield """
             telnet server disable
             telnet ipv6 server disable

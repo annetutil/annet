@@ -32,14 +32,16 @@ class HardwareLeaf(DumpableView):
             return False
         raise AttributeError("HW: " + ".".join(self.__path))
 
-    def __getattr__(self, name: str) -> Any:
-        path = self.__path + (name,)
-        if path in self.__true_sequences or path in self.__false_sequences:
-            return HardwareLeaf(path, self.__true_sequences, self.__false_sequences)
-        try:
-            return self.__dict__[name]
-        except KeyError:
-            raise AttributeError("HW: " + ".".join(path))
+    if not TYPE_CHECKING:
+
+        def __getattr__(self, name: str) -> Any:
+            path = self.__path + (name,)
+            if path in self.__true_sequences or path in self.__false_sequences:
+                return HardwareLeaf(path, self.__true_sequences, self.__false_sequences)
+            try:
+                return self.__dict__[name]
+            except KeyError:
+                raise AttributeError("HW: " + ".".join(path))
 
     def __str__(self) -> str:
         for seq in sorted(self.__true_sequences, key=len, reverse=True):
@@ -63,13 +65,13 @@ class HardwareLeaf(DumpableView):
 if TYPE_CHECKING:
     from annet.annlib.netdev.devdb.generated import FakeHardwareView
 
-    _HardwareViewExtraBase = FakeHardwareView
+    _HardwareViewBase = FakeHardwareView
 
 else:
-    _HardwareViewExtraBase = object
+    _HardwareViewBase = HardwareLeaf
 
 
-class HardwareView(HardwareLeaf, _HardwareViewExtraBase):
+class HardwareView(_HardwareViewBase):
     def __init__(self, hw_model: Optional[str], sw_version: Optional[str] = None) -> None:
         true_sequences, false_sequences = parse_hw_model(hw_model or "")
         super().__init__((), true_sequences, false_sequences)

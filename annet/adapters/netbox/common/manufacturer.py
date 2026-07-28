@@ -24,7 +24,7 @@ def get_breed(manufacturer: str, model: str) -> str:
         return "vrp55"
     elif hw.H3C:
         return "h3c"
-    elif hw.PC.NVIDIA or hw.PC.Mellanox:
+    elif hw.PC.Whitebox.NVIDIA or hw.PC.Whitebox.Mellanox:
         return "cuml2"
     elif hw.Juniper:
         return "jun10"

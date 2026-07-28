@@ -129,18 +129,18 @@ def _implicit_tree(device: Device) -> odict[Any, Any]:
                 "ingress-interface",
             )
         )
-    elif device.hw.Nexus:
+    elif device.hw.Cisco.Nexus:
         text = r"""
                 # This part of configuration will not be visible in configuration if enabled
                 snmp-server enable traps link linkDown
                 snmp-server enable traps link linkUp
         """
         if (
-            device.hw.Nexus.N3x.N3432
+            device.hw.Cisco.Nexus.N3x.N3432
             # ``tags`` is not declared on the Device protocol (annet/storage.py) but is
             # present on concrete device implementations.
-            or (device.hw.Nexus.N9x.N9500 and "spine1" in cast(Any, device).tags)
-            or device.hw.Nexus.N9x.N9316
+            or (device.hw.Cisco.Nexus.N9x.N9500 and "spine1" in cast(Any, device).tags)
+            or device.hw.Cisco.Nexus.N9x.N9316
             or device.hw.Cisco.Nexus.N9x.N9364
         ):
             text += r"""
@@ -164,7 +164,7 @@ def _implicit_tree(device: Device) -> odict[Any, Any]:
                         no shutdown
             """
 
-        elif device.hw.Nexus.N3x:
+        elif device.hw.Cisco.Nexus.N3x:
             # Cisco Nexus has some specific related to "shutdown" command
             # Behavior is cheked on Cisco Nexus 3132Q 6.0(2)U6(7)
             text += r"""
