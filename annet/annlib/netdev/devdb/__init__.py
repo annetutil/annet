@@ -20,6 +20,8 @@ def parse_hw_model(hw_model: str) -> tuple[list[tuple[str, ...]], set[tuple[str,
 
 
 def prepare_raw_db() -> dict[str, str]:
+    raw: dict[str, str]
+
     try:
         from library.python import resource
 
