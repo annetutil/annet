@@ -5,6 +5,7 @@ from importlib.metadata import distributions
 from typing import cast
 
 import annet
+import annet.runner.cli
 from annet import argparse, cli, diff, generators, hardware, lib, rulebook
 
 
@@ -22,7 +23,8 @@ def main() -> int:
     hardware.hardware_connector.set(hardware.AnnetHardwareProvider)
     diff.file_differ_connector.set(diff.UnifiedFileDiffer)
 
-    parser.add_commands(parser.find_subcommands(cli.list_subcommands()))
+    # parser.add_commands(parser.find_subcommands(cli.list_subcommands()))
+    parser.add_commands(annet.runner.cli.commands)
     try:
         return cast(int, parser.dispatch(pre_call=annet.init, add_help_command=True))
     except (generators.GeneratorError, annet.ExecError) as e:
