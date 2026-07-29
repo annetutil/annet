@@ -595,18 +595,18 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
                 )
 
             if action.value.replaced:
-                yield "set", "community community-list", *action.value.replaced
+                yield "set", "community community-list", *sorted(action.value.replaced)
             else:
                 yield "set", "community", "none"
         if action.value.added:
-            yield "set", "community community-list", *action.value.added, "additive"
+            yield "set", "community community-list", *sorted(action.value.added), "additive"
         if action.value.removed:
             members = [
                 arista_well_known_community(member)
                 for community_name in action.value.removed
                 for member in communities[community_name].members
             ]
-            yield "set community", *members, "delete"
+            yield "set community", *sorted(members), "delete"
 
     def _arista_then_large_community(
         self,
