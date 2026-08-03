@@ -60,19 +60,36 @@ def sanitize_node(node: str) -> str:
     return result
 
 
-# ("Huawei", "CE6850") -> ("Huawei", "CE", "CE6800", "CE6850").
+# _expanded_nodes(["Huawei.CE?.CE6800"]) returns:
+# {
+#     ("Huawei",): ("Huawei",),
+#     ("Huawei", "CE"): ("Huawei", "CE"),
+#     ("Huawei", "CE", "CE6800"): ("Huawei", "CE", "CE6800"),
+#     ("Huawei", "CE6800"): ("Huawei", "CE", "CE6800"),
+# }
+# Each additional input key adds its paths to the same dictionary. Conflicting
+# canonical nodes for one generated path are rejected.
 def _expanded_nodes(keys: Iterable[str]) -> dict[Node, Node]:
+    # Canonical node -> original declaration:
+    # ("Huawei", "CE", "CE6800") -> "Huawei.CE?.CE6800"
     canonical_owners: dict[Node, str] = {}
+    # Generated node -> original declaration, used in collision messages:
+    # ("Huawei", "CE6800") -> "Huawei.CE?.CE6800"
     owners: dict[Node, str] = {}
+    # Generated node -> canonical node, returned from this function:
+    # ("Huawei", "CE6800") -> ("Huawei", "CE", "CE6800")
     targets: dict[Node, Node] = {}
 
     for key in keys:
         canonical, optional = parse_devdb_key(key)
+        # "Vendor.Family.Model" and "Vendor.Family?.Model" cannot both declare
+        # the canonical node ("Vendor", "Family", "Model").
         if canonical in canonical_owners and canonical_owners[canonical] != key:
             path = ".".join(canonical)
             raise ValueError(f"devdb keys {canonical_owners[canonical]!r} and {key!r} both generate path {path!r}")
         canonical_owners[canonical] = key
 
+        # For "Huawei.CE?.CE6800", omitted is first frozenset(), then frozenset({1}).
         for omitted in _optional_omissions(optional):
             expanded = []
             for index, part in enumerate(canonical):
@@ -82,6 +99,10 @@ def _expanded_nodes(keys: Iterable[str]) -> dict[Node, Node]:
                 expanded.append(part)
                 node = tuple(expanded)
                 target = canonical[: index + 1]
+                # With omitted=frozenset({1}) at CE6800:
+                # node == ("Huawei", "CE6800")
+                # target == ("Huawei", "CE", "CE6800")
+                # Repeating a generated node is valid only when its target agrees.
                 if node in targets and targets[node] != target:
                     path = ".".join(node)
                     raise ValueError(f"devdb keys {owners[node]!r} and {key!r} both generate path {path!r}")
@@ -105,14 +126,27 @@ def _children_by_node(nodes: Iterable[Node]) -> dict[Node, dict[str, Node]]:
 def _class_representatives(
     targets: Mapping[Node, Node], children: Mapping[Node, Mapping[str, Node]]
 ) -> dict[Node, Node]:
+    # Generated node -> class used for its annotation. After processing two
+    # leaf aliases with the same canonical target and no children:
+    # representatives = {
+    #     ("Aruba", "AP", "AP600", "AP615"): ("Aruba", "AP", "AP600", "AP615"),
+    #     ("Aruba", "AP615"): ("Aruba", "AP", "AP600", "AP615"),
+    # }
     representatives: dict[Node, Node] = {}
+    # Signature -> first generated node with that target and child types:
+    # representatives_by_signature = {
+    #     (
+    #         ("Aruba", "AP", "AP600", "AP615"),
+    #         (),
+    #     ): ("Aruba", "AP", "AP600", "AP615"),
+    # }
     representatives_by_signature: dict[ClassSignature, Node] = {}
 
     # Leaves first: child representatives are part of their parent's signature.
     for node in sorted(targets, key=lambda item: (-len(item), item)):
         child_types = tuple((name, representatives[child]) for name, child in sorted(children[node].items()))
         signature = (targets[node], child_types)
-        # Aruba.AP615 and Aruba.AP.AP600.AP615 can share Aruba_AP_AP600_AP615.
+        # The first node with this signature owns the class; later aliases reuse it.
         representatives[node] = representatives_by_signature.setdefault(signature, node)
 
     return representatives
