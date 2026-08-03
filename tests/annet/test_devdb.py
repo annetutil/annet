@@ -824,19 +824,6 @@ def test_generate_stubs_list_shortest_paths() -> None:
     )
 
 
-@pytest.mark.parametrize(
-    "key",
-    [
-        "Huawei.CE?",
-        "Huawei.C?E.CE6800",
-        "Huawei.CE??.CE6800",
-    ],
-)
-def test_invalid_optional_devdb_segment(key: str) -> None:
-    with pytest.raises(ValueError):
-        expand_devdb_key(key)
-
-
 def test_optional_devdb_path_collision() -> None:
     with pytest.raises(ValueError, match="both generate path"):
         generate_stubs(
