@@ -60,12 +60,12 @@ def _process_vlandb(
 
     removed = old.difference(new)
     added = new.difference(old)
-    if hw.Catalyst:
+    if hw.Cisco.Catalyst:
         # Каталисты не перечисляют вланы в batch режиме, если они представлены как блоки
         added -= new_blocks.keys()
 
     if removed:
-        collapsed = collapse_vlandb(removed, hw.Catalyst)
+        collapsed = collapse_vlandb(removed, bool(hw.Cisco.Catalyst))
         for chunk in _chunked(collapsed, multi_chunk):
             if explicit_changing:
                 yield (True, "%s%s%s" % (prefix, " remove ", ",".join(chunk)), None)
@@ -73,7 +73,7 @@ def _process_vlandb(
                 yield (False, "no %s%s%s" % (prefix, " ", ",".join(chunk)), None)
 
     if added:
-        collapsed = collapse_vlandb(added, hw.Catalyst)
+        collapsed = collapse_vlandb(added, bool(hw.Cisco.Catalyst))
         if explicit_changing and not old:
             # by default all vlans are allowed
             # switchport trunk allowed vlan none

@@ -144,7 +144,7 @@ def undo_trust(
 ) -> common.LogicResult:
     """на CE свитчах команда undo trust; на S undo trust *"""
     if diff[Op.REMOVED]:
-        if hw.Quidway and not hw.S6700:
+        if hw.Huawei.Quidway and not hw.Huawei.Quidway.S6700:
             yield False, "undo trust %s" % key, None
         else:
             yield False, "undo trust", None
@@ -187,7 +187,7 @@ def old_snmp_iface_trap_undo(
     # хитрая логика для старый хуавеев
     # тут вместо полной команды с undo нужно сгенерить не полную строку
     if diff[Op.REMOVED]:
-        if hw.Quidway:
+        if hw.Huawei.Quidway:
             yield False, "undo mac-address trap notification", None
         else:
             yield False, "undo mac-address trap notification learn", None

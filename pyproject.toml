@@ -1,6 +1,13 @@
 [tool.ruff]
 line-length = 120
-exclude = ['.tox', '.venv', 'venv']
+exclude = [
+    '.tox',
+    '.venv',
+    'venv',
+
+    # generated code:
+    "annet/annlib/netdev/devdb/generated/__init__.pyi"
+]
 target-version = "py310"
 
 [tool.ruff.format]
@@ -27,6 +34,10 @@ force-wrap-aliases = false
 split-on-trailing-comma = true
 
 [tool.flake8]
+exclude = [
+    # generated code:
+    "annet/annlib/netdev/devdb/generated/__init__.pyi"
+]
 ignore = [
     "W503", # line break before binary operator
     "W504", # line break after binary operator
