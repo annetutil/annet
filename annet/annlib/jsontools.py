@@ -72,6 +72,7 @@ def apply_json_fragment(
     *,
     acl: Sequence[str | JsonFragmentAcl] | None = None,
     filters: Sequence[str] | None = None,
+    delete_with_null: bool = False,
 ) -> Dict[str, Any]:
     """
     Replace parts of the old document with 'new_fragment'.
@@ -83,6 +84,14 @@ def apply_json_fragment(
     or `JsonFragmentAcl` instances. The `cant_delete` attribute lists JSON
     Pointer glob patterns whose matching old pointers must be preserved when
     applying this ACL.
+
+    With `delete_with_null`, a removed object is written back as an explicit
+    `null` instead of being dropped from the document. Scalars and lists are
+    always dropped. This is what SONiC needs: `config load` merges the file into
+    CONFIG_DB and only deletes a table or an entry that is present with a `null`
+    value, while a key that is simply absent is left in redis untouched. Hash
+    fields are not deletable this way at all, so nulling them would only mask
+    the removal from tooling that looks for it.
     """
     normalized_acl = _normalize_acl(acl)
     if normalized_acl is None:
@@ -124,7 +133,29 @@ def apply_json_fragment(
                 if isinstance(container, dict) and isinstance(last, str):
                     container.pop(last, None)
 
+    if delete_with_null:
+        _nullify_removed_objects(old, full_new_config)
+
     return full_new_config
+
+
+def _nullify_removed_objects(old: Any, new: Any) -> None:
+    """Mark every object that `old` had and `new` no longer has with an explicit `null`, in place.
+
+    Works off the documents rather than the ACL bookkeeping above, because a key
+    can leave the config two ways: the deletion loop pops it, or `_pointer_set`
+    replaces its whole parent with a fragment that no longer lists it.
+    """
+    if not isinstance(old, dict) or not isinstance(new, dict):
+        return
+    for key, old_value in old.items():
+        if key in new:
+            if isinstance(old_value, dict):
+                _nullify_removed_objects(old_value, new[key])
+        elif old_value is None or isinstance(old_value, dict):
+            # `old_value is None` keeps a null from a previous run stable instead
+            # of letting it collapse back into an absence.
+            new[key] = None
 
 
 def _pattern_matches_protected(pattern: str, protected_patterns: tuple[str, ...]) -> bool:

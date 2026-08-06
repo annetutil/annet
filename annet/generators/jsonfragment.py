@@ -14,6 +14,13 @@ class JSONFragment(TreeGenerator):
 
     TYPE = "JSON_FRAGMENT"
 
+    # Write objects this generator stops producing back as an explicit `null`
+    # instead of dropping them from the file. SONiC's `config load` merges the
+    # file into CONFIG_DB and only deletes a table or an entry that is present
+    # with a `null` value, so without this a removed key is never cleaned up in
+    # redis. Turn it off for a file whose consumer replaces it wholesale.
+    DELETE_WITH_NULL = True
+
     def __init__(self, storage: Storage):
         super().__init__()
         self.storage = storage

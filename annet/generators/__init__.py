@@ -421,6 +421,7 @@ def _run_json_fragment_generator(
         reload=reload_cmds,
         perf=pm.last_result,
         reload_prio=gen.reload_prio,
+        delete_with_null=gen.DELETE_WITH_NULL,
     )
 
 
