@@ -244,6 +244,8 @@ def test_new_json_fragment_files():
             reload="sonic-reload",
             perf=GeneratorPerf(1.0, None, None),
             reload_prio=100,
+            # deletions as plain absences; see test_new_json_fragment_files_delete_with_null
+            delete_with_null=False,
         )
 
     old_files = {
@@ -407,6 +409,119 @@ def test_new_json_fragment_files():
             "sonic-reload",
         ),
     }
+
+
+def test_new_json_fragment_files_delete_with_null():
+    def make_interface_fragment(config: dict[str, Any]) -> GeneratorJSONFragmentResult:
+        return GeneratorJSONFragmentResult(
+            name="interfaces",
+            tags=["interfaces"],
+            path="/etc/sonic/config_db.json",
+            acl=["/INTERFACE", "/VLAN_INTERFACE"],
+            acl_safe=["/INTERFACE/*/description"],
+            config=config,
+            reload="sonic-reload",
+            perf=GeneratorPerf(1.0, None, None),
+            reload_prio=100,
+        )
+
+    old_files = {
+        "/etc/sonic/config_db.json": {
+            "INTERFACE": {
+                "Ethernet0": {"admin_status": "up", "description": "Ether0"},
+                "Ethernet8": {"admin_status": "up", "description": "Ether8"},
+            },
+            "VLAN_INTERFACE": {
+                "Ethernet0": {"vrf_name": "default"},
+            },
+        },
+    }
+
+    gen_res = RunGeneratorResult()
+    gen_res.add_json_fragment(
+        make_interface_fragment(
+            {
+                "INTERFACE": {
+                    "Ethernet0": {"admin_status": "up"},  # "description" field dropped
+                    # no "Ethernet8" entry
+                },
+                # no "VLAN_INTERFACE" table
+            }
+        ),
+    )
+
+    assert gen_res.new_json_fragment_files(old_files) == {
+        "/etc/sonic/config_db.json": (
+            {
+                "INTERFACE": {
+                    "Ethernet0": {"admin_status": "up"},  # hash field just disappears
+                    "Ethernet8": None,  # entry nulled
+                },
+                "VLAN_INTERFACE": None,  # table nulled
+            },
+            "sonic-reload",
+        ),
+    }
+
+
+def test_new_json_fragment_files_delete_with_null_is_stable():
+    """A null left by a previous run must survive the next one unchanged."""
+
+    def make_interface_fragment(config: dict[str, Any]) -> GeneratorJSONFragmentResult:
+        return GeneratorJSONFragmentResult(
+            name="interfaces",
+            tags=["interfaces"],
+            path="/etc/sonic/config_db.json",
+            acl=["/INTERFACE", "/VLAN_INTERFACE"],
+            acl_safe=["/INTERFACE/*/description"],
+            config=config,
+            reload="sonic-reload",
+            perf=GeneratorPerf(1.0, None, None),
+            reload_prio=100,
+        )
+
+    # the device now holds what the previous run uploaded
+    old_files = {
+        "/etc/sonic/config_db.json": {
+            "INTERFACE": {"Ethernet0": {"admin_status": "up"}, "Ethernet8": None},
+            "VLAN_INTERFACE": None,
+        },
+    }
+
+    gen_res = RunGeneratorResult()
+    gen_res.add_json_fragment(make_interface_fragment({"INTERFACE": {"Ethernet0": {"admin_status": "up"}}}))
+
+    new_files = gen_res.new_json_fragment_files(old_files)
+    assert new_files["/etc/sonic/config_db.json"][0] == old_files["/etc/sonic/config_db.json"]
+
+
+def test_apply_json_fragment_delete_with_null_keeps_scalars_and_lists_absent():
+    old = {
+        "VLAN": {
+            "Vlan605": {"vlanid": "605", "dhcpv6_servers": ["fe80::1"]},
+        },
+    }
+    result = apply_json_fragment(
+        old,
+        {"VLAN": {"Vlan605": {"vlanid": "605"}}},
+        acl=["/VLAN/Vlan*/*"],
+        delete_with_null=True,
+    )
+    # a list-valued hash field is dropped rather than nulled: SONiC cannot
+    # delete hash fields via `config load` anyway
+    assert result == {"VLAN": {"Vlan605": {"vlanid": "605"}}}
+
+
+def test_apply_json_fragment_delete_with_null_respects_cant_delete():
+    old = {
+        "VLAN": {
+            "Vlan605": {"vlanid": "605"},
+        },
+    }
+    acl = [JsonFragmentAcl(pointer="/VLAN/Vlan*/vlanid", cant_delete=("/VLAN",))]
+    result = apply_json_fragment(old, {}, acl=acl, delete_with_null=True)
+    # /VLAN is protected, Vlan605 is not — so it is nulled, not dropped
+    assert result == {"VLAN": {"Vlan605": None}}
 
 
 def test_new_json_fragment_files_append_list():

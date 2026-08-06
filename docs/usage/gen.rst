@@ -75,3 +75,15 @@ For cases where one file contains configurations for many services. Must inherit
                 for ip in device.ifaces.ips:
                     with self.block(dns_ip):
                         yield {}
+
+An object the generator stops producing is written back as an explicit ``null``
+rather than dropped from the file. ``sudo config load -y`` merges the file into
+CONFIG_DB, and SONiC only deletes a table or an entry that is present with a
+``null`` value — a key that is simply absent stays in redis. Hash fields are not
+deletable this way at all, so those are dropped as before.
+
+Set ``DELETE_WITH_NULL = False`` if the file's consumer replaces it wholesale
+and the nulls would just be noise::
+
+    class Dns(JSONFragment):
+        DELETE_WITH_NULL = False

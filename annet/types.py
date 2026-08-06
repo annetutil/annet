@@ -134,6 +134,7 @@ class GeneratorJSONFragmentResult:
         reload: str,
         perf: GeneratorPerf,
         reload_prio: int,
+        delete_with_null: bool = True,
     ):
         self.name = name
         self.tags = tags
@@ -144,6 +145,7 @@ class GeneratorJSONFragmentResult:
         self.reload = reload
         self.perf = perf
         self.reload_prio = reload_prio
+        self.delete_with_null = delete_with_null
 
 
 GeneratorResult = GeneratorEntireResult | GeneratorPartialResult | GeneratorJSONFragmentResult

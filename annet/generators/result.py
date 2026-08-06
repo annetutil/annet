@@ -102,6 +102,7 @@ class RunGeneratorResult:
                 new_fragment,
                 acl=result_acl,
                 filters=filters,
+                delete_with_null=generator_result.delete_with_null,
             )
             if jsontools.format_json(new_config) == jsontools.format_json(previous_config):
                 # config is not changed, deprioritize reload_cmd
