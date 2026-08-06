@@ -5,15 +5,15 @@
 #   будет стоять после блоков interface).
 
 
+file
+    print
+    set
+
 user
     group
         add
     ssh_key
         add
-
-file
-    print
-    set
 
 interface
     bridge
