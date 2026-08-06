@@ -63,3 +63,22 @@ test_case_5:
     %inherit_from=parent
   parent: |
   expected: |
+
+# A rule that exists only in the child keeps its subtree verbatim: the "rule" field of
+# every nested rule must stay the bare command, without params and without the leading
+# "!" of an ignore rule.
+test_case_6:
+  child: |
+    %inherit_from=parent
+    rule 2
+        sub rule 2 %global
+        !ignored sub rule 2
+  parent: |
+    rule 1
+        sub rule 1
+  expected: |
+    rule 1
+        sub rule 1
+    rule 2
+        sub rule 2 %global
+        !ignored sub rule 2
