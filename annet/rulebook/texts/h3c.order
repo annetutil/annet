@@ -168,7 +168,6 @@ interface *
     undo ip address * * sub  %order_reverse
     undo ip address * *  %order_reverse
     description
-    port link-mode * %order_reverse
     ip binding
     ipv6 enable
     ipv6 nd ra prefix
