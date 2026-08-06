@@ -317,7 +317,9 @@ def _apply_not_inherit_to_child_rules(child_rulebook: PatchRulebook, vendor: str
 
             raw_row = syntax.get_row_with_params(row, raw_params, get_params_scheme(vendor))
 
-            rules[RULE] = raw_row
+            # RULE holds the bare command, the way _compile_patching fills it from
+            # attrs[ROW]: without params, and without the leading "!" of an ignore rule.
+            rules[RULE] = row[1:].strip() if rules[TYPE] == IGNORE else row
 
             if not _is_empty_rulebook(rules[CHILDREN]):
                 rules[CHILDREN] = _apply_not_inherit_to_child_rules(

@@ -24,6 +24,9 @@ def check_patch_rulebook_equal(getting_rb, expected_rb):
         assert getting_data[row]["rules"]["type"] == expected_data[row]["rules"]["type"], (
             f"Rule '{row}': type do not match."
         )
+        assert getting_data[row]["rules"]["rule"] == expected_data[row]["rules"]["rule"], (
+            f"Rule '{row}': rule do not match."
+        )
         assert getting_data[row]["rules"]["attrs"] == expected_data[row]["rules"]["attrs"], (
             f"Rule '{row}': attrs do not match."
         )
