@@ -74,7 +74,7 @@ interface */\w*Ethernet[0-9\/]+$/        %logic=annet.rulebook.common.permanent 
     storm-control * level
     spanning-tree portfast
 
-router bgp
+router bgp *
     router-id
     vrf *
         router-id
