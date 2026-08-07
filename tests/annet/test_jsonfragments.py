@@ -5,7 +5,7 @@ import pytest
 import annet.diff
 from annet.annlib.jsontools import JsonFragmentAcl, apply_json_fragment
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.generators import _normalize_json_fragment_acl
+from annet.generators import JSONFragment, _normalize_json_fragment_acl
 from annet.generators.result import RunGeneratorResult
 from annet.types import GeneratorJSONFragmentResult, GeneratorPerf
 
@@ -835,3 +835,64 @@ def test_apply_json_fragment_cant_delete_main_user_scenario():
     # B then A: B leaves Vlans with vlanid; A then erases /VLAN entirely.
     after_b_then_a = apply_json_fragment(after_b, {}, acl=acl_a)
     assert after_b_then_a == {}
+
+
+class _ScalarGen(JSONFragment):
+    """Yields one entry covering every scalar kind a generator can emit."""
+
+    def path(self, device: Any) -> str:
+        return "/etc/sonic/config_db.json"
+
+    def acl(self, device: Any) -> str:
+        return "/TABLE"
+
+    def reload(self, device: Any) -> str:
+        return ""
+
+    def run(self, device: Any) -> Any:
+        with self.block("TABLE"):
+            with self.block("key"):
+                yield {
+                    "count": 8,
+                    "enabled": True,
+                    "ratio": 1.5,
+                    "name": "spine1",
+                    "absent": None,
+                    "members": [1, "two", False],
+                }
+
+
+class _StringScalarGen(_ScalarGen):
+    NATIVE_SCALARS = False
+
+
+def test_native_scalars_kept_by_default() -> None:
+    assert _ScalarGen(storage=None)(device=None) == {
+        "TABLE": {
+            "key": {
+                "count": 8,
+                "enabled": True,
+                "ratio": 1.5,
+                "name": "spine1",
+                "absent": None,
+                "members": [1, "two", False],
+            }
+        }
+    }
+
+
+def test_native_scalars_off_stringifies_everything_but_null() -> None:
+    assert _StringScalarGen(storage=None)(device=None) == {
+        "TABLE": {
+            "key": {
+                "count": "8",
+                "enabled": "True",
+                "ratio": "1.5",
+                "name": "spine1",
+                # `null` survives: turning the flag off must not resurrect the
+                # pre-4.5.0 "None" string, which DELETE_WITH_NULL would misread.
+                "absent": None,
+                "members": ["1", "two", "False"],
+            }
+        }
+    }

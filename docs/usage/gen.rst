@@ -87,3 +87,10 @@ and the nulls would just be noise::
 
     class Dns(JSONFragment):
         DELETE_WITH_NULL = False
+
+Scalars a generator yields keep their JSON type, so ``yield {"mtu": 9000}``
+renders as a number. Set ``NATIVE_SCALARS = False`` to render every scalar as a
+string instead, the way generators behaved before 4.5.0::
+
+    class Dns(JSONFragment):
+        NATIVE_SCALARS = False

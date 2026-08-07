@@ -21,6 +21,10 @@ class JSONFragment(TreeGenerator):
     # redis. Turn it off for a file whose consumer replaces it wholesale.
     DELETE_WITH_NULL = True
 
+    # Emit int/float/bool/None as native JSON scalars. Turn it off to render
+    # every scalar as a string, the way generators behaved before 4.5.0.
+    NATIVE_SCALARS = True
+
     def __init__(self, storage: Storage):
         super().__init__()
         self.storage = storage
@@ -102,15 +106,13 @@ class JSONFragment(TreeGenerator):
 
     def process_scalar_value(self, value: Any) -> Any:
         if value is None:
+            # Deliberately not stringified even with NATIVE_SCALARS off: pre-4.5.0
+            # rendered this as the string "None", and DELETE_WITH_NULL has since
+            # given `null` a meaning of its own.
             return value
-        elif isinstance(value, bool):
+        if self.NATIVE_SCALARS and isinstance(value, (bool, int, float)):
             return value
-        elif isinstance(value, int):
-            return value
-        elif isinstance(value, float):
-            return value
-        else:
-            return str(value)
+        return str(value)
 
     def process_value(self, value: Any) -> Any:
         if isinstance(value, (list, set, frozenset)):
