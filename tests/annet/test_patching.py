@@ -7,7 +7,7 @@ import pytest
 from annet.annlib.rbparser import syntax
 from annet.patching import PatchTree, make_diff
 from annet.rulebook.common import default, default_diff, ordered_diff
-from annet.rulebook.patching import _make_reverse
+from annet.rulebook.patching import _make_reverse, compile_patching_text
 from annet.types import Op
 from annet.vendors.tabparser import CommonFormatter
 
@@ -83,6 +83,46 @@ def test_ordered_diff_block(config_tree, reversed_tree, rb):
             _make_match(rb, "a"),
         ),
         (Op.MOVED, "z", [], _make_match(rb, "z")),
+    ]
+
+
+def custom_diff_logic(old, new, diff_pre, _pops=(Op.AFFECTED,)):
+    """Behaves exactly like the default logic, it is only a distinct function object"""
+    return default_diff(old, new, diff_pre, _pops)
+
+
+def test_diff_keeps_block_order_with_mixed_diff_logic():
+    """A rule with its own %diff_logic must not regroup the block it matches in - #638"""
+    rb_text = dedent("""
+        ip access-list ~
+            ?/(\\d+)/ permit ~   %diff_logic=tests.annet.test_patching.custom_diff_logic
+            ~
+    """).strip()
+    rb = {"patching": compile_patching_text(rb_text, "cisco")}
+
+    def acl(*rows):
+        return odict([("ip access-list extended TEST", odict((row, odict()) for row in rows))])
+
+    old = acl("10 permit ip any any")
+    new = acl(
+        "20 deny ip host 0.0.0.0 any",
+        "30 permit tcp any any eq 22",
+        "60 remark GRE",
+        "70 permit gre any any",
+        "230 deny ip any any log",
+    )
+
+    [(op, row, children, _match)] = make_diff(old, new, rb, [])
+    assert (op, row) == (Op.AFFECTED, "ip access-list extended TEST")
+    # the permits are matched by the custom rule and the rest by the plain one,
+    # but both groups keep their places in the block
+    assert [(child_op, child_row) for child_op, child_row, _, _ in children] == [
+        (Op.REMOVED, "10 permit ip any any"),
+        (Op.ADDED, "20 deny ip host 0.0.0.0 any"),
+        (Op.ADDED, "30 permit tcp any any eq 22"),
+        (Op.ADDED, "60 remark GRE"),
+        (Op.ADDED, "70 permit gre any any"),
+        (Op.ADDED, "230 deny ip any any log"),
     ]
 
 
