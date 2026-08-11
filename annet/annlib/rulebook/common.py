@@ -297,8 +297,9 @@ def call_diff_logic(
 ) -> list[DiffItem]:
     """
     Группируем команды в старом и новом конфиге согласно выставленным
-    в рулбуке атрибутам %diff_logic и вызывает их поочереди согласно
-    порядку команд в old и new, предпочитая old (т.е. сначала удаления)
+    в рулбуке атрибутам %diff_logic и вызываем их по очереди, после чего
+    склеиваем результаты обратно в порядке команд в old и new, предпочитая
+    old (т.е. сначала удаления)
     """
     diff_logics: odict[typing.Any, typing.Any] = odict()
     for row in old:
@@ -311,10 +312,32 @@ def call_diff_logic(
         if logic not in diff_logics:
             diff_logics[logic] = (odict(), odict())
         diff_logics[logic][1][row] = new[row]
-    ret = []
-    for logic, (old, new) in diff_logics.items():
-        ret.extend(logic(old=old, new=new, diff_pre=diff_pre, _pops=pops))
-    return ret
+
+    if len(diff_logics) == 1:
+        ((logic, (logic_old, logic_new)),) = diff_logics.items()
+        return list(logic(old=logic_old, new=logic_new, diff_pre=diff_pre, _pops=pops))
+
+    positions = _row_positions(old, new)
+    indexed: list[tuple[int, DiffItem]] = []
+    for logic, (logic_old, logic_new) in diff_logics.items():
+        position = 0
+        for item in logic(old=logic_old, new=logic_new, diff_pre=diff_pre, _pops=pops):
+            position = positions.get(item.row, position)
+            indexed.append((position, item))
+    indexed.sort(key=lambda pair: pair[0])
+    return [item for _, item in indexed]
+
+
+def _row_positions(old: odict[str, typing.Any], new: odict[str, typing.Any]) -> dict[str, int]:
+    positions: dict[str, int] = {}
+    for index, row in enumerate(old):
+        if row not in new:
+            positions[row] = index
+    for index, row in enumerate(new):
+        positions[row] = index
+    for row, index in list(positions.items()):
+        positions.setdefault(row.lower(), index)
+    return positions
 
 
 def _ignore_case(diff_pre: odict[str, typing.Any], cfg: odict[str, typing.Any]) -> odict[str, typing.Any]:
