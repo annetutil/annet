@@ -58,6 +58,12 @@ ntp ~
 dns snooping ttl delay-time
 dns ~
 
+mpls-in-udp6
+    ~
+
+mpls-in-udp
+    ~
+
 bfd *
     ~
 
@@ -89,6 +95,8 @@ system tcam acl template *
 system tcam acl
 
 vlan reserved ~
+
+igmp-snooping send-query source-address
 
 vlan batch  %diff_logic=annet.rulebook.huawei.vlandb.vlan_diff %logic=annet.rulebook.huawei.vlandb.multi
 
@@ -167,6 +175,7 @@ traffic classifier *        %logic=annet.rulebook.huawei.misc.classifier
 traffic behavior *
     remark 8021p
     remark dscp
+    car
     car *
 
 traffic policy *
@@ -204,6 +213,18 @@ hwtacacs-server template *
 hwtacacs server template *
     hwtacacs server shared-key
     hwtacacs server source-ip
+
+dot1x timer tx-period
+
+mac-access-profile name *
+    mac-authen timer reauthenticate-period
+    ~ %global
+
+dot1x-access-profile name *
+    dot1x retry
+    ~ %global
+
+radius-server ip-address * shared-key
 
 !radius-server template default
 
@@ -275,6 +296,10 @@ interface */Tunnel.+/
     mpls te path metric-type
     mpls te path
     mpls te tunnel-id
+
+evpn
+    mac-duplication
+        ~
 
 interface *                             %logic=annet.rulebook.huawei.iface.permanent
     %if hw.Quidway:
@@ -374,7 +399,19 @@ route-policy * (?:permit|deny) node * %logic=annet.rulebook.huawei.misc.rp_node
 xpl ~
     ~              %rewrite %global
 
+bgp yang-mode enable
+
 bgp path-attribute attr-set *
+
+bgp path-attribute wide-community *
+
+bgp path-attribute large-community *
+
+bgp path-attribute ipv6-ext-community *
+
+bgp path-attribute ext-community *
+
+bgp path-attribute community *
 bgp path-attribute *
 
 bgp %logic=annet.rulebook.huawei.bgp.undo_commit
@@ -423,6 +460,8 @@ bgp %logic=annet.rulebook.huawei.bgp.undo_commit
 
 
 ip community-filter ~
+
+isis purge-source-trace ~
 ospf *
     stub-router     %logic=annet.rulebook.huawei.misc.undo_redo
     area *
@@ -431,6 +470,9 @@ ospf *
 isis *
     set-overload *
 
+    ipv6 enable *
+    import-route direct *
+    set-overload
 error-down auto-recovery cause link-flap
 
 configuration file auto-save backup-to-server server
@@ -474,6 +516,10 @@ snmp-agent protocol source-interface %logic=annet.rulebook.huawei.misc.undo_redo
 %else:
 snmp-agent protocol source-interface *
 %endif
+
+stp vlan 1 to 4094 priority \d+
+
+stp disable
 snmp-agent ~
 ifindex constant
 
@@ -491,6 +537,7 @@ cpu-defend-policy * global
 cpu-defend-policy
 slot *
     cpu-defend-policy
+    load-balance hash-arithmetic
 
 user-interface con 0
     set authentication password cipher

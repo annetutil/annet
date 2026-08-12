@@ -11,9 +11,14 @@ service
 interface breakout
 
 no password strength-check
+
+role *
+    rule
 username
 tacacs-server
 aaa
+
+no tacacs-server %order_reverse
 
 ip access-list
 ipv6 access-list

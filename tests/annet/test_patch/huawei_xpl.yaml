@@ -255,14 +255,14 @@
       origin '123'
   patch: |+
     system-view
+    xpl as-path-list XXX_AS_FILTERS
+      origin '123'
+      end-list
     xpl route-filter XXX
       if as-path in XXX_AS_FILTERS then
         apply local-preference 10
       endif
       end-filter
-    xpl as-path-list XXX_AS_FILTERS
-      origin '123'
-      end-list
     q
     save
 - vendor: Huawei

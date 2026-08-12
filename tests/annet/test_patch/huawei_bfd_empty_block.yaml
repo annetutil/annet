@@ -8,8 +8,8 @@
     lldp enable
   patch: |
     system-view
+    lldp enable
     bfd
       quit
-    lldp enable
     q
     save

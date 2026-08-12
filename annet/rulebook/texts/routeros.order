@@ -24,8 +24,10 @@ interface
         remove %order_reverse
         add
         port %split
+            remove
             add
         vlan %split
+            remove
             add
     vlan
         add
@@ -45,6 +47,7 @@ interface
         remove
         add
         member %split
+            remove
             add
 
 routing
@@ -53,13 +56,17 @@ routing
     table %split
         remove
     table %split
+        remove
         add
     rule %split
+        remove
         add
     filter
         rule
             add
     bgp
+        instance
+            add
         template
             set
             add
@@ -81,6 +88,7 @@ ip
         static
             add
     dhcp-server %split
+        remove
         add
         network
             remove
