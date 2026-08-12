@@ -65,11 +65,6 @@ if sys.version_info >= (3, 12):
         RULEBOOK_READ_EXCEPTIONS = (FileNotFoundError, _traversal_error)
 
 
-RUL: Literal["rul"] = "rul"
-ORDER: Literal["order"] = "order"
-DEPLOY: Literal["deploy"] = "deploy"
-
-
 class RulebookProvider(ABC):
     def get_rulebook(self, hw: HardwareView) -> Rulebook:
         raise NotImplementedError
@@ -90,14 +85,14 @@ def get_rulebook(hw: HardwareView) -> Rulebook:
 class DefaultRulebookProvider(RulebookProvider):
     DEFAULT_RULEBOOK_MODULE = "annet.rulebook.texts"
     merge_rulebooks: dict[Extension, Callable[..., AnyRulebook]] = {
-        RUL: merge_patch_rulebooks,
-        ORDER: merge_order_rulebooks,
-        DEPLOY: merge_deploy_rulebooks,
+        "rul": merge_patch_rulebooks,
+        "order": merge_order_rulebooks,
+        "deploy": merge_deploy_rulebooks,
     }
     compile_rulebooks: dict[Extension, Callable[..., AnyRulebook]] = {
-        RUL: compile_patching_text,
-        ORDER: compile_ordering_text,
-        DEPLOY: compile_deploying_text,
+        "rul": compile_patching_text,
+        "order": compile_ordering_text,
+        "deploy": compile_deploying_text,
     }
 
     def __init__(self) -> None:
@@ -121,7 +116,7 @@ class DefaultRulebookProvider(RulebookProvider):
             # The first rulebook should be named exactly the same as hw.vendor
             rulebook_path=".".join((self.rulebook_module, rul_vendor_name)),
             vendor=rul_vendor_name,
-            extension=RUL,
+            extension="rul",
             hw=hw,
         )
         patching_text: PatchingText = dump_patch_rulebook(patching)
@@ -132,7 +127,7 @@ class DefaultRulebookProvider(RulebookProvider):
             ordering = self._get_rulebook_by_extension(
                 rulebook_path=".".join((self.rulebook_module, vendor)),
                 vendor=vendor,
-                extension=ORDER,
+                extension="order",
                 hw=hw,
             )
             ordering_text = dump_order_rulebook(ordering)
@@ -146,7 +141,7 @@ class DefaultRulebookProvider(RulebookProvider):
             deploying = self._get_rulebook_by_extension(
                 rulebook_path=".".join((self.rulebook_module, vendor)),
                 vendor=vendor,
-                extension=DEPLOY,
+                extension="deploy",
                 hw=hw,
             )
             deploying_text = dump_deploy_rulebook(deploying)

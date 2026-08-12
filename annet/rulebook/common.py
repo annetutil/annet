@@ -1,6 +1,6 @@
 import functools
 import importlib
-from typing import Any, Callable, Literal, cast
+from typing import Any, Callable, cast
 
 from valkit.common import valid_bool
 
@@ -8,9 +8,6 @@ from annet.annlib.rbparser.exceptions import RulebookSyntaxError
 from annet.annlib.rulebook import common  # pylint: disable=unused-import # noqa: F401,F403
 from annet.annlib.rulebook.common import *  # pylint: disable=wildcard-import,unused-wildcard-import # noqa: F401,F403
 from annet.rulebook.types import OrderRuleAttrs, PatchRuleAttrs, RawParams, Row
-
-
-CONTEXT: Literal["context"] = "context"
 
 
 @functools.lru_cache()
@@ -34,7 +31,7 @@ def validate_context_compatibility(
     parent_attrs: PatchRuleAttrs | OrderRuleAttrs, child_attrs: PatchRuleAttrs | OrderRuleAttrs, row: Row
 ) -> None:
     """Checks compatibility of rule contexts"""
-    if parent_attrs[CONTEXT] != child_attrs[CONTEXT]:
+    if parent_attrs["context"] != child_attrs["context"]:
         raise RulebookSyntaxError(
             f"Merge error for rule '{row}'. Rule contexts must match in parent and child rulebooks."
         )
