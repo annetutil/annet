@@ -29,53 +29,26 @@ from annet.rulebook.types import (
 from annet.vendors import registry_connector
 
 
-# ===RULE===
-RULES: Literal["rules"] = "rules"
-ATTRS: Literal["attrs"] = "attrs"
-CHILDREN: Literal["children"] = "children"
-TYPE: Literal["type"] = "type"
-NORMAL: Literal["normal"] = "normal"
-
-# ===PARAMS===
-PARAMS: Literal["params"] = "params"
-ORDER_REVERSE: Literal["order_reverse"] = "order_reverse"
-GLOBAL: Literal["global"] = "global"
-SCOPE: Literal["scope"] = "scope"
-SPLIT: Literal["split"] = "split"
-DIRECT_REGEXP: Literal["direct_regexp"] = "direct_regexp"
-REVERSE_REGEXP: Literal["reverse_regexp"] = "reverse_regexp"
-CONTEXT: Literal["context"] = "context"
-RAW_RULE: Literal["raw_rule"] = "raw_rule"
-ROW: Literal["row"] = "row"
-NOT_INHERIT: Literal["not_inherit"] = "not_inherit"
-INSERT_TO_END_GROUP: Literal["insert_to_end_group"] = "insert_to_end_group"
-
-# ===GROUP===
-ROWS: Literal["rows"] = "rows"
-ANCHOR: Literal["anchor"] = "anchor"
-COUNT: Literal["count"] = "count"
-
-
 def get_params_scheme() -> ParamsScheme:
     """Returning the params scheme"""
     return {
-        ORDER_REVERSE: {
+        "order_reverse": {
             "validator": valid_bool,
             "default": False,
         },
-        GLOBAL: {
+        "global": {
             "validator": valid_bool,
             "default": False,
         },
-        SCOPE: {
+        "scope": {
             "validator": valid_string_list,
             "default": None,
         },
-        SPLIT: {
+        "split": {
             "validator": valid_bool,
             "default": False,
         },
-        CONTEXT: {
+        "context": {
             "validator": str,
             "default": None,
         },
@@ -96,28 +69,30 @@ def compile_ordering_text(text: OrderingText, vendor: str) -> OrderRulebook:
 def _compile_ordering(tree: syntax.ParsedTree, reverse_prefix: str) -> OrderRulebook:
     ordering: OrderRulebook = []
     for rule_id, attrs in tree:
-        if attrs[TYPE] == NORMAL:
+        if attrs["type"] == "normal":
             ordering.append(
                 (
                     rule_id,
                     {
-                        ATTRS: OrderRuleAttrs(
+                        "attrs": OrderRuleAttrs(
                             {
-                                DIRECT_REGEXP: syntax.compile_row_regexp(attrs[ROW]),
-                                REVERSE_REGEXP: (
-                                    syntax.compile_row_regexp(reverse_prefix + " " + attrs[ROW])
-                                    if not attrs[ROW].startswith(reverse_prefix + " ")
-                                    else syntax.compile_row_regexp(re.sub(r"^%s\s+" % (reverse_prefix), "", attrs[ROW]))
+                                "direct_regexp": syntax.compile_row_regexp(attrs["row"]),
+                                "reverse_regexp": (
+                                    syntax.compile_row_regexp(reverse_prefix + " " + attrs["row"])
+                                    if not attrs["row"].startswith(reverse_prefix + " ")
+                                    else syntax.compile_row_regexp(
+                                        re.sub(r"^%s\s+" % (reverse_prefix), "", attrs["row"])
+                                    )
                                 ),
-                                ORDER_REVERSE: attrs[PARAMS][ORDER_REVERSE],
-                                GLOBAL: attrs[PARAMS][GLOBAL],
-                                SCOPE: attrs[PARAMS][SCOPE],
-                                RAW_RULE: attrs[RAW_RULE],
-                                CONTEXT: attrs[CONTEXT],
-                                SPLIT: attrs[PARAMS][SPLIT],
+                                "order_reverse": attrs["params"]["order_reverse"],
+                                "global": attrs["params"]["global"],
+                                "scope": attrs["params"]["scope"],
+                                "raw_rule": attrs["raw_rule"],
+                                "context": attrs["context"],
+                                "split": attrs["params"]["split"],
                             }
                         ),
-                        CHILDREN: _compile_ordering(attrs[CHILDREN], reverse_prefix),
+                        "children": _compile_ordering(attrs["children"], reverse_prefix),
                     },
                 )
             )
@@ -145,68 +120,68 @@ def merge_order_rulebooks(
     non_anchor_queue: GroupRows = []
 
     if group_anchor is None:
-        start_group_rows, end_group_rows = _split_rows_by_insert_to_end_group_param(group_data[ROWS])
+        start_group_rows, end_group_rows = _split_rows_by_insert_to_end_group_param(group_data["rows"])
         _add_group_to_merged_rulebook(merged_rulebook, start_group_rows, parent_scopes)
         non_anchor_queue = end_group_rows
         group_anchor, group_data = _get_next_group(child_groups)
 
-    start_group_rows, end_group_rows = _split_rows_by_insert_to_end_group_param(group_data[ROWS])
+    start_group_rows, end_group_rows = _split_rows_by_insert_to_end_group_param(group_data["rows"])
 
     for row, parent_data in parent_pre_merge:
         if (group_anchor is None and _is_empty_child_group_data(group_data)) or row != group_anchor:
-            node = (parent_data[RAW_RULE], parent_data[RULES])
+            node = (parent_data["raw_rule"], parent_data["rules"])
             check_rulebook_scope_compatibility([node], parent_scopes)
             merged_rulebook.append(node)
             continue
 
-        anchor_data = group_data[ANCHOR]
+        anchor_data = group_data["anchor"]
 
         # for mypy: anchor_data cannot be None due to prior if-condition check
         assert anchor_data is not None
 
         _add_group_to_merged_rulebook(merged_rulebook, anchor_queue, parent_scopes)
 
-        merged_row = _get_merged_row(parent_data[PARAMS], anchor_data[PARAMS], row)
+        merged_row = _get_merged_row(parent_data["params"], anchor_data["params"], row)
         merged_attrs = _merge_attrs(
-            parent_data[RULES][ATTRS], anchor_data[RULES][ATTRS], anchor_data[PARAMS], merged_row
+            parent_data["rules"]["attrs"], anchor_data["rules"]["attrs"], anchor_data["params"], merged_row
         )
 
-        curr_scopes = merged_attrs[SCOPE]
+        curr_scopes = merged_attrs["scope"]
         if parent_scopes is not None and curr_scopes is not None:
             check_scope_compatibility(curr_scopes, parent_scopes, merged_row)
 
         merged_children = merge_order_rulebooks(
-            parent_data[RULES][CHILDREN],
-            anchor_data[RULES][CHILDREN],
+            parent_data["rules"]["children"],
+            anchor_data["rules"]["children"],
             vendor,
             get_effective_scopes(curr_scopes, parent_scopes),
         )
 
-        merged_rulebook.append((merged_row, {ATTRS: merged_attrs, CHILDREN: merged_children}))
+        merged_rulebook.append((merged_row, {"attrs": merged_attrs, "children": merged_children}))
 
         _add_group_to_merged_rulebook(merged_rulebook, start_group_rows, parent_scopes)
 
         anchor_queue = end_group_rows
 
         group_anchor, group_data = _get_next_group(child_groups)
-        start_group_rows, end_group_rows = _split_rows_by_insert_to_end_group_param(group_data[ROWS])
+        start_group_rows, end_group_rows = _split_rows_by_insert_to_end_group_param(group_data["rows"])
 
     _add_group_to_merged_rulebook(merged_rulebook, anchor_queue, parent_scopes)
 
     _add_group_to_merged_rulebook(merged_rulebook, non_anchor_queue, parent_scopes)
 
     if start_group_rows or end_group_rows or group_anchor is not None:
-        anchor_data = group_data.get(ANCHOR)
+        anchor_data = group_data.get("anchor")
         if anchor_data is not None:
-            rule = anchor_data[RAW_RULE]
+            rule = anchor_data["raw_rule"]
         else:
             rule = None
         raise RulebookSyntaxError(
             "The relative order of rules must stay the same in both parent and child rulebooks.\n"
             f"Rule in child rulebook '{rule}'.\n"
             f"Group anchor '{group_anchor}'.\n"
-            f"Rules with insert_to_end_group param in group:\n\t{[row[RAW_RULE] for row in end_group_rows]}\n"
-            f"Rules without insert_to_end_group param in group:\n\t{[row[RAW_RULE] for row in start_group_rows]}\n"
+            f"Rules with insert_to_end_group param in group:\n\t{[row['raw_rule'] for row in end_group_rows]}\n"
+            f"Rules without insert_to_end_group param in group:\n\t{[row['raw_rule'] for row in start_group_rows]}\n"
             "To fix this:\n"
             "\t1. Check the order of rules in the parent rulebook.\n"
             "\t2. Make sure they appear in exactly the same relative order in the child rulebook.\n"
@@ -220,7 +195,7 @@ def dump_order_rulebook(rulebook: OrderRulebook, level: int = 0) -> OrderingText
     lines = []
     for row, data in rulebook:
         lines.append(f"{'    ' * level}{row}")
-        children_lines = dump_order_rulebook(data[CHILDREN], level + 1)
+        children_lines = dump_order_rulebook(data["children"], level + 1)
         if children_lines:
             lines.append(children_lines)
     return "\n".join(lines)
@@ -233,12 +208,12 @@ def _apply_not_inherit_to_pre_merges(
     ignored_rules = set()
     applied_child_pre_merge = []
     for child_row, child_data in child_pre_merge:
-        if not raw_param_to_bool(child_data[PARAMS].get(NOT_INHERIT)):
+        if not raw_param_to_bool(child_data["params"].get("not_inherit")):
             applied_child_pre_merge.append((child_row, child_data))
             continue
 
         ignored_rules.add(child_row)
-        if child_data[RULES][CHILDREN]:
+        if child_data["rules"]["children"]:
             applied_child_pre_merge.append((child_row, child_data))
 
     applied_parent_pre_merge = []
@@ -254,14 +229,14 @@ def _apply_not_inherit_to_rulebook(rulebook: OrderRulebook) -> OrderRulebook:
     applied_rulebook: OrderRulebook = []
     for raw_row, data in rulebook:
         row, raw_params = syntax.get_row_and_raw_params(raw_row)
-        not_inherit = raw_params.pop(NOT_INHERIT, None)
+        not_inherit = raw_params.pop("not_inherit", None)
         raw_row = syntax.get_row_with_params(row, raw_params, get_params_scheme())
-        data[ATTRS][RAW_RULE] = raw_row
+        data["attrs"]["raw_rule"] = raw_row
         if not raw_param_to_bool(not_inherit):
             pass
-        elif not data[CHILDREN]:
+        elif not data["children"]:
             continue
-        data[CHILDREN] = _apply_not_inherit_to_rulebook(data[CHILDREN])
+        data["children"] = _apply_not_inherit_to_rulebook(data["children"])
         applied_rulebook.append((raw_row, data))
     return applied_rulebook
 
@@ -276,7 +251,7 @@ def _split_rows_by_insert_to_end_group_param(rows: GroupRows) -> tuple[GroupRows
     start_group = []
     end_group = []
     for row_data in rows:
-        if row_data[INSERT_TO_END_GROUP]:
+        if row_data["insert_to_end_group"]:
             end_group.append(row_data)
         else:
             start_group.append(row_data)
@@ -305,7 +280,7 @@ def _merge_attrs(
             # A dynamic key cannot be recognized by mypy as a string literal
             merged_attrs[param] = child_attrs[param]  # type: ignore[literal-required]
 
-    merged_attrs[RAW_RULE] = raw_row
+    merged_attrs["raw_rule"] = raw_row
 
     return merged_attrs
 
@@ -315,12 +290,12 @@ def _get_pre_merge(rulebook: OrderRulebook) -> OrderPreMerge:
     pre_merge = []
     for raw_row, rules in rulebook:
         row, raw_params = syntax.get_row_and_raw_params(raw_row)
-        insert_to_end_group = raw_params.pop(INSERT_TO_END_GROUP, None)
-        raw_params.pop(SCOPE, None)
-        scope = rules[ATTRS].get(SCOPE)
+        insert_to_end_group = raw_params.pop("insert_to_end_group", None)
+        raw_params.pop("scope", None)
+        scope = rules["attrs"].get("scope")
         if scope is not None:
             raw_scope_value = ",".join(scope)
-            row = f"{row} %{SCOPE}={raw_scope_value}"
+            row = f"{row} %scope={raw_scope_value}"
         data = OrderPreMergeData(
             params=raw_params,
             rules=rules,
@@ -354,7 +329,7 @@ def _get_empty_anchor_data() -> AnchorData:
 
 def _is_empty_child_group_data(group_data: GroupData) -> bool:
     """Checks whether the provided group is empty"""
-    return group_data[ANCHOR] is None and not group_data[ROWS]
+    return group_data["anchor"] is None and not group_data["rows"]
 
 
 def _get_child_groups(parent_pre_merge: OrderPreMerge, child_pre_merge: OrderPreMerge) -> Generator[Group, None, None]:
@@ -366,31 +341,31 @@ def _get_child_groups(parent_pre_merge: OrderPreMerge, child_pre_merge: OrderPre
     anchors_data = _get_anchors_data(parent_pre_merge)
     for row, data in child_pre_merge:
         if row not in anchors_data:
-            group_data[ROWS].append(data)
+            group_data["rows"].append(data)
             continue
 
-        count = anchors_data[row][COUNT]
-        split = anchors_data[row][SPLIT]
-        child_split = data[RULES][ATTRS][SPLIT]
+        count = anchors_data[row]["count"]
+        split = anchors_data[row]["split"]
+        child_split = data["rules"]["attrs"]["split"]
 
         if child_split != split and split:
             raise RulebookSyntaxError(
                 f"Rule '{row}' has different %split parameters in the parent and children rulebooks. "
-                f"In parent rulebook: {split}, in children rulebook: {data[RULES][ATTRS][SPLIT]}."
+                f"In parent rulebook: {split}, in children rulebook: {child_split}."
             )
         if count == 0:
             if not split and not child_split:
                 raise RulebookSyntaxError(
                     f"Rule '{row}' has no %split parameter but is listed multiple times in the children rulebook."
                 )
-            group_data[ROWS].append(data)
+            group_data["rows"].append(data)
         else:
-            anchors_data[row][COUNT] -= 1
+            anchors_data[row]["count"] -= 1
             if not _is_empty_child_group_data(group_data):
                 yield anchor, group_data
                 group_data = _get_empty_child_group_data()
             anchor = row
-            group_data[ANCHOR] = data
+            group_data["anchor"] = data
 
     if not _is_empty_child_group_data(group_data):
         yield anchor, group_data
@@ -404,10 +379,10 @@ def _get_anchors_data(parent_pre_merge: OrderPreMerge) -> AnchorsData:
     anchors_data: AnchorsData = {}
     for row, data in parent_pre_merge:
         anchor_data: AnchorData = anchors_data.get(row, _get_empty_anchor_data())
-        anchor_data[COUNT] = anchor_data[COUNT] + 1
-        anchor_data[SPLIT] = data[RULES][ATTRS][SPLIT]
+        anchor_data["count"] = anchor_data["count"] + 1
+        anchor_data["split"] = data["rules"]["attrs"]["split"]
         anchors_data[row] = anchor_data
-        if anchors_data[row][COUNT] > 1 and not anchors_data[row][SPLIT]:
+        if anchors_data[row]["count"] > 1 and not anchors_data[row]["split"]:
             raise RulebookSyntaxError(
                 f"Rule '{row}' has no %split parameter but is listed multiple times in the parent rulebook."
             )
@@ -418,7 +393,7 @@ def _add_group_to_merged_rulebook(
     merged_rulebook: OrderRulebook, rows: GroupRows, parent_scopes: list[str] | None
 ) -> None:
     """Adds rules from the group to merged_rulebook"""
-    rulebook: OrderRulebook = [(row_data[RAW_RULE], row_data[RULES]) for row_data in rows]
+    rulebook: OrderRulebook = [(row_data["raw_rule"], row_data["rules"]) for row_data in rows]
     applied_rulebook = _apply_not_inherit_to_rulebook(rulebook)
     check_rulebook_scope_compatibility(applied_rulebook, parent_scopes)
     merged_rulebook.extend(applied_rulebook)
@@ -427,10 +402,10 @@ def _add_group_to_merged_rulebook(
 def check_rulebook_scope_compatibility(rulebook: OrderRulebook, parent_scopes: list[str] | None) -> None:
     """Checks compatibility of rulebook scope"""
     for row, rules in rulebook:
-        curr_scopes = rules[ATTRS][SCOPE]
+        curr_scopes = rules["attrs"]["scope"]
         if curr_scopes is not None and parent_scopes is not None:
             check_scope_compatibility(curr_scopes, parent_scopes, row)
-        check_rulebook_scope_compatibility(rules[CHILDREN], get_effective_scopes(curr_scopes, parent_scopes))
+        check_rulebook_scope_compatibility(rules["children"], get_effective_scopes(curr_scopes, parent_scopes))
 
 
 def get_effective_scopes(curr_scopes: list[str] | None, parent_scopes: list[str] | None) -> list[str] | None:
@@ -458,13 +433,13 @@ def _check_pre_merge_for_duplicate_rules(pre_merge: OrderPreMerge, context: Lite
     """
     count: defaultdict[str, Any] = defaultdict(dict)
     for row, data in pre_merge:
-        split = data[RULES][ATTRS][SPLIT]
-        count[row][COUNT] = count[row].get(COUNT, 0) + 1
-        if count[row].get(SPLIT) is None:
-            count[row][SPLIT] = split
-        elif count[row][SPLIT] != split:
+        split = data["rules"]["attrs"]["split"]
+        count[row]["count"] = count[row].get("count", 0) + 1
+        if count[row].get("split") is None:
+            count[row]["split"] = split
+        elif count[row]["split"] != split:
             raise RulebookSyntaxError(f"Rule '{row}' has different %split parameters in the {context} rulebook.")
-        if not split and count[row][COUNT] > 1:
+        if not split and count[row]["count"] > 1:
             raise RulebookSyntaxError(
                 f"Rule '{row}' has no %split parameter but is listed multiple times in the {context} rulebook."
             )
