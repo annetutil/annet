@@ -5,11 +5,13 @@ from textwrap import dedent
 import pytest
 
 from annet.annlib.rbparser import syntax
-from annet.patching import PatchTree, make_diff
+from annet.patching import PatchTree, make_diff, make_patch, make_pre
 from annet.rulebook.common import default, default_diff, ordered_diff
 from annet.rulebook.patching import _make_reverse, compile_patching_text
 from annet.types import Op
 from annet.vendors.tabparser import CommonFormatter
+
+from .. import make_hw_stub
 
 
 @pytest.fixture
@@ -123,6 +125,50 @@ def test_diff_keeps_block_order_with_mixed_diff_logic():
         (Op.ADDED, "60 remark GRE"),
         (Op.ADDED, "70 permit gre any any"),
         (Op.ADDED, "230 deny ip any any log"),
+    ]
+
+
+def test_patch_keeps_block_order_when_rows_match_different_rules(ann_connectors):
+    """The patch must follow the config, not the rulebook rule that matched each row - #638"""
+    rb_text = dedent("""
+        ip access-list ~
+            ?/(\\d+)/ remark ~   %diff_logic=tests.annet.test_patching.custom_diff_logic
+            ~
+    """).strip()
+    rb = {"patching": compile_patching_text(rb_text, "cisco"), "ordering": {}}
+    hw = make_hw_stub("cisco")
+
+    old = odict([("ip access-list extended TEST", odict())])
+    new = odict(
+        [
+            (
+                "ip access-list extended TEST",
+                odict(
+                    (row, odict())
+                    for row in [
+                        "10 remark SSH",
+                        "20 permit tcp any any eq 22",
+                        "30 remark GRE",
+                        "40 permit gre any any",
+                        "50 remark DENY",
+                        "60 deny ip any any log",
+                    ]
+                ),
+            )
+        ]
+    )
+
+    diff = make_diff(old, new, rb, [])
+    patch = make_patch(pre=make_pre(diff), rb=rb, hw=hw, add_comments=False)
+    # the remarks are matched by their own rule and the rest by the plain one,
+    # yet the acl is written out in the order it was generated in
+    assert list(patch.asdict()["ip access-list extended TEST"]) == [
+        "10 remark SSH",
+        "20 permit tcp any any eq 22",
+        "30 remark GRE",
+        "40 permit gre any any",
+        "50 remark DENY",
+        "60 deny ip any any log",
     ]
 
 

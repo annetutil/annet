@@ -616,7 +616,7 @@ def _filter_rows_by_rulebook_selector(
 def make_pre(diff: Diff, _parent_match: dict[str, Any] | None = None) -> dict[str, Any]:
     pre: dict[str, Any] = odict()
     reversals: defaultdict[str, set[str]] = defaultdict(set)
-    for op, row, children, match in diff:
+    for position, (op, row, children, match) in enumerate(diff):
         if _parent_match and _parent_match["attrs"]["multiline"]:
             # Если родительское правило было мультилайном, то все внутренности станут его контентом.
             # Это значит, что к ним будет принудительно применяться common.default() и фейковое
@@ -647,6 +647,7 @@ def make_pre(diff: Diff, _parent_match: dict[str, Any] | None = None) -> dict[st
                 "rule": match["rule"],
                 "attrs": match["attrs"],
                 "items": odict(),
+                "positions": {},
             }
         if key not in pre[raw_rule]["items"]:
             pre[raw_rule]["items"][key] = {
@@ -656,6 +657,7 @@ def make_pre(diff: Diff, _parent_match: dict[str, Any] | None = None) -> dict[st
                 Op.AFFECTED: [],
                 Op.UNCHANGED: [],
             }
+            pre[raw_rule]["positions"][key] = position
 
         pre[raw_rule]["items"][key][op].append(
             {
@@ -699,6 +701,7 @@ class _Pre(TypedDict):
     rule: str
     attrs: _PreAttrs
     items: odict[tuple[str, ...], dict[OpType, list[_DiffItem]]]
+    positions: dict[tuple[str, ...], int]
 
 
 class _PatchRow(TypedDict):
@@ -710,41 +713,73 @@ class _PatchRow(TypedDict):
     sort_key: tuple[Any, ...]
 
 
+def _iterate_over_pre(
+    pre: odict[str, _Pre],
+) -> Iterable[tuple[_Pre, tuple[str, ...], dict[OpType, list[_DiffItem]]]]:
+    groups = [
+        (content["positions"][key], content, key, diff)
+        for content in pre.values()
+        for key, diff in content["items"].items()
+    ]
+    for _, content, key, diff in sorted(groups):
+        yield content, key, diff
+
+
 def _iterate_over_patch(
     pre: odict[str, _Pre],
     hw: HardwareView,
     do_commit: bool,
     add_comments: bool,
 ) -> Iterable[_PatchRow]:
-    for raw_rule, content in pre.items():
-        for key, diff in content["items"].items():
-            rule_pre = content.copy()
-            attrs = copy.deepcopy(rule_pre["attrs"])
-            iterable = attrs["logic"](
-                rule=attrs,
-                key=key,
-                diff=diff,
-                hw=hw,
-                rule_pre=rule_pre,
-                root_pre=pre,
-            )
-            for direct, row, sub_pre in iterable:
-                if direct is None:
-                    continue
+    for content, key, diff in _iterate_over_pre(pre):
+        rule_pre = content.copy()
+        attrs = copy.deepcopy(rule_pre["attrs"])
+        iterable = attrs["logic"](
+            rule=attrs,
+            key=key,
+            diff=diff,
+            hw=hw,
+            rule_pre=rule_pre,
+            root_pre=pre,
+        )
+        for direct, row, sub_pre in iterable:
+            if direct is None:
+                continue
 
-                if add_comments:
-                    comments = " ".join(attrs["comment"])
-                    for macro, m_value in _comment_macros.items():
-                        comments = comments.replace(macro, m_value)
-                    if comments:
-                        row = f"{row} {comments}"
+            if add_comments:
+                comments = " ".join(attrs["comment"])
+                for macro, m_value in _comment_macros.items():
+                    comments = comments.replace(macro, m_value)
+                if comments:
+                    row = f"{row} {comments}"
 
-                if not do_commit and attrs.get("force_commit", False):
-                    # if do_commit is false skip patch that couldn't be applied without commit
-                    continue
+            if not do_commit and attrs.get("force_commit", False):
+                # if do_commit is false skip patch that couldn't be applied without commit
+                continue
 
-                if sub_pre is None:
-                    # leaf -> emit itself
+            if sub_pre is None:
+                # leaf -> emit itself
+                yield _PatchRow(
+                    row=(row,),
+                    keys=(key,),
+                    attrs=attrs.copy(),
+                    direct=direct,
+                    rules=(content["rule"],),
+                    sort_key=(),
+                )
+
+            else:
+                # block
+                children = list(
+                    _iterate_over_patch(
+                        sub_pre,
+                        hw=hw,
+                        add_comments=add_comments,
+                        do_commit=do_commit,
+                    )
+                )
+                if not children:
+                    # block, no children -> emit itself
                     yield _PatchRow(
                         row=(row,),
                         keys=(key,),
@@ -753,37 +788,16 @@ def _iterate_over_patch(
                         rules=(content["rule"],),
                         sort_key=(),
                     )
-
-                else:
-                    # block
-                    children = list(
-                        _iterate_over_patch(
-                            sub_pre,
-                            hw=hw,
-                            add_comments=add_comments,
-                            do_commit=do_commit,
-                        )
+                for sub_row in children:
+                    # block, has children -> emit only children
+                    yield _PatchRow(
+                        row=(row, *sub_row["row"]),
+                        keys=(key, *sub_row["keys"]),
+                        attrs=sub_row["attrs"],
+                        direct=sub_row["direct"],
+                        rules=(content["rule"], *sub_row["rules"]),
+                        sort_key=(),
                     )
-                    if not children:
-                        # block, no children -> emit itself
-                        yield _PatchRow(
-                            row=(row,),
-                            keys=(key,),
-                            attrs=attrs.copy(),
-                            direct=direct,
-                            rules=(content["rule"],),
-                            sort_key=(),
-                        )
-                    for sub_row in children:
-                        # block, has children -> emit only children
-                        yield _PatchRow(
-                            row=(row, *sub_row["row"]),
-                            keys=(key, *sub_row["keys"]),
-                            attrs=sub_row["attrs"],
-                            direct=sub_row["direct"],
-                            rules=(content["rule"], *sub_row["rules"]),
-                            sort_key=(),
-                        )
 
 
 def sort_patch_rows(orderer: Orderer, patch_rows: list[_PatchRow]) -> None:
