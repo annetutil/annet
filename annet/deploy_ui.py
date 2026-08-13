@@ -73,8 +73,8 @@ class AskConfirm:
     def _parse_text(self) -> None:
         txt = self.text[0]
         txt_split = txt.splitlines()
-        # curses pad, который тут используется, имеет ограничение на количество линий
-        if (len(txt_split) + 1) >= NCURSES_SIZE_T:  # +1 для того чтобы курсор можно было переместить на пустую строку
+        # the curses pad used here has a limit on the number of lines
+        if (len(txt_split) + 1) >= NCURSES_SIZE_T:  # +1 so that the cursor can be moved onto an empty line
             del txt_split[NCURSES_SIZE_T - 3 :]
             txt_split.insert(0, self.CUT_WARN_MSG)
             txt_split.append(self.CUT_WARN_MSG)
@@ -113,8 +113,8 @@ class AskConfirm:
 
     def _render_to_pad(self, lines: dict[int, list[TextArgs]]) -> None:
         """
-        Рендерим данный на pad
-        :param lines: словарь проиндексированный по номерам линий
+        Render the data onto the pad
+        :param lines: a dict indexed by line numbers
         :return:
         """
         assert self.pad is not None
@@ -220,7 +220,7 @@ class AskConfirm:
             self._update_search_pos(expr)
             self._parse_text()
             self._init_pad()
-            # срендерем поверх pad слой с подстветкой
+            # render a highlight layer on top of the pad
             self._render_to_pad(self.found_pos)
             y_offset, x_offset = self.search_next()
         self.prompt = current_prompt
@@ -516,7 +516,8 @@ class ProgressBars(ProgressBar):
             tile_no += 1
 
             if mode is TailMode.UNIFORM:
-                height = int(scree_size[0] // len(self.tiles_params))  # TODO:остаток от деления прибавить к последнему
+                # TODO: add the division remainder to the last one
+                height = int(scree_size[0] // len(self.tiles_params))
                 win = curses.newwin(height, width, begin_y, begin_x)
             elif mode is TailMode.ONE_CONTENT:
                 if i == self.active_tile:
@@ -732,7 +733,7 @@ class ProgressBars(ProgressBar):
 
     def set_title(self, tile_name: str, title: str | TextArgs) -> None:
         tile = self.tiles[tile_name]
-        # в 0 элементе хранится выровненный хостнейм
+        # element 0 holds the aligned hostname
         title0 = tile.title[0]
         new_title = [title0, title]
         if new_title == tile.title:

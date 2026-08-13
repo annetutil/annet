@@ -12,12 +12,13 @@ def ssh_key(
     rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], hw: HardwareView, **_: Any
 ) -> Iterator[tuple[bool, str, Any]]:
     """
-    При включении ssh надо еще сгенерировать ключ. По конфигу никак не понять есть ли ключ на свитче или нет.
+    When ssh is enabled a key has to be generated as well.
+    There is no way to tell from the config whether the switch has a key.
     """
     if diff[Op.ADDED]:
         added = sorted([x["row"] for x in diff[Op.ADDED]])
         if added == ["ip ssh version 2"]:
-            # Отсыпаем mpdaemon-у подсказок для дополнительной команды при наливке
+            # Give mpdaemon some hints about the extra command needed during provisioning
             comment = rule["comment"]
             rule["comment"] = ["!!suppress_errors!!", "!!timeout=240!!"]
             if hw.Cisco.Catalyst.C2900.C2960:
@@ -32,11 +33,11 @@ def no_ipv6_nd_suppress_ra(
     rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
 ) -> Iterator[tuple[bool, str, Any]]:
     """
-    При конфигурации ipv6 nd на нексусах нужно добавлять
+    When configuring ipv6 nd on nexus devices
     no ipv6 nd suppress-ra
-    иначе RA не будет включен.
-    К сожалению данной команды не видно в running-config.
-    Поэтому подмешиваем ее в патч вместо генератора
+    has to be added, otherwise RA will not be enabled.
+    Unfortunately this command is not visible in the running-config.
+    That is why we mix it into the patch instead of the generator
     """
     if diff[Op.ADDED]:
         yield (False, "no ipv6 nd suppress-ra", None)
@@ -47,8 +48,7 @@ def no_ntp_distribute(
     rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
 ) -> Iterator[tuple[bool, str, Any]]:
     """
-    Для того, чтобы удалить NTP из CFS, сначала нужно сбросить активные
-    NTP сессии.
+    To remove NTP from CFS, the active NTP sessions have to be cleared first.
     """
     if diff[Op.REMOVED]:
         yield (False, "clear ntp session", None)
@@ -59,7 +59,7 @@ def banner_any(
     rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
 ) -> Iterator[tuple[bool, str, Any]]:
     if diff[Op.ADDED]:
-        # Убираем дополнительный экранирующий сиимвол
+        # Strip the extra escaping character
         banner = re.sub(r"\^C", "^", diff[Op.ADDED][0]["row"])
         yield (False, banner, None)
     elif diff[Op.REMOVED]:

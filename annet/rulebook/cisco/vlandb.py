@@ -36,7 +36,7 @@ def _process_vlandb(
 ) -> Iterator[tuple[bool, str, Any]]:
     # pylint: disable=unused-argument
     for affected in diff[Op.AFFECTED]:
-        # Изменилось содержимое блока vlan
+        # The contents of the vlan block have changed
         yield (True, affected["row"], affected["children"])
 
     (prefix, new, new_blocks) = _parse_vlancfg_actions(diff[Op.ADDED])
@@ -55,13 +55,13 @@ def _process_vlandb(
             return
 
     for vlan_id in (set(old_blocks.keys()) - set(new_blocks)) & new:
-        # Удалено содержимое блока vlan, но сам влан остался
+        # The contents of the vlan block were removed, but the vlan itself is still there
         yield (True, "%s %s" % (prefix, vlan_id), old_blocks[vlan_id])
 
     removed = old.difference(new)
     added = new.difference(old)
     if hw.Cisco.Catalyst:
-        # Каталисты не перечисляют вланы в batch режиме, если они представлены как блоки
+        # Catalysts do not list vlans in batch mode if they are represented as blocks
         added -= new_blocks.keys()
 
     if removed:
@@ -108,7 +108,7 @@ def _parse_vlancfg_actions(actions: list[dict[str, Any]]) -> tuple[str | None, s
 
 
 def _parse_vlancfg(row: str) -> tuple[str, set[int]]:
-    # иногда циски ставят пробелы между влан ренджами, а иногда нет.
+    # sometimes ciscos put spaces between vlan ranges, and sometimes they do not.
     words = re.sub(r",\s+", ",", row).split()
 
     if words[-1] == "none":

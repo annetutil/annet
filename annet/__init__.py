@@ -29,7 +29,7 @@ def fill_base_args(parser: annet.argparse.ArgParser, pkg_name: str, logging_conf
         "--log-level",
         default="WARN",
         type=valid_logging_level,
-        help="Уровень детализации логов (DEBUG, DEBUG2 (with transport debug), INFO, WARN, CRITICAL)",
+        help="Log verbosity level (DEBUG, DEBUG2 (with transport debug), INFO, WARN, CRITICAL)",
     )
     parser.add_argument("--pkg_name", default=pkg_name, help=SUPPRESS)
     parser.add_argument("--logging_config", default=logging_config, help=SUPPRESS)
@@ -58,7 +58,7 @@ def init(options: Namespace) -> None:
     if logging.getLogger().getEffectiveLevel() <= logging.DEBUG:
         installed_packages = _get_installed_packages_list()
         logging.debug("installed_packages %s", installed_packages)
-    # Отключить colorama.init, если стоит env-переменная. Нужно в тестах
+    # Disable colorama.init if the env variable is set. Needed in tests
     if os.environ.get("ANN_FORCE_COLOR", None) not in [None, "", "0", "no"]:
         colorama.init = lambda *_, **__: None
     colorama.init()

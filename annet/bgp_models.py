@@ -79,7 +79,7 @@ class VidCollection:
 
 class ASN(int):
     """
-    Stores ASN number and formats it as в AS1.AS2
+    Stores an ASN and formats it as AS1.AS2
     None is treated like 0. Supports integer operations
     Supported formats: https://tools.ietf.org/html/rfc5396#section-1
     """

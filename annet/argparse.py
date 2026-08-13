@@ -106,7 +106,7 @@ class Arg(Generic[_ArgT]):
     def __init__(self: Arg[Any], *args: Any, **kwargs: Any) -> None: ...  # noqa: E704
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Конструктор повторяет прототип parser.add_argument()"""
+        """The constructor has the same signature as parser.add_argument()"""
         if args and isinstance(args[0], type(self)):
             # copy constructor
             args = args[0].args
@@ -120,7 +120,7 @@ class Arg(Generic[_ArgT]):
         self._prepared = False
         self.default: Any = None
 
-        self.dest: str | None = None  # заполняется в attach()
+        self.dest: str | None = None  # filled in by attach()
 
     @overload
     def __get__(self, obj: None, owner: type[Any] | None = None) -> Arg[_ArgT]: ...  # noqa: E704
@@ -160,10 +160,10 @@ class Arg(Generic[_ArgT]):
 
 class ArgGroup:
     """
-    Контейнер для нескольких аргументов.
-    Класс служит для описания набора аргументов, а экземляр - для хранения значений.
+    A container for several arguments.
+    The class describes a set of arguments, while an instance holds their values.
 
-    Пример:
+    Example:
     class Group1(ArgGroup):
         in = Arg("--in")
         out = Arg("--out")
@@ -174,7 +174,7 @@ class ArgGroup:
 
     def __init__(self, *args: ArgGroup, **kwargs: Any) -> None:
         """
-        В kwargs - пары ключ-значение. Соотвествующие опции должны быть объявлены в классе
+        kwargs holds key-value pairs. The matching options must be declared in the class
         """
         keys = {arg_name: arg.default for arg_name, arg in self._enum_args().items()}
         for src_obj in args:
@@ -413,19 +413,19 @@ def subcommand(
     *arg_list: Arg[Any] | type[ArgGroup], parent: Callable[..., Any] | None = None, is_group: bool = False
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
-    декоратор, задающий cli-аргументы подпрограммы
+    decorator that declares the cli arguments of a subcommand
 
-    Пример:
+    Example:
     @subcommand(Arg(), ArgGroup)
     def cmd1(arg1, arg2):
         pass
 
-    Связь аргументов происходит только по порядковому номеру, каждый аргумент subcommand становится аргументом функции.
-    Функция вызывается только с позиционными аргументами, всегда с одним и тем же количеством аргументов.
+    Arguments are bound by position only, every subcommand argument becomes an argument of the function.
+    The function is always called with positional arguments only, and always with the same number of them.
 
-    Для создания более одного уровня команд используется аргумент parent
+    Use the parent argument to build more than one level of commands
 
-    Пример: 'ann some thing' - вызовет some_thing()
+    Example: 'ann some thing' - calls some_thing()
 
     @subcommand()
     def some():

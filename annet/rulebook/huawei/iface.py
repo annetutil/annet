@@ -10,13 +10,13 @@ from annet.rulebook import common
 def permanent(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:  # pylint: disable=redefined-outer-name  # noqa: E501
     ifname = key[0]
     if re.match(r"(Eth-Trunk|Vlanif|Vbdif|Loop[Bb]ack|Tunnel|.*\.\d+)", ifname):
-        # эти интерфейсы можно удалять
+        # these interfaces can be removed
         yield from common.default(rule, key, diff, **kwargs)
     else:
         yield from common.permanent(rule, key, diff, **kwargs)
 
 
-# [NOCDEV-2180] Хуавей просит переввести ip конфигурацию после изменения vrf
+# [NOCDEV-2180] Huawei asks to re-enter the ip configuration after the vrf has changed
 def binding_change(
     old: OrderedDict[str, Any],
     new: OrderedDict[str, Any],

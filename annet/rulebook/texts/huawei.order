@@ -1,34 +1,34 @@
 # vim: set syntax=annrulebook:
-# В этом файле определяется порядок команд, в котором их следует подавать на устройство.
-# - Если порядок команды не важен - ее можно не писать сюда совсем.
-# - Если команда начинается с undo и прописан параметр %order_reverse - команда считается
-#   обратной, но занимает место между прямыми там, где указано (т.е. undo vlan batch
-#   будет стоять после блоков interface).
+# This file defines the order in which the commands should be sent to the device.
+# - If the order of a command does not matter - it can be left out of this file entirely.
+# - If a command starts with undo and the %order_reverse parameter is set, the command is treated
+#   as a reverse one, but takes its place among the direct ones where specified (i.e. undo vlan batch
+#   will come after the interface blocks).
 
 
-# Сначала сплитим порты и размечаем ресурсы
+# First the ports are split and the resources are allocated
 
 license
 
-# Сначала сплитим порты и размечаем ресурсы
+# First the ports are split and the resources are allocated
 port split mode
 port split dimension
 port split refresh
 dfs-group
 assign forward
 
-# Переключаю порт в режим 200G
+# Switch the port into 200G mode
 port mode 200GE
 
 #clock
 #sysname
 #info-center
 
-# на vpn-instance Meth есть много ссылок отовсюду, так что создадим как можно раньше
+# the vpn-instance Meth is referenced from all over the place, so it is created as early as possible
 
 undo dcn
 
-# на vpn-instance Meth есть много ссылок отовсюду, так что создадим как можно раньше
+# the vpn-instance Meth is referenced from all over the place, so it is created as early as possible
 ip vpn-instance */[Mm][Ee][Tt]h.*/
 
 #ntp
@@ -39,20 +39,20 @@ ip vpn-instance */[Mm][Ee][Tt]h.*/
 #rsa
 #ecc
 
-# из-за того, что Huawei не позволяет иметь в одном prefix-list 2 одинаковых правила,
-# нужно сначала удалить все несовпадающие, а затем заполнить их заново
-# в таком случае нужно расскомментить эту строчку, но она не позволяет снести plist целиком
-# сначала мы добавляем stub-правило в рулсет чтобы оно не позволяло prefix-list'у "пропасть"
-# индекс референсится в логике патчинга префикс-листа huawei.misc.prefix_list
+# since Huawei does not allow two identical rules in a single prefix-list,
+# all the non-matching ones have to be removed first and then filled in again
+# in that case this line has to be uncommented, but it prevents the plist from being removed entirely
+# first a stub rule is added to the ruleset so that it does not let the prefix-list "disappear"
+# the index is referenced in the prefix-list patching logic in huawei.misc.prefix_list
 
 rsa local-key-pair create
 #ecc
 
-# из-за того, что Huawei не позволяет иметь в одном prefix-list 2 одинаковых правила,
-# нужно сначала удалить все несовпадающие, а затем заполнить их заново
-# в таком случае нужно расскомментить эту строчку, но она не позволяет снести plist целиком
-# сначала мы добавляем stub-правило в рулсет чтобы оно не позволяло prefix-list'у "пропасть"
-# индекс референсится в логике патчинга префикс-листа huawei.misc.prefix_list
+# since Huawei does not allow two identical rules in a single prefix-list,
+# all the non-matching ones have to be removed first and then filled in again
+# in that case this line has to be uncommented, but it prevents the plist from being removed entirely
+# first a stub rule is added to the ruleset so that it does not let the prefix-list "disappear"
+# the index is referenced in the prefix-list patching logic in huawei.misc.prefix_list
 ip */(ip|ipv6)/-prefix * index 99999999
 undo ip */(ip|ipv6)/-prefix * index *   %order_reverse
 ip */(ip|ipv6)/-prefix
@@ -66,7 +66,7 @@ ip extcommunity-filter
 
 tunnel-policy
 
-# evpn-overlay должен быть объявлен до ip vpn-instance
+# evpn-overlay must be declared before ip vpn-instance
 evpn-overlay *
 
 route-policy */VRF_.*/
@@ -79,7 +79,7 @@ ip vpn-instance
         ~
     ~
 
-# это должно идти после vpn-instance
+# this must come after vpn-instance
 ntp
 
 #stp mode
@@ -160,7 +160,7 @@ aaa
 
     */(authentication|authorization|accounting)-scheme/ *
 
-    # domain референсит scheme
+    # domain references scheme
     domain *
 
     task-group
@@ -182,18 +182,18 @@ undo radius-server template * %order_reverse
 user-interface
 drop-profile
 
-# SR глобально -> MPLS -> IS-IS -> IS-IS и SID на интерфейсах
+# SR globally -> MPLS -> IS-IS -> IS-IS and SID on the interfaces
 
 ipv6
 
-# SR глобально -> MPLS -> IS-IS -> IS-IS и SID на интерфейсах
+# SR globally -> MPLS -> IS-IS -> IS-IS and SID on the interfaces
 segment-routing
     sr-te policy *
         candidate-path * *
             undo segment-list * %order_reverse
     undo segment-list *  %order_reverse
 
-# Сначала глобально mpls включаем, потом на интерфейсы
+# mpls is enabled globally first, and only then on the interfaces
 mpls
     mpls te cspf
     mpls te cspf preferred-igp
@@ -207,7 +207,7 @@ explicit-path
 
 route-policy EXPORT_ISIS
 
-# должно идти перед интерфейсами, иначе невозможен 'isis enable 1'
+# must come before the interfaces, otherwise 'isis enable 1' is impossible
 isis
 
 undo interface */Vlanif\d+/ %order_reverse
@@ -224,25 +224,25 @@ bridge-domain *
     undo evpn
     undo vxlan
 
-# Должно идти перед interface, т.к. на уровне interface идет ссылка на diffserv domain
+# Must come before interface, since the interface level references the diffserv domain
 diffserv domain *
 
 lldp enable
 
-# Включение dot1x должно происходить перед interface
-# так как там используются дополнительные настройки dot1x per interface
+# dot1x must be enabled before interface
+# since additional per-interface dot1x settings are used there
 
 dot1x enable
 
-# Отключение lnp должно идти перед interface
+# lnp must be disabled before interface
 
 lnp disable
 
-# Удаляем существующие Vbdif перед созданием новых
+# The existing Vbdifs are removed before the new ones are created
 
     ip-dscp-inbound ~
 
-# удалять eth-trunk можно только после того, как вычистим member interfaces
+# an eth-trunk can only be removed after the member interfaces have been cleaned up
 undo interface */Vbdif\d+/ %order_reverse
 undo interface */.*[.]\d+/ %order_reverse
 
@@ -259,7 +259,7 @@ interface */Tunnel.*/
     mpls te path metric-type
 
 interface *
-    # должно идти до undo portswich, т.к. потом удалить он ее не даст
+    # must come before undo portswitch, since afterwards it will not let it be removed
     undo mac-address learning     %order_reverse
     undo portswitch
     undo ip address * * sub  %order_reverse
@@ -317,23 +317,23 @@ interface *
     vrrp vrid [11|12]
     ~
     poe
-# Нужно чтобы subif'ы портов шли после конфигурации самих портов, иначе свитч ругнется на то что порт l2
+# The subifs of the ports must come after the configuration of the ports themselves; otherwise the switch complains that the port is l2
 interface */\S+\.\d+/
 
 undo erps ring
 
-# Добавляем порт в monitor-link group после создания интерфейсов
-# Удаляем порт из monitor-link group до удаления интерфейсов
+# A port is added to a monitor-link group after the interfaces are created
+# A port is removed from a monitor-link group before the interfaces are removed
 
 monitor-link group *
     port * downlink *
     undo port * downlink * %order_reverse
 
-# Должен быть после interface потому что в нем ссылается на diffserv domain
+# Must come after interface because it references the diffserv domain
 
 undo diffserv domain * 	%order_reverse
 
-# маршруты идут после интерфейсов
+# routes come after the interfaces
 ip route-static
 ipv6 route-static
 
@@ -348,11 +348,11 @@ ospf
 
 bgp
     router-id
-    # [NOCDEV-1182] у load-balancing есть несколько взаимоисключающих флейверов
+    # [NOCDEV-1182] load-balancing has several mutually exclusive flavours
     undo undo maximum load-balancing %order_reverse
     maximum load-balancing
-    # [NOCDEV-2043] Тут только декларируем пиров и группы
-    # поскольку на них есть ссылки из family блоков
+    # [NOCDEV-2043] Only the peers and the groups are declared here
+    # since they are referenced from the family blocks
     undo group * listen external
     group
     peer * as-number *
@@ -376,7 +376,7 @@ bgp
     l2vpn-ad-family
         peer * enable
         peer * ~
-    # [NOCDEV-2043] Остальное в глобальном блоке делаем тут
+    # [NOCDEV-2043] Everything else in the global block is done here
     undo peer * description %order_reverse
     undo peer * group * %order_reverse
     undo peer * * * * %order_reverse
@@ -387,12 +387,12 @@ bgp
     peer * ~
 
 
-# Вырубаем bfd после bgp, но до vpn
+# bfd is torn down after bgp, but before vpn
     peer * capability-advertise graceful-restart
     peer * graceful-restart timer restart
 
 
-# Вырубаем bfd после bgp, но до vpn
+# bfd is torn down after bgp, but before vpn
 undo bfd * %order_reverse
 undo bfd %order_reverse
 
@@ -468,53 +468,53 @@ telemetry
     destination-group *
     subscription *
 
-# удалять eth-trunk можно только после того, как вычистим member interfaces
+# an eth-trunk can only be removed after the member interfaces have been cleaned up
 undo interface */Eth-Trunk\d+/  %order_reverse
 undo interface             %order_reverse
 
-# interface Tunnel* ссылается на 'explicit-path'
+# interface Tunnel* references 'explicit-path'
 undo interface */Tunnel.*/ %order_reverse
 undo explicit-path %order_reverse
 
-# drop-profile можно удалять только после удаления референсов на него в интерфейсах
+# drop-profile can only be removed after the references to it on the interfaces are removed
 undo drop-profile %order_reverse
 
-# vlan'ы удаляем после vlanif/subif
+# vlans are removed after vlanif/subif
 undo vlan %order_reverse
 undo vlan batch %order_reverse
 undo observe-port %order_reverse
 
-# Должны быть после interface потому что в нем ссылается traffic-policy
-# И именно в данном порядке
-# policy ссылаются на behavior и classifier, они на acl'и
+# Must come after interface because it references traffic-policy
+# And exactly in this order
+# policies reference behavior and classifier, and those reference acls
 
 undo bridge-domain %order_reverse
 
-# l2 интерфейсы можем добавлять только после удаления vlan
+# l2 interfaces can only be added after the vlan has been removed
 
 interface */\S+\.\d+/ mode l2
 
-# Должны быть после interface потому что в нем ссылается traffic-policy
-# Должны быть после удаления интерфейсов, в противном случае получим ошибку:
-# нельзя удалить полиси которая применена на интерфейсе
-# И именно в данном порядке
-# policy ссылаются на behavior и classifier, они на acl'и
+# Must come after interface because it references traffic-policy
+# Must come after the interfaces are removed, otherwise we get the error:
+# a policy that is applied on an interface cannot be removed
+# And exactly in this order
+# policies reference behavior and classifier, and those reference acls
 undo qos group          %order_reverse
 undo qos schedule-profile	%order_reverse
 undo traffic policy     %order_reverse
 undo traffic behavior   %order_reverse
 undo traffic classifier %order_reverse
 
-#Удаляем acl в самом конце
+#acls are removed at the very end
 undo acl                %order_reverse
 
-#sflow может висеть а subif/eth-trunk
+#sflow may be attached to a subif/eth-trunk
 undo sflow %order_reverse
 
-# Данное стаб-правило должно удаляться в самую посленюю очередь
-# поскольку если префикс-лист должен уходить из конфигурации полностью
-# перед этим должны быть удалены все его референсы в конфиге
-# индекс референсится в логике патчинга префикс-листа huawei.misc.prefix_list
+# This stub rule must be removed at the very end
+# because if the prefix-list has to leave the configuration entirely
+# all of its references in the config have to be removed before that
+# the index is referenced in the prefix-list patching logic in huawei.misc.prefix_list
 undo ip */(ip|ipv6)/-prefix * index 99999999  %order_reverse
 
 #remove template only after all references will be cleared

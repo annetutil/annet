@@ -19,7 +19,7 @@ class Entire(BaseGenerator):
 
     def __init__(self, storage: Storage) -> None:
         self.storage = storage
-        # между генераторами для одного и того же path - выбирается тот что больше
+        # among the generators for the same path, the one with the higher prio wins
         if not hasattr(self, "prio"):
             self.prio = 100
         self.__device: Device | None = None

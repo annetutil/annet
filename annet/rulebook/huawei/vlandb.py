@@ -34,19 +34,19 @@ def vlan_diff(
     for item in common.default_diff(old, new, diff_pre, _pops):
         result_item: DiffItem | None
         prefix, vlan_ids = _parse_vlancfg(item.row)
-        # если влан был объявлен глобально и при этом остается в батче
-        # команда undo vlan ... будет пытаться полностью выпилить его с устройства
-        # и из батча тоже. при этом делать undo vlan ... ; vlan batch ... не выход
-        # поскольку для удаления cli требует удалить все vlanif"ы и проч
+        # if the vlan was declared globally and stays in the batch,
+        # the undo vlan ... command would try to wipe it from the device entirely,
+        # and from the batch as well. doing undo vlan ... ; vlan batch ... is not a way out either,
+        # since for a removal the cli requires all the vlanifs and so on to be deleted first
         if prefix == "vlan" and item.op == Op.REMOVED and batch_new.intersection(vlan_ids):
             result_item = DiffItem(Op.AFFECTED, item.row, item.children, item.diff_pre)
-        # если влан объявлен глобально и одновременно с этим в батче
-        # и при этом в блоке глобального объявления нет никаких опций
-        # не добавляем его он будет висеть зазря - таким образом мы сохраним
-        # симметрию с предыдущей логикой оба инварианта будут выдавать пустой патч
+        # if the vlan is declared globally and at the same time in the batch,
+        # and the global declaration block has no options in it,
+        # do not add it - it would just hang around for nothing. this way we keep
+        # the symmetry with the previous logic, both invariants produce an empty patch
         elif prefix == "vlan" and batch_new.intersection(vlan_ids) and not item.children:
             result_item = None
-        # vlan batch и остальное мы не трогаем
+        # vlan batch and everything else is left untouched
         else:
             result_item = item
         if result_item:
@@ -82,7 +82,7 @@ def _process_vlandb(
     added = new.difference(old)
 
     if removed:
-        # с chunk_len=0 (по умолчанию) collapse_vlandb всегда возвращает list[str]
+        # with chunk_len=0 (the default) collapse_vlandb always returns list[str]
         collapsed = cast("list[str]", collapse_vlandb(removed))
         for chunk in _iter_chunks(collapsed, multi, multi_chunk):
             yield (False, "undo %s %s" % (prefix_del, " ".join(chunk)), None)

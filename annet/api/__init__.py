@@ -87,7 +87,7 @@ def _diff_and_patch(
 ) -> tuple[Diff, patching.PatchTree]:
     if rb is None:
         rb = rulebook.get_rulebook(device.hw)
-    # [NOCDEV-5532] Передаем в diff только релевантные для logic'a части конфига
+    # [NOCDEV-5532] Pass only the config parts relevant to the logic into the diff
     if acl_rules is not None:
         old = patching.apply_acl(old, acl_rules)
         new = patching.apply_acl(new, acl_rules, with_annotations=add_comments)
@@ -298,7 +298,7 @@ def log_host_progress_cb(pool: Parallel, task_result: TaskResult) -> None:
 
 # =====
 def gen(args: cli_args.ShowGenOptions, loader: ann_gen.Loader) -> tuple[Mapping[Any, Any], Mapping[Any, BaseException]]:
-    """Сгенерировать конфиг для устройств"""
+    """Generate the config for the devices"""
     stdin = args.stdin(filter_acl=args.filter_acl, config=None)
 
     filterer = filtering.filterer_connector.get()
@@ -315,7 +315,7 @@ def gen(args: cli_args.ShowGenOptions, loader: ann_gen.Loader) -> tuple[Mapping[
 def patch(
     args: cli_args.ShowPatchOptions, loader: ann_gen.Loader
 ) -> tuple[Mapping[Any, Any], Mapping[Any, BaseException]]:
-    """Сгенерировать патч для устройств"""
+    """Generate the patch for the devices"""
     current_state = annet.lib.do_async(
         ann_gen.get_current_state(
             args.config,
@@ -408,7 +408,7 @@ def res_diff_patch(
 def diff(
     args: cli_args.DiffOptions, loader: ann_gen.Loader, device_ids: List[Any]
 ) -> tuple[Mapping[Device, Union[Diff, PCDiff]], Mapping[Device, Exception]]:
-    """Сгенерировать дифф для устройств"""
+    """Generate the diff for the devices"""
     devices = [device for device in loader.devices if device.id in device_ids]
     current_state = annet.lib.do_async(
         ann_gen.get_current_state(
@@ -436,9 +436,9 @@ def diff(
 
 def collapse_texts(texts: Mapping[str, str | Generator[str, None, None]]) -> Mapping[Tuple[str, ...], str]:
     """
-    Группировка текстов.
+    Group the texts.
     :param texts:
-    :return: словарь с несколькими хостнеймами в ключе.
+    :return: a dict with several hostnames in the key.
     """
     diffs_with_orig: dict[str, tuple[str, list[str]]] = {}
     for key, value in texts.items():
@@ -643,7 +643,7 @@ class Deployer:
             if not diff_obj:
                 self.empty_diff_hostnames.update(dev.hostname for dev in devices)
             if not self.args.no_ask_deploy:
-                # разобьём список устройств на несколько линий
+                # split the device list over several lines
                 dest_name = ""
                 try:
                     _, term_columns_str = os.popen("stty size", "r").read().split()
@@ -690,7 +690,7 @@ class Deployer:
         )
 
     def _ask(self, default_ans: str, ask: annet.deploy_ui.AskConfirm) -> str:
-        # если filter_acl из stdin то с ним уже не получится работать как с терминалом
+        # if filter_acl comes from stdin, stdin can no longer be used as a terminal
         ans = default_ans
         if not self.args.no_ask_deploy:
             try:
@@ -775,7 +775,7 @@ async def adeploy(
     filterer: Filterer,
     deploy_driver: DeployDriver,
 ) -> ExitCode:
-    """Сгенерировать конфиг для устройств и задеплоить его"""
+    """Generate the config for the devices and deploy it"""
     ret: ExitCode = 0
     current_state = await ann_gen.get_current_state(
         "running",
@@ -798,7 +798,7 @@ async def adeploy(
         filterer=filterer,
         current_state=current_state,
     ):
-        # Меняем exit code если хоть один device ловил exception
+        # Change the exit code if at least one device raised an exception
         if res.err is not None:
             if not args.tolerate_fails:
                 raise res.err
@@ -851,7 +851,7 @@ async def adeploy(
 
 
 def file_diff(args: cli_args.FileDiffOptions) -> tuple[Mapping[Any, Any], Mapping[Any, BaseException]]:
-    """Создать дифф по рулбуку между файлами или каталогами"""
+    """Build a diff between files or directories using the rulebook"""
     old_new = list(_read_old_new_cfgdumps(args))
     pool = Parallel(file_diff_worker, args).tune_args(args)
     return pool.run(old_new, tolerate_fails=True)
@@ -901,7 +901,7 @@ def file_diff_worker(
 
 @tracing.function
 def file_patch(args: cli_args.FilePatchOptions) -> tuple[Mapping[Any, Any], Mapping[Any, BaseException]]:
-    """Создать патч между файлами или каталогами"""
+    """Build a patch between files or directories"""
     old_new = list(_read_old_new_cfgdumps(args))
     pool = Parallel(file_patch_worker, args).tune_args(args)
     return pool.run(old_new, tolerate_fails=True)
@@ -928,8 +928,8 @@ def file_patch_worker(
 
 
 def guess_hw(config_text: str) -> tuple[HardwareView, float]:
-    """Пытаемся угадать вендора и hw на основе
-    текста конфига и annet/rulebook/texts/*.rul"""
+    """Try to guess the vendor and hw from
+    the config text and annet/rulebook/texts/*.rul"""
     scores = []
     hw_provider = hardware_connector.get()
     vendor_registry = registry_connector.get()
@@ -955,12 +955,12 @@ def guess_hw(config_text: str) -> tuple[HardwareView, float]:
 
 
 def _count_pre_score(top_pre: dict[str, Any]) -> float:
-    """Обходим вширь pre-конфиг
-    и подсчитываем количество заматчившихся
-    правил на каждом из уровней.
+    """Walk the pre-config breadth-first
+    and count the number of rules that matched
+    at each level.
 
-    Чем больше результирующий приоритет
-    тем больше рулбук соответсвует конфигу.
+    The higher the resulting priority,
+    the better the rulebook matches the config.
     """
     score = 0
     scores = []

@@ -117,11 +117,11 @@ opt_tolerate_fails = Arg("--tolerate-fails", default=False, help="Show errors wi
 opt_recache = Arg("--recache", default=False, help="Force expiration of storage's local cache if it is supported")
 
 
-# При параллельном запуске и включённом --tolerate-fails код возврата
-# всегда нулевой. Это не позволяет нам легко понять, прошла ли генерация
-# успешно для всех устройств. С этим флажком код будет ненулевой, если
-# генерация упала хотя бы для одного устройства. А в хелпе эту переменную
-# не выводим, там и так не протолкнуться от флагов.
+# When running in parallel with --tolerate-fails enabled the return code
+# is always zero. That makes it hard to tell whether generation succeeded
+# for every device. With this flag the code is non-zero if generation
+# failed for at least one device. The option is hidden from the help;
+# there are more than enough flags there already.
 opt_strict_exit_code = Arg(
     "--strict-exit-code",
     default=False,
@@ -285,7 +285,7 @@ opt_no_collapse = Arg(
     help="Do not collapse identical diffs for a device group (turns on when using --dest)",
 )
 
-opt_fails_only = Arg("--fails-only", default=False, help="Показать только устройства с ошибками")
+opt_fails_only = Arg("--fails-only", default=False, help="Show only the devices that failed")
 
 opt_include_missing = Arg("--include-missing", default=False, help="Include files that exist in only one directory")
 

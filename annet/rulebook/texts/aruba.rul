@@ -1,14 +1,14 @@
-# Операторы:
-#   *  Один аргумент в undo
-#   ~  Несколько аргументов (минимум один) в undo
+# Operators:
+#   *  One argument in undo
+#   ~  One or more arguments in undo
 #
-# Параметры:
-#   %global         Команда действует на любом уровне ниже
-#   %logic=...      Кастомная функция обработки правила
-#   %diff_logic=... Кастомная функция построения диффа.
-#                   данная функция работает для подблоков (в отличие от %logic)
-#   %comment=...    Добавить коммент после строки который будет видно с опцией patch --add-comments
-#                   Сделано в основном для того чтобы генерировать специальные команды для наливки
+# Parameters:
+#   %global         The command applies at any level below
+#   %logic=...      Custom rule processing function
+#   %diff_logic=... Custom diff building function.
+#                   Works for sub-blocks, unlike %logic
+#   %comment=...    Adds a comment after the row; shown with the patch --add-comments option
+#                   Primarily used to generate special provisioning commands
 # -----
 
 %context=block:ap-env

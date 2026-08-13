@@ -95,12 +95,12 @@ class OutputDriverBasic(OutputDriver):
         self, arg_out: FileOutOptions, items: Iterable[Tuple[str, Any, bool]], query_result_count: int = 1
     ) -> None:
         """
-        пишет результаты генерации в файл или директорию :dest
-        :dest - это директория в случаях:
-        - заканчивается на "/"
-        - существует директория с таким именем
-        - более одного устройства в результате запроса
-        - есть entire-генераторы (определяется по типу первого результата, если устройство одно)
+        writes the generation results into the file or directory :dest
+        :dest is a directory when:
+        - it ends with "/"
+        - a directory with that name exists
+        - the query returned more than one device
+        - there are entire generators (detected by the type of the first result, if there is a single device)
         """
         logger = get_logger()
 
@@ -108,7 +108,7 @@ class OutputDriverBasic(OutputDriver):
         try:
             first_result = next(items_iter)
         except StopIteration:
-            # нет результатов, ничего не пишем и не создаём
+            # no results, nothing to write and nothing to create
             return
 
         def _reassemble_items() -> Iterator[Tuple[str, Any, bool]]:
@@ -202,9 +202,9 @@ class OutputDriverBasic(OutputDriver):
         return res
 
     def entire_config_dest_path(self, device: Device, config_path: str) -> str:
-        """Формирует путь к конфигу в директории destname.
+        """Builds the path to the config inside the destname directory.
 
-        Например, для устройства с hostname `my-device`:
+        For example, for a device with the hostname `my-device`:
         ```
         >>> device.entire_config_dest_path("/etc/frr/frr.conf")
         'my-device.cfg/etc/frr/frr.conf'
@@ -212,8 +212,8 @@ class OutputDriverBasic(OutputDriver):
         ```
         """
 
-        # NOTE: с полученным `config_path` работаем через `posixpath`, а не через `os.path`, потому что
-        #       entire-путь POSIX-специфичный; но в конце формируем путь через `os.path` для текущей платформы
+        # NOTE: the resulting `config_path` is handled with `posixpath` rather than `os.path`, because
+        #       the entire path is POSIX-specific; the final path is built with `os.path` for the current platform
         if not posixpath.abspath(config_path):
             raise RuntimeError(f"Want absolute config path, but relative received: {config_path}")
 

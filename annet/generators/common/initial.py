@@ -6,13 +6,13 @@ from annet.storage import Device, Storage
 
 class InitialConfig(PartialGenerator):
     """
-    Конфиги у свежих (еще ни разу не настраиваемых устройств)
-    на самом деле НЕ пустые. В данном генераторе отображен
-    такой набор команд, по крайней мере тех, которые могут
-    изменяться в ходе первичной конфигурации.
+    The configs of fresh devices (ones that have never been configured yet)
+    are in fact NOT empty. This generator captures that set of
+    commands, at least the ones that may change during the
+    initial configuration.
 
-    Acl для данного генератора не нужен, он будет генерировать
-    конфиг целиком.
+    This generator does not need an acl; it generates the whole
+    config.
     """
 
     def __init__(self, storage: Storage, do_run: bool = False) -> None:

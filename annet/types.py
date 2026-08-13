@@ -27,7 +27,7 @@ ExitCode: TypeAlias = int
 
 class GeneratorPerf:
     """
-    Рантайм статистика времени выполнения генератора
+    Runtime execution statistics of a generator
     """
 
     def __init__(self, total: float, rt: dict[str, list[dict[str, Any]]] | None, meta: dict[str, Any] | None = None):
@@ -42,7 +42,7 @@ class GeneratorPerf:
 
 class GeneratorPartialRunArgs:
     """
-    Параметры и модификаторы для запуска run_partial_generators
+    Parameters and modifiers for running run_partial_generators
     """
 
     def __init__(
@@ -55,16 +55,16 @@ class GeneratorPartialRunArgs:
         no_new: bool = False,
     ):
         self.device = device
-        self.use_acl = use_acl  # фильтруем по acl ввыод генератора (--no-acl для дебага)
-        self.use_acl_safe = use_acl_safe  # [NOCDEV-6190] используем более строгий генераторный acl
-        self.annotate = annotate  # добавляем в каждую строку вывода информацию откуда она была заyield'ена
-        self.generators_context = generators_context  # строка с именем контекста генераторов
-        self.no_new = no_new  # для опции --clear, не пытаемся запустить генераторы, выдаем только acl
+        self.use_acl = use_acl  # filter the generator output by acl (--no-acl for debugging)
+        self.use_acl_safe = use_acl_safe  # [NOCDEV-6190] use the stricter generator acl
+        self.annotate = annotate  # add information about where each output row was yielded from
+        self.generators_context = generators_context  # string with the name of the generators context
+        self.no_new = no_new  # for the --clear option, do not run the generators, return the acl only
 
 
 class GeneratorPartialResult:
     """
-    Результат запуска Partial-генератора
+    Result of running a Partial generator
     """
 
     def __init__(
@@ -94,7 +94,7 @@ class GeneratorPartialResult:
 
 class GeneratorEntireResult:
     """
-    Результат запуска Entire-генератора
+    Result of running an Entire generator
     """
 
     def __init__(
@@ -120,7 +120,7 @@ class GeneratorEntireResult:
 
 class GeneratorJSONFragmentResult:
     """
-    Результат запуска JSONFragment-генератора
+    Result of running a JSONFragment generator
     """
 
     def __init__(
@@ -152,7 +152,7 @@ GeneratorResult = GeneratorEntireResult | GeneratorPartialResult | GeneratorJSON
 
 
 class OldNewResult:
-    """Результат запуска old_new"""
+    """Result of running old_new"""
 
     # pylint: disable=too-many-arguments
     def __init__(

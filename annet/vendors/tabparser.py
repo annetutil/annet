@@ -222,7 +222,7 @@ class BlockExitFormatter(CommonFormatter):
     no_block_exit: str | tuple[str, ...] = ()
 
     def split_remove_spaces(self, text: str) -> list[str]:
-        # эта регулярка заменяет 2 и более пробела на один, но оставляет пробелы в начале линии
+        # this regexp collapses 2 or more spaces into one, but keeps the leading spaces of a line
         text = re.sub(r"(?<=\S)\ {2,}(?=\S)", " ", text)
         res = super().split(text)
         return res
@@ -267,8 +267,8 @@ class HuaweiFormatter(BlockExitFormatter):
     policy_end_blocks = ("end-list", "endif", "end-filter")
 
     def split(self, text: str) -> list[str]:
-        # на старых прошивка наблюдается баг с двумя пробелами в этом месте в конфиге
-        # например на VRP V100R006C00SPC500 + V100R006SPH003
+        # old firmware versions have a bug with two spaces at this place in the config
+        # for example on VRP V100R006C00SPC500 + V100R006SPH003
         tree = self.split_remove_spaces(text)
         tree[:] = filter(lambda x: not str(x).strip().startswith(self.policy_end_blocks), tree)
         return tree
@@ -677,7 +677,7 @@ class RibbonFormatter(JuniperFormatter):
 
 class JuniperList:
     """
-    Форматирует inline-листы в конфиге juniper
+    Formats inline lists in a juniper config
     """
 
     def __init__(self, *args: Any, spaces: bool = True, **kwargs: Any) -> None:
@@ -701,20 +701,20 @@ class NokiaFormatter(JuniperFormatter):
 
     def split(self, text: str) -> list[str]:
         ret = super().split(text)
-        # NOCDEVDUTY-248 сдергиваем верхний configure-блок
-        # NOCDEVDUTY-282 после configure {} блока могут идти еще блоки которые нам не нужны
+        # NOCDEVDUTY-248 strip the top-level configure block
+        # NOCDEVDUTY-282 the configure {} block may be followed by other blocks that we do not need
         start, finish = None, None
         for i, line in enumerate(ret):
             if line.startswith("#"):
                 continue
-            # начало configure-блока
+            # start of the configure block
             if line == "configure":
                 start = i + 1
-            # любой после configure последующий блок на глобальном уровне
+            # any block at the global level that follows configure
             elif len(line) == len(line.lstrip()):
                 if start is not None and finish is None:
                     finish = i
-        # Если configure-блока не было - то весь конфиг считаем configre'ом
+        # If there was no configure block - treat the whole config as configure
         start = start if start is not None else 0
         finish = finish if finish is not None else len(ret)
         return ret[start:finish]
@@ -997,7 +997,7 @@ def _filtered_lines(
 ) -> Iterator[str | type[BlockEnd] | type[_CommentOrEmpty]]:
     for line in lines:
         stripped = line.strip()
-        # TODO Это для хуавей, так что хелпер нужно унести в Formatter
+        # TODO This is huawei-specific, so the helper should be moved into Formatter
         if "#" in comments and line.startswith("#"):
             yield BlockEnd
         elif len(stripped) == 0 or stripped.startswith(comments):

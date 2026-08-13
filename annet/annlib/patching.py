@@ -538,7 +538,7 @@ def make_diff(
     rb: Mapping[str, Any],
     acl_rules_list: list[Rules | None],
 ) -> Diff:
-    # не позволяем logic-коду модифицировать конфиг
+    # do not let the logic code modify the config
     old = copy.deepcopy(old)
     new = copy.deepcopy(new)
     diff_pre = apply_diff_rb(old, new, rb)
@@ -572,7 +572,7 @@ def apply_diff_rb(
                 "subtree": apply_diff_rb(
                     old.get(row, odict()),
                     new.get(row, odict()),
-                    rb={"patching": children_rules},  # Нужен только кусок, касающийся правил для патчей
+                    rb={"patching": children_rules},  # only the part related to patching rules is needed
                 ),
             }
         else:
@@ -618,16 +618,16 @@ def make_pre(diff: Diff, _parent_match: dict[str, Any] | None = None) -> dict[st
     reversals: defaultdict[str, set[str]] = defaultdict(set)
     for position, (op, row, children, match) in enumerate(diff):
         if _parent_match and _parent_match["attrs"]["multiline"]:
-            # Если родительское правило было мультилайном, то все внутренности станут его контентом.
-            # Это значит, что к ним будет принудительно применяться common.default() и фейковое
-            # правило __MULTILINE_BODY__.
+            # If the parent rule was a multiline, everything inside it becomes its content.
+            # This means common.default() and the fake __MULTILINE_BODY__ rule are forcibly
+            # applied to it.
             match = {
                 "raw_rule": "__MULTILINE_BODY__",
                 "rule": "__MULTILINE_BODY__",
                 "key": row,
                 "attrs": {
                     "comment": [],
-                    "logic": common_default,  # Прекрасно работает с мультилайнами и обрезанным правилом
+                    "logic": common_default,  # works perfectly with multilines and a trimmed rule
                     "multiline": True,
                     "context": _parent_match["attrs"]["context"],
                 },
@@ -1034,11 +1034,11 @@ def _find_acl_matches(row: str, rules: Rules) -> list[tuple[_AclMetric, _AclMatc
             match = rule["attrs"][regexp_key].match(row_to_match)
             if match:
                 rule["attrs"]["match"] = match.groupdict()
-                # FIXME: сейчас у нас вообще не используется тип ignore, но он иногда встречается в ACL.
-                # Проблема в том, что ACL мержится, и игноры все ломают. Надо придумать, что с этим сделать.
-                # В данный момент ignore acl работает только в filter-acl, так как он целостный и накладывается
-                # независимо. В этом случае ignore правила так же матчатся и считается их специфичность на ряду с normal
-                # при выборе ignore правила, заматченная строка не будет пропущена
+                # FIXME: the ignore type is not used at all right now, but it does show up in ACLs sometimes.
+                # The problem is that ACLs get merged, and ignores break everything. We need to figure out what to do.
+                # At the moment ignore acl only works in filter-acl, since that one is self-contained and is applied
+                # independently. In that case ignore rules are matched too and their specificity is counted
+                # along with the normal ones; when an ignore rule is selected, the matched row is not let through
                 metric = (
                     rule["attrs"]["prio"],
                     # Calculate how specific matched regex is for the row
@@ -1082,10 +1082,10 @@ def _find_rules_matches(row: str, rules: Rules) -> list[_AclMatchItem]:
 def _select_match(matches: list[_AclMatchItem], rules: Rules) -> tuple[_AclMatch | None, Rules | None]:
     ((f_rule, is_f_cr_allowed), f_other) = matches[0]  # f == first
     if f_rule["type"] == "ignore":
-        # В данный момент эта ветка достижима только в filter-acl
+        # At the moment this branch is only reachable from filter-acl
         return (None, None)
 
-    # Мерджим всех потомков которые заматчились
+    # Merge all the children that matched
     local_children: dict[Any, Any] = odict()
     global_children: dict[Any, Any] = odict()
     if is_f_cr_allowed:
@@ -1116,7 +1116,7 @@ def _rules_local_global(rules: Rules) -> Iterator[tuple[tuple[str, _AclRule], bo
 
 
 def _normalize_row_for_acl(row: str, rule: _AclRule) -> str:
-    # NOCDEV-5940 У джуниперов есть служебрая разметка "inactive:"
+    # NOCDEV-5940 Junipers have a special "inactive:" marker
     if rule["attrs"]["vendor"] == "juniper":
         row = jun_activate(row)
     return row

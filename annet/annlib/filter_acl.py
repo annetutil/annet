@@ -12,8 +12,8 @@ from .diff import diff_ops, ops_sign
 from .rbparser import acl
 
 
-UnifiedInputConfig: TypeAlias = str  # Конфиг классических сетевых устройств
-FileInputConfig: TypeAlias = dict[str, Any]  # Конфиг вайтбоксов и серверов
+UnifiedInputConfig: TypeAlias = str  # config of classic network devices
+FileInputConfig: TypeAlias = dict[str, Any]  # config of whiteboxes and servers
 InputConfig: TypeAlias = UnifiedInputConfig | FileInputConfig
 
 Acl: TypeAlias = dict[str, Any]
@@ -71,13 +71,13 @@ def filter_patch(acl: Acl, fmtr: tabparser.CommonFormatter, text: str) -> str:
     return filter_config(acl, fmtr, text)
 
 
-# NOCDEV-6378 на патч для Juniper/Nokia нельзя просто так наложить filter_acl
+# NOCDEV-6378 filter_acl cannot be applied to a Juniper/Nokia patch as-is
 def filter_patch_jun_nokia(diff_filtered: str, fmtr: tabparser.CommonFormatter, text: str) -> str:
     """
-    Накладываем ACL на патчи для Juniper/Nokia
+    Apply the ACL to Juniper/Nokia patches
 
-    Поскольку в патче уже потерена иерархия команд - они развернуты в строки типа
-    Нужна дополнительная информация о изначальном конфиге, которую можно подсмотреть в дифе
+    The patch has already lost the command hierarchy and is flattened into lines like the ones below,
+    so extra information about the original config is required; it can be taken from the diff:
         set interface et-0/0/0 unit ....
         delete interface et-0/0/0 unit ....
         /configure port 1/1/c17/1 ...
@@ -192,10 +192,10 @@ def diff_to_tree(diff: UnifiedDiff) -> UnifiedConfigTree:
 
 def _tree_expand_lists_nokia_jun(diff_tree: DiffTree) -> None:
     """
-    Раскрываем списки Nokia/Juniper в отдельные элементы
+    Expand Nokia/Juniper lists into separate items
     {command: {"[a, b, c]": {}}}   ->   {command a: {}, command b: {}, command c: {}}
 
-    В неупорядоченном множестве префиксов также стираем ';' на конце - их не бывает в патче
+    In an unordered set of prefixes the trailing ';' is stripped as well - patches never contain it
     {prefix-list: {"2a02::/64;": {}, "2a03::/64;": {}}}   ->   {prefix-list: {"2a02::/64": {}, "2a03::/64": {}}}
     """
     process: list[dict[str, Any]] = [diff_tree]

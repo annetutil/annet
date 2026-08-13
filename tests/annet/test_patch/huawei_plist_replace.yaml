@@ -1,10 +1,10 @@
-# Тестируем сложную логику патчинга префикс-листов для хуавей
-# в случае если префикс-лист целиком заменяется
-# хуавей предполагает что сначала должны быть удалены все референсы
-# хотя префикс-лист никуда никто удалять не собирается
-# обойти эту проблему помогает специальное стаб-правило 99999999
+# Test the complex prefix-list patching logic for huawei
+# when a prefix-list is replaced entirely
+# huawei assumes that all the references have to be removed first
+# even though nobody is going to remove the prefix-list itself
+# the special stub rule 99999999 helps to work around this problem
 
-# Изменяем целиком ipv6 префикс-лист
+# Replace an ipv6 prefix-list entirely
 - vendor: Huawei
   before: |
     ip ipv6-prefix PFXS_SPECIALv6 index 10 permit 2001:db8:: 64
@@ -23,8 +23,8 @@
     q
     save
 
-# Изменяем целиком ipv6 префикс-лист c референсом в роут-мапе
-# проверяем что стаб-правило удаляется в самую последнюю очередь
+# Replace an ipv6 prefix-list entirely, with a reference in a route-map
+# check that the stub rule is removed at the very end
 - vendor: Huawei
   before: |
     ip ipv6-prefix PFXS_SPECIALv6 index 10 permit 2001:db8:: 64
@@ -50,7 +50,7 @@
     q
     save
 
-# Изменяем целиком ipv4 префикс-лист
+# Replace an ipv4 prefix-list entirely
 - vendor: Huawei
   before: |
     ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 5 permit 172.16.0.0 16 greater-equal 32 less-equal 32
@@ -70,8 +70,8 @@
     save
 
 
-# Изменяются не все правила то нам не нужны стабы поскольку
-# хуавей не будет считать такой префикс-лист удаляемым
+# Not all the rules change, so no stubs are needed:
+# huawei will not consider such a prefix-list to be removed
 - vendor: Huawei
   before: |
     ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 5 permit 10.4.141.80 28 greater-equal 32 less-equal 32
@@ -87,7 +87,7 @@
     save
 
 
-# Меняем сразу два префикс-листа один целиком второй нет
+# Change two prefix-lists at once, one entirely and the other one not
 - vendor: Huawei
   before: |
     ip ipv6-prefix PFXS_SPECIALv6 index 10 permit 2001:db8:: 64

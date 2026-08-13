@@ -211,7 +211,7 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
                 logger.info("Generating PARTIAL ...")
             try:
                 output = gen(device, run_args.annotate)
-            except NotSupportedDevice:  # это исключение нужно передать выше в оригинальном виде
+            except NotSupportedDevice:  # this exception must be passed up as-is
                 raise
             except Exception as err:
                 filename, lineno = gen.get_running_line()

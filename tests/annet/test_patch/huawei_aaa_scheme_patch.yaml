@@ -1,4 +1,4 @@
-# подкоманды объявления aaa-схем всегда просто перезаписываются новым набором
+# the subcommands of an aaa scheme declaration are always simply overwritten with the new set
 - vendor: huawei
   diff: |
     aaa

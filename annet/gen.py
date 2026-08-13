@@ -49,8 +49,8 @@ from annet.types import OldNewResult as OldNewResult
 from annet.vendors import registry_connector, tabparser
 
 
-# Вывод всех генераторов вместе.
-# Значение такое же, как для аналогичной константы в ЧК.
+# The output of all generators together.
+# The value is the same as for the equivalent constant in the Checkist.
 ALL_GENS = "_all_gens"
 
 
@@ -692,7 +692,7 @@ def format_files(files: dict[str, str]) -> str:
 
 
 def find_files_relative(path: str) -> Generator[str, None, None]:
-    """Рекурсивно найти файлы в path и вернуть пути к ним относительно path"""
+    """Recursively find the files in path and return their paths relative to path"""
     root_abs_path = os.path.abspath(path)
     for dirpath, _dirnames, filenames in os.walk(path):
         for filename in filenames:
@@ -701,7 +701,7 @@ def find_files_relative(path: str) -> Generator[str, None, None]:
 
 
 def load_pc_config(path: str, set_root: bool = False) -> Dict[str, str]:
-    """Подхватываем локально сохраненные файлы конфигов для вайтбоксов"""
+    """Pick up the locally stored config files for whiteboxes"""
     ret: Dict[str, str] = {}
     for relative_cfg_path in find_files_relative(path):
         with open(os.path.join(path, relative_cfg_path)) as cfg_file:

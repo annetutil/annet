@@ -34,7 +34,7 @@ def fill_base_args(parser: ArgParser, pkg_name: str, logging_config: str) -> Non
         "--log-level",
         default="WARN",
         type=valid_logging_level,
-        help="Уровень детализации логов (DEBUG, DEBUG2 (with transport debug), INFO, WARN, CRITICAL)",
+        help="Log verbosity level (DEBUG, DEBUG2 (with transport debug), INFO, WARN, CRITICAL)",
     )
     parser.add_argument("--pkg_name", default=pkg_name, help=argparse.SUPPRESS)
     parser.add_argument("--logging_config", default=logging_config, help=argparse.SUPPRESS)
@@ -289,7 +289,7 @@ def file_diff(args: cli_args.FileDiffOptions) -> None:
     if not args.fails_only:
         out.extend(item for items in success.values() for item in items)
     out.extend(output_driver.format_fails(fail))
-    # todo отрефакторить логику с отображением хоста в диффе: передавать в write_output явно критерий
+    # todo refactor the logic that shows the host in the diff: pass the criterion to write_output explicitly
     output_driver.write_output(args, out, len(out) + 1)
 
 

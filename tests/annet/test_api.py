@@ -63,7 +63,7 @@ from annet import api
             id="arista",
         ),
         pytest.param(
-            # конфиги схожи
+            # the configs are similar
             {"cisco", "nexus", "b4com"},
             """
         interface port-channel2.3000

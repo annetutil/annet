@@ -30,7 +30,7 @@ def _combine_acl_text(
 
 class RunGeneratorResult:
     """
-    Результат запуска run_partial_generators/run_file_generators
+    Result of running run_partial_generators/run_file_generators
     """
 
     def __init__(self) -> None:
@@ -44,7 +44,7 @@ class RunGeneratorResult:
         self.partial_results[result.name] = result
 
     def add_entire(self, result: GeneratorEntireResult) -> None:
-        # Если есть несколько генераторов на один файл, выбрать тот, что с большим приоритетом
+        # If several generators produce the same file, pick the one with the higher priority
         if result.path:
             if result.path not in self.entire_results or result.prio > self.entire_results[result.path].prio:
                 self.entire_results[result.path] = result

@@ -16,7 +16,7 @@ class RouterOSVendor(AbstractVendor):
     ) -> tuple[CommandList, CommandList]:
         before, after = CommandList(), CommandList()
 
-        # FIXME: пока не удалось победить \x1b[c после включения safe mode
+        # FIXME: could not get rid of \x1b[c after enabling safe mode yet
         # if len(cmds) > 99:
         #     raise Exception("RouterOS does not support more 100 actions in safe mode")
         # before.add_cmd(RosDevice.SAFE_MODE)

@@ -40,9 +40,9 @@ def is_ip_cmd(cmd: str) -> bool:
 
 # ===
 
-# Вырезает все команды не разрешенные
-# на членах агрегата. В running-config
-# листинге они наследуются от самого port-channel
+# Strips all the commands that are not allowed
+# on the members of an aggregate. In the running-config
+# listing they are inherited from the port-channel itself
 
 
 def _filter_channel_members(tree: odict[str, Any]) -> None:
@@ -54,12 +54,12 @@ def _filter_channel_members(tree: odict[str, Any]) -> None:
 
 def is_in_channel(cmd_line: str) -> bool:
     """
-    Признак того, что это lagg member
+    Whether this is a lagg member
     """
     return cmd_line.startswith("channel-group")
 
 
-# Возможно тут есть еще какие-то команды
+# There may be some more commands here
 def _is_allowed_on_channel(cmd_line: str) -> bool:
     return cmd_line.startswith(
         (
