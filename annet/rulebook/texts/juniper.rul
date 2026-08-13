@@ -23,6 +23,7 @@ system
             match
         file messages
             match
+            archive        %diff_logic=annet.rulebook.juniper.misc.syslog_archive_diff
 
 routing-options
     autonomous-system *
@@ -53,6 +54,9 @@ chassis
 protocols
     isis
         overload
+        interface *
+            level 2      %diff_logic=annet.rulebook.juniper.misc.level2_interface_diff
+                ~
     mpls
         path *
             *           %ordered

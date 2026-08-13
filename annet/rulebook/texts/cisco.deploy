@@ -20,8 +20,16 @@
 crypto key generate rsa %timeout=60
     dialog: Do you really want to replace them? [yes/no]: ::: no
     dialog: How many bits in the modulus [512]: ::: 2048
+
+no username ~
+    dialog: This operation will remove all username related configurations with same name.Do you want to continue? [confirm] ::: Y
 no username * privilege * secret * *
     dialog: This operation will remove all username related configurations with same name.Do you want to continue? [confirm] ::: Y  %send_nl=0
 
 copy running-config startup-config
     dialog: Destination filename [startup-config]? ::: startup-config
+
+interface */\w*Ethernet[0-9\/]+$/
+    spanning-tree portfast %suppress_errors
+
+no snmp-server sysobjectid type stack-oid %suppress_errors

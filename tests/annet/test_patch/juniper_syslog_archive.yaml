@@ -1,0 +1,86 @@
+# `archive` is declared as a block, but the box may return it inlined on one line.
+# syslog_archive_diff collapses the declared block to match, so the two forms compare
+# equal instead of producing an endless diff.
+
+# inlined on the box, block in the config, same contents -> nothing to do
+- vendor: juniper
+  before: |-
+    system {
+        syslog {
+            file messages {
+                archive size 10m files 10 world-readable;
+            }
+        }
+    }
+  after: |-
+    system {
+        syslog {
+            file messages {
+                archive {
+                    size 10m;
+                    files 10;
+                    world-readable;
+                }
+            }
+        }
+    }
+  patch: |
+
+# same shapes, but a value really did change -> a patch, not a no-op
+- vendor: juniper
+  before: |-
+    system {
+        syslog {
+            file messages {
+                archive size 10m files 10 world-readable;
+            }
+        }
+    }
+  after: |-
+    system {
+        syslog {
+            file messages {
+                archive {
+                    size 20m;
+                    files 10;
+                    world-readable;
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    set system syslog file messages archive size 20m files 10 world-readable
+    commit
+    exit
+
+# both sides already blocks -> the helper must not disturb the ordinary diff
+- vendor: juniper
+  before: |-
+    system {
+        syslog {
+            file messages {
+                archive {
+                    size 10m;
+                    files 10;
+                }
+            }
+        }
+    }
+  after: |-
+    system {
+        syslog {
+            file messages {
+                archive {
+                    size 10m;
+                    files 20;
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete system syslog file messages archive files 10
+    set system syslog file messages archive files 20
+    commit
+    exit

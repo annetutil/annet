@@ -32,6 +32,9 @@ diff: |
     - instance 2 vlan 1 2 3 to 4
 patch: |
   system-view
+  stp region-configuration
+    undo instance 2
+    quit
   vlan batch 543 to 599 635 2542 to 2599 2635 2999
   vlan 542
     description nalivka
@@ -53,8 +56,5 @@ patch: |
     eth-trunk 0
     quit
   undo vlan batch 1999
-  stp region-configuration
-    undo instance 2
-    quit
   q
   save

@@ -51,8 +51,11 @@ arm
     g-channels
     min-tx-power
     max-tx-power
+    160mhz-support
     free-channel-index
     band-steering-mode
+    backoff-time
+    air-time-fairness-mode
 
 rf dot11g-radio-profile
     max-distance
@@ -67,6 +70,16 @@ rf dot11a-radio-profile
     min-tx-power
     free-channel-index
     interference-immunity
+
+ip dhcp pool$
+    dhcp-relay$
+    dhcp-server
+    dns-cache$
+    dns-server
+    domain-name
+    lease-time
+    subnet
+    subnet-mask
 
 wlan access-rule ~
     rule ~          %ordered
@@ -89,9 +102,13 @@ rf-band
 name
 virtual-controller-ip
 
+virtual-controller-country
+
 wlan tacacs-server tacacs
     key
     timeout
+
+ble-configure %ignore_case
 
 no ~ %global
 ~ %global

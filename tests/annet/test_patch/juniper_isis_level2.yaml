@@ -1,0 +1,83 @@
+# `level 2` under an isis interface is declared as a block, but the box may return it
+# inlined when there is a single term. level2_interface_diff expands the inlined form
+# into a block, so the two compare equal instead of producing an endless diff.
+
+# inlined on the box, block in the config, same contents -> nothing to do
+- vendor: juniper
+  before: |-
+    protocols {
+        isis {
+            interface ae0.0 {
+                level 2 metric 20;
+            }
+        }
+    }
+  after: |-
+    protocols {
+        isis {
+            interface ae0.0 {
+                level 2 {
+                    metric 20;
+                }
+            }
+        }
+    }
+  patch: |
+
+# same shapes, but the metric really did change -> a patch, not a no-op
+- vendor: juniper
+  before: |-
+    protocols {
+        isis {
+            interface ae0.0 {
+                level 2 metric 20;
+            }
+        }
+    }
+  after: |-
+    protocols {
+        isis {
+            interface ae0.0 {
+                level 2 {
+                    metric 30;
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete protocols isis interface ae0.0 level 2 metric 20
+    set protocols isis interface ae0.0 level 2 metric 30
+    commit
+    exit
+
+# more than one term, so the box returns a block too -> ordinary diff, helper stays out
+- vendor: juniper
+  before: |-
+    protocols {
+        isis {
+            interface ae0.0 {
+                level 2 {
+                    metric 20;
+                    post-convergence-lfa;
+                }
+            }
+        }
+    }
+  after: |-
+    protocols {
+        isis {
+            interface ae0.0 {
+                level 2 {
+                    metric 30;
+                    post-convergence-lfa;
+                }
+            }
+        }
+    }
+  patch: |
+    configure exclusive
+    delete protocols isis interface ae0.0 level 2 metric 20
+    set protocols isis interface ae0.0 level 2 metric 30
+    commit
+    exit

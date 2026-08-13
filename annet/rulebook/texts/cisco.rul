@@ -23,6 +23,13 @@ vrf context *
 
 vlan group * vlan-list %logic=annet.rulebook.cisco.vlandb.simple
 vlan */[^\d].*/
+
+ipv6 route ~                 %ignore_case
+
+spanning-tree vlan 1-4094 priority \d+
+
+mac access-list *
+
 vlan %logic=annet.rulebook.cisco.vlandb.simple
     name
 
@@ -102,6 +109,15 @@ route-policy *
     ~              %rewrite %global
 
 %endif
+
+wlccp wds priority ~ %logic=annet.rulebook.common.ignore_changes
+
+interface */Dot11Radio[0-9]/
+    speed
+    power local
+
+dot11 ssid *
+    wpa-psk
 
 line ~
     exec-timeout

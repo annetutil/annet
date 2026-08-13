@@ -3,6 +3,8 @@
 # - Если команда начинается с undo и прописан параметр %order_reverse - команда считается
 #   обратной, но занимает место между прямыми там, где указано.
 
+
+logging console
 banner login %order_reverse
 
 # Фичи должны быть включены прежде всего
@@ -10,10 +12,48 @@ feature
 # За ним сервисы
 service
 
+lldp run
+
+setup express
+
+# Генерим ключи до проливки aaa, а для этого нужны domain-name и hostname
+
+hostname *
+
+ip domain-name *
+
+crypto key generate ~ %order_reverse
+
+clock ~
+
+archive
+
+dot1x system-auth-control
+
+errdisable ~
+
+mac ~
+
+vtp ~
+
+mls ~
+
+port-channel ~
+
+ip ~
+
+logging ~
+
+snmp-server ~
+
 aaa new-model
 aaa ~
 
+enable ~
+
 no password strength-check
+
+parser view
 username
 tacacs-server
 
@@ -46,6 +86,8 @@ ntp commit
 vlan
 vlan group
 
+mac access-list ~
+
 spanning-tree
 
 # перед тем, как менять mtu на интерфейсах, надо выставить максимальный
@@ -60,20 +102,37 @@ ipv6 dhcp relay
 
 vrf context
 
+dot11 ssid *
+    vlan
+    authentication
+    mbssid guest-mode
+    wpa-psk
+
 interface */Vlan\d+/
 interface *
     no switchport
     encapsulation
+    vrf member
     ip vrf forwarding
     vrf forwarding
     ip
     ipv6
     no ipv6 nd %order_reverse
     ipv6 nd
+    bridge-group
+    no bridge-group * source-learning %order_reverse
+    no bridge-group * unicast-flooding %order_reverse
+    encryption
+    mbssid
+    ssid
     ~
     channel-group
 
 interface */\S+\.\d+/
+
+# удалять eth-trunk можно только после того, как вычистим member interfaces
+
+no dot11 ssid %order_reverse
 
 # удалять eth-trunk можно только после того, как вычистим member interfaces
 undo interface */port-channel\d+/  %order_reverse
@@ -84,3 +143,7 @@ router bgp
     neighbor */[\da-f\.\:]+/ peer-group
 
 line
+
+ip igmp snooping
+
+ip igmp snooping vlan

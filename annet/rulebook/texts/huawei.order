@@ -7,6 +7,10 @@
 
 
 # Сначала сплитим порты и размечаем ресурсы
+
+license
+
+# Сначала сплитим порты и размечаем ресурсы
 port split mode
 port split dimension
 port split refresh
@@ -19,6 +23,10 @@ port mode 200GE
 #clock
 #sysname
 #info-center
+
+# на vpn-instance Meth есть много ссылок отовсюду, так что создадим как можно раньше
+
+undo dcn
 
 # на vpn-instance Meth есть много ссылок отовсюду, так что создадим как можно раньше
 ip vpn-instance */[Mm][Ee][Tt]h.*/
@@ -36,9 +44,20 @@ ip vpn-instance */[Mm][Ee][Tt]h.*/
 # в таком случае нужно расскомментить эту строчку, но она не позволяет снести plist целиком
 # сначала мы добавляем stub-правило в рулсет чтобы оно не позволяло prefix-list'у "пропасть"
 # индекс референсится в логике патчинга префикс-листа huawei.misc.prefix_list
+
+rsa local-key-pair create
+#ecc
+
+# из-за того, что Huawei не позволяет иметь в одном prefix-list 2 одинаковых правила,
+# нужно сначала удалить все несовпадающие, а затем заполнить их заново
+# в таком случае нужно расскомментить эту строчку, но она не позволяет снести plist целиком
+# сначала мы добавляем stub-правило в рулсет чтобы оно не позволяло prefix-list'у "пропасть"
+# индекс референсится в логике патчинга префикс-листа huawei.misc.prefix_list
 ip */(ip|ipv6)/-prefix * index 99999999
 undo ip */(ip|ipv6)/-prefix * index *   %order_reverse
 ip */(ip|ipv6)/-prefix
+
+xpl as-path-list
 xpl
 
 ip as-path-filter
@@ -68,9 +87,22 @@ ntp
 #stp enable
 #stp region-configuration
 
+stp region-configuration
+    instance ~
+    active region-configuration
+
+erps ring
+#stp mode
+#stp bpdu-protection
+#stp enable
+
 acl port-pool
 acl ip-pool
 acl ipv6-pool
+
+acl
+
+system tcam acl$
 acl ~
     undo rule * description %order_reverse
     undo rule ~ %order_reverse
@@ -80,6 +112,10 @@ acl ~
 system tcam
 
 undo system tcam acl template * all %order_reverse
+
+system tcam acl template *
+
+system tcam acl template * all
 undo system tcam acl template * %order_reverse
 undo system tcam acl$ %order_reverse
 
@@ -92,18 +128,30 @@ port-wred
 
 dhcp
 
+*/igmp.?snooping/ enable
+
+*/igmp.?snooping/
+
 vlan reserved
 vlan batch
 vlan
+    */igmp.?snooping/ enable
+    */igmp.?snooping/
+    undo */igmp.?snooping/ enable %order_reverse
 vlan pool
+
+undo */igmp.?snooping/ enable %order_reverse
 
 hwtacacs-server
 hwtacacs server
+
+radius-server template *
 radius-server
 
 aaa
     undo local-user policy security-enhance
     undo user-password complexity-check
+    local-aaa-user user-name complexity-check disable
 
     undo user-group %order_reverse
     undo task-group %order_reverse
@@ -119,6 +167,8 @@ aaa
     user-group
 
     #pin removal order to ensure that local-user will be deleted last
+    domain default
+        radius-server *
     undo local-user * ftp-directory %order_reverse
     undo local-user * privilege %order_reverse
     undo local-user * level %order_reverse
@@ -127,8 +177,14 @@ aaa
 
 domain
 
+undo radius-server template * %order_reverse
+
 user-interface
 drop-profile
+
+# SR глобально -> MPLS -> IS-IS -> IS-IS и SID на интерфейсах
+
+ipv6
 
 # SR глобально -> MPLS -> IS-IS -> IS-IS и SID на интерфейсах
 segment-routing
@@ -143,6 +199,8 @@ mpls
     mpls te cspf preferred-igp
 
 mpls ldp
+    mtu-signalling
+    ipv4-family
 mpls ldp remote-peer *
 
 explicit-path
@@ -169,11 +227,29 @@ bridge-domain *
 # Должно идти перед interface, т.к. на уровне interface идет ссылка на diffserv domain
 diffserv domain *
 
+lldp enable
+
+# Включение dot1x должно происходить перед interface
+# так как там используются дополнительные настройки dot1x per interface
+
+dot1x enable
+
+# Отключение lnp должно идти перед interface
+
+lnp disable
+
+# Удаляем существующие Vbdif перед созданием новых
+
+    ip-dscp-inbound ~
+
+# удалять eth-trunk можно только после того, как вычистим member interfaces
 undo interface */Vbdif\d+/ %order_reverse
 undo interface */.*[.]\d+/ %order_reverse
 
 interface */Vbdif\d+/
 interface */Eth-Trunk\d+/
+
+bfd
 interface */LoopBack\d+/
 interface */Tunnel.*/
     tunnel-protocol
@@ -188,7 +264,12 @@ interface *
     undo portswitch
     undo ip address * * sub  %order_reverse
     undo ip address * *  %order_reverse
+    undo ip address unnumbered  %order_reverse
+    undo ip binding vpn-instance * %order_reverse
     portswitch  %order_reverse
+    undo dot1x max-user *
+    undo dot1x guest-vlan *
+    undo dot1x mac-bypass
     ip binding
     ipv6 enable
     ipv6 nd ra prefix
@@ -197,15 +278,21 @@ interface *
     ip address * * sub
     dhcpv6
     isis enable
+    isis ipv6 enable
     isis
     undo isis *
     undo isis enable  %order_reverse
+    undo isis ipv6 enable  %order_reverse
     mpls
     mpls ldp
     mpls ldp transport-address interface
     mpls rsvp-te
     mpls rsvp-te bfd
     port link-type
+    stp disable
+    stp edged-port
+    erps ring
+    undo erps ring
     port trunk pvid
     port trunk allow-pass
     undo port trunk allow-pass vlan all
@@ -233,6 +320,17 @@ interface *
 # Нужно чтобы subif'ы портов шли после конфигурации самих портов, иначе свитч ругнется на то что порт l2
 interface */\S+\.\d+/
 
+undo erps ring
+
+# Добавляем порт в monitor-link group после создания интерфейсов
+# Удаляем порт из monitor-link group до удаления интерфейсов
+
+monitor-link group *
+    port * downlink *
+    undo port * downlink * %order_reverse
+
+# Должен быть после interface потому что в нем ссылается на diffserv domain
+
 undo diffserv domain * 	%order_reverse
 
 # маршруты идут после интерфейсов
@@ -255,14 +353,24 @@ bgp
     maximum load-balancing
     # [NOCDEV-2043] Тут только декларируем пиров и группы
     # поскольку на них есть ссылки из family блоков
+    undo group * listen external
     group
     peer * as-number *
+    peer * fake-as * prepend-global-as
     peer * local-as *
+    peer * group *
+    vpn-instance ~
+        group
+        peer * as-number *
+        peer * fake-as * prepend-global-as
+        peer * group *
+        peer * ~
     ipv[46]-family|link-state-family unicast|l2vpn-family evpn
         undo undo maximum load-balancing %order_reverse
         maximum load-balancing
         group
         peer * as-number *
+        peer * fake-as * prepend-global-as
         peer * enable
         peer * ~
     l2vpn-ad-family
@@ -270,11 +378,18 @@ bgp
         peer * ~
     # [NOCDEV-2043] Остальное в глобальном блоке делаем тут
     undo peer * description %order_reverse
+    undo peer * group * %order_reverse
+    undo peer * * * * %order_reverse
     undo peer * * * %order_reverse
     undo peer * * %order_reverse
     undo peer * %order_reverse
     undo group * %order_reverse
     peer * ~
+
+
+# Вырубаем bfd после bgp, но до vpn
+    peer * capability-advertise graceful-restart
+    peer * graceful-restart timer restart
 
 
 # Вырубаем bfd после bgp, но до vpn
@@ -370,6 +485,18 @@ undo vlan batch %order_reverse
 undo observe-port %order_reverse
 
 # Должны быть после interface потому что в нем ссылается traffic-policy
+# И именно в данном порядке
+# policy ссылаются на behavior и classifier, они на acl'и
+
+undo bridge-domain %order_reverse
+
+# l2 интерфейсы можем добавлять только после удаления vlan
+
+interface */\S+\.\d+/ mode l2
+
+# Должны быть после interface потому что в нем ссылается traffic-policy
+# Должны быть после удаления интерфейсов, в противном случае получим ошибку:
+# нельзя удалить полиси которая применена на интерфейсе
 # И именно в данном порядке
 # policy ссылаются на behavior и classifier, они на acl'и
 undo qos group          %order_reverse
