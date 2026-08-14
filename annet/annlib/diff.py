@@ -5,6 +5,7 @@ from typing import Any
 import colorama
 
 from ..types import Diff, DiffItem, Op, OpType
+from .patching import iterate_over_pre
 
 
 # NOCDEV-1720
@@ -115,16 +116,14 @@ def gen_pre_as_diff(
     ops = [(order, op) for op, order in ops_order.items()]
     ops.sort()
 
-    for raw_rule, content in pre.items():
-        items = content["items"].items()
-        for _, diff in items:  # pylint: disable=redefined-outer-name
-            if show_rules and not raw_rule == "__MULTILINE_BODY__":
-                line = "# %s%s\n" % (indent * _level, raw_rule)
-                yield colorize_line_with_color(line, colorama.Fore.BLACK, no_color)
+    for raw_rule, _content, _key, diff in iterate_over_pre(pre):  # pylint: disable=redefined-outer-name
+        if show_rules and not raw_rule == "__MULTILINE_BODY__":
+            line = "# %s%s\n" % (indent * _level, raw_rule)
+            yield colorize_line_with_color(line, colorama.Fore.BLACK, no_color)
 
-            for op, rows in [(op, diff[op]) for (_, op) in ops]:
-                for item in rows:
-                    line = "%s%s %s\n" % (ops_sign[op], indent * _level, item["row"])
-                    yield colorize_line_with_color(line, ops_color[op], no_color)
-                    if len(item["children"]) != 0:
-                        yield from gen_pre_as_diff(item["children"], show_rules, indent, no_color, _level + 1)
+        for op, rows in [(op, diff[op]) for (_, op) in ops]:
+            for item in rows:
+                line = "%s%s %s\n" % (ops_sign[op], indent * _level, item["row"])
+                yield colorize_line_with_color(line, ops_color[op], no_color)
+                if len(item["children"]) != 0:
+                    yield from gen_pre_as_diff(item["children"], show_rules, indent, no_color, _level + 1)

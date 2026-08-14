@@ -1,8 +1,11 @@
 import io
 import re
+from collections import OrderedDict as odict
+from textwrap import dedent
 
 from annet import patching
 from annet.diff import diff_cmp, diff_ops, gen_pre_as_diff, resort_diff
+from annet.rulebook.patching import compile_patching_text
 from annet.types import Diff, DiffItem
 
 
@@ -270,3 +273,35 @@ def test_diff_sorting() -> None:
         diff_sorted_expected = buf.getvalue()
 
     assert diff_sorted_actual == diff_sorted_expected
+
+
+def test_diff_keeps_block_order_when_rows_match_different_rules() -> None:
+    """The printed diff must follow the config, not the rulebook rule that matched each row - #638"""
+    rb_text = dedent("""
+        ip access-list ~
+            ?/(\\d+)/ permit ~
+            ?/(\\d+)/ deny ~
+            ?/(\\d+)/ remark ~
+    """).strip()
+    rb = {"patching": compile_patching_text(rb_text, "cisco"), "ordering": {}}
+    block = "ip access-list extended TEST"
+    rows = [
+        "10 deny ip host 0.0.0.0 any",
+        "20 remark SSH",
+        "30 permit tcp any any eq 22",
+        "40 remark GRE",
+        "50 permit gre any any",
+        "60 deny ip any any log",
+    ]
+
+    old = odict([(block, odict())])
+    new = odict([(block, odict((row, odict()) for row in rows))])
+    diff = patching.make_diff(old, new, rb, [])
+
+    # the same way annet.diff.gen_sort_diff() renders it
+    pd = patching.make_pre(resort_diff(diff))
+    printed = "".join(gen_pre_as_diff(pd, False, "  ", True)).splitlines()
+
+    # each kind of acl entry is matched by its own rule, yet the acl is printed
+    # in the order it was generated in
+    assert printed == ["  " + block] + ["+   " + row for row in rows]

@@ -713,16 +713,24 @@ class _PatchRow(TypedDict):
     sort_key: tuple[Any, ...]
 
 
-def _iterate_over_pre(
-    pre: odict[str, _Pre],
-) -> Iterable[tuple[_Pre, tuple[str, ...], dict[OpType, list[_DiffItem]]]]:
+def iterate_over_pre(
+    pre: Mapping[str, _Pre],
+) -> Iterable[tuple[str, _Pre, tuple[str, ...], dict[OpType, list[_DiffItem]]]]:
+    """
+    Walk a pre in the order the rows had in the config, not in rulebook order.
+
+    A block's rows are bucketed by the rulebook rule that matched them, so walking
+    the buckets as they lie would emit all rows of one rule, then all rows of the
+    next. Every (rule, key) group remembers where it stood in the block, and the
+    positions are unique - they are the index of the row that opened the group.
+    """
     groups = [
-        (content["positions"][key], content, key, diff)
-        for content in pre.values()
+        (content["positions"][key], raw_rule, content, key, diff)
+        for raw_rule, content in pre.items()
         for key, diff in content["items"].items()
     ]
-    for _, content, key, diff in sorted(groups):
-        yield content, key, diff
+    for _, raw_rule, content, key, diff in sorted(groups, key=operator.itemgetter(0)):
+        yield raw_rule, content, key, diff
 
 
 def _iterate_over_patch(
@@ -731,7 +739,7 @@ def _iterate_over_patch(
     do_commit: bool,
     add_comments: bool,
 ) -> Iterable[_PatchRow]:
-    for content, key, diff in _iterate_over_pre(pre):
+    for _, content, key, diff in iterate_over_pre(pre):
         rule_pre = content.copy()
         attrs = copy.deepcopy(rule_pre["attrs"])
         iterable = attrs["logic"](
