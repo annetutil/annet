@@ -12,7 +12,7 @@ def level2_interface_diff(
     _pops: tuple[OpType, ...],
 ) -> Any:
     """
-    Блок:
+    The block:
         protocols
             isis
                 interface ae0.0
@@ -20,8 +20,8 @@ def level2_interface_diff(
                         metric 20
                         post-convergence-lfa
     ```
-    Но коробка может отдать `level 2 metric 20`, если терм один
-    При расчете дифа если видим, что начинается с level 2, руками level 2 превращаем в блок
+    But the box may return `level 2 metric 20` if there is a single term
+    While calculating the diff, if we see that it starts with level 2, we turn level 2 into a block by hand
     """
 
     updated_old: OrderedDict[str, Any] = OrderedDict()
@@ -49,15 +49,16 @@ def syslog_archive_diff(
     _pops: tuple[OpType, ...],
 ) -> Any:
     """
-    Блок:
+    The block:
     ```
     archive
         size 10m
         files 10
         world-readable
     ```
-    Но коробка может отдать `archive size 10m files 10 world-readable`
-    При расчете дифа если видим, что слева archive в одну строку, а справа нет, то справа схлопываем блок
+    But the box may return `archive size 10m files 10 world-readable`
+    While calculating the diff, if archive is a single line on the left and a block on the right,
+    we collapse the block on the right
     """
 
     for k, v in old.items():

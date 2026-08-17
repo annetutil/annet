@@ -45,9 +45,9 @@ def diff(
 
 # ===
 
-# Вырезает все команды не разрешенные
-# на членах агрегата. В running-config
-# листинге они наследуются от самого port-channel
+# Strips all the commands that are not allowed
+# on the members of an aggregate. In the running-config
+# listing they are inherited from the port-channel itself
 
 
 def _filter_channel_members(tree: odict[str, Any]) -> None:
@@ -81,13 +81,13 @@ def _is_allowed_on_channel(cmd_line: str) -> bool:
 
 # ===
 
-# При удалении lag, часть команд удаляется сначала с lag, тем самым удаляя с lag member,
-# но рассчитанный diff этот нюанс не учитывает
+# When a lag is removed, some of the commands are removed from the lag first, which also removes
+# them from the lag member, but the calculated diff does not take this nuance into account
 
 
 def _is_diff_removed_lag_from_lag_member(old: odict[str, Any], new: odict[str, Any]) -> bool:
     """
-    Проверяем, что в old есть признак lag member, а в new его нет. Следовательно порт выводится из lag.
+    Check that old has the lag member marker and new does not, which means the port is leaving the lag.
     """
     if any(is_in_channel(x) for x in old) and not any(is_in_channel(x) for x in new):
         return True
@@ -96,6 +96,6 @@ def _is_diff_removed_lag_from_lag_member(old: odict[str, Any], new: odict[str, A
 
 def _is_allowed_on_old_lag_memeber(cmd_line: str) -> bool:
     """
-    Эти команды принудительно добавим на интерфейс после удаления его из lag
+    These commands are forcibly added to the interface after it has been removed from the lag
     """
     return cmd_line.startswith(("mtu",))

@@ -104,14 +104,14 @@ def cisco_collapse_vlandb(vlans: Collection[int], tiny_ranges: bool = True) -> l
 
 
 def juniper_fmt_prefix_lists_acl(prefix_list_names: typing.Iterable[str]) -> str:
-    """Форматирует строку для acl из prefix-list-имён.
+    """Formats a string for an acl out of prefix-list names.
 
-    Производит следующие операции:
+    Performs the following operations:
 
-    - вырезает дубликаты
-    - сортирует
-    - добавляет quoted-вариант имени (NOCDEV-5321)
-    - соединяет всё в строку
+    - removes duplicates
+    - sorts
+    - adds a quoted variant of the name (NOCDEV-5321)
+    - joins everything into a single string
     """
     sorted_unique_names = sorted(frozenset(prefix_list_names))
     quoted_and_unquoted_names = []
@@ -122,8 +122,8 @@ def juniper_fmt_prefix_lists_acl(prefix_list_names: typing.Iterable[str]) -> str
     return joined_prefix_lists
 
 
-# tiny_ranges - если выставлен в False, то два рядом стоящих влана не конвертятся в
-# рендж (поведение cisco catalyst)
+# tiny_ranges - if set to False, two adjacent vlans are not converted into a
+# range (cisco catalyst behaviour)
 def collapse_vlandb(
     vlans: Collection[int], range_sep: str, tiny_ranges: bool = True, chunk_len: int = 0
 ) -> list[Any]:  # list[str], or list[list[str]] when chunk_len > 0
@@ -144,7 +144,7 @@ def collapse_vlandb(
     res.append(row)
     collapsed = list(map(lambda x: x[0] != x[1] and "%s%s%s" % (x[0], range_sep, x[1]) or str(x[0]), res))
 
-    # Устройства бьют списки вланов на чанки при добавлении в конфиг
+    # Devices split vlan lists into chunks when adding them to the config
     if chunk_len:
         chunks = [collapsed[i : i + chunk_len] for i in range(0, len(collapsed), chunk_len)]
         return chunks
@@ -250,10 +250,10 @@ def uniq(*iterables: Iterable[_T]) -> Iterator[_T]:
                 yield item
 
 
-# Хелпер чтобы при итерировании по вложенным структурам
-# правильно подбирать значения и флаги (local_as, update_source, multipath, etc)
-# которые должны наследоваться от верхних блоков к нижним
-# XXX Покрыть тестами
+# Helper that, while iterating over nested structures, picks up
+# the right values and flags (local_as, update_source, multipath, etc)
+# that must be inherited from the upper blocks down to the lower ones
+# XXX Cover with tests
 class ContextOrderedDict:
     def __init__(self, iterable: Any) -> None:
         self.dict = odict(iterable)
@@ -318,7 +318,7 @@ def find_exc_in_stack(container_exc: Exception, target_exc_type: type | tuple[ty
 
 def find_modules(base_dir: str | os.PathLike[str]) -> Iterator[str]:
     """
-    Рекурсивно ищем в base_dir файлы python модулей
+    Recursively look for python module files in base_dir
     """
     for entry in os.scandir(base_dir):
         if entry.name[:1] in ["_", "."]:
@@ -345,18 +345,18 @@ def catch_ctrl_c(func: Callable[..., _T]) -> Callable[..., _T]:
 
 class LMSegment(NamedTuple):
     """
-    LMSegment хранит подсеть в виде целочисленных пар (int(network_addr), int(broadcast_addr)):
+    LMSegment stores a subnet as a pair of integers (int(network_addr), int(broadcast_addr)):
     0.0.0.0/0:  (0b0000000000000000000000000, 0b1111111111111111111111111)
     0.0.0.0/16: (0b0000000000000000000000000, 0b0000000000001111111111111)
     1.0.0.0/24: (0b1000000000000000000000000, 0b1000000000000000011111111)
 
-    Для двух x=(A, B), y=(C, D) таких пар (A <= B, C <= D по определению):
+    For two such pairs x=(A, B), y=(C, D) (where A <= B, C <= D by definition):
 
-    Отношение включения: x contains y <-> A <= C && D <= B:
+    Containment relation: x contains y <-> A <= C && D <= B:
     1.0.0.0/24 contains 1.0.0.1/32
     0.0.0.0/0 contains 0.0.0.0/16
 
-    Отношение порядка: x < y <-> A < C || (A == C && B > D), или проще (A, -B) < (C, -D):
+    Ordering relation: x < y <-> A < C || (A == C && B > D), or simply (A, -B) < (C, -D):
     1.0.0.0/24 < 1.0.0.1/32
     0.0.0.0/0  < 0.0.0.0/16
     """
@@ -404,13 +404,13 @@ class LMSegment(NamedTuple):
 
 
 class LMSegmentList:
-    """Упорядоченный список подсетей"""
+    """An ordered list of subnets"""
 
     def __init__(self) -> None:
         self.pfxs: list[LMSegment] = []
 
     def add(self, pref: LMSegment) -> None:
-        """Добавляем новый префикс в упорядоченный список, если он не дублируется"""
+        """Add a new prefix to the ordered list unless it is a duplicate"""
         idx = bisect.bisect(self.pfxs, pref) - 1
         if 0 <= idx < len(self.pfxs):
             if pref == self.pfxs[idx]:
@@ -418,7 +418,7 @@ class LMSegmentList:
         self.pfxs.insert(idx + 1, pref)
 
     def find(self, target: LMSegment) -> LMSegment | None:
-        """LPM поиск в добавленных"""
+        """LPM lookup among the added prefixes"""
         upper_bound = bisect.bisect(self.pfxs, target)
         for i in reversed(range(0, upper_bound)):
             if self.pfxs[i].contains(target):
@@ -429,7 +429,7 @@ class LMSegmentList:
 
 
 class LMSMatcher:
-    """Обертка над парой LMSegmentList над парой LMSegmentList для v4/v6"""
+    """A wrapper around a pair of LMSegmentList objects, one for v4 and one for v6"""
 
     def __init__(self) -> None:
         self.v4 = LMSegmentList()
@@ -459,7 +459,7 @@ class LMSMatcher:
 
 
 def is_relative(path: pathlib.PurePath, *other: str) -> bool:
-    """Проверяет является ли путь path относительным любого из other"""
+    """Checks whether path is relative to any path in other"""
     for checkpath in other:
         try:
             path.relative_to(checkpath)

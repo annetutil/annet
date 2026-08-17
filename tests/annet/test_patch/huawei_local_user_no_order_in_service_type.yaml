@@ -1,5 +1,5 @@
-# У хуавей порядок аргументов в данном месте меняется в зависимости от версии софта
-# при этом команда принимается в любом виде, меняется отображение в конфиге
+# On huawei the argument order in this place changes depending on the software version
+# the command is accepted in any form though, only its rendering in the config changes
 
 - vendor: huawei
   diff: |

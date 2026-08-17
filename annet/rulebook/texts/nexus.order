@@ -1,11 +1,11 @@
-# В этом файле определяется порядок команд, в котором их следует подавать на устройство.
-# - Если порядок команды не важен - ее можно не писать сюда совсем.
-# - Если команда начинается с undo и прописан параметр %order_reverse - команда считается
-#   обратной, но занимает место между прямыми там, где указано.
+# This file defines the order in which the commands should be sent to the device.
+# - If the order of a command does not matter - it can be left out of this file entirely.
+# - If a command starts with undo and the %order_reverse parameter is set, the command is treated
+#   as a reverse one, but takes its place among the direct ones where specified.
 
-# Фичи должны быть включены прежде всего
+# Features must be enabled first
 feature
-# За ним сервисы
+# Services come next
 service
 
 interface breakout
@@ -53,7 +53,7 @@ vlan group
 
 spanning-tree
 
-# перед тем, как менять mtu на интерфейсах, надо выставить максимальный
+# before changing the mtu on the interfaces the maximum one has to be set
 no system jumbomtu %order_reverse
 system jumbomtu
 
@@ -81,7 +81,7 @@ interface *
 
 interface */\S+\.\d+/
 
-# удалять eth-trunk можно только после того, как вычистим member interfaces
+# an eth-trunk can only be removed after the member interfaces have been cleaned up
 undo interface */port-channel\d+/  %order_reverse
 
 router bgp

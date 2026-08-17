@@ -54,7 +54,7 @@ def inactive_blocks(diff_foo: Callable[..., list[common.DiffItem]]) -> Callable[
                 )
 
             for deactivated in [k for k in new_inactives if k not in old_inactives]:
-                # если деактивуруемого блока не существует - ставим один deactivate, глубже не идем
+                # if the block being deactivated does not exist - emit a single deactivate and do not go deeper
                 if deactivated not in diff_pre:
                     diff = [
                         common.DiffItem(
@@ -111,19 +111,19 @@ def deactivate_cmd(active_key: str, diff_pre: dict[Any, Any]) -> str:
 def cmd(active_key: str, diff_pre: dict[Any, Any], cmd: str) -> str:
     assert not jun_is_inactive(active_key)
     if not diff_pre[active_key]["subtree"]:
-        # Если конанда не имеет подблоков И имеет агрументы то надо их отбросить
+        # If the command has no sub-blocks AND has arguments, they have to be dropped
         return " ".join([cmd, active_key.split()[0]])
     return " ".join([cmd, active_key])
 
 
 def ignore_quotes(diff: list[common.DiffItem]) -> list[common.DiffItem]:
     """
-    Фильтрует из diff строки которые различаются
-    только наличием/отсутсвием кавычек
+    Filters out the diff rows that differ
+    only by the presence/absence of quotes
     i.e.
     description "loopbacks";
     description loopbacks;
-    эквивалентны
+    are equivalent
     """
     equivs = {}
     for elem in diff:

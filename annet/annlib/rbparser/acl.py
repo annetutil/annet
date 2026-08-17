@@ -56,7 +56,7 @@ _PARAMS_SCHEME = {
     },
     "cant_delete": {
         "validator": valid_bool_list,
-        "default": (lambda raw_rule: [raw_rule.startswith("interface")]),  # FIXME: ужас какой
+        "default": (lambda raw_rule: [raw_rule.startswith("interface")]),  # FIXME: this is awful
         "uniter": (lambda a, b: a + b),
     },
     "prio": {

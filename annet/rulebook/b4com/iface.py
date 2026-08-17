@@ -32,9 +32,9 @@ def diff(
 
 # ===
 
-# Вырезает все команды не разрешенные
-# на членах агрегата. В running-config
-# листинге они наследуются от самого port-channel
+# Strips all the commands that are not allowed
+# on the members of an aggregate. In the running-config
+# listing they are inherited from the port-channel itself
 
 
 def _filter_channel_members(tree: OrderedDict[str, Any]) -> None:
@@ -46,12 +46,12 @@ def _filter_channel_members(tree: OrderedDict[str, Any]) -> None:
 
 def is_in_channel(cmd_line: str) -> bool:
     """
-    Признак того, что это lagg member
+    Whether this is a lagg member
     """
     return cmd_line.startswith("channel-group")
 
 
-# Возможно тут есть еще какие-то команды
+# There may be some more commands here
 def _is_allowed_on_channel(cmd_line: str) -> bool:
     return cmd_line.startswith(
         (
@@ -81,7 +81,7 @@ def is_ip_cmd(cmd: str) -> bool:
 
 def mtu(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:
     """
-    Удаляем mtu без указания значения
+    Remove mtu without specifying the value
     """
     if diff[Op.REMOVED]:
         yield (False, "no mtu", None)
@@ -91,7 +91,7 @@ def mtu(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwa
 
 def description(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:
     """
-    Удаляем description без указания значения
+    Remove description without specifying the value
     """
     if diff[Op.REMOVED]:
         yield (False, "no description", None)
@@ -101,8 +101,8 @@ def description(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDic
 
 def sflow(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:
     """
-    Команда sflow sampling-rate * direction ingress max-header-size *
-    сносится без указания sampling-rate и max-header-size
+    The command sflow sampling-rate * direction ingress max-header-size *
+    is removed without specifying sampling-rate and max-header-size
     """
     if diff[Op.REMOVED]:
         if "ingress" in diff[Op.REMOVED][0]["row"]:
@@ -117,14 +117,14 @@ def sflow(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **k
 
 def lldp(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:
     """
-    Обрабатываем блок lldp-agent
+    Handle the lldp-agent block
     """
     result = common.default(rule, key, diff, **kwargs)
     for op, cmd, ch in result:
-        # Не удаляем все что начинается с set, т.к. set перезаписывает предыдущий конфиг
+        # Do not remove anything that starts with set, since set overwrites the previous config
         if diff[Op.REMOVED] and "set lldp" in cmd:
             pass
-        # В случае lldp tlv ... select удаляем все что до select
+        # In case of lldp tlv ... select remove everything up to select
         elif diff[Op.REMOVED] and cmd.endswith("select"):
             yield (op, " ".join(cmd.split()[:-1]), ch)
         else:

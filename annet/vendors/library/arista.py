@@ -20,7 +20,7 @@ class AristaVendor(AbstractVendor):
         if do_commit:
             after.add_cmd(Command("commit"))
         else:
-            after.add_cmd(Command("abort"))  # просто exit оставит висеть configure session
+            after.add_cmd(Command("abort"))  # a plain exit would leave the configure session hanging
         if do_finalize:
             after.add_cmd(Command("write memory"))
 

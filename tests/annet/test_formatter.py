@@ -92,7 +92,7 @@ According            to Security Policies
 
 @pytest.fixture
 def nokia_config_info():
-    """Конфиг нокии полученный через configure read-only; info | no-more"""
+    """A nokia config obtained via configure read-only; info | no-more"""
     return textwrap.dedent("""
         card 1 {
             card-type xcm-1s
@@ -121,7 +121,7 @@ def nokia_config_info():
 
 @pytest.fixture
 def nokia_config():
-    """Конфиг нокии полученный через admin show configuration | no-more"""
+    """A nokia config obtained via admin show configuration | no-more"""
     return textwrap.dedent("""
         # TiMOS-B-21.2.R1 both/hops64 Nokia 7750 SR Copyright (c) 2000-2021 Nokia.
         # All rights reserved. All use subject to applicable license agreements.
@@ -499,8 +499,8 @@ def test_nexus_banner_split(nexus_banner_config):
     "flavor, text, config",
     (
         (
-            # У хуавея бывают вот так странно отступлены начальные блоки
-            # мы хендлим их считая что # начинает новый блок
+            # Huawei sometimes indents the leading blocks in this strange way
+            # we handle them assuming that # starts a new block
             "huawei",
             """
   block1
@@ -517,7 +517,7 @@ block2
 """,
         ),
         (
-            # У cisco/frr может быть посередине блока
+            # cisco/frr may have one in the middle of a block
             "cisco",
             """
 block
@@ -541,7 +541,7 @@ def test_comment_block_end(flavor, text, config):
 
 
 def test_nokia_parse_to_tree(nokia_config_info, nokia_config):
-    """Конфиг нокии полученный через configure read-only; info | no-more"""
+    """A nokia config obtained via configure read-only; info | no-more"""
     formatter = registry_connector.get().match(make_hw_stub("nokia")).make_formatter()
     parsed = {
         "card 1": {
@@ -565,7 +565,7 @@ def test_nokia_parse_to_tree(nokia_config_info, nokia_config):
 
 
 def test_aruba_parse_to_tree(aruba_config):
-    """Конфиг нокии полученный через configure read-only; info | no-more"""
+    """An aruba config obtained via configure read-only; info | no-more"""
     expected = {
         "version 8.9.0.0-8.9.0": {},
         "virtual-controller-country RU": {},
@@ -890,7 +890,7 @@ def test_jun_formatter_split_whitespaces01(juniper_config):
     juniper_config = textwrap.dedent(r"""
     policy-options {
         policy-statement POLICY {
-            term POLICY_0 {            
+            term POLICY_0 {
                 then {
                     origin igp;
                     accept;

@@ -139,9 +139,9 @@ def gen_sort_diff(
     diffs: Mapping[Device, Union[Diff, PCDiff]], args: ShowDiffOptions
 ) -> Generator[Tuple[str, Generator[str, None, None] | str, bool], None, None]:
     """
-    Возвращает осортированный дифф, совместимый с write_output
-    :param diffs: Маппинг устройства в дифф
-    :param args: Параметры коммандной строки
+    Returns a sorted diff compatible with write_output
+    :param diffs: mapping of a device to its diff
+    :param args: command line parameters
     """
     devices_to_diff: dict[tuple[Device, ...], Diff | PCDiff]
     if args.no_collapse:
@@ -183,10 +183,10 @@ def _make_text_diff(device: Device, diff: Diff) -> List[str]:
 
 def collapse_diffs(diffs: Mapping[Device, Diff]) -> Dict[Tuple[Device, ...], Diff]:
     """
-    Группировка диффов.
+    Group the diffs.
     :param diffs:
-    :return: дикт аналогичный типу Diff, но с несколькими dev в ключе.
-        Нужно учесть что дифы сверяются в отформатированном виде
+    :return: a dict similar to the Diff type, but with several devs in the key.
+        Note that diffs are compared in their formatted form
     """
     diffs_with_test = {
         dev: (diff, _transform_text_diff_for_collapsing(_make_text_diff(dev, diff))) for dev, diff in diffs.items()

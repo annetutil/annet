@@ -37,7 +37,7 @@ class Hostname(PartialGenerator):
         """
 
     def run_cisco(self, device: Any) -> Iterator[str | tuple[str, str]]:
-        if device.hw.Cisco.AIR and device.tags["Lightweight WiFi точка"]:
+        if device.hw.Cisco.AIR and device.tags["Lightweight WiFi AP"]:
             return
         elif device.hw.Catalyst:
             yield "banner login ^C%s^C" % device.hostname

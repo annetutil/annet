@@ -9,7 +9,7 @@ from typing import Any, cast
 
 class DumpResult(str):
     """
-    строка, у которой repr = value
+    a string whose repr equals its value
     """
 
     def __new__(cls, value: str) -> DumpResult:
@@ -77,7 +77,7 @@ class DumpableView:
         ret: list[str] = []
         op = "="
         if isinstance(value, DumpableView):
-            # защита от рекурсии - последующие ссылки на объекты, а не новые дампы
+            # recursion guard - later occurrences are rendered as references rather than dumped again
             if id(value) in seen:
                 value = DumpResult(seen[id(value)])
                 op = "->"
@@ -104,7 +104,7 @@ class DumpableView:
 
     def dump(self, prefix: str = "", value: Any = _EnumAllAttrs, seen: dict[int, str] | None = None) -> list[str]:
         """
-        В собственных DumpableView-классах нужно определить dump примерно так:
+        In your own DumpableView classes dump should be defined roughly like this:
         def dump(self, prefix, **kwargs):
             ret = super().dump(prefix, **kwargs) + [ your_own_lines ]
         """

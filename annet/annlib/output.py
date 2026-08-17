@@ -145,13 +145,13 @@ class JsonEncoder(json.JSONEncoder):
 
 def print_as_json(data: Any, sort_keys: bool = True, fh: IO[str] = sys.stdout, highlight: bool = True) -> None:
     """
-    В выводе dict ключи отсортированы по имени, кроме ключей в OrderedDict,
-    которые сохраняют свой оригинальный порядок
+    In the output, dict keys are sorted by name, except for the keys of an OrderedDict,
+    which keep their original order
     """
 
     class ODictKey(str):
         """
-        Строка с дополнительным параметром :index, по которому сортируется
+        A string with an extra :index attribute by which it is sorted
         """
 
         ind: int
@@ -168,8 +168,8 @@ def print_as_json(data: Any, sort_keys: bool = True, fh: IO[str] = sys.stdout, h
 
     class UnsortableOdict(odict[str, Any]):
         """
-        Разновидность OrderedDict, ключи которого сохраняют порядок
-        при попытке строковой сортировки (содержат доп. индекс)
+        A flavour of OrderedDict whose keys keep their order
+        when sorted as strings (they carry an extra index)
         """
 
         def __init__(self, orig: odict[str, Any]) -> None:
@@ -211,7 +211,7 @@ class TextArgs:
     def __init__(self, text: str, color: str | None = None, offset: int | None = None) -> None:
         self.text = text
         self.color = color
-        self.offset = offset  # смещение от начала линии
+        self.offset = offset  # offset from the beginning of the line
 
     def __repr__(self) -> str:
         return "%s(%r, %s, %s)" % (self.__class__.__name__, self.text, self.color, self.offset)

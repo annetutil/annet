@@ -287,7 +287,7 @@ def undo_port_link_mode(
     rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
 ) -> Iterator[tuple[bool, str, Any]]:
     """
-    Сhanging port mode from bridge to route and back
+    Changing port mode from bridge to route and back
     """
 
     if diff[Op.REMOVED]:

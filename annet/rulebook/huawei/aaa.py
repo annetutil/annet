@@ -15,8 +15,8 @@ def user(key: tuple[str, ...], diff: DiffDict, **_: Any) -> LogicResult:
             check_for_remove = False
     if check_for_remove:
         for rem in diff[Op.REMOVED]:
-            # Обрабатывать удаление только пароля или привилегий,
-            # если меняется что-то другое, можно просто накатить без удаления
+            # Handle the removal of the password or the privileges only,
+            # if something else changes it can simply be applied without a removal
             if rem["row"].startswith("local-user %s password" % key[0]):
                 yield (False, "undo local-user %s" % key[0], None)
                 return
@@ -37,8 +37,8 @@ def _added_contains(array: list[dict[str, Any]], lookup_string: str) -> bool:
 
 def domain(rule: dict[str, Any], key: tuple[str, ...], diff: DiffDict, **_: Any) -> LogicResult:
     """
-    При удалении метода для accounting|authorization|authentication
-    не нужно указывать сам метод, поэтому откидываем последний ключ.
+    When removing a method for accounting|authorization|authentication
+    the method itself must not be specified, so the last key is dropped.
     """
     if diff[Op.REMOVED]:
         yield (False, rule["reverse"].format(key[0], ""), None)
@@ -50,8 +50,8 @@ def local_user_diff(
     old: OrderedDict[str, Any], new: OrderedDict[str, Any], diff_pre: OrderedDict[str, Any], **kwargs: Any
 ) -> list[DiffItem]:
     diff = default_diff(old, new, diff_pre, **kwargs)
-    # Группируем команды local-user по пользователю
-    # и назначению (mode будет "password", "service-type", etc.)
+    # Group the local-user commands by user
+    # and by purpose (mode will be "password", "service-type", etc.)
     # {("username", "mode"): {op: diff_item}}}
     grouped: defaultdict[tuple[str, str], dict[str, DiffItem]] = defaultdict(dict)
     for diff_item in diff:
@@ -64,10 +64,10 @@ def local_user_diff(
         username, mode = _local_user_row_key(diff_item.row)
         if username and mode:
             ops = set(grouped[(username, mode)])
-            # NOCDEVDUTY-1786 делаем так чтобы в генераторе не требовалось точно попасть в порядок service-type
-            # у хуавей порядок аргументов в данном месте меняется в зависимости от версии софта
-            # при этом команда принимается в любом виде, меняется отображение в конфиге, вводить ее можно как угодно
-            # если команды local-user * service-type ... совпадают с точностью до перестановки то ничего не правим
+            # NOCDEVDUTY-1786 make it so that the generator does not have to match the service-type order exactly
+            # on huawei the argument order in this place changes depending on the software version
+            # the command is accepted in any form though, only its rendering in the config changes
+            # if the local-user * service-type ... commands are equal up to a permutation, nothing is changed
             if mode == "service-type" and ops == {Op.ADDED, Op.REMOVED}:
                 added = set(grouped[(username, mode)][Op.ADDED].row.split())
                 removed = set(grouped[(username, mode)][Op.REMOVED].row.split())
@@ -82,7 +82,7 @@ def local_user_diff(
 def _local_user_row_key(row: str) -> tuple[str | None, str | None]:
     username, mode = None, None
     splitted_row = row.split()
-    # Ожидаемый формат команды 'local-user <username> <mode> ...'
+    # Expected command format: 'local-user <username> <mode> ...'
     if splitted_row and splitted_row[0] == "local-user":
         if len(splitted_row) >= 3:
             username = splitted_row[1]

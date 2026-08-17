@@ -17,83 +17,83 @@ LogicResult = typing.Iterator[tuple[bool, str, typing.Any]]
 # =====
 def default(rule: dict[str, typing.Any], key: tuple[str, ...], diff: DiffDict, **_: typing.Any) -> LogicResult:
     r"""
-    Функция default() обеспечивает базовую логику обработки всех правил. Ее можно заменить с помощью
-    параметра %logic в текстовом рулбуке. Она вызывается для каждой команды с уникальным ключом и
-    должна возвратить сгенерированный текст патча на основе предоставленного диффа, и, при необходимости,
-    вызвать обработку дочерних правил/данных.
+    The default() function provides the basic processing logic for all rules. It can be replaced with the
+    %logic parameter in the text rulebook. It is called for every command with a unique key and
+    must return the generated patch text based on the supplied diff and, if necessary,
+    trigger the processing of the child rules/data.
 
-    Первым аргументом (rule) она принимает словарь с правилом:
+    Its first argument (rule) is a dict with the rule:
         {
-            # Однострочная команда, не блок, не имеет чилдов
-            "logic": <function default at 0x7fe22ea83510>,  # Функция для обработки правила
-            "provides": [],  # Макросы, реализуемые этим правилом
-            "requires": [],  # Макросы, требуемые для правила
+            # A single-line command, not a block, has no children
+            "logic": <function default at 0x7fe22ea83510>,  # the function that processes the rule
+            "provides": [],  # macros provided by this rule
+            "requires": [],  # macros required by this rule
 
-            # Регулярка для разбора строки
+            # regexp used to parse the row
             "regexp": re.compile(r"^snmp-agent\s+sys-info\s+([^\s]+).*$"),
 
-            # Шаблон для отмены команды (в качестве аргументов следует использовать ключ)
+            # template used to cancel the command (the key should be used as its arguments)
             "reverse": "undo snmp-agent sys-info {}",
         }
 
-    Вторым аргументом (key) идет tuple, состоящий из ключа, распаршенного из строчки с помощью regexp:
-        ("contact",)  # Пример для разбора строки "snmp-agent sys-info contact"
+    The second argument (key) is a tuple made of the key parsed from the row with the regexp:
+        ("contact",)  # example for parsing the row "snmp-agent sys-info contact"
 
-    В третий аргумент передается словарь с диффом:
+    The third argument is a dict with the diff:
         {
-            # Команды/блоки, добавленные в новой конфигурации
+            # commands/blocks added in the new configuration
             Op.ADDED: [{"children": None, "row": "undo snmp-agent sys-info version all"}],
 
-            # Бывает только в блоках, содержит изменившихся чилдов внутри блоков
+            # only appears in blocks, holds the children that changed inside a block
             Op.AFFECTED: [],
 
-            # Удаленные команды/блоки
+            # removed commands/blocks
             Op.REMOVED: [{"children": None, "row": "undo snmp-agent sys-info version v3"}],
 
-            # Команды которые никак не изменились (но иногда нужны для других команд)
+            # commands that have not changed at all (but are sometimes needed by other commands)
             Op.UNCHANGED: [{"children": None, "row": "snmp all-interfaces"}]
         }
     """
     for op in [Op.ADDED, Op.REMOVED, Op.AFFECTED, Op.MOVED]:
-        # Дефолтная функция генерации патчей считает, что не бывает команд с одинаковыми
-        # ключами и разным значением. При этом unchanged мы так не проверяем, поскольку
-        # такие случаи возможны, когда у нас подмешиваются implicit команды
+        # The default patch generation function assumes there are no commands with the same
+        # key but a different value. The unchanged op is not checked this way though, since
+        # such cases are possible when implicit commands are mixed in
         assert 0 <= len(diff[op]) <= 1, "Too many %s actions for rows %r" % (op, [x["row"] for x in diff[op]])
     if diff[Op.AFFECTED]:
-        # При изменении блока нужно вызвать обработку чилдов
+        # When a block changes, the children have to be processed
         yield (True, diff[Op.AFFECTED][0]["row"], diff[Op.AFFECTED][0]["children"])
     elif diff[Op.ADDED] or diff[Op.MOVED]:
         op_key = Op.ADDED if diff.get(Op.ADDED) else Op.MOVED
-        # При модификации строки удаление нас не интересует, добавление проходит как affected
+        # When a row is modified we do not care about the removal; the addition goes through as affected
         yield (True, diff[op_key][0]["row"], diff[op_key][0]["children"])
     elif diff[Op.REMOVED]:
-        # При удалении или перемещении блока просто снести строку
+        # When a block is removed or moved, just drop the row
         yield (False, rule["reverse"].format(*key), None)
 
 
 def ordered(rule: dict[str, typing.Any], key: tuple[str, ...], diff: DiffDict, **kwargs: typing.Any) -> LogicResult:
     if diff[Op.MOVED]:
-        # Сносим top-level блок
+        # Drop the top-level block
         yield (False, rule["reverse"].format(*key), None)
-    # Дальше Op.MOVED будут пересозданы заново в новом порядке
-    # FIXME вообще-то следовало бы удалять REMOVED из чайлдов
-    # поскольку блок уже очищен и пересоздается заново
+    # Op.MOVED items will be re-created below in the new order
+    # FIXME strictly speaking REMOVED should be dropped from the children,
+    # since the block is already cleared and is being re-created
     yield from default(rule, key, diff, **kwargs)
 
 
 def rewrite(rule: dict[str, typing.Any], key: tuple[str, ...], diff: DiffDict, **kwargs: typing.Any) -> LogicResult:
-    # Переписывает блок игнорируя предыдущее его состояние
+    # Rewrites the block ignoring its previous state
     if not diff[Op.REMOVED]:
         yield from default(rule, key, diff, **kwargs)
 
 
 def permanent(rule: dict[str, typing.Any], key: tuple[str, ...], diff: DiffDict, **kwargs: typing.Any) -> LogicResult:
-    # Данный блок не подлежат удалению
+    # This block must not be removed
     if diff[Op.REMOVED]:
-        # Если он отдельный - просто игнорируем
+        # If it stands alone - just ignore it
         if not diff[Op.REMOVED][0]["children"]:
             return
-        # Если у него есть потомки - сделаем их affected
+        # If it has children - mark them as affected
         diff[Op.AFFECTED] += diff[Op.REMOVED]
         diff[Op.REMOVED] = []
     yield from default(rule, key, diff, **kwargs)
@@ -103,7 +103,7 @@ def ignore_changes(
     rule: dict[str, typing.Any], key: tuple[str, ...], diff: DiffDict, **kwargs: typing.Any
 ) -> LogicResult:
     """
-    logic-функция, которая удаляет или добавляет строки, но не меняет одну на другую.
+    A logic function that removes or adds rows, but never replaces one with another.
     """
     if diff[Op.ADDED] and diff[Op.REMOVED]:
         pass
@@ -113,9 +113,9 @@ def ignore_changes(
 
 def undo_redo(rule: dict[str, typing.Any], key: tuple[str, ...], diff: DiffDict, **_: typing.Any) -> LogicResult:
     """
-    Если команда отменяется через undo key, но не может быть заменена через
-    key value, а требует сначала undo key, а уж потом - key value,
-    этот хелпер делает именно так: сначала undo key, потом - key value
+    If a command is cancelled with undo key but cannot be replaced with
+    key value, and instead requires undo key first and only then key value,
+    this helper does exactly that: undo key first, then key value
     """
     if not (diff[Op.ADDED] and diff[Op.REMOVED] and not diff[Op.AFFECTED]):
         yield from default(rule, key, diff)
@@ -129,9 +129,9 @@ def undo_redo(rule: dict[str, typing.Any], key: tuple[str, ...], diff: DiffDict,
 def default_instead_undo(
     rule: dict[str, typing.Any], key: tuple[str, ...], diff: DiffDict, **_: typing.Any
 ) -> LogicResult:
-    # Для ряда конфигурационных строк возникает вечный diff, поскольку в конфиге строка либо явно включена,
-    # либо явно выключена. Если она не описана в генераторе, т.е. мы полагаемся на дефолт, то используя default
-    # вместо "no ..." мы возвращаем конфиг в дефолтное состояние.
+    # A number of configuration rows produce a permanent diff, because in the config a row is either explicitly enabled
+    # or explicitly disabled. If it is not described in the generator, i.e. we rely on the default, then using default
+    # instead of "no ..." returns the config to its default state.
     # NOC-20503 @lesnix 11-08-2022
     if diff[Op.REMOVED]:
         rule["reverse"] = rule["reverse"].replace("no", "default")
@@ -185,13 +185,13 @@ def rewrite_diff(
                 yield i, items
                 queue.append(item.children)
 
-    # оставляем маркер чтобы увидеть что мы - старший rewrite
+    # leave a marker so that we can tell we are the outermost rewrite
     rewrite_marker = "rewrite"
     rewrite_tail = (rewrite_marker, _pops[-1])
     _pops = _pops + rewrite_tail
     diff = base_diff(old, new, diff_pre, _pops, moved_to_affected=False)
-    # если мы rewrite верхнего уровня, и в поддереве все Op.AFFECTED
-    # то есть не было совершенно никаких изменений, удаляем его из дифа
+    # if we are the top-level rewrite and everything in the subtree is Op.AFFECTED,
+    # i.e. there were no changes at all, drop it from the diff
     if rewrite_marker not in _pops[: -len(rewrite_tail)]:
         if all(its[i].op == Op.AFFECTED for i, its in iter_diff(diff)):
             diff.clear()
@@ -209,10 +209,10 @@ def multiline_diff(
     _pops: tuple[str, ...] = (Op.AFFECTED,),
 ) -> list[DiffItem]:
     """
-    Особая логика diff'a для хуавейных мультилайнов.
-    Она трактует все дочерние элементы %multiline-команды как
-    одну общую команду, покидывая внутрь тот Op который был
-    определен на верхнем уровне
+    Special diff logic for huawei multilines.
+    It treats all the children of a %multiline command as
+    a single common command, pushing down the Op that was
+    determined at the top level
     """
 
     def process_multiline(
@@ -228,7 +228,7 @@ def multiline_diff(
         op, tree = Op.ADDED, new
         if item.op == Op.REMOVED:
             op, tree = Op.REMOVED, old
-        # multiline трактует потомков как «сырые» кортежи, а не DiffItem
+        # multiline treats children as "raw" tuples rather than DiffItem
         children = typing.cast("list[DiffItem]", list(process_multiline(op, tree[item.row])))
         ret.append(DiffItem(item.op, item.row, children, item.diff_pre))
 
@@ -296,10 +296,10 @@ def call_diff_logic(
     pops: tuple[str, ...] = (Op.AFFECTED,),
 ) -> list[DiffItem]:
     """
-    Группируем команды в старом и новом конфиге согласно выставленным
-    в рулбуке атрибутам %diff_logic и вызываем их по очереди, после чего
-    склеиваем результаты обратно в порядке команд в old и new, предпочитая
-    old (т.е. сначала удаления)
+    Group the commands in the old and the new config according to the %diff_logic
+    attributes set in the rulebook and call each logic in turn, then
+    stitch the results back together in the order of the commands in old and new, preferring
+    old (i.e. removals come first)
     """
     diff_logics: odict[typing.Any, typing.Any] = odict()
     for row in old:

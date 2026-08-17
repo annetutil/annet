@@ -6,7 +6,7 @@ forwarding-options
         ~
 
 
-# Правило на все команды
+# A rule for all the commands
 * %global
-# Добавляем веса комментам, чтобы они катились всегда после команд, но только в патче
+# Weights are assigned to the comments so that they are always applied after the commands, but only in the patch
 */\/\*(?:(?!\*\/).)*\*\// %global %scope=patch

@@ -40,7 +40,7 @@ def parse_version(version: str) -> VRPVersion:
     # CP - Cold Patch
     # HP - Hot Patch
     if not version:
-        # FIXME: возможно, если в RT нет данных, надо спрашивать у самого устройства?
+        # FIXME: maybe, if RT has no data, we should ask the device itself?
         version = "VRP V200R002C50SPC800"
         get_logger().warning("SW version not set, falling back to %r", version)
     res = re.match(r"(?:VRP )?V(?P<v>\d+)R(?P<r>\d+)C(?P<c>\d+)(SPC(?P<spc>\d+))?(?P<opt>T)?", version)
@@ -76,14 +76,14 @@ def undo_redo(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict,
 
 
 def prefix_list(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **kwargs: Any) -> common.LogicResult:
-    # для того чтобы опредилить полностью ли изменяется
-    # префикс лист в рулбуке huawei.rul описан ключ (family, name)
-    # однако с точки зрения команды каждый индекс - отдельная команда
-    # поэтому мы группируем их по индексу тут и передаем в common
+    # to determine whether the prefix list is replaced entirely,
+    # the huawei.rul rulebook declares the key as (family, name)
+    # from the command point of view, however, every index is a separate command,
+    # so we group them by index here and pass them on to common
     diff_by_index: dict[str, common.DiffDict] = {}
     for op, rows in diff.items():
         for row in rows:
-            # ожидаемый формат команды префикс-листа
+            # expected format of a prefix-list command
             # ip ip-prefix PRFX_CT_LU_ALLOWED_ROUTES index 15 ..
             # ip ipv6-prefix PFXS_SPECIALv6 index 20 ..
             _ip, _family, _name, _index, index, *_ = row["row"].split()
@@ -96,18 +96,18 @@ def prefix_list(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDic
     if family not in {"ip", "ipv6"}:
         raise NotImplementedError("Unknown family '%s'" % family)
     if diff[Op.ADDED] or diff[Op.REMOVED] or diff[Op.MOVED]:
-        # поскольку исходно у нас в ключе правила нет индекса
-        # нужно добавить его туда иначе undo-правило будет без оного
+        # since the rule key originally has no index in it,
+        # it has to be added there, otherwise the undo rule would come without one
         indexed_rule = copy.deepcopy(rule)
         indexed_rule["reverse"] = "undo ip {}-prefix {} index {}"
 
-        # stub_index референсится в рулбуке huawei.order чтобы обеспечить
-        # добавление/удаление стаба в первую/последнюю очередь
+        # stub_index is referenced in the huawei.order rulebook to make sure
+        # the stub is added first and removed last
         stub, stub_index = "", 99999999
 
-        # если мы только добавляем новые команды (например создаем) в префик-лист
-        # либо удаляем/двигаем но при этом у нас есть не изменяемые части
-        # хуавей не будет считать лист удаляемым и стаб-правило не нужно
+        # if we only add new commands to the prefix list (e.g. create it),
+        # or remove/move them while some parts stay unchanged,
+        # huawei will not consider the list removed and the stub rule is not needed
         if (diff[Op.REMOVED] or diff[Op.MOVED]) and not diff[Op.UNCHANGED]:
             stub = "deny 0.0.0.0 32" if family == "ip" else "deny :: 128"
         if stub:
@@ -120,10 +120,10 @@ def prefix_list(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDic
 
 def static(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
     """
-    Для отката статического маршрута фактически необходимо передавать почти все аргументы,
-    кроме различных track ...
-    При этом, аргументов может быть разное количество - опциональный VRF, опциональный интерфейс.
-    Поэтому мы не парсим саму команду, а только удаляем ненужные аргументы.
+    To roll a static route back almost every argument has to be passed in,
+    except for the various track ...
+    The number of arguments may vary though - an optional VRF, an optional interface.
+    That is why we do not parse the command itself and only drop the unneeded arguments.
     """
     if diff[Op.REMOVED]:
         param = key[0]
@@ -142,7 +142,7 @@ def static(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **
 def undo_trust(
     rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, hw: HardwareView, **_: Any
 ) -> common.LogicResult:
-    """на CE свитчах команда undo trust; на S undo trust *"""
+    """on CE switches the command is undo trust; on S it is undo trust *"""
     if diff[Op.REMOVED]:
         if hw.Huawei.Quidway and not hw.Huawei.Quidway.S6700:
             yield False, "undo trust %s" % key, None
@@ -154,13 +154,13 @@ def undo_trust(
 
 def port_queue(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
     """
-    Для отката конфигурации port-queue на интерфейсе требуется только частичное указание параметров.
-    Пример отключения/включения:
+    Rolling back the port-queue configuration on an interface requires only part of the parameters.
+    Example of disabling/enabling:
     interface 100GE0/1/33
         undo port-queue af3 wfq outbound
         port-queue af3 wfq weight 30 port-wred WRED outbound
 
-    По сути на убрать все параметры между 'wfq' и 'outbound'
+    Essentially all the parameters between 'wfq' and 'outbound' have to be removed
     NOC-19414
     """
     if diff[Op.REMOVED]:
@@ -184,8 +184,8 @@ def netstream_undo(rule: dict[str, Any], key: tuple[str, ...], diff: common.Diff
 def old_snmp_iface_trap_undo(
     rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, hw: HardwareView, **_: Any
 ) -> common.LogicResult:
-    # хитрая логика для старый хуавеев
-    # тут вместо полной команды с undo нужно сгенерить не полную строку
+    # tricky logic for old huawei devices
+    # here an incomplete row has to be generated instead of the full command with undo
     if diff[Op.REMOVED]:
         if hw.Huawei.Quidway:
             yield False, "undo mac-address trap notification", None
@@ -196,8 +196,8 @@ def old_snmp_iface_trap_undo(
 
 
 def stelnet(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
-    # не заменяем строки stelnet ipv4 server enable и stelnet ipv6 server enable на stelnet server enable
-    # чтобы не дергать SSH
+    # do not replace the rows stelnet ipv4 server enable and stelnet ipv6 server enable with stelnet server enable
+    # so that SSH is not disturbed
     if diff[Op.REMOVED] and diff[Op.ADDED]:
         removed = {x["row"] for x in diff[Op.REMOVED]}
         added = {x["row"] for x in diff[Op.ADDED]}
@@ -308,8 +308,8 @@ def _expand_portsplit(row: str) -> list[str]:
 
 
 def classifier(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
-    # если type меняется нужно сначала удалить все if-match
-    # а после этого пересоздать classifier
+    # if the type changes, all the if-match entries have to be removed first
+    # and only after that the classifier is re-created
     if diff[Op.ADDED] and diff[Op.REMOVED]:
         yield (True, diff[Op.REMOVED][0]["row"], diff[Op.REMOVED][0]["children"])
     yield from common.default(rule, key, diff)
@@ -334,13 +334,13 @@ def undo_children(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffD
         newdiff[op] = [subdiff]
         yield from common.default(rule, key, newdiff)
 
-    # Приходится самим говорить undo поскольку мы притворяемся одним блоком
+    # We have to emit undo ourselves since we pretend to be a single block
     for subdiff in diff[Op.REMOVED]:
-        # Сначала нужно удалить все group-member'ы
+        # All the group-members have to be removed first
         if diff[Op.REMOVED][0]["children"]:
             yield (True, diff[Op.REMOVED][0]["row"], diff[Op.REMOVED][0]["children"])
         yield False, "undo " + subdiff["row"], None
-    # Сначала разбираем affected, там внутри могут быть undo
+    # Handle affected first, since it may contain undo statements inside
     for subdiff in sorted(diff[Op.AFFECTED], key=removed_count, reverse=True):
         yield from common_default(Op.AFFECTED, subdiff)
     for subdiff in diff[Op.ADDED]:
@@ -350,9 +350,9 @@ def undo_children(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffD
 def clear_instead_undo(
     rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any
 ) -> common.LogicResult:
-    # Для ряда конфигурационных строк возникает вечный diff, поскольку в конфиге строка либо явно включена,
-    # либо явно выключена. Если она не описана в генераторе, т.е. мы полагаемся на дефолт, то используя clear
-    # вместо undo мы возвращаем конфиг в дефолтное состояние.
+    # A number of configuration rows produce a permanent diff, because in the config a row is either explicitly enabled
+    # or explicitly disabled. If it is not described in the generator, i.e. we rely on the default, then using clear
+    # instead of undo returns the config to its default state.
     # NOC-20102 @gslv 11-02-2022
     if diff[Op.REMOVED]:
         if diff[Op.REMOVED][0]["row"].endswith(" disable"):

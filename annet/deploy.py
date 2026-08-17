@@ -239,7 +239,7 @@ def apply_deploy_rulebook(
         before, after = make_apply_commands(rule, hw, do_commit, do_finalize)
 
         cmd = Command(cmd_path[-1], **cmd_params)
-        # XXX более чистый способ передавать-мета инфу о команде
+        # XXX a cleaner way to pass meta information about the command is needed
         cmd.level = len(cmd_path) - 1
         cmds_with_apply.append((cmd, before, after))
 

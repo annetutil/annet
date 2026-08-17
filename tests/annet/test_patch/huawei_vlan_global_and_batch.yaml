@@ -1,26 +1,26 @@
-# Команды vlan batch и блок vlan в конфиге хуавей
+# The vlan batch commands and the vlan block in a huawei config
 #
 # vlan batch 123 456 789
 # vlan 123
 #   ...
 #
-# Cвязаны между собой особыми взаимоотношениями
+# have a special relationship with each other
 #
-# * Удаление undo vlan <vlan_id> удаляет из списка vlan batch
-# * Удаление undo vlan batch <vlan_id> удаляет глобальный блок vlan <vlan_id>
-# * Добавление глобального блока vlan <vlan_id> добавляет в список vlan batch
-# * Добавление в список vlan batch <vlan_id> НЕ добавляет блока vlan <vlan_id>
+# * Removing with undo vlan <vlan_id> also removes it from the vlan batch list
+# * Removing with undo vlan batch <vlan_id> also removes the global vlan <vlan_id> block
+# * Adding a global vlan <vlan_id> block also adds it to the vlan batch list
+# * Adding <vlan_id> to the vlan batch list does NOT add a vlan <vlan_id> block
 #
-# Из этого вырастают инварианты конфига которые сложно поддерживать в генераторах
-# и которые мы обрабатываем в кастомном %diff_logic'е для этих команд
+# This gives rise to config invariants that are hard to maintain in the generators
+# and that we handle in a custom %diff_logic for these commands
 
 
-# case 1: удален глобальный блок vlan 999 но в батче он остается
-# удалить пустой vlan блок сохранив его только в batch'e нельзя
-# обе команды undo vlan ... и undo vlan batch ... будут сразу же пытаться удалить влан подчистую
-# а снос влана подчистую с устройства требует чтобы были удалены svi и другие объекты
-# которые мы на самом деле удалять совершенно не хотим - влан все еще остается на устройстве
-# таким образом просто оставялем висеть блок глобальный блок vlan
+# case 1: the global vlan 999 block is removed but it stays in the batch
+# an empty vlan block cannot be removed while keeping it in the batch only
+# both undo vlan ... and undo vlan batch ... would immediately try to wipe the vlan completely
+# and wiping a vlan off the device requires the svi and other objects to be removed as well,
+# which we absolutely do not want to remove - the vlan still stays on the device
+# so we simply leave the global vlan block hanging around
 - vendor: Huawei
   before: |
     vlan batch 333 688 700 788 999
@@ -31,10 +31,10 @@
 
   patch: ""
 
-# case 2: обратный case 1 добавляем пустой блок vlan 999
-# если глобальный блок с объявлением vlan пустой
-# то не добавляем его чтобы не засорять конфиг
-# и заодно сохранить симметрию для этих инвариантов
+# case 2: the reverse of case 1, an empty vlan 999 block is added
+# if the global block declaring the vlan is empty
+# we do not add it so as not to clutter the config
+# and at the same time to keep these invariants symmetric
 - vendor: Huawei
   before: |
     vlan batch 333 688 700 788 999
@@ -45,10 +45,10 @@
 
   patch: ""
 
-# case 3: удаляется vlan 999 целиком и из блока и из батча
-# если влан удаляется из обоих блоков то его можно сносить
-# здесь было бы достаточно любой из двух команд
-# но чтобы не пилить отдельной логики можно оставить обе
+# case 3: vlan 999 is removed completely, both from the block and from the batch
+# if the vlan is removed from both blocks then it can be wiped
+# either one of the two commands would be enough here
+# but both are kept so that no separate logic has to be written
 - vendor: Huawei
   before: |
     vlan batch 333 688 700 788 999
@@ -65,9 +65,9 @@
     q
     save
 
-# case 4: обратный case 3 добавляем влан 999
-# опять же добавление глобального объявления всегда добавляет влан и во vlan batch тоже
-# обе команды оставляем просто чтобы не делать лишней кастомной логики
+# case 4: the reverse of case 3, vlan 999 is added
+# again, adding the global declaration always adds the vlan to the vlan batch as well
+# both commands are kept simply to avoid extra custom logic
 - vendor: Huawei
   before: |
     vlan batch 333 688 700 788
@@ -86,8 +86,8 @@
     q
     save
 
-# case 5: блок vlan 999 удаляется но в нем есть опции, в батче остается (усложненный case 1)
-# тут мы удаляем только cами опции, а сам глобальный блок оставляем в конфиге
+# case 5: the vlan 999 block is removed but it has options in it, and it stays in the batch (a harder case 1)
+# here we only remove the options themselves, and leave the global block in the config
 - vendor: Huawei
   before: |
     vlan batch 333 688 700 788 999
@@ -105,8 +105,8 @@
     q
     save
 
-# case 6: обратный case 5 - уже есть в батче но добавляются опции на влан
-# просто для полноты картины
+# case 6: the reverse of case 5 - it is already in the batch but options are added to the vlan
+# just for the sake of completeness
 - vendor: Huawei
   before: |
     vlan batch 333 688 700 788 999
@@ -125,13 +125,13 @@
     save
 
 
-# case 7: комбинация предыдущих кейсов отдельный влан для каждого 1001-1006
-# проверяем что логика работает целиком вместе
-# 1001 остается болтаться (хоть его и нет в after)
-# 1002 не будет добавлен (хоть он и есть в after)
-# 1005 останется болтаться без name (хоть его и не видно в after)
-# 2000 объявлен только в батче и не меняется
-# 3000 объявлен в батче и блоке и тоже не меняется
+# case 7: a combination of the previous cases, a separate vlan for each of 1001-1006
+# check that the logic works as a whole
+# 1001 stays hanging around (even though it is not in after)
+# 1002 will not be added (even though it is in after)
+# 1005 stays hanging around without a name (even though it is not visible in after)
+# 2000 is declared only in the batch and does not change
+# 3000 is declared both in the batch and in a block and does not change either
 - vendor: Huawei
   before: |
     vlan batch 1001 to 1003 1005 to 1006 2000 3000

@@ -246,8 +246,8 @@ class DefaultRulebookProvider(RulebookProvider):
 
     @staticmethod
     def _escape_mako(text: str) -> str:
-        # Экранирование всего, что начинается на %, например %comment -> %%comment, чтобы он не интерпретировался
-        # как mako-оператор
+        # Escape everything that starts with %, for example %comment -> %%comment, so that it is not interpreted
+        # as a mako operator
         text = re.sub(r"(?:^|\n)%((?!if\s*|elif\s*|else\s*|endif\s*|for\s*|endfor\s*))", "\n%%\\1", text)
         text = re.sub(r"(?:^|\n)\s*#.*", "", text)
         return text

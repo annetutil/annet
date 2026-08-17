@@ -152,10 +152,10 @@ def _implicit_tree(device: Device) -> odict[Any, Any]:
                     mtu 1500
                 !interface Ethernet1*
                     no shutdown
-                # Лупбеки
+                # Loopbacks
                 !interface */Loopback[0-9.]+/
                     no shutdown
-                # Агрегаты
+                # Port-Channels
                 !interface */port-channel[0-9.]+/
                     no shutdown
                 # BGP
@@ -178,7 +178,7 @@ def _implicit_tree(device: Device) -> odict[Any, Any]:
                     no shutdown
                 # Physical and NOT splitted interfaces and subifs
                 !interface */Ethernet1\/[0-9]+\/[0-9.]+/
-                    # только explicit
+                    # explicit only
                 # Loopbacks
                 !interface */Loopback[0-9.]+/
                     no shutdown
