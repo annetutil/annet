@@ -76,6 +76,7 @@ class Prefix(DumpableView):
     created: datetime
     last_updated: datetime
     description: Optional[str] = ""
+    tags: List[EntityWithSlug] = field(default_factory=list)
 
     @property
     def _dump__list_key(self) -> str:
@@ -93,11 +94,11 @@ class IpAddress(DumpableView, Generic[_PrefixT]):
     family: IpFamily
     address: str
     status: Label
-    tags: List[EntityWithSlug]
     created: datetime
     last_updated: datetime
     prefix: Optional[_PrefixT] = None
     vrf: Optional[Vrf] = None
+    tags: List[EntityWithSlug] = field(default_factory=list)
 
     @property
     def _dump__list_key(self) -> str:
