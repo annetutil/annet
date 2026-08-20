@@ -181,6 +181,16 @@ def netstream_undo(rule: dict[str, Any], key: tuple[str, ...], diff: common.Diff
     yield from common.default(rule, key, diff)
 
 
+def undo_dhcp_server_dns_list(
+    rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any
+) -> common.LogicResult:
+    if diff[Op.REMOVED]:
+        for dns_server in key[0].split():
+            yield False, rule["reverse"].format(dns_server), None
+    else:
+        yield from common.default(rule, key, diff)
+
+
 def old_snmp_iface_trap_undo(
     rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, hw: HardwareView, **_: Any
 ) -> common.LogicResult:
