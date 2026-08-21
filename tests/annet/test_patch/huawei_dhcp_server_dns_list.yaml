@@ -1,0 +1,31 @@
+- vendor: Huawei
+  before: |
+    interface Vlanif333
+      dhcp server dns-list 1.1.1.1 2.2.2.2
+  after: |
+    interface Vlanif333
+  patch: |
+    system-view
+    interface Vlanif333
+      undo dhcp server dns-list 1.1.1.1
+      undo dhcp server dns-list 2.2.2.2
+      quit
+    q
+    save
+
+- vendor: Huawei
+  before: |
+    interface Vlanif333
+      dhcp server dns-list 1.1.1.1 2.2.2.2
+  after: |
+    interface Vlanif333
+      dhcp server dns-list 2.2.2.2 3.3.3.3
+  patch: |
+    system-view
+    interface Vlanif333
+      undo dhcp server dns-list 1.1.1.1
+      undo dhcp server dns-list 2.2.2.2
+      dhcp server dns-list 2.2.2.2 3.3.3.3
+      quit
+    q
+    save

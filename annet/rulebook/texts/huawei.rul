@@ -329,6 +329,7 @@ interface *                             %logic=annet.rulebook.huawei.iface.perma
     ipv6 neighbor *                     %diff_logic=annet.rulebook.huawei.iface.binding_change
     ipv6 ~                              %diff_logic=annet.rulebook.huawei.iface.binding_change
     dhcpv6 ~
+    dhcp server dns-list ~              %logic=annet.rulebook.huawei.misc.undo_dhcp_server_dns_list
     port link-type
     port trunk pvid vlan
     port trunk allow-pass vlan %logic=annet.rulebook.huawei.vlandb.multi_all
