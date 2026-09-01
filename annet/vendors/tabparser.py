@@ -292,6 +292,7 @@ class HuaweiFormatter(BlockExitFormatter):
     no_block_exit = (
         "rsa peer-public-key",
         "dsa peer-public-key",
+        "public-key peer",
         "public-key-code begin",
     )
     policy_end_blocks = ("end-list", "endif", "end-filter")
