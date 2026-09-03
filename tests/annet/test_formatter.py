@@ -448,6 +448,19 @@ def test_ros_formatter_split(routeros_config):
     ]
 
 
+def test_ros_formatter_split_unwraps_continuations():
+    formatter = registry_connector.get().match(make_hw_stub("routeros")).make_formatter()
+    config = (
+        '/tool sniffer\nset file-limit=1000KiB \\\n    filter-direction=any filter-port=\\\r\n\t"" filter-stream=no'
+    )
+
+    assert formatter.split(config) == [
+        "tool",
+        "  sniffer",
+        '    set file-limit=1000KiB filter-direction=any filter-port="" filter-stream=no',
+    ]
+
+
 def test_jun_formatter_split(juniper_config):
     formatter = registry_connector.get().match(make_hw_stub("juniper")).make_formatter()
     assert formatter.split(juniper_config) == [
