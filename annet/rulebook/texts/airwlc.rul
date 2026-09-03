@@ -1,0 +1,2 @@
+# Generic annet intentionally owns no AirOS configuration commands. Projects
+# provide policy and verified command semantics in their own rulebook module.

@@ -1,11 +1,17 @@
 import copy
+import os
 import textwrap
+from unittest.mock import MagicMock
 
 import pytest
 
 import annet.annlib.filter_acl
 import annet.annlib.patching
+from annet.cli_args import GenOptions
+from annet.filtering import Filterer
+from annet.gen import build_filter_text
 from annet.rulebook.patching import compile_patching_text
+from annet.storage import Device
 from annet.vendors import registry_connector, tabparser
 
 
@@ -108,6 +114,29 @@ def test_filter_diff():
     -   foo bar
     """).strip()
     )
+
+
+def test_filter_acl_stream_is_reused():
+    filter_acl_text = "bgp *\n  address-family ~\n    balance *\n"
+    read_fd, write_fd = os.pipe()
+    os.write(write_fd, filter_acl_text.encode())
+    os.close(write_fd)
+
+    args = object.__new__(GenOptions)
+    args.filter_acl = f"/dev/fd/{read_fd}"
+    args.filter_ifaces = ""
+    args.filter_peers = ""
+    args.filter_policies = ""
+    stdin = args.stdin(filter_acl=args.filter_acl, config=None)
+
+    try:
+        first = build_filter_text(MagicMock(spec=Filterer), MagicMock(spec=Device), stdin, args, "running")
+        second = build_filter_text(MagicMock(spec=Filterer), MagicMock(spec=Device), stdin, args, "running")
+    finally:
+        os.close(read_fd)
+
+    assert first == filter_acl_text
+    assert second == filter_acl_text
 
 
 def test_ordered_and_filter_acl():

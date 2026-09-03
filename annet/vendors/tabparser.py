@@ -217,6 +217,36 @@ class CommonFormatter:
             yield row
 
 
+class AirWLCFormatter(CommonFormatter):
+    """Normalize AirOS command dumps into a flat configuration."""
+
+    @staticmethod
+    def _normalize_row(row: str) -> str:
+        normalized: list[str] = []
+        in_quotes = False
+        space_pending = False
+        escaped = False
+        for character in row.strip():
+            if character == '"' and not escaped:
+                if space_pending and normalized:
+                    normalized.append(" ")
+                space_pending = False
+                in_quotes = not in_quotes
+                normalized.append(character)
+            elif character.isspace() and not in_quotes:
+                space_pending = bool(normalized)
+            else:
+                if space_pending and normalized:
+                    normalized.append(" ")
+                space_pending = False
+                normalized.append(character)
+            escaped = character == "\\" and not escaped
+        return "".join(normalized)
+
+    def split(self, text: str) -> list[str]:
+        return [row for line in super().split(text) if (row := self._normalize_row(line))]
+
+
 class BlockExitFormatter(CommonFormatter):
     block_exit_command = "exit"
     no_block_exit: str | tuple[str, ...] = ()

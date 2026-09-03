@@ -624,7 +624,7 @@ def build_filter_text(
     if args.filter_acl:
         assert stdin is not None
         filter_acl_text = stdin["filter_acl"]
-        if not filter_acl_text:
+        if filter_acl_text is None:
             if os.path.isdir(args.filter_acl):
                 filename = os.path.join(config, "%s.acl" % device.hostname)
             else:

@@ -1,0 +1,5 @@
+# Use the standard vendor apply flow for every AirOS configuration command.
+save config %timeout=60
+    dialog: Are you sure you want to save? (y/n)  ::: y
+
+~

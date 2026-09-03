@@ -236,13 +236,16 @@ class DefaultRulebookProvider(RulebookProvider):
         return self._rulebook_text_cache[key]
 
     def _get_raw_rulebook_text(self, rulebook_path: str, extension: Extension) -> AnyRulebookText:
-        """Gets the raw rulebook text"""
+        """Gets the raw rulebook text, if local rulebook is not found, try to find it in upstream rulebooks"""
         self.check_rulebook_path(rulebook_path)
         module, name = rulebook_path.rsplit(".", 1)
         try:
             return resources.files(module).joinpath(f"{name}.{extension}").read_text(encoding="utf-8")
         except RULEBOOK_READ_EXCEPTIONS as err:
-            raise FileNotFoundError(f'Unable to find rulebook "{name}" in "{self.rulebook_module}" module') from err
+            fallback_path = f"{self.DEFAULT_RULEBOOK_MODULE}.{name}"
+            if fallback_path == rulebook_path:
+                raise FileNotFoundError(f'Unable to find rulebook "{name}" in "{module}" module') from err
+            return self._get_raw_rulebook_text(fallback_path, extension)
 
     @staticmethod
     def _escape_mako(text: str) -> str:

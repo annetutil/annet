@@ -3,6 +3,7 @@
     "Cisco.CGS": " CGS",
     "Cisco.IE": " IE",
     "Cisco.AIR": "AIR",
+    "Cisco.AIR.WLC": "^Cisco AIR-CT5520(?:[- ]|$)",
     "Cisco.ASR": " ASR",
     "Cisco.ASR?.ASR1000": " ?1\\d{3}",
     "Cisco.NCS": " NCS",

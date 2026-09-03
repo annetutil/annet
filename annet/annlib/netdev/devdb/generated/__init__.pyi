@@ -53,6 +53,7 @@ hw.B4com.CS4148Q
 hw.B4com.CS4164U
 hw.Cisco
 hw.Cisco.AIR
+hw.Cisco.AIR.WLC
 hw.Cisco.ASR
 hw.Cisco.ASR1000
 hw.Cisco.ASR9000
@@ -418,6 +419,9 @@ class Cisco(HardwareLeaf):
     XRV: Cisco_XRV
 
 class Cisco_AIR(HardwareLeaf):
+    WLC: Cisco_AIR_WLC
+
+class Cisco_AIR_WLC(HardwareLeaf):
     ...
 
 class Cisco_ASR(HardwareLeaf):

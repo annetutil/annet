@@ -99,6 +99,7 @@ MODELS = [
     ("Asterfusion CX864E-N", "PC.Whitebox.Asterfusion.CX.CX800.CX864EN"),
     ("B4com AS9726-32DB-O-AC-F", "B4com"),
     ("B4com CS4148Q08U", "B4com"),
+    ("Cisco AIR-CT5520-K9", "Cisco.AIR.WLC"),
     ("Cisco 8201-24H8FH", "Cisco.XR"),
     ("Cisco 8201-32FH", "Cisco.XR"),
     ("Cisco 8712-MOD-M", "Cisco.XR"),

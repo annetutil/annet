@@ -3,8 +3,9 @@ from collections import OrderedDict
 
 import pytest
 
+from annet.annlib.netdev.views.hardware import HardwareView
 from annet.vendors import registry_connector
-from annet.vendors.tabparser import parse_to_tree
+from annet.vendors.tabparser import AirWLCFormatter, parse_to_tree
 
 from .. import make_hw_stub
 
@@ -908,3 +909,20 @@ def test_jun_formatter_split_whitespaces01(juniper_config):
         "                origin igp",
         "                accept",
     ]
+
+
+def test_airwlc_formatter_normalizes_only_unquoted_spaces():
+    hardware = HardwareView("Cisco AIR-CT5520-K9")
+    vendor = registry_connector.get().match(hardware)
+    formatter = vendor.make_formatter()
+
+    assert vendor.NAME == "airwlc"
+    assert isinstance(formatter, AirWLCFormatter)
+    assert formatter.split('  aaa auth mgmt   local radius\ncmd "keep   spaces"  value\n') == [
+        "aaa auth mgmt local radius",
+        'cmd "keep   spaces" value',
+    ]
+
+    before, after = vendor.apply(hardware, do_commit=False, do_finalize=True, path=None)
+    assert [str(command) for command in before] == ["config"]
+    assert [str(command) for command in after] == ["exit", "save config"]

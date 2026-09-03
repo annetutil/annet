@@ -2,6 +2,7 @@ from annet.connectors import Connector
 from annet.vendors.base import AbstractVendor
 
 from .library import (
+    airwlc,
     arista,
     aruba,
     b4com,

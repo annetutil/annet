@@ -74,6 +74,12 @@ Usage help can be obtained by calling ``annet -h`` or for a specific command, su
    contrib/lab.rst
 
 .. toctree::
+   :hidden:
+   :caption: Other:
+
+   other/keyboard.rst
+
+.. toctree::
     :hidden:
     :caption: Project Links
 

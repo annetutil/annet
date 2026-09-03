@@ -362,6 +362,14 @@ class GenOptions(QueryOptions, GenSelectOptions, CacheOptions, ParallelOptions):
     strict_exit_code = opt_strict_exit_code
     fail_on_empty_config = opt_fail_on_empty_config
 
+    def stdin(self, **kwargs: str | None) -> dict[str, str | None]:
+        ret = super().stdin(**kwargs)
+        filter_acl = kwargs.get("filter_acl")
+        if filter_acl and filter_acl != "-" and not os.path.isdir(filter_acl):
+            with open(filter_acl) as filter_acl_file:
+                ret["filter_acl"] = filter_acl_file.read()
+        return ret
+
 
 class TransportOptions(ArgGroup):
     ask_pass = opt_ask_pass

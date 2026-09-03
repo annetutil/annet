@@ -50,6 +50,7 @@ def make_hw_stub(vendor):
             "huawei ce": "Huawei CE0000",
             "juniper": "Juniper",
             "routeros": "RouterOS",
+            "airwlc": "Cisco AIR-CT5520-K9",
             "aruba": "Aruba",
             "arista": "Arista",
             "nokia": "Nokia",
