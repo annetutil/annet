@@ -198,6 +198,9 @@ hw.Ribbon
 hw.Ribbon.OPT
 hw.Ribbon.OPT9608
 hw.RouterOS
+hw.RouterOS.hAP_ax3
+hw.RouterOS.hAP_ax_lite
+hw.RouterOS.hEX_S_2025
 hw.SNR
 hw.SNR.S5110G
 hw.SNR.S5210G
@@ -1114,6 +1117,17 @@ class Ribbon_OPT_OPT9608(HardwareLeaf):
     ...
 
 class RouterOS(HardwareLeaf):
+    hAP_ax3: RouterOS_hAP_ax3
+    hAP_ax_lite: RouterOS_hAP_ax_lite
+    hEX_S_2025: RouterOS_hEX_S_2025
+
+class RouterOS_hAP_ax3(HardwareLeaf):
+    ...
+
+class RouterOS_hAP_ax_lite(HardwareLeaf):
+    ...
+
+class RouterOS_hEX_S_2025(HardwareLeaf):
     ...
 
 class SNR(HardwareLeaf):
