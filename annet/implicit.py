@@ -134,6 +134,10 @@ def _implicit_tree(device: Device) -> odict[Any, Any]:
                 # This part of configuration will not be visible in configuration if enabled
                 snmp-server enable traps link linkDown
                 snmp-server enable traps link linkUp
+                # The management VRF and its mgmt interface membership always exist
+                vrf context management
+                interface mgmt0
+                    vrf member management
         """
         if (
             device.hw.Cisco.Nexus.N3x.N3432

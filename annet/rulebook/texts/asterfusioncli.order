@@ -1,0 +1,57 @@
+# This file defines the order in which the commands should be sent to the device.
+# - If the order of a command does not matter - it can be left out of this file entirely.
+# - If a command starts with undo and the %order_reverse parameter is set, the command is treated
+#   as a reverse one, but takes its place among the direct ones where specified.
+
+hostname
+
+stp enable
+
+lldp enable
+
+dns server
+
+ntp server
+
+tacacs
+
+ip route
+
+dhcp snooping enable
+
+authentication enable
+authentication radius-server
+authentication radius-server accounting
+authentication radius-server server-mode
+
+vlan
+vlan pool
+
+interface mgmt *
+
+interface vlan *
+    ip address
+    description
+    ~
+
+interface ethernet *
+    description
+    mtu
+    switchport access vlan
+    switchport trunk vlan
+    storm-suppress
+    loopback-detection
+    stp bpdu-guard enable
+    dhcp-snooping enable
+    dhcp-snooping trusted
+    poe enable
+    authentication dot1x
+    ptp instance
+    ~
+
+router-type
+
+syslog source-interface
+
+ptp enable
+ptp instance
