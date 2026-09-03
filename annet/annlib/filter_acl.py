@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+import copy
 import re
 from typing import Any, TypeAlias, overload
 
@@ -67,8 +68,22 @@ def filter_diff(acl: Acl, fmtr: tabparser.CommonFormatter, input_config: InputCo
     return config
 
 
-def filter_patch(acl: Acl, fmtr: tabparser.CommonFormatter, text: str) -> str:
-    return filter_config(acl, fmtr, text)
+def filter_patch(acl: Acl, patch: patching.PatchTree) -> patching.PatchTree:
+    filtered = patching.PatchTree()
+    for source_item in patch.itms:
+        match, children_acl = patching.match_row_to_acl(source_item.row, acl)
+        if match is None or match["is_reverse"] and all(match["attrs"]["cant_delete"]):
+            continue
+
+        item = copy.deepcopy(source_item)
+        if item.child:
+            assert children_acl is not None
+            filtered_child = filter_patch(children_acl, item.child)
+            if not filtered_child:
+                continue
+            item.child = filtered_child
+        filtered.itms.append(item)
+    return filtered
 
 
 # NOCDEV-6378 filter_acl cannot be applied to a Juniper/Nokia patch as-is
