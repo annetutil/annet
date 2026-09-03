@@ -1,0 +1,21 @@
+# Deploy rulebook for Asterfusion CX206Y (AsterNOS) devices
+#
+# Operators:
+#   *  One argument
+#   ~  One or more arguments
+#
+# Parameters:
+#   %timeout=...  Command execution timeout (in seconds, 30 by default)
+#
+# Answers to questions
+#
+# <command>
+#   dialog: <question> ::: <answer> <parameters>
+#
+# If <question> is enclosed in slashes (//), it is treated as a regexp, otherwise as an exact match.
+# Parameters:
+#   %send_nl=...  Whether to send a newline after the answer (bool, true by default)
+# -----
+
+write running-config %timeout=60
+    dialog: /Existing files will be overwritten.*/ ::: y

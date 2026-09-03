@@ -43,6 +43,8 @@ hw.Asterfusion.CX700
 hw.Asterfusion.CX732QN
 hw.Asterfusion.CX800
 hw.Asterfusion.CX864EN
+hw.AsterfusionCLI
+hw.AsterfusionCLI.CX206Y
 hw.Avocent
 hw.Avocent.ACS8000
 hw.B4com
@@ -381,6 +383,12 @@ class Aruba_AP_IAP_IAP300_IAP324(HardwareLeaf):
     ...
 
 class Aruba_AP_IAP_IAP300_IAP325(HardwareLeaf):
+    ...
+
+class AsterfusionCLI(HardwareLeaf):
+    CX206Y: AsterfusionCLI_CX206Y
+
+class AsterfusionCLI_CX206Y(HardwareLeaf):
     ...
 
 class B4com(HardwareLeaf):
@@ -1153,6 +1161,7 @@ class FakeHardwareView(HardwareLeaf):
     Arista: Arista
     Aruba: Aruba
     Asterfusion: PC_Whitebox_Asterfusion
+    AsterfusionCLI: AsterfusionCLI
     Avocent: PC_Avocent
     B4com: B4com
     Cisco: Cisco

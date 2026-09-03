@@ -936,6 +936,19 @@ class SNRFormatter(BlockExitFormatter):
         return self.split_remove_spaces(text)
 
 
+class AsterfusionFormatter(BlockExitFormatter):
+    """Formatter for AsterNOS (Asterfusion CX206Y series) CLI.
+
+    AsterNOS uses a Cisco-like indented CLI with ``!`` as block separators.
+    Blocks are entered with ``configure terminal`` and exited with ``exit``.
+    """
+
+    def split(self, text: str) -> list[str]:
+        lines = self.split_remove_spaces(text)
+        # Filter out bare ``!`` separators — they are block delimiters, not commands.
+        return [line for line in lines if line.strip() != "!"]
+
+
 # ====
 
 

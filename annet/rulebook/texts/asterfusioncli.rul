@@ -1,0 +1,84 @@
+# Operators:
+#   *  One argument in undo
+#   ~  One or more arguments in undo
+#
+# Parameters:
+#   %global         The command applies at any level below
+#   %logic=...      Custom rule processing function
+#   %diff_logic=... Custom diff building function.
+#                   Works for sub-blocks, unlike %logic
+#   %comment=...    Adds a comment after the row; shown with the patch --add-comments option
+#                   Primarily used to generate special provisioning commands
+# -----
+
+hostname *
+
+stp enable *
+
+authentication enable
+authentication radius-server ~
+authentication radius-server accounting ~
+authentication radius-server server-mode *
+
+dhcp snooping enable *
+
+dns server ~
+
+lldp enable
+
+ntp server ~
+
+router-type *
+
+syslog source-interface *
+
+tacacs ~
+
+ip route ~
+
+vlan * %logic=annet.rulebook.cisco.vlandb.simple
+    name *
+    description *
+    isolate enable
+
+vlan pool *
+    assignment *
+    vlan ~
+
+interface mgmt *
+    ip address ~
+
+interface vlan *
+    ip address ~
+    description *
+
+interface ethernet * %logic=annet.rulebook.common.permanent
+    description *
+    mtu
+    switchport access vlan
+    switchport trunk vlan ~
+    storm-suppress * packets *
+    loopback-detection enable
+    loopback-detection action *
+    stp bpdu-guard enable
+    dhcp-snooping enable
+    dhcp-snooping trusted
+    poe enable
+    authentication dot1x enable
+    authentication dot1x mac-bypass enable
+    authentication dot1x priority ~
+    authentication dot1x accounting-realtime *
+    authentication dot1x port-method *
+    authentication dot1x reauthenticate-period *
+    ptp instance *
+        ptp enable
+
+ptp enable
+ptp instance *
+    ptp clock-type *
+    ptp profile *
+
+no ~ %global
+~ %global
+
+# vim: set syntax=annrulebook:
