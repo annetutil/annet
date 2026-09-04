@@ -176,6 +176,9 @@
     "PC?.Opengear.CM8100": " CM81\\d\\d",
 
     "RouterOS": "^([Rr]outer[Oo][Ss]|[Mm]ikro[Tt]ik)",
+    "RouterOS.hAP_ax3": "hAP ax3|C53UiG\\+5HPaxD2HPaxD",
+    "RouterOS.hAP_ax_lite": "hAP ax lite|L41G-2axD",
+    "RouterOS.hEX_S_2025": "hEX S \\(2025\\)|E60iUGS",
 
     "Aruba": "^Aruba",
     "Aruba.AP": " I?AP-",
