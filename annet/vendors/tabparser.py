@@ -867,6 +867,10 @@ class RosFormatter(CommonFormatter):
         return out
 
     def split(self, text: str) -> list[str]:
+        # Export wrapping depends on terminal width, but backslash-continued
+        # physical lines represent one RouterOS command.
+        text = re.sub(r"\\\r?\n[ \t]*", "", text)
+
         split = []
         level = 0
         postj: dict[str, list[str]] = {}
