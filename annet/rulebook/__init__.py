@@ -65,6 +65,10 @@ if sys.version_info >= (3, 12):
         RULEBOOK_READ_EXCEPTIONS = (FileNotFoundError, _traversal_error)
 
 
+class RulebookNotFoundError(FileNotFoundError):
+    """Raised when a rulebook resource is unavailable after fallback."""
+
+
 class RulebookProvider(ABC):
     def get_rulebook(self, hw: HardwareView) -> Rulebook:
         raise NotImplementedError
@@ -188,12 +192,15 @@ class DefaultRulebookProvider(RulebookProvider):
             return child_rulebook
 
         parent_rulebook_path = self._parse_inherit_from_param(inherit_from)
-        parent_rulebook = self._get_rulebook_by_extension(
-            rulebook_path=parent_rulebook_path,
-            vendor=vendor,
-            extension=extension,
-            hw=hw,
-        )
+        try:
+            parent_rulebook = self._get_rulebook_by_extension(
+                rulebook_path=parent_rulebook_path,
+                vendor=vendor,
+                extension=extension,
+                hw=hw,
+            )
+        except RulebookNotFoundError as err:
+            raise RulebookSyntaxError(f'Unable to inherit from rulebook "{parent_rulebook_path}.{extension}"') from err
 
         return self.merge_rulebooks[extension](parent_rulebook, child_rulebook, vendor)
 
@@ -239,12 +246,13 @@ class DefaultRulebookProvider(RulebookProvider):
         """Gets the raw rulebook text, if local rulebook is not found, try to find it in upstream rulebooks"""
         self.check_rulebook_path(rulebook_path)
         module, name = rulebook_path.rsplit(".", 1)
+        module_files = resources.files(module)
         try:
-            return resources.files(module).joinpath(f"{name}.{extension}").read_text(encoding="utf-8")
+            return module_files.joinpath(f"{name}.{extension}").read_text(encoding="utf-8")
         except RULEBOOK_READ_EXCEPTIONS as err:
             fallback_path = f"{self.DEFAULT_RULEBOOK_MODULE}.{name}"
             if fallback_path == rulebook_path:
-                raise FileNotFoundError(f'Unable to find rulebook "{name}" in "{module}" module') from err
+                raise RulebookNotFoundError(f'Unable to find rulebook "{name}" in "{module}" module') from err
             return self._get_raw_rulebook_text(fallback_path, extension)
 
     @staticmethod
