@@ -935,7 +935,10 @@ def guess_hw(config_text: str) -> tuple[HardwareView, float]:
     vendor_registry = registry_connector.get()
     for vendor in vendor_registry:
         hw = hw_provider.vendor_to_hw(vendor)
-        rb = rulebook.get_rulebook(hw)
+        try:
+            rb = rulebook.get_rulebook(hw)
+        except rulebook.RulebookNotFoundError:
+            continue
         fmtr = vendor_registry[vendor].make_formatter()
 
         try:
