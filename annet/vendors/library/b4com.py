@@ -17,14 +17,16 @@ class B4ComVendor(AbstractVendor):
         before, after = CommandList(), CommandList()
 
         if hw.B4com.CS2148P:
+            before.add_cmd(Command("terminal no monitor"))
             before.add_cmd(Command("conf t"))
             after.add_cmd(Command("end"))
             if do_finalize:
                 after.add_cmd(Command("write", timeout=40))
         else:
+            before.add_cmd(Command("terminal no monitor"))
             before.add_cmd(Command("conf t"))
             if do_commit:
-                after.add_cmd(Command("commit"))
+                after.add_cmd(Command("commit", timeout=120))
                 after.add_cmd(Command("end"))
             if do_finalize:
                 after.add_cmd(Command("write", timeout=40))
