@@ -24,7 +24,7 @@ class B4ComVendor(AbstractVendor):
         else:
             before.add_cmd(Command("conf t"))
             if do_commit:
-                after.add_cmd(Command("commit"))
+                after.add_cmd(Command("commit", timeout=120))
                 after.add_cmd(Command("end"))
             if do_finalize:
                 after.add_cmd(Command("write", timeout=40))
