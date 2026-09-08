@@ -84,9 +84,7 @@ system tcam acl
 
 vlan reserved ~
 
-vlan batch  %diff_logic=annet.rulebook.h3c.vlandb.vlan_diff %logic=annet.rulebook.h3c.vlandb.multi
-
-vlan */\d+/ %diff_logic=annet.rulebook.h3c.vlandb.vlan_diff
+?/vlan [0-9]+(?: to [0-9]+)?$/ %logic=annet.rulebook.h3c.vlandb.global_vlan
     name
 
 vlan pool *

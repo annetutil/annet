@@ -2,8 +2,7 @@
 # This file defines the order in which the commands should be sent to the device.
 # - If the order of a command does not matter - it can be left out of this file entirely.
 # - If a command starts with undo and the %order_reverse parameter is set, the command is treated
-#   as a reverse one, but takes its place among the direct ones where specified (i.e. undo vlan batch
-#   will come after the interface blocks).
+#   as a reverse one, but takes its place among the direct ones where specified.
 
 sysname
 
@@ -379,7 +378,6 @@ undo drop-profile %order_reverse
 
 # vlans are removed after vlanif/subif
 undo vlan %order_reverse
-undo vlan batch %order_reverse
 undo observe-port %order_reverse
 
 #sflow may be attached to a subif/eth-trunk
