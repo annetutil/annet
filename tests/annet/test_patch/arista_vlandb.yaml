@@ -1,0 +1,163 @@
+- name: remove only absent id from collapsed range
+  vendor: arista
+  diff: |
+    - vlan 1000-1001,1003
+    + vlan 1000-1001
+  patch: |
+    conf s
+    no vlan 1003
+    commit
+    write memory
+
+- name: add only new id to collapsed range
+  vendor: arista
+  diff: |
+    - vlan 1000-1001
+    + vlan 1000-1002
+  patch: |
+    conf s
+    vlan 1002
+      exit
+    commit
+    write memory
+
+- name: collapse disjoint additions and removals
+  vendor: arista
+  diff: |
+    - vlan 10-11,20
+    + vlan 10,30-31,40
+  patch: |
+    conf s
+    no vlan 11,20
+    vlan 30-31,40
+      exit
+    commit
+    write memory
+
+- name: preserve individual vlan child behavior
+  vendor: arista
+  diff: |
+    vlan 1000
+      - name OLD
+      + name SERVERS
+  patch: |
+    conf s
+    vlan 1000
+      name SERVERS
+      exit
+    commit
+    write memory
+
+- name: move id between ranged groups with shared config
+  vendor: arista
+  diff: |
+    - vlan 1000-1001,1004
+      - name foo
+    + vlan 1000-1001
+      + name foo
+    - vlan 1002-1003
+      - name bar
+    + vlan 1002-1004
+      + name bar
+  patch: |
+    conf s
+    vlan 1004
+      name bar
+      exit
+    commit
+    write memory
+
+- name: add ranged group with config
+  vendor: arista
+  diff: |
+    vlan 1000-1001,1004
+      name foo
+    + vlan 1005-1006
+      + name baz
+  patch: |
+    conf s
+    vlan 1005-1006
+      name baz
+      exit
+    commit
+    write memory
+
+- name: remove ranged group with config
+  vendor: arista
+  diff: |
+    vlan 1000-1001,1004
+      name foo
+    - vlan 1002-1003
+      - name bar
+  patch: |
+    conf s
+    no vlan 1002-1003
+    commit
+    write memory
+
+- name: change config of whole ranged group
+  vendor: arista
+  diff: |
+    vlan 1000-1001,1004
+      - name foo
+      + name baz
+  patch: |
+    conf s
+    vlan 1000-1001,1004
+      name baz
+      exit
+    commit
+    write memory
+
+- name: split ranged group into differently named vlans
+  vendor: arista
+  diff: |
+    - vlan 1000-1001
+      - name foo
+    + vlan 1000
+      + name foo
+    + vlan 1001
+      + name bar
+  patch: |
+    conf s
+    vlan 1001
+      name bar
+      exit
+    commit
+    write memory
+
+- name: id leaving ranged group drops its config
+  vendor: arista
+  diff: |
+    - vlan 10-11
+      - state suspend
+    + vlan 10
+      + state suspend
+    + vlan 11
+  patch: |
+    conf s
+    vlan 11
+      no state suspend
+      exit
+    commit
+    write memory
+
+- name: ids with different config transitions are patched separately
+  vendor: arista
+  diff: |
+    - vlan 10-13
+      - name foo
+    + vlan 10-11
+      + name foo
+    + vlan 12-13,20
+      + name bar
+  patch: |
+    conf s
+    vlan 12-13
+      name bar
+      exit
+    vlan 20
+      name bar
+      exit
+    commit
+    write memory
