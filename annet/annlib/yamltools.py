@@ -12,10 +12,12 @@ PyYAML. Key order is preserved on dump to keep order-significant configs stable.
 
 from __future__ import annotations
 
+from collections import OrderedDict
 from io import StringIO
 from typing import Any
 
 from ruamel.yaml import YAML
+from ruamel.yaml.representer import SafeRepresenter
 
 
 def _yaml() -> YAML:
@@ -23,6 +25,8 @@ def _yaml() -> YAML:
     # Block style everywhere; keep keys in insertion order (do not sort).
     yaml.default_flow_style = False
     yaml.representer.sort_base_mapping_type_on_output = False
+    yaml.representer.yaml_representers = yaml.representer.yaml_representers.copy()
+    yaml.representer.yaml_representers[OrderedDict] = SafeRepresenter.represent_dict
     return yaml
 
 
