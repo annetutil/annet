@@ -2,21 +2,23 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from dataclass_rest.exceptions import ClientError, ClientLibraryError
-
 from annet.connectors import AdapterWithConfig, AdapterWithName
 from annet.storage import Storage, StorageOpts, StorageProvider
 
 from .common.query import NetboxQuery
-from .common.status_client import NetboxStatusClient
-from .common.storage_base import BaseNetboxStorage
 from .common.storage_opts import NetboxStorageOpts
-from .v37.storage import NetboxStorageV37
-from .v41.storage import NetboxStorageV41
-from .v42.storage import NetboxStorageV42
 
 
 def storage_factory(opts: NetboxStorageOpts) -> Storage:
+    # Providers are discovered before the configured storage adapter is selected.
+    from dataclass_rest.exceptions import ClientError, ClientLibraryError
+
+    from .common.status_client import NetboxStatusClient
+    from .common.storage_base import BaseNetboxStorage
+    from .v37.storage import NetboxStorageV37
+    from .v41.storage import NetboxStorageV41
+    from .v42.storage import NetboxStorageV42
+
     client = NetboxStatusClient(opts.url, opts.token, opts.insecure)
     version_class_map: dict[str, type[BaseNetboxStorage[Any, Any, Any, Any, Any, Any]]] = {
         "3.4": NetboxStorageV37,
