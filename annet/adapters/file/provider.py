@@ -140,6 +140,10 @@ class Device(DeviceProtocol, DumpableView):
         return self.dev.breed
 
     @property
+    def interfaces(self) -> list[Interface]:
+        return self.dev.interfaces or []
+
+    @property
     def neighbours_ids(self) -> list[DeviceId]:
         return []
 

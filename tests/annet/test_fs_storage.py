@@ -28,3 +28,21 @@ devices:
         f.flush()
         fs = FS(StorageOpts(path=f.name))
     print(fs)
+
+
+def test_inventory_interfaces(tmp_path):
+    path = tmp_path / "inventory.yml"
+    path.write_text("""devices:
+  - fqdn: switch.example.test
+    vendor: arista
+    interfaces:
+      - name: Ethernet1
+        description: Managed by Annet
+  - fqdn: empty.example.test
+    vendor: arista
+""")
+    storage = FS(StorageOpts(path=str(path)))
+    device = storage.make_devices(["switch.example.test"])[0]
+    assert device.interfaces[0].name == "Ethernet1"
+    assert device.interfaces[0].description == "Managed by Annet"
+    assert storage.make_devices(["empty.example.test"])[0].interfaces == []
