@@ -16,9 +16,9 @@ ip community-list standard ~
 !vrf context management
 vrf context *
 
-vlan group * vlan-list %logic=annet.rulebook.cisco.vlandb.simple
+vlan group * vlan-list %logic=annet.rulebook.generic.vlandb.simple_no_tiny_ranges
 vlan */[^\d].*/
-vlan %logic=annet.rulebook.cisco.vlandb.simple
+vlan %logic=annet.rulebook.generic.vlandb.simple_no_tiny_ranges
     name
 
 ip ssh version 2 %logic=annet.rulebook.cisco.misc.ssh_key

@@ -1,0 +1,49 @@
+- name: remove only absent id from collapsed range
+  vendor: arista
+  diff: |
+    - vlan 1000-1001,1003
+    + vlan 1000-1001
+  patch: |
+    conf s
+    no vlan 1003
+    commit
+    write memory
+
+- name: add only new id to collapsed range
+  vendor: arista
+  diff: |
+    - vlan 1000-1001
+    + vlan 1000-1002
+  patch: |
+    conf s
+    vlan 1002
+      exit
+    commit
+    write memory
+
+- name: collapse disjoint additions and removals
+  vendor: arista
+  diff: |
+    - vlan 10-11,20
+    + vlan 10,30-31,40
+  patch: |
+    conf s
+    no vlan 11,20
+    vlan 30-31,40
+      exit
+    commit
+    write memory
+
+- name: preserve individual vlan child behavior
+  vendor: arista
+  diff: |
+    vlan 1000
+      - name OLD
+      + name SERVERS
+  patch: |
+    conf s
+    vlan 1000
+      name SERVERS
+      exit
+    commit
+    write memory

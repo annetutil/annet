@@ -1,14 +1,12 @@
-import re
 from collections.abc import Iterator
 from typing import Any
 
 from annet.annlib.lib import cisco_collapse_vlandb as collapse_vlandb
-from annet.annlib.lib import cisco_expand_vlandb as expand_vlandb
 from annet.annlib.netdev.views.hardware import HardwareView
 from annet.annlib.types import Op
+from annet.rulebook.generic import vlandb as generic_vlandb
 
 
-VLANDB_CHUNK = 15
 SWTRUNK_CHUNK = 5
 
 
@@ -16,35 +14,29 @@ SWTRUNK_CHUNK = 5
 def simple(
     rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], hw: HardwareView, **_: Any
 ) -> Iterator[tuple[bool, str, Any]]:
-    yield from _process_vlandb(rule, key, diff, hw, False, VLANDB_CHUNK)
+    yield from generic_vlandb.simple(
+        rule,
+        key,
+        diff,
+        tiny_ranges=bool(hw.Cisco.Catalyst),
+        exclude_added_blocks=bool(hw.Cisco.Catalyst),
+    )
 
 
 def swtrunk(
     rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], hw: HardwareView, **_: Any
-) -> Iterator[tuple[bool, str, Any]]:
-    yield from _process_vlandb(rule, key, diff, hw, True, SWTRUNK_CHUNK)
-
-
-# =====
-def _process_vlandb(
-    rule: dict[str, Any],
-    key: tuple[str, ...],
-    diff: dict[str, list[dict[str, Any]]],
-    hw: HardwareView,
-    explicit_changing: bool,
-    multi_chunk: int,
 ) -> Iterator[tuple[bool, str, Any]]:
     # pylint: disable=unused-argument
     for affected in diff[Op.AFFECTED]:
         # The contents of the vlan block have changed
         yield (True, affected["row"], affected["children"])
 
-    (prefix, new, new_blocks) = _parse_vlancfg_actions(diff[Op.ADDED])
-    (prefix2, old, old_blocks) = _parse_vlancfg_actions(diff[Op.REMOVED])
+    (prefix, new, _new_blocks) = generic_vlandb.parse_actions(diff[Op.ADDED])
+    (prefix2, old, _old_blocks) = generic_vlandb.parse_actions(diff[Op.REMOVED])
     if not prefix:
         prefix = prefix2
 
-    if explicit_changing and not new:
+    if not new:
         if diff[Op.ADDED] and not diff[Op.UNCHANGED]:
             # switchport trunk allowed vlan none
             yield (True, "%s none" % prefix, None)
@@ -54,68 +46,18 @@ def _process_vlandb(
             yield (False, "no %s" % prefix, None)
             return
 
-    for vlan_id in (set(old_blocks.keys()) - set(new_blocks)) & new:
-        # The contents of the vlan block were removed, but the vlan itself is still there
-        yield (True, "%s %s" % (prefix, vlan_id), old_blocks[vlan_id])
-
     removed = old.difference(new)
     added = new.difference(old)
-    if hw.Cisco.Catalyst:
-        # Catalysts do not list vlans in batch mode if they are represented as blocks
-        added -= new_blocks.keys()
-
     if removed:
         collapsed = collapse_vlandb(removed, bool(hw.Cisco.Catalyst))
-        for chunk in _chunked(collapsed, multi_chunk):
-            if explicit_changing:
-                yield (True, "%s%s%s" % (prefix, " remove ", ",".join(chunk)), None)
-            else:
-                yield (False, "no %s%s%s" % (prefix, " ", ",".join(chunk)), None)
+        for chunk in generic_vlandb.iter_chunks(collapsed, SWTRUNK_CHUNK):
+            yield (True, "%s%s%s" % (prefix, " remove ", ",".join(chunk)), None)
 
     if added:
         collapsed = collapse_vlandb(added, bool(hw.Cisco.Catalyst))
-        if explicit_changing and not old:
+        if not old:
             # by default all vlans are allowed
             # switchport trunk allowed vlan none
             yield (True, "%s none" % prefix, None)
-        for chunk in _chunked(collapsed, multi_chunk):
-            if explicit_changing:
-                yield (True, "%s%s%s" % (prefix, " add ", ",".join(chunk)), None)
-            else:
-                yield (True, "%s%s%s" % (prefix, " ", ",".join(chunk)), None)
-
-    if new_blocks:
-        for vlan_id, block in new_blocks.items():
-            yield (True, "%s %s" % (prefix, vlan_id), block)
-
-
-def _chunked(items: list[str], size: int) -> Iterator[list[str]]:
-    for offset in range(0, len(items), size):
-        yield items[offset : offset + size]
-
-
-def _parse_vlancfg_actions(actions: list[dict[str, Any]]) -> tuple[str | None, set[int], dict[int, Any]]:
-    prefix = None
-    vlandb: set[int] = set()
-    blocks: dict[int, Any] = {}
-    for action in actions:
-        (prefix, part) = _parse_vlancfg(action["row"])
-        if action["children"]:
-            assert len(part) == 1, "vlandb block must contain one and only one vlanid: %s" % action["row"]
-            blocks[list(part)[0]] = action["children"]
-        vlandb.update(part)
-    return (prefix, vlandb, blocks)
-
-
-def _parse_vlancfg(row: str) -> tuple[str, set[int]]:
-    # sometimes ciscos put spaces between vlan ranges, and sometimes they do not.
-    words = re.sub(r",\s+", ",", row).split()
-
-    if words[-1] == "none":
-        # switchport trunk allowed vlan none
-        return (" ".join(words[:-1]), set())
-    assert re.match(r"[\d,-]+$", words[-1]), "Unable to parse vlancfg row: %s" % row
-    prefix = " ".join(words[:-2] if words[-2] == "add" else words[:-1])
-    vlancfg = words[-1]
-    vlandb = expand_vlandb(vlancfg)
-    return (prefix, vlandb)
+        for chunk in generic_vlandb.iter_chunks(collapsed, SWTRUNK_CHUNK):
+            yield (True, "%s%s%s" % (prefix, " add ", ",".join(chunk)), None)

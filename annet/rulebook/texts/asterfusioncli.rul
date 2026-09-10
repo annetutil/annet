@@ -36,7 +36,7 @@ tacacs ~
 
 ip route ~
 
-vlan * %logic=annet.rulebook.cisco.vlandb.simple
+vlan * %logic=annet.rulebook.generic.vlandb.simple_no_tiny_ranges
     name *
     description *
     isolate enable
