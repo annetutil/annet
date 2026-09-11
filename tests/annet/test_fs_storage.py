@@ -1,6 +1,7 @@
 import platform
 import sys
 import tempfile
+
 import pytest
 
 from annet.adapters.file.provider import FS, Device, StorageOpts
