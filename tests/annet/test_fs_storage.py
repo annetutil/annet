@@ -1,6 +1,7 @@
 import platform
 import sys
 import tempfile
+import pytest
 
 from annet.adapters.file.provider import FS, Device, StorageOpts
 
@@ -49,8 +50,6 @@ def test_inventory_interfaces(tmp_path):
 
 
 def test_invalid_inventory_preserves_cause(tmp_path):
-    import pytest
-
     path = tmp_path / "inventory.yml"
     path.write_text("devices: [{fqdn: switch.example.test}]\n")
     with pytest.raises(Exception, match="unable to parse inventory entry") as error:
