@@ -182,7 +182,7 @@ class Devices:
                     try:
                         dev = Device(dev=DeviceStorage(**dev_params))
                     except Exception as e:
-                        raise Exception(f"unable to parse {dev!r} as Device") from e
+                        raise Exception("unable to parse inventory entry as Device") from e
 
                 devices.append(dev)
 

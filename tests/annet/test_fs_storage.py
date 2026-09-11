@@ -2,6 +2,8 @@ import platform
 import sys
 import tempfile
 
+import pytest
+
 from annet.adapters.file.provider import FS, Device, StorageOpts
 
 
@@ -46,3 +48,11 @@ def test_inventory_interfaces(tmp_path):
     assert device.interfaces[0].name == "Ethernet1"
     assert device.interfaces[0].description == "Managed by Annet"
     assert storage.make_devices(["empty.example.test"])[0].interfaces == []
+
+
+def test_invalid_inventory_preserves_cause(tmp_path):
+    path = tmp_path / "inventory.yml"
+    path.write_text("devices: [{fqdn: switch.example.test}]\n")
+    with pytest.raises(Exception, match="unable to parse inventory entry") as error:
+        FS(StorageOpts(path=str(path)))
+    assert "unknown vendor" in str(error.value.__cause__)
