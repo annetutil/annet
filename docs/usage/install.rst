@@ -12,7 +12,12 @@ and NetBox as a storage.
     cd myproject
     python3 -m venv venv
     source venv/bin/activate
-    pip install annet[netbox] gnetcli_adapter
+    pip install "annet[netbox]" gnetcli_adapter
+
+    # Requires Go; alternatively download gnetcli_server from its releases.
+    go install github.com/annetutil/gnetcli/cmd/gnetcli_server@latest
+    export PATH="$(go env GOPATH)/bin:$PATH"
+    mkdir -p ~/.annet
 
     cat > ~/.annet/context.yml<<EOF
     fetcher:

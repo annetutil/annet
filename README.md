@@ -39,7 +39,7 @@ generators:
 
 storage:
   default:
-    adapter: annet.adapters.file.provider
+    adapter: file
     params:
       path: /path/to/file
 
