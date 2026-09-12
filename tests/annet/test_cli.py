@@ -77,8 +77,7 @@ def test_command_name_conflict(monkeypatch: pytest.MonkeyPatch, name: str) -> No
 
 def test_plugin_aliases_preserve_builtin_name(monkeypatch: pytest.MonkeyPatch) -> None:
     entry_points = [
-        EntryPoint(name=name, value=f"{__name__}:hello_command", group="annet.commands")
-        for name in ("hello", "greet")
+        EntryPoint(name=name, value=f"{__name__}:hello_command", group="annet.commands") for name in ("hello", "greet")
     ]
     monkeypatch.setattr("annet.argparse.entry_points", Mock(return_value=entry_points))
     original_name = _get_meta(hello_command).cmd_name
