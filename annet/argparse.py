@@ -8,7 +8,8 @@ import os
 import sys
 from collections.abc import Callable, Iterable, Iterator
 from functools import lru_cache
-from typing import Any, ContextManager, Generic, TypeVar, cast, overload
+from importlib.metadata import entry_points
+from typing import Any, ContextManager, Generic, NamedTuple, TypeVar, cast, overload
 
 from annet.connectors import Connector
 
@@ -318,6 +319,11 @@ class _DispatcherConnector(Connector[ArgDispatcher]):
 dispatcher_connector = _DispatcherConnector()
 
 
+class Command(NamedTuple):
+    func: Callable[..., Any]
+    name: str
+
+
 class ArgParser(argparse.ArgumentParser):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         if "formatter_class" not in kwargs:
@@ -328,21 +334,36 @@ class ArgParser(argparse.ArgumentParser):
     def argv(self) -> list[str]:
         return sys.argv[1:]
 
-    def add_commands(self, commands: Iterable[Callable[..., Any]]) -> None:
+    def add_commands(self, commands: Iterable[Callable[..., Any] | Command]) -> None:
         subparsers = self.add_subparsers()
-        pending = list(commands)
+        names: dict[Callable[..., Any], list[str]] = {}
+        for command in commands:
+            func, name = command if isinstance(command, Command) else (command, _get_meta(command).cmd_name)
+            aliases = names.setdefault(func, [])
+            if name in aliases:
+                raise ValueError(f"conflicting subparser: {name}")
+            aliases.append(name)
+        pending = [Command(func, aliases[0]) for func, aliases in names.items()]
         failcount = 0
         while pending and failcount < len(pending):
-            func, pending = pending[0], pending[1:]
-            if not self.add_func(func, subparsers):
-                pending.append(func)
+            registration, pending = pending[0], pending[1:]
+            if not self.add_func(registration, subparsers, aliases=names[registration.func][1:]):
+                pending.append(registration)
                 failcount += 1
             else:
                 failcount = 0
         if failcount:
             raise RuntimeError("Failed to resolve subparsers")
 
-    def add_func(self, func: Callable[..., Any], sub: argparse._SubParsersAction[Any]) -> bool:
+    def add_func(
+        self,
+        func: Callable[..., Any] | Command,
+        sub: argparse._SubParsersAction[Any],
+        aliases: list[str] | None = None,
+    ) -> bool:
+        name = None
+        if isinstance(func, Command):
+            func, name = func
         meta = _get_meta(func)
         parent = meta.parent
         if parent:
@@ -354,7 +375,7 @@ class ArgParser(argparse.ArgumentParser):
             assert parent_meta.sub is not None
             sub = parent_meta.sub
 
-        sp = sub.add_parser(meta.cmd_name, help=func.__doc__)
+        sp = sub.add_parser(name if name is not None else meta.cmd_name, aliases=aliases or [], help=func.__doc__)
         sp.set_defaults(func=func)
         meta.parser = sp
 
@@ -403,6 +424,20 @@ class ArgParser(argparse.ArgumentParser):
         for var in variables.values():
             if callable(var) and hasattr(var, _ARGS_ATTR_NAME):
                 yield var
+
+    @staticmethod
+    def find_entry_point_commands() -> Iterator[Command]:
+        for entry_point in entry_points(group="annet.commands"):
+            func = entry_point.load()
+            if not callable(func) or not hasattr(func, _ARGS_ATTR_NAME):
+                raise TypeError(
+                    f"Command entry point {entry_point.name!r} ({entry_point.value}) "
+                    "must reference a function decorated with @subcommand"
+                )
+            meta = _get_meta(func)
+            if entry_point.name == "help" and meta.parent is None:
+                raise ValueError("Command name 'help' is reserved")
+            yield Command(func, entry_point.name)
 
     @classmethod
     def func_opts(cls, func: Callable[..., Any]) -> Iterator[Arg[Any] | type[ArgGroup]]:

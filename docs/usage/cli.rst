@@ -5,6 +5,81 @@ Almost all annet calls expect hosts identifiers, like ``ann gen HOST1 HOST2``.
 These host identifiers are resolved by the storage adapter. For example, NetBox adapter supports for globs: ``myhost tag:mytag site:mysite`` - will search
 for a host with name ``myhost`` or hosts with tag ``mytag`` or hosts with site ``mysite``.
 
+CLI command plugins
+*******************
+
+An installed Python package can add a top-level annet command through the
+``annet.commands`` entry point group. The entry point name becomes the command
+name, and its value must reference a callable decorated with
+``annet.argparse.subcommand``.
+
+For example, a separate ``annet-example`` package can declare this entry point in
+``pyproject.toml``:
+
+.. code-block:: toml
+
+    [build-system]
+    requires = ["setuptools>=61"]
+    build-backend = "setuptools.build_meta"
+
+    [project]
+    name = "annet-example"
+    version = "0.1.0"
+    dependencies = ["annet"]
+
+    [project.entry-points."annet.commands"]
+    hello = "annet_example.cli:hello"
+
+The exported function uses the same ``Arg`` and ``ArgGroup`` interface as a
+built-in command:
+
+.. code-block:: python
+
+    from annet.argparse import Arg, subcommand
+
+
+    @subcommand(Arg("--name", default="world", help="Name to greet"))
+    def hello(name: str) -> None:
+        """Print a greeting."""
+        print(f"Hello, {name}!")
+
+After installing the package in the same Python environment as annet, the
+command is available as:
+
+.. code-block:: bash
+
+    annet hello --name Alice
+
+The command prints ``Hello, Alice!``.
+
+Annet discovers command plugins whenever it builds the CLI. It imports every
+entry point in the ``annet.commands`` group at that time. Keep expensive or
+optional imports inside the command handler so they run only when the command
+is invoked. Entry point import errors are propagated.
+Duplicate command names are rejected by ``argparse``, and the top-level name
+``help`` is reserved by annet.
+
+Command discovery works for any separately installed package that publishes an
+``annet.commands`` entry point; it does not depend on an annet extra. An extra
+is only an installation shortcut. After ``annet-example`` is published and its
+compatibility is verified, annet can add the following entry to its existing
+``extras_require`` in ``setup.py``:
+
+.. code-block:: python
+
+    extras_require={
+        "example": ["annet-example"],
+    },
+
+Users could then install both packages with:
+
+.. code-block:: bash
+
+    pip install 'annet[example]'
+
+The ``example`` extra is an example of future packaging configuration and is not
+currently declared by annet.
+
 annet gen
 ******************
 
