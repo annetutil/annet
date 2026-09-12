@@ -86,4 +86,4 @@ start docs-build/html/index.html  # Windows
 ## Links
 
 * [Online Documentation](https://annetutil.github.io/annet/)
-* [Tutorial](https://annetutil.github.io/annet/main/usage/tutorial.html)
+* [Tutorial](https://annetutil.github.io/annet/usage/tutorial.html)

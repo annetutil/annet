@@ -2,10 +2,12 @@ name: Docs
 on:
   workflow_dispatch:
   push:
-    tags:
-      - "v*"
     branches:
       - "main"
+    paths:
+      - "docs/**"
+      - "requirements-doc.txt"
+      - ".github/workflows/docs.yaml"
 
 permissions:
   contents: read
@@ -19,7 +21,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          ref: main
       - name: Install python
         uses: actions/setup-python@v5
         with:
@@ -27,8 +29,7 @@ jobs:
       - name: Build docs
         run: |
           pip install -r requirements-doc.txt
-          sphinx-multiversion docs docs-build
-          cp docs/_templates/gh-pages-redirect.html docs-build/index.html
+          sphinx-build -b html docs docs-build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

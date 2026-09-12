@@ -9,7 +9,7 @@ files, Linux, FreeBSD and Cumulus are also supported.
 List of supported Network Operation Systems:
 
 +----------+---------------------------+------------------------------------------------------------------------------+
-| Vendor   | Network Operation Systems | `Supported in RPL <https://annetutil.github.io/annet/main/rpl/index.html>`__ |
+| Vendor   | Network Operation Systems | `Supported in RPL <https://annetutil.github.io/annet/rpl/index.html>`__      |
 +==========+===========================+==============================================================================+
 | Cisco    | IOS/IOS-XE, NXOS, IOS XR  | IOX XR only                                                                  |
 +----------+---------------------------+------------------------------------------------------------------------------+

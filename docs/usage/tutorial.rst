@@ -1422,7 +1422,7 @@ Create a Python file with the policies — ``generators/rpl_views/route_map.py``
       with route(number=20) as rule:
           rule.deny()
 
-For more details on how to use RPL, refer to the `documentation <https://annetutil.github.io/annet/main/rpl/index.html>`__.
+For more details on how to use RPL, refer to the `documentation <https://annetutil.github.io/annet/rpl/index.html>`__.
 
 The next two files contain community and prefix list definitions.
 
