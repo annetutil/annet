@@ -1,0 +1,143 @@
+- name: add user
+  vendor: sitonica
+  before: |
+  after: |
+    local-user admin class manage
+      service-type ssh terminal
+      authorization-attribute user-role network-admin
+      authorization-attribute user-role network-operator
+    public-key peer admin-pub
+      public-key-code begin
+        87982792300D06092A864886F70D01010105000382010F003082010A0282010100DAB09F99
+        A8AAE1101958D83440BE24268CD197CCE1C2893A3A3EB93A58154E184A3A52C6218D4B493C
+        DA4F0EE38B5C8A80E82D3E3F013522055CCC6746A86C6F9CD613E4BD86D74CF06F9DD05559
+        2459A6CE264F96A1B2258F1A4A0386AF6E38596501FD197738624270713276C520A437BD46
+        B94D4113548ED838443438C0664B12E8B9BF6601BBD8C1DEEBAD13B2A06F687602CFC6D09E
+        8E18F9D559D167E9458F34E95AA9CCBC58D8108E691C17552CB0DAE7F0DFA346E62C6C013D
+        DF60E7C90069E55D8702E22B088694B7A2B08413DF1FF809F84CD855F6B7090A952E022E45
+        EC71C8E3DB4D970F05364142F945082BD36CFED0953A5966B866EC9426B70203010001
+      public-key-code end
+      peer-public-key end
+    ssh user admin service-type all authentication-type publickey assign publickey admin-pub
+  patch: |
+    system-view
+    local-user admin class manage
+      service-type ssh terminal
+      authorization-attribute user-role network-admin
+      authorization-attribute user-role network-operator
+      quit
+    public-key peer admin-pub
+      public-key-code begin
+        87982792300D06092A864886F70D01010105000382010F003082010A0282010100DAB09F99
+        A8AAE1101958D83440BE24268CD197CCE1C2893A3A3EB93A58154E184A3A52C6218D4B493C
+        DA4F0EE38B5C8A80E82D3E3F013522055CCC6746A86C6F9CD613E4BD86D74CF06F9DD05559
+        2459A6CE264F96A1B2258F1A4A0386AF6E38596501FD197738624270713276C520A437BD46
+        B94D4113548ED838443438C0664B12E8B9BF6601BBD8C1DEEBAD13B2A06F687602CFC6D09E
+        8E18F9D559D167E9458F34E95AA9CCBC58D8108E691C17552CB0DAE7F0DFA346E62C6C013D
+        DF60E7C90069E55D8702E22B088694B7A2B08413DF1FF809F84CD855F6B7090A952E022E45
+        EC71C8E3DB4D970F05364142F945082BD36CFED0953A5966B866EC9426B70203010001
+      public-key-code end
+      peer-public-key end
+    ssh user admin service-type all authentication-type publickey assign publickey admin-pub
+    save force
+
+- name: del user
+  vendor: sitonica
+  before: |
+    local-user admin class manage
+      service-type ssh terminal
+      authorization-attribute user-role network-admin
+      authorization-attribute user-role network-operator
+    public-key peer admin-pub
+      public-key-code begin
+        87982792300D06092A864886F70D01010105000382010F003082010A0282010100DAB09F99
+        A8AAE1101958D83440BE24268CD197CCE1C2893A3A3EB93A58154E184A3A52C6218D4B493C
+        DA4F0EE38B5C8A80E82D3E3F013522055CCC6746A86C6F9CD613E4BD86D74CF06F9DD05559
+        2459A6CE264F96A1B2258F1A4A0386AF6E38596501FD197738624270713276C520A437BD46
+        B94D4113548ED838443438C0664B12E8B9BF6601BBD8C1DEEBAD13B2A06F687602CFC6D09E
+        8E18F9D559D167E9458F34E95AA9CCBC58D8108E691C17552CB0DAE7F0DFA346E62C6C013D
+        DF60E7C90069E55D8702E22B088694B7A2B08413DF1FF809F84CD855F6B7090A952E022E45
+        EC71C8E3DB4D970F05364142F945082BD36CFED0953A5966B866EC9426B70203010001
+      public-key-code end
+      peer-public-key end
+    ssh user admin service-type all authentication-type publickey assign publickey admin-pub
+  after: |
+  patch: |
+    system-view
+    undo ssh user admin
+    undo public-key peer admin-pub
+    undo local-user admin class manage
+    save force
+
+- name: change user
+  vendor: sitonica
+  before: |
+    local-user admin class manage
+      password hash hash
+      service-type ssh terminal
+      authorization-attribute user-role network-admin
+      authorization-attribute user-role network-operator
+    local-user admin1 class manage
+      password hash old_hash
+      service-type ssh terminal
+      authorization-attribute user-role network-admin
+      authorization-attribute user-role network-operator
+    public-key peer admin2-pub
+      public-key-code begin
+        87982792300D06092A864886F70D01010105000382010F003082010A0282010100DAB09F99
+        A8AAE1101958D83440BE24268CD197CCE1C2893A3A3EB93A58154E184A3A52C6218D4B493C
+        DA4F0EE38B5C8A80E82D3E3F013522055CCC6746A86C6F9CD613E4BD86D74CF06F9DD05559
+        2459A6CE264F96A1B2258F1A4A0386AF6E38596501FD197738624270713276C520A437BD46
+        B94D4113548ED838443438C0664B12E8B9BF6601BBD8C1DEEBAD13B2A06F687602CFC6D09E
+        8E18F9D559D167E9458F34E95AA9CCBC58D8108E691C17552CB0DAE7F0DFA346E62C6C013D
+        DF60E7C90069E55D8702E22B088694B7A2B08413DF1FF809F84CD855F6B7090A952E022E45
+        EC71C8E3DB4D970F05364142F945082BD36CFED0953A5966B866EC9426B70203010001
+      public-key-code end
+      peer-public-key end
+    ssh user admin2 service-type all authentication-type publickey assign publickey admin2-pub
+  after: |
+    local-user admin class manage
+      service-type http terminal
+      authorization-attribute user-role network-admin
+      authorization-attribute user-role network-operator
+    local-user admin1 class manage
+      password hash new_hash
+      service-type ssh terminal
+      authorization-attribute user-role network-admin
+      authorization-attribute user-role network-operator
+    public-key peer admin2-pub
+      public-key-code begin
+        17982792300D06092A864886F70D01010105000382010F003082010A0282010100DAB09F99
+        A8AAE1101958D83440BE24268CD197CCE1C2893A3A3EB93A58154E184A3A52C6218D4B493C
+        DA4F0EE38B5C8A80E82D3E3F013522055CCC6746A86C6F9CD613E4BD86D74CF06F9DD05559
+        2459A6CE264F96A1B2258F1A4A0386AF6E38596501FD197738624270713276C520A437BD46
+        B94D4113548ED838443438C0664B12E8B9BF6601BBD8C1DEEBAD13B2A06F687602CFC6D09E
+        8E18F9D559D167E9458F34E95AA9CCBC58D8108E691C17552CB0DAE7F0DFA346E62C6C013D
+        DF60E7C90069E55D8702E22B088694B7A2B08413DF1FF809F84CD855F6B7090A952E022E45
+        EC71C8E3DB4D970F05364142F945082BD36CFED0953A5966B866EC9426B70203010001
+      public-key-code end
+      peer-public-key end
+    ssh user admin2 service-type all authentication-type publickey assign publickey admin2-pub
+  patch: |
+    system-view
+    local-user admin class manage
+      undo service-type ssh terminal
+      undo password
+      service-type http terminal
+      quit
+    local-user admin1 class manage
+      password hash new_hash
+      quit
+    public-key peer admin2-pub
+      public-key-code begin
+        17982792300D06092A864886F70D01010105000382010F003082010A0282010100DAB09F99
+        A8AAE1101958D83440BE24268CD197CCE1C2893A3A3EB93A58154E184A3A52C6218D4B493C
+        DA4F0EE38B5C8A80E82D3E3F013522055CCC6746A86C6F9CD613E4BD86D74CF06F9DD05559
+        2459A6CE264F96A1B2258F1A4A0386AF6E38596501FD197738624270713276C520A437BD46
+        B94D4113548ED838443438C0664B12E8B9BF6601BBD8C1DEEBAD13B2A06F687602CFC6D09E
+        8E18F9D559D167E9458F34E95AA9CCBC58D8108E691C17552CB0DAE7F0DFA346E62C6C013D
+        DF60E7C90069E55D8702E22B088694B7A2B08413DF1FF809F84CD855F6B7090A952E022E45
+        EC71C8E3DB4D970F05364142F945082BD36CFED0953A5966B866EC9426B70203010001
+      public-key-code end
+      peer-public-key end
+    save force

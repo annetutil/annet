@@ -5,6 +5,14 @@
 #   as a reverse one, but takes its place among the direct ones where specified (i.e. undo vlan batch
 #   will come after the interface blocks).
 
+local-user * class manage
+    password
+    service-type ~
+    authorization-attribute ~
+public-key peer * %multiline
+    ~ %global
+ssh user *
+
 interface
 ntp ~
 bmp server

@@ -11,6 +11,14 @@
 #                   Primarily used to generate special provisioning commands
 # -----
 
+local-user * class manage
+    password
+    service-type ~
+    authorization-attribute ~
+public-key peer * %multiline
+    ~ %global
+ssh user *
+
 lldp ~
 ntp ~
 interface
