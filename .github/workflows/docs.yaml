@@ -1,11 +1,14 @@
 name: Docs
 on:
-  workflow_dispatch:
   push:
-    tags:
-      - "v*"
     branches:
       - "main"
+    tags:
+      - "**"
+
+concurrency:
+  group: docs-pages
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -19,6 +22,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
       - name: Install python
         uses: actions/setup-python@v5
@@ -27,7 +31,14 @@ jobs:
       - name: Build docs
         run: |
           pip install -r requirements-doc.txt
-          sphinx-multiversion docs docs-build
+          release_tags=$(git tag --list --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | awk -F. '!seen[$1]++')
+          test -n "$release_tags"
+          latest_tag=$(printf '%s\n' "$release_tags" | sed -n '1p')
+          tag_pattern=$(printf '%s\n' "$release_tags" | sed 's/\./\\./g' | paste -sd '|' -)
+          sphinx-multiversion docs docs-build \
+            -D "smv_tag_whitelist=^($tag_pattern)$" \
+            -D 'smv_branch_whitelist=^main$' \
+            -D "smv_latest_version=$latest_tag"
           cp docs/_templates/gh-pages-redirect.html docs-build/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
