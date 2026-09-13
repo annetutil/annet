@@ -1,13 +1,12 @@
 name: Docs
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - "main"
-    paths:
-      - "docs/**"
-      - "requirements-doc.txt"
-      - ".github/workflows/docs.yaml"
+    tags:
+      - "v*"
+
+concurrency:
+  group: docs-pages
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -21,7 +20,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main
+          fetch-depth: 0
       - name: Install python
         uses: actions/setup-python@v5
         with:
@@ -29,7 +28,13 @@ jobs:
       - name: Build docs
         run: |
           pip install -r requirements-doc.txt
-          sphinx-build -b html docs docs-build
+          latest_tag=$(git tag --list --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '1p')
+          test -n "$latest_tag"
+          sphinx-multiversion docs docs-build \
+            -D "smv_tag_whitelist=^${latest_tag//./\\.}$" \
+            -D 'smv_branch_whitelist=^$' \
+            -D smv_outputdir_format=main
+          cp docs/_templates/gh-pages-redirect.html docs-build/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
