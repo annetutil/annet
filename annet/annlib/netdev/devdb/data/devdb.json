@@ -144,6 +144,8 @@
     "PC?.Moxa.NPort._6610": "6610",
     "PC?.Whitebox?.Asterfusion": "[Aa]sterfusion",
     "PC?.Whitebox?.Asterfusion.CX": " CX",
+    "PC?.Whitebox?.Asterfusion.CX?.CX200": " CX2\\d\\d",
+    "PC?.Whitebox?.Asterfusion.CX?.CX200?.CX206Y": " CX206Y",
     "PC?.Whitebox?.Asterfusion.CX?.CX500": " CX5\\d\\d",
     "PC?.Whitebox?.Asterfusion.CX?.CX500?.CX532PN": " CX532P-N",
     "PC?.Whitebox?.Asterfusion.CX?.CX700": " CX7\\d\\d",
@@ -228,8 +230,5 @@
     "Sitonica": "^[Ss]itonica",
     "Sitonica.SW5560": "[Ss][Ww]5560",
     "Sitonica.SW6850": "[Ss][Ww]6850",
-    "Sitonica.SW9850": "[Ss][Ww]9850",
-
-    "AsterfusionCLI": "^[Aa]sterfusion CX206",
-    "AsterfusionCLI.CX206Y": " CX206Y"
+    "Sitonica.SW9850": "[Ss][Ww]9850"
 }

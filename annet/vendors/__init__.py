@@ -5,7 +5,6 @@ from .library import (
     airwlc,
     arista,
     aruba,
-    asterfusioncli,
     b4com,
     cisco,
     h3c,
