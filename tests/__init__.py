@@ -61,7 +61,6 @@ def make_hw_stub(vendor):
             "h3c": "H3C",
             "snr": "SNR",
             "sitonica": "Sitonica",
-            "asterfusioncli": "Asterfusion CX206Y",
         }[vendor],
         None,
     )

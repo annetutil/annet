@@ -37,14 +37,14 @@ hw.Aruba.IAP324
 hw.Aruba.IAP325
 hw.Asterfusion
 hw.Asterfusion.CX
+hw.Asterfusion.CX200
+hw.Asterfusion.CX206Y
 hw.Asterfusion.CX500
 hw.Asterfusion.CX532PN
 hw.Asterfusion.CX700
 hw.Asterfusion.CX732QN
 hw.Asterfusion.CX800
 hw.Asterfusion.CX864EN
-hw.AsterfusionCLI
-hw.AsterfusionCLI.CX206Y
 hw.Avocent
 hw.Avocent.ACS8000
 hw.B4com
@@ -386,12 +386,6 @@ class Aruba_AP_IAP_IAP300_IAP324(HardwareLeaf):
     ...
 
 class Aruba_AP_IAP_IAP300_IAP325(HardwareLeaf):
-    ...
-
-class AsterfusionCLI(HardwareLeaf):
-    CX206Y: AsterfusionCLI_CX206Y
-
-class AsterfusionCLI_CX206Y(HardwareLeaf):
     ...
 
 class B4com(HardwareLeaf):
@@ -950,6 +944,8 @@ class PC_Whitebox(HardwareLeaf):
 
 class PC_Whitebox_Asterfusion(HardwareLeaf):
     CX: PC_Whitebox_Asterfusion_CX
+    CX200: PC_Whitebox_Asterfusion_CX_CX200
+    CX206Y: PC_Whitebox_Asterfusion_CX_CX200_CX206Y
     CX500: PC_Whitebox_Asterfusion_CX_CX500
     CX532PN: PC_Whitebox_Asterfusion_CX_CX500_CX532PN
     CX700: PC_Whitebox_Asterfusion_CX_CX700
@@ -958,12 +954,20 @@ class PC_Whitebox_Asterfusion(HardwareLeaf):
     CX864EN: PC_Whitebox_Asterfusion_CX_CX800_CX864EN
 
 class PC_Whitebox_Asterfusion_CX(HardwareLeaf):
+    CX200: PC_Whitebox_Asterfusion_CX_CX200
+    CX206Y: PC_Whitebox_Asterfusion_CX_CX200_CX206Y
     CX500: PC_Whitebox_Asterfusion_CX_CX500
     CX532PN: PC_Whitebox_Asterfusion_CX_CX500_CX532PN
     CX700: PC_Whitebox_Asterfusion_CX_CX700
     CX732QN: PC_Whitebox_Asterfusion_CX_CX700_CX732QN
     CX800: PC_Whitebox_Asterfusion_CX_CX800
     CX864EN: PC_Whitebox_Asterfusion_CX_CX800_CX864EN
+
+class PC_Whitebox_Asterfusion_CX_CX200(HardwareLeaf):
+    CX206Y: PC_Whitebox_Asterfusion_CX_CX200_CX206Y
+
+class PC_Whitebox_Asterfusion_CX_CX200_CX206Y(HardwareLeaf):
+    ...
 
 class PC_Whitebox_Asterfusion_CX_CX500(HardwareLeaf):
     CX532PN: PC_Whitebox_Asterfusion_CX_CX500_CX532PN
@@ -1175,7 +1179,6 @@ class FakeHardwareView(HardwareLeaf):
     Arista: Arista
     Aruba: Aruba
     Asterfusion: PC_Whitebox_Asterfusion
-    AsterfusionCLI: AsterfusionCLI
     Avocent: PC_Avocent
     B4com: B4com
     Cisco: Cisco
