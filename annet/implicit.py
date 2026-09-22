@@ -59,6 +59,10 @@ def _implicit_tree(device: Device) -> odict[Any, Any]:
         # V600R025C00: https://support.huawei.com/enterprise/en/doc/EDOC1100515500/
         # V600R025C10: https://support.huawei.com/enterprise/en/doc/EDOC1100559678/
 
+        is_huawei_yunshan = (
+            bool(device.hw.Huawei) and bool(device.hw.soft) and parse_version(device.hw.soft).V == 600
+        )
+
         if device.hw.Huawei.CE:
             text = """
                 stp mode mstp
@@ -118,6 +122,12 @@ def _implicit_tree(device: Device) -> odict[Any, Any]:
                 !interface X?GigabitEthernet*
                     bpdu enable
                 netconf
+            """
+
+        if is_huawei_yunshan:
+            text += """
+                !user-interface vty 0 7
+                    protocol inbound all
             """
     elif device.hw.Arista:
         # This part of configuration will not be visible in configuration
