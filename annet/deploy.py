@@ -198,6 +198,7 @@ def make_cmd_params(rule: DeployRule) -> Dict[str, Any]:
         return {
             "questions": qa_list,
             "timeout": rule["attrs"]["timeout"],
+            "delay_after": rule["attrs"].get("delay_after", 0.0),
             "suppress_errors": rule["attrs"]["suppress_errors"],
         }
     return {
@@ -218,6 +219,8 @@ def fill_cmd_params(rules: DeployRulebook, cmd: Command) -> None:
     if rule:
         cmd_params = make_cmd_params(rule)
         cmd.questions = cmd_params.get("questions", None)
+        if cmd.delay_after == 0:
+            cmd.delay_after = cmd_params.get("delay_after", 0.0)
         if cmd.timeout is None:
             cmd.timeout = cmd_params["timeout"]
         if cmd.read_timeout is None:

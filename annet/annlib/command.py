@@ -27,6 +27,7 @@ class Command:
     suppress_eof: bool = False
     suppress_errors: bool = False
     level: int = 0  # block nesting depth, set by the patch builder
+    delay_after: float = 0.0  # seconds to wait after successful execution
 
     def __str__(self) -> str:
         if isinstance(self.cmd, bytes):

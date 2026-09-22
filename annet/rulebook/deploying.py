@@ -41,6 +41,10 @@ def get_params_scheme() -> ParamsScheme:
             "validator": lambda arg: valid_number(arg, min=1, type=float),
             "default": DEFAULT_TIMEOUT,
         },
+        "delay_after": {
+            "validator": lambda arg: valid_number(arg, min=0, type=float),
+            "default": 0.0,
+        },
         "send_nl": {
             "validator": valid_bool,
             "default": True,
@@ -91,6 +95,7 @@ def _compile_deploying(tree: dict[str, Any], reverse_prefix: str) -> DeployRuleb
                 "attrs": {
                     "regexp": syntax.compile_row_regexp(attrs["row"]),
                     "timeout": attrs["params"]["timeout"],
+                    "delay_after": attrs["params"]["delay_after"],
                     "apply_logic": import_rulebook_function(attrs["params"]["apply_logic"]),
                     "apply_logic_name": attrs["params"]["apply_logic"],
                     "dialogs": dialogs,
@@ -132,6 +137,7 @@ def match_deploy_rule(rules: DeployRulebook, cmd_path: tuple[str], context: dict
         "attrs": {
             "regexp": syntax.compile_row_regexp("~"),
             "timeout": DEFAULT_TIMEOUT,
+            "delay_after": 0.0,
             "apply_logic": import_rulebook_function(DEFAULT_APPLY_LOGIC),
             "apply_logic_name": DEFAULT_APPLY_LOGIC,
             "dialogs": odict(),
