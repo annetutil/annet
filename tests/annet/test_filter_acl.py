@@ -12,6 +12,7 @@ from annet.filtering import Filterer
 from annet.gen import build_filter_text
 from annet.rulebook.patching import compile_patching_text
 from annet.storage import Device
+from annet.types import Op
 from annet.vendors import registry_connector, tabparser
 
 
@@ -114,6 +115,36 @@ def test_filter_diff():
     -   foo bar
     """).strip()
     )
+
+
+def test_diff_to_tree_preserves_separator_for_affected_lines():
+    diff = [
+        (
+            Op.AFFECTED,
+            "policy-options",
+            [
+                (Op.REMOVED, "community EXAMPLE_COMMUNITY members 64512:100", [], None),
+                (
+                    Op.AFFECTED,
+                    "prefix-list EXAMPLE_PREFIXESv6",
+                    [(Op.REMOVED, "2001:db8::/64", [], None)],
+                    None,
+                ),
+            ],
+            None,
+        )
+    ]
+    formatter = registry_connector.get()["juniper"].make_formatter()
+
+    formatted = formatter.join(annet.annlib.filter_acl.diff_to_tree(diff))
+    result = annet.annlib.filter_acl.unshift_op(formatted)
+
+    assert result.splitlines()[:4] == [
+        "  policy-options {",
+        "-     community EXAMPLE_COMMUNITY members 64512:100;",
+        "      prefix-list EXAMPLE_PREFIXESv6 {",
+        "-         2001:db8::/64;",
+    ]
 
 
 def test_filter_acl_stream_is_reused():
