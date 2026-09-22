@@ -176,6 +176,7 @@ class DeployRule(TypedDict):
 class DeployRuleAttrs(TypedDict):
     regexp: Pattern[str]
     timeout: int
+    delay_after: float
     apply_logic: Callable[..., Any]
     apply_logic_name: str
     dialogs: "Dialogs"
