@@ -200,7 +200,10 @@ def tree_to_diff(diff_tree: ConfigTree) -> UnifiedDiff:
 def diff_to_tree(diff: UnifiedDiff) -> UnifiedConfigTree:
     ret: UnifiedConfigTree = collections.OrderedDict()
     for diff_op, row, children, _ in diff:
-        row = ops_sign[diff_op] + row
+        op = ops_sign[diff_op]
+        if op == " ":
+            op += " "
+        row = op + row
         ret[row] = diff_to_tree(children)
     return ret
 
