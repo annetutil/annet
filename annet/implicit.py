@@ -126,7 +126,7 @@ def _implicit_tree(device: Device) -> odict[Any, Any]:
 
         if is_huawei_yunshan:
             text += """
-                !user-interface vty 0 7
+                !user-interface vty ~
                     protocol inbound all
             """
     elif device.hw.Arista:
