@@ -79,19 +79,19 @@ def _implicit_tree(device: Device) -> odict[Any, Any]:
             """
         elif device.hw.Huawei.NE:
             text = """
-                 !bgp *
-                     !ipv4-family unicast
-                         undo synchronization
-                     !ipv6-family unicast
-                         undo synchronization
-                 !user-interface con *
-                     user privilege level 3
-                 !user-interface vty ~
-                     protocol inbound all
-                 aaa
+                !bgp *
+                    !ipv4-family unicast
+                        undo synchronization
+                    !ipv6-family unicast
+                        undo synchronization
+                !user-interface con *
+                    user privilege level 3
+                !user-interface vty ~
+                    protocol inbound all
+                aaa
                     undo user-password complexity-check
-                 netconf
-                 """
+                netconf
+                """
         elif device.hw.Huawei.Quidway.S5700.S5735I:
             if parse_version(device.hw.soft).R <= 23:
                 text = """
