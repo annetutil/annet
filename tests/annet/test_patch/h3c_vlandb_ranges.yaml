@@ -1,0 +1,87 @@
+- name: remove only absent id from collapsed range
+  vendor: h3c
+  diff: |
+    vlan 1
+    - vlan 1000 to 1001
+    + vlan 1000
+  patch: |
+    system-view
+    undo vlan 1001
+    save force
+
+- name: add only new id to collapsed range
+  vendor: h3c
+  diff: |
+    vlan 1
+    - vlan 1000
+    + vlan 1000 to 1001
+  patch: |
+    system-view
+    vlan 1001
+      quit
+    save force
+
+- name: preserve individual vlan child behavior
+  vendor: h3c
+  diff: |
+    vlan 1000
+      - name OLD
+      + name SERVERS
+  patch: |
+    system-view
+    vlan 1000
+      name SERVERS
+      quit
+    save force
+
+- name: create range with individual commands
+  vendor: h3c
+  before: ""
+  after: |
+    vlan 1000 to 1002
+  patch: |
+    system-view
+    vlan 1000
+      quit
+    vlan 1001
+      quit
+    vlan 1002
+      quit
+    save force
+
+- name: reconcile mixed singleton and range rows
+  vendor: h3c
+  before: |
+    vlan 1
+    vlan 1000 to 1001
+    vlan 1003
+    vlan 1005 to 1006
+    vlan 2000
+  after: |
+    vlan 1
+    vlan 1000 to 1002
+    vlan 1005
+    vlan 2000 to 2001
+  patch: |
+    system-view
+    vlan 1002
+      quit
+    vlan 2001
+      quit
+    undo vlan 1003
+    undo vlan 1006
+    save force
+
+- name: never remove default vlan one
+  vendor: h3c
+  before: |
+    vlan 1
+    vlan 1000 to 1001
+    vlan 1003
+  after: ""
+  patch: |
+    system-view
+    undo vlan 1000
+    undo vlan 1001
+    undo vlan 1003
+    save force

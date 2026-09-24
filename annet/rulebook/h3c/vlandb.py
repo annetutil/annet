@@ -1,12 +1,12 @@
-from collections import OrderedDict as odict
 from collections.abc import Iterator
 from typing import Any, cast
 
 from annet.annlib.lib import huawei_collapse_vlandb as collapse_vlandb
 from annet.annlib.lib import huawei_expand_vlandb as expand_vlandb
 from annet.annlib.types import Op
-from annet.rulebook import common
-from annet.rulebook.common import DiffItem
+
+
+_DEFAULT_VLAN_ID = 1
 
 
 # =====
@@ -28,38 +28,32 @@ def multi_all(
     yield from _process_vlandb(rule, key, diff, True, True, 10)
 
 
-def vlan_diff(
-    old: odict[str, Any], new: odict[str, Any], diff_pre: odict[str, Any], _pops: tuple[str, ...]
-) -> list[DiffItem]:
-    batch_new = set()  # vlan batch ... vlan ids
-    for row in new:
-        prefix, vlans = _parse_vlancfg(row)
-        if prefix == "vlan batch":
-            batch_new.update(vlans)
-    ret = []
-    for item in common.default_diff(old, new, diff_pre, _pops):
-        prefix, vlan_ids = _parse_vlancfg(item.row)
-        # If a VLAN was declared globally and still remains in the batch,
-        # the command "undo vlan ..." will attempt to completely remove it from the device
-        # as well as from the batch. However, using "undo vlan ... ; vlan batch ..." is not a solution,
-        # since to delete it, the CLI requires removing all VLAN interfaces and related elements first.
+def global_vlan(
+    rule: dict[str, Any], key: tuple[str, ...], diff: dict[str, list[dict[str, Any]]], **_: Any
+) -> Iterator[tuple[bool, str, Any]]:
+    """Patch global VLAN declarations by ID while preserving VLAN blocks."""
+    # Required callback arguments; this logic derives commands from diff alone.
+    del rule, key
+    for affected in diff[Op.AFFECTED]:
+        if affected["children"]:
+            yield (True, affected["row"], affected["children"])
 
-        if prefix == "vlan" and item.op == Op.REMOVED and batch_new.intersection(vlan_ids):
-            result_item = DiffItem(Op.AFFECTED, item.row, item.children, item.diff_pre)
-        # If a VLAN is declared both globally and in the batch,
-        # and the global declaration block has no additional options,
-        # we don’t include it — it would just hang there unnecessarily.
-        # This way, we preserve symmetry with the previous logic,
-        # and both invariants will produce an empty patch.
+    new, new_blocks = _parse_global_vlan_actions(diff[Op.ADDED])
+    old, old_blocks = _parse_global_vlan_actions(diff[Op.REMOVED])
 
-        elif prefix == "vlan" and batch_new.intersection(vlan_ids) and not item.children:
-            result_item = None
-        # We don’t touch "vlan batch" or anything else.
-        else:
-            result_item = item
-        if result_item:
-            ret.append(result_item)
-    return ret
+    for vlan_id in (old_blocks.keys() - new_blocks.keys()) & new:
+        yield (True, f"vlan {vlan_id}", old_blocks[vlan_id])
+
+    removed = old - new
+    added = (new - old) - new_blocks.keys()
+    # VLAN 1 is the system default and H3C does not allow it to be deleted.
+    for vlan_id in sorted(removed - {_DEFAULT_VLAN_ID}):
+        yield (False, f"undo vlan {vlan_id}", None)
+    for vlan_id in sorted(added):
+        yield (True, f"vlan {vlan_id}", None)
+
+    for vlan_id, block in new_blocks.items():
+        yield (True, f"vlan {vlan_id}", block)
 
 
 # =====
@@ -115,6 +109,19 @@ def _parse_vlancfg_actions(actions: list[dict[str, Any]]) -> tuple[str | None, s
     return (prefix, vlandb)
 
 
+def _parse_global_vlan_actions(actions: list[dict[str, Any]]) -> tuple[set[int], dict[int, Any]]:
+    vlan_ids: set[int] = set()
+    blocks: dict[int, Any] = {}
+    for action in actions:
+        prefix, row_ids = _parse_vlancfg(action["row"])
+        assert prefix == "vlan", action["row"]
+        if action["children"]:
+            assert len(row_ids) == 1, f"VLAN block must contain one VLAN ID: {action['row']}"
+            blocks[next(iter(row_ids))] = action["children"]
+        vlan_ids.update(row_ids)
+    return vlan_ids, blocks
+
+
 def _parse_vlancfg(row: str) -> tuple[str, set[int]]:
     parts = row.split()
     assert len(parts) > 0, row
@@ -125,13 +132,3 @@ def _parse_vlancfg(row: str) -> tuple[str, set[int]]:
     prefix = " ".join(parts[: index + 1])
     vlandb = expand_vlandb(" ".join(parts[index + 1 :]))
     return (prefix, vlandb)
-
-
-def _find_new_vlans(root_pre: dict[str, Any]) -> set[int]:
-    ret: set[int] = set()
-    for rule, pre in root_pre.items():
-        if not rule.startswith("vlan batch"):
-            continue
-        new = _parse_vlancfg_actions(pre["items"][tuple()][Op.ADDED])[1]
-        ret.update(new)
-    return ret
