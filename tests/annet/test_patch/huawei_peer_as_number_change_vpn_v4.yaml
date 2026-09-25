@@ -1,0 +1,27 @@
+# IPv4 peer as-number change where the peer is declared inside a
+# vpn-instance address-family block. Changing it in place is rejected by the
+# device ("The peer already exists in AS ..."), so the peer is recreated with
+# `undo peer <ip>`. That undo wipes the peer's other rows in the same block,
+# so the unchanged route-policy must be re-applied after the recreation.
+- vendor: huawei
+  before: |
+    bgp 65536
+     ipv4-family vpn-instance EXAMPLE
+      peer 192.0.2.1 as-number 12345
+      peer 192.0.2.1 route-policy DENY_ALL import
+  after: |
+    bgp 65536
+     ipv4-family vpn-instance EXAMPLE
+      peer 192.0.2.1 as-number 1234
+      peer 192.0.2.1 route-policy DENY_ALL import
+  patch: |
+    system-view
+    bgp 65536
+      ipv4-family vpn-instance EXAMPLE
+        undo peer 192.0.2.1
+        peer 192.0.2.1 as-number 1234
+        peer 192.0.2.1 route-policy DENY_ALL import
+        quit
+      quit
+    q
+    save

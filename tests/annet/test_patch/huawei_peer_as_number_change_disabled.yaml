@@ -1,0 +1,50 @@
+# Without `undo default ipv4-unicast` a recreated peer comes back enabled in
+# ipv4-family unicast, so `undo peer <ip> enable` must be re-sent after the
+# wipe. With `undo default ipv4-unicast` the re-sent row is accepted silently.
+- vendor: huawei
+  before: |
+    bgp 65536
+     peer 192.0.2.1 as-number 100
+     ipv4-family unicast
+      undo peer 192.0.2.1 enable
+  after: |
+    bgp 65536
+     peer 192.0.2.1 as-number 200
+     ipv4-family unicast
+      undo peer 192.0.2.1 enable
+  patch: |
+    system-view
+    bgp 65536
+      undo peer 192.0.2.1
+      peer 192.0.2.1 as-number 200
+      ipv4-family unicast
+        undo peer 192.0.2.1 enable
+        quit
+      quit
+    q
+    save
+
+# Enabling the peer in the same change: the REMOVED `undo peer <ip> enable`
+# row is redundant after the wipe, only `peer <ip> enable` is sent.
+- vendor: huawei
+  before: |
+    bgp 65536
+     peer 192.0.2.1 as-number 100
+     ipv4-family unicast
+      undo peer 192.0.2.1 enable
+  after: |
+    bgp 65536
+     peer 192.0.2.1 as-number 200
+     ipv4-family unicast
+      peer 192.0.2.1 enable
+  patch: |
+    system-view
+    bgp 65536
+      undo peer 192.0.2.1
+      peer 192.0.2.1 as-number 200
+      ipv4-family unicast
+        peer 192.0.2.1 enable
+        quit
+      quit
+    q
+    save

@@ -1,0 +1,58 @@
+# `peer <ip> group <G>` makes the device add the member's own
+# `peer <ip> as-number <group AS>` row automatically, so the generator is
+# responsible for yielding it. Then joining is a plain `peer <ip> group <G>`
+# with no `undo peer <ip>` wipe, and re-running gives an empty patch.
+- vendor: huawei
+  before: |
+    bgp 65536
+     group G external
+     peer G as-number 100
+     peer 192.0.2.1 as-number 100
+     peer 192.0.2.1 description foo
+     ipv4-family unicast
+      peer G enable
+      peer 192.0.2.1 enable
+      peer 192.0.2.1 route-policy DENY_ALL import
+  after: |
+    bgp 65536
+     group G external
+     peer G as-number 100
+     peer 192.0.2.1 as-number 100
+     peer 192.0.2.1 group G
+     peer 192.0.2.1 description foo
+     ipv4-family unicast
+      peer G enable
+      peer 192.0.2.1 enable
+      peer 192.0.2.1 route-policy DENY_ALL import
+  patch: |
+    system-view
+    bgp 65536
+      peer 192.0.2.1 group G
+      quit
+    q
+    save
+
+- vendor: huawei
+  before: |
+    bgp 65536
+     group G external
+     peer G as-number 100
+     peer 192.0.2.1 as-number 100
+     peer 192.0.2.1 group G
+     peer 192.0.2.1 description foo
+     ipv4-family unicast
+      peer G enable
+      peer 192.0.2.1 enable
+      peer 192.0.2.1 route-policy DENY_ALL import
+  after: |
+    bgp 65536
+     group G external
+     peer G as-number 100
+     peer 192.0.2.1 as-number 100
+     peer 192.0.2.1 group G
+     peer 192.0.2.1 description foo
+     ipv4-family unicast
+      peer G enable
+      peer 192.0.2.1 enable
+      peer 192.0.2.1 route-policy DENY_ALL import
+  patch: ""

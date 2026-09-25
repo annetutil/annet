@@ -1,0 +1,25 @@
+- vendor: huawei
+  before: |
+    bgp 65536
+     peer 2001:db8::1 as-number 12345
+     ipv6-family unicast
+      peer 2001:db8::1 enable
+      peer 2001:db8::1 route-policy DENY_ALL import
+  after: |
+    bgp 65536
+     peer 2001:db8::1 as-number 2
+     ipv6-family unicast
+      peer 2001:db8::1 enable
+      peer 2001:db8::1 route-policy DENY_ALL import
+  patch: |
+    system-view
+    bgp 65536
+      undo peer 2001:db8::1
+      peer 2001:db8::1 as-number 2
+      ipv6-family unicast
+        peer 2001:db8::1 enable
+        peer 2001:db8::1 route-policy DENY_ALL import
+        quit
+      quit
+    q
+    save

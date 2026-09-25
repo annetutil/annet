@@ -1,9 +1,11 @@
 import socket
-from collections.abc import Iterator
+from collections import OrderedDict
+from collections.abc import Iterable, Iterator
 from typing import Any
 
 from annet.annlib.types import Op
 from annet.rulebook import common
+from annet.rulebook.common import DiffItem
 
 
 def undo_commit(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: Any) -> common.LogicResult:
@@ -75,6 +77,160 @@ def bfd(rule: dict[str, Any], key: tuple[str, ...], diff: common.DiffDict, **_: 
         diff[Op.REMOVED] = []
     if diff[Op.ADDED]:
         yield from common.default(rule, key, diff, **_)
+
+
+def reapply_after_as_number_change(
+    old: OrderedDict[str, Any],
+    new: OrderedDict[str, Any],
+    diff_pre: OrderedDict[str, Any],
+    _pops: tuple[str, ...] = (Op.AFFECTED,),
+) -> list[DiffItem]:
+    """
+    On Huawei, removing or changing the as-number of an existing IP peer
+    triggers `undo peer <ip>`, which wipes every `peer <ip> ...` command in
+    the same scope. The default diff doesn't reflect this implicit wipe, so
+    we rewrite the bgp subtree here:
+
+    1. AS-number CHANGE on an IP peer: the peer's other rows are identical in
+       old and new, so the default diff marks them UNCHANGED and they are
+       never re-sent — leaving the device with a half-configured peer. We
+       flip those AFFECTED rows to ADDED so the patcher re-emits them after
+       `undo peer <ip>`.
+
+    2. AS-number CHANGE / full IP-peer REMOVAL: any REMOVED rows for the same
+       IP become redundant and would error against a nonexistent peer
+       ("Error: The peer session does not exist"). We drop them.
+
+    The `peer <ip> as-number ...` row can live at the bgp top level or inside
+    an address-family / vpn-instance block, so the wiped/recreated sets are
+    computed per block (see `_rewrite_block`). A bgp top-level `undo peer
+    <ip>` wipes the peer in the global family blocks too, so the set is
+    inherited downward — but it stops at a `vpn-instance` boundary, since a
+    vpn-instance peer is a separate namespace and its `undo peer <ip>` is
+    issued (and only wipes) within that block.
+
+    Scope: IP peers only. Peer-group renames go through a different
+    Huawei command (`undo peer <group> as-number`, non-destructive) and
+    don't need re-emit. Peer-group removal isn't handled here either; the
+    pre-PR per-option-undo shape is correct on the device (just noisier).
+
+    Group members: `peer <ip> group <G>` makes the device add the member's
+    own `peer <ip> as-number <group AS>` row to the running config
+    automatically. It is the generator's responsibility to yield that row
+    for every group member; otherwise annet sees it as REMOVED and emits
+    `undo peer <ip>`, wiping the peer, on every run. The same applies to
+    the rows the device adds under `ipv4-family unicast` (`peer <ip> enable`
+    and `peer <ip> group <G>` without `undo default ipv4-unicast`).
+    """
+    items = common.default_diff(old, new, diff_pre, _pops)
+
+    result = []
+    for item in items:
+        bgp_old = old.get(item.row, {})
+        bgp_new = new.get(item.row, {})
+        children = _rewrite_block(item.children, bgp_old, bgp_new, set(), set())
+        result.append(item._replace(children=children))
+    return result
+
+
+def _wiped_peer_ips(old: OrderedDict[str, Any], new: OrderedDict[str, Any]) -> set[str]:
+    """IPs whose `peer <ip> as-number ...` row at this level is in `old` but
+    not in `new` — i.e. peers for which peer() will emit `undo peer <ip>`
+    (covers both full removal and as-number value change)."""
+    wiped_peer_ips = set()
+    for row in old:
+        if row in new or not _is_peer_as_number_row(row):
+            continue
+        key = row.split()[1]
+        if _is_ip_addr(key):
+            wiped_peer_ips.add(key)
+    return wiped_peer_ips
+
+
+def _peer_ips_with_as_number(rows: Iterable[str]) -> set[str]:
+    """IPs that appear in a `peer <ip> as-number ...` row at this level."""
+    peer_ips = set()
+    for row in rows:
+        if not _is_peer_as_number_row(row):
+            continue
+        key = row.split()[1]
+        if _is_ip_addr(key):
+            peer_ips.add(key)
+    return peer_ips
+
+
+def _peer_key(row: str) -> str | None:
+    """Peer name/IP of a `peer <x> ...` or `undo peer <x> ...` row. The
+    latter matters for `undo peer <ip> enable` in a family block: without
+    `undo default ipv4-unicast` a recreated peer comes back enabled, so the
+    row has to be re-sent after the wipe like any other peer row."""
+    tokens = row.split()
+    if tokens and tokens[0] == "undo":
+        tokens = tokens[1:]
+    if len(tokens) >= 2 and tokens[0] == "peer":
+        return tokens[1]
+    return None
+
+
+def _is_peer_as_number_row(row: str) -> bool:
+    tokens = row.split()
+    return len(tokens) >= 3 and tokens[0] == "peer" and tokens[2] == "as-number"
+
+
+def _is_vpn_instance_block(row: str) -> bool:
+    return "vpn-instance" in row.split()
+
+
+def _rewrite_block(
+    items: list[DiffItem],
+    old_level: OrderedDict[str, Any],
+    new_level: OrderedDict[str, Any],
+    inherited_wiped: set[str],
+    inherited_recreated: set[str],
+) -> list[DiffItem]:
+    """Rewrite one block of the bgp subtree (the bgp body itself, or a family
+    / vpn-instance block). `old_level`/`new_level` are this block's old/new
+    config dicts, used to find peers wiped at this scope.
+
+    `wiped` is the set of IPs whose `peer <ip> as-number ...` row disappears
+    at this scope or any enclosing one; `recreated` is the subset that still
+    has an as-number row in `new` (renumbered, not removed). For each
+    `peer <ip> ...` DiffItem whose IP is wiped:
+      - REMOVED rows are dropped (redundant after the upstream `undo peer
+        <ip>`), except a REMOVED `peer <ip> as-number Y` row, which is kept
+        as the trigger that makes huawei.bgp.peer emit `undo peer <ip>`;
+      - AFFECTED rows are flipped to ADDED for a recreated IP, so the
+        re-declared peer's other rows are re-applied after the wipe.
+
+    A `vpn-instance` block is a separate peer namespace, so the inherited
+    sets are not carried across that boundary — only the block's own peers
+    apply inside it."""
+    local_wiped = _wiped_peer_ips(old_level, new_level)
+    wiped = inherited_wiped | local_wiped
+    recreated = inherited_recreated | (local_wiped & _peer_ips_with_as_number(new_level))
+
+    result = []
+    for item in items:
+        key = _peer_key(item.row)
+        is_wiped_peer = key in wiped
+        if is_wiped_peer and item.op == Op.REMOVED and not _is_peer_as_number_row(item.row):
+            continue
+        if _is_vpn_instance_block(item.row):
+            child_wiped, child_recreated = set(), set()
+        else:
+            child_wiped, child_recreated = wiped, recreated
+        children = _rewrite_block(
+            item.children,
+            old_level.get(item.row, {}),
+            new_level.get(item.row, {}),
+            child_wiped,
+            child_recreated,
+        )
+        if is_wiped_peer and item.op == Op.AFFECTED and key in recreated:
+            result.append(item._replace(op=Op.ADDED, children=children))
+        else:
+            result.append(item._replace(children=children))
+    return result
 
 
 def _is_ip_addr(addr_or_string: str) -> bool:
