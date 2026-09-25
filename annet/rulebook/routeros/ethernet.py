@@ -35,12 +35,18 @@ def _parse_attrs(tokens: list[str], row: str) -> dict[str, str]:
 def parse_set(row: str, *, allow_positional: bool = False) -> EthernetSet:
     """Parse an Ethernet set row and return its factory-port identity.
 
-    Desired rows must use ``find default-name``. RouterOS compact exports may
-    shorten an unchanged factory name to the positional form ``set ether1``;
-    callers may allow that form only while parsing running configuration.
+    Both the spaced selector form ``[ find default-name=ether1 ]`` and the
+    compact generator form ``[find default-name=ether1]`` are accepted.
+    RouterOS compact exports may shorten an unchanged factory name to the
+    positional form ``set ether1``; callers may allow that form only while
+    parsing running configuration.
     """
     try:
-        tokens = shlex.split(row)
+        # "[]" as punctuation splits glued selectors ("[find" / "ether1]")
+        # into separate tokens while leaving quoted values untouched.
+        lexer = shlex.shlex(row, posix=True, punctuation_chars="[]")
+        lexer.whitespace_split = True
+        tokens = list(lexer)
     except ValueError as exc:
         raise EthernetSetParseError(f"Invalid RouterOS Ethernet row: {row!r}") from exc
 

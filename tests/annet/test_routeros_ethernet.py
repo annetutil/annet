@@ -33,6 +33,13 @@ def test_parse_running_positional_selector():
     assert parsed == EthernetSet(identity="ether1", attrs={"comment": "WAN uplink", "disabled": "no"})
 
 
+def test_parse_compact_selector_without_spaces():
+    # generators commonly emit the selector without inner spaces
+    parsed = parse_set('set [find default-name=ether1] comment="uplink [core] 1"')
+
+    assert parsed == EthernetSet(identity="ether1", attrs={"comment": "uplink [core] 1"})
+
+
 @pytest.mark.parametrize(
     "row",
     [

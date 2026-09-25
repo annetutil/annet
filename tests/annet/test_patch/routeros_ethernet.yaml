@@ -97,3 +97,16 @@
     set [ find default-name=ether1 ] comment="uplink" disabled=no
   patch: |
     /interface ethernet set [ find default-name=ether2 ] comment="new management" disabled=no
+
+- name: compact generator selector converges with spaced export
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set [ find default-name=ether1 ] disable-running-check=no
+    set [ find default-name=ether2 ] disable-running-check=no comment="management"
+  after: |
+    /interface ethernet
+    set [find default-name=ether1] comment="uplink"
+    set [find default-name=ether2] comment="management"
+  patch: |
+    /interface ethernet set [ find default-name=ether1 ] comment=uplink
