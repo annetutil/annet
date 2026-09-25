@@ -1,0 +1,99 @@
+- name: equivalent selectors
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set ether1 comment="uplink" disabled=no
+  after: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="uplink" disabled=no
+  patch: ""
+
+- name: comment change
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="old uplink" disabled=no
+  after: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="new uplink" disabled=no
+  patch: |
+    /interface ethernet set [ find default-name=ether1 ] comment="new uplink" disabled=no
+
+- name: non-comment drift
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="uplink" disabled=yes l2mtu=1598
+  after: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="uplink" disabled=no l2mtu=9500
+  patch: |
+    /interface ethernet set [ find default-name=ether1 ] comment=uplink disabled=no l2mtu=9500
+
+- name: device-only attributes are not owned
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set [ find default-name=ether1 ] arp=proxy-arp comment="uplink" disabled=no l2mtu=1598
+  after: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="uplink" disabled=no
+  patch: ""
+
+- name: renamed interface is addressed by factory identity
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set [ find default-name=ether1 ] name=uplink comment="old uplink" disabled=no
+  after: |
+    /interface ethernet
+    set [ find default-name=ether1 ] name=uplink comment="new uplink" disabled=no
+  patch: |
+    /interface ethernet set [ find default-name=ether1 ] name=uplink comment="new uplink" disabled=no
+
+- name: quote RouterOS metacharacters
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set ether1 comment="old" disabled=no
+  after: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="one;two[three]$four" disabled=no
+  patch: |
+    /interface ethernet set [ find default-name=ether1 ] comment="one;two[three]\$four" disabled=no
+
+- name: new desired identity
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set [ find default-name=ether2 ] comment="management" disabled=no
+  after: |
+    /interface ethernet
+    set [ find default-name=ether2 ] comment="management" disabled=no
+    set [ find default-name=ether1 ] comment="uplink" disabled=no
+  patch: |
+    /interface ethernet set [ find default-name=ether1 ] comment=uplink disabled=no
+
+- name: old-only identity is unmanaged
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="unmanaged"
+    set [ find default-name=ether2 ] comment="management" disabled=no
+  after: |
+    /interface ethernet
+    set [ find default-name=ether2 ] comment="management" disabled=no
+  patch: ""
+
+- name: multiple identities are paired independently
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="uplink" disabled=no
+    set [ find default-name=ether2 ] comment="old management" disabled=no
+  after: |
+    /interface ethernet
+    set [ find default-name=ether2 ] comment="new management" disabled=no
+    set [ find default-name=ether1 ] comment="uplink" disabled=no
+  patch: |
+    /interface ethernet set [ find default-name=ether2 ] comment="new management" disabled=no
