@@ -1,0 +1,24 @@
+# Same as huawei_peer_as_number_change_vpn_v4 but for an IPv6 peer inside an
+# ipv6-family vpn-instance block.
+- vendor: huawei
+  before: |
+    bgp 65536
+     ipv6-family vpn-instance EXAMPLE
+      peer 2001:db8::1 as-number 12345
+      peer 2001:db8::1 route-policy DENY_ALL import
+  after: |
+    bgp 65536
+     ipv6-family vpn-instance EXAMPLE
+      peer 2001:db8::1 as-number 1234
+      peer 2001:db8::1 route-policy DENY_ALL import
+  patch: |
+    system-view
+    bgp 65536
+      ipv6-family vpn-instance EXAMPLE
+        undo peer 2001:db8::1
+        peer 2001:db8::1 as-number 1234
+        peer 2001:db8::1 route-policy DENY_ALL import
+        quit
+      quit
+    q
+    save

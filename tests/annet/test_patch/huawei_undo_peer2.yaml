@@ -9,7 +9,6 @@
   patch: |
     system-view
     bgp 64215.89
-      undo peer fe80::c1:d1 description
       undo peer fe80::c1:d1
       quit
     q
@@ -24,7 +23,6 @@
   patch: |
     system-view
     bgp 64215.89
-      undo peer fe80::c1:d1 bfd enable
       undo peer fe80::c1:d1
       quit
     q
@@ -56,10 +54,6 @@
   patch: |
     system-view
     bgp 65000.65001
-      ipv6-family unicast
-        undo peer fe80::e999:d1 group TOR
-        undo peer fe80::e999:d1 enable
-        quit
       undo peer fe80::e999:d1
       quit
     q

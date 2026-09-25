@@ -1,0 +1,34 @@
+# The device always shows a group member's own `peer <ip> as-number` row
+# (added automatically on `peer <ip> group <G>`; the generator must yield
+# it), so removing the member is a single `undo peer <ip>` and its other
+# rows are dropped as redundant.
+# `undo peer <group> as-number` is accepted while the member still exists.
+- vendor: huawei
+  before: |
+    bgp 65536
+     peer 198.51.100.1 as-number 300
+     group G external
+     peer G as-number 100
+     peer 192.0.2.1 as-number 100
+     peer 192.0.2.1 group G
+     ipv4-family unicast
+      peer 192.0.2.1 enable
+      peer 198.51.100.1 enable
+      peer G enable
+  after: |
+    bgp 65536
+     peer 198.51.100.1 as-number 300
+     ipv4-family unicast
+      peer 198.51.100.1 enable
+  patch: |
+    system-view
+    bgp 65536
+      undo peer 192.0.2.1
+      undo peer G as-number
+      ipv4-family unicast
+        undo peer G enable
+        quit
+      undo group G
+      quit
+    q
+    save
