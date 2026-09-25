@@ -59,6 +59,8 @@ def _implicit_tree(device: Device) -> odict[Any, Any]:
         # V600R025C00: https://support.huawei.com/enterprise/en/doc/EDOC1100515500/
         # V600R025C10: https://support.huawei.com/enterprise/en/doc/EDOC1100559678/
 
+        is_huawei_yunshan = bool(device.hw.Huawei) and bool(device.hw.soft) and parse_version(device.hw.soft).V == 600
+
         if device.hw.Huawei.CE:
             text = """
                 stp mode mstp
@@ -75,19 +77,19 @@ def _implicit_tree(device: Device) -> odict[Any, Any]:
             """
         elif device.hw.Huawei.NE:
             text = """
-                 !bgp *
-                     !ipv4-family unicast
-                         undo synchronization
-                     !ipv6-family unicast
-                         undo synchronization
-                 !user-interface con *
-                     user privilege level 3
-                 !user-interface vty ~
-                     protocol inbound all
-                 aaa
+                !bgp *
+                    !ipv4-family unicast
+                        undo synchronization
+                    !ipv6-family unicast
+                        undo synchronization
+                !user-interface con *
+                    user privilege level 3
+                !user-interface vty ~
+                    protocol inbound all
+                aaa
                     undo user-password complexity-check
-                 netconf
-                 """
+                netconf
+                """
         elif device.hw.Huawei.Quidway.S5700.S5735I:
             if parse_version(device.hw.soft).R <= 23:
                 text = """
@@ -118,6 +120,12 @@ def _implicit_tree(device: Device) -> odict[Any, Any]:
                 !interface X?GigabitEthernet*
                     bpdu enable
                 netconf
+            """
+
+        if is_huawei_yunshan:
+            text += """
+                !user-interface vty ~
+                    protocol inbound all
             """
     elif device.hw.Arista:
         # This part of configuration will not be visible in configuration
