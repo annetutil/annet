@@ -1,0 +1,16 @@
+- name: flat vlan list with named single-id block
+  vendor: nexus
+  diff: |
+    - vlan 1,1000-1001
+    + vlan 1,1000-1002
+    vlan 1000
+      name foo
+    + vlan 1002
+      + name bar
+  patch: |
+    conf t
+    vlan 1002
+      name bar
+      exit
+    exit
+    copy running-config startup-config
