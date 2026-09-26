@@ -57,25 +57,29 @@ jobs:
           name: selected-sources
           path: ${{ runner.temp }}/selected-sources
       - name: Install smoke-test dependencies
-        run: python -m pip install --require-hashes -r docker/tests/requirements.lock
+        run: python -m pip install -r docker/tests/requirements.in
       - name: Prepare allowlisted context with the selected Gnetcli revision
         run: python docker/prepare.py "$RUNNER_TEMP/context" --sources "$RUNNER_TEMP/selected-sources/sources.json"
       - name: Build runtime and test device
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          version=$(python -c 'import json; print(json.load(open("docker/sources.json"))["annet_dev_version"])')
+          version=""
           if [ -n "$RELEASE_TAG" ]; then
             [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
             version=${RELEASE_TAG#v}
+            # The PyPI publication workflow may still be finishing for this tag.
+            curl --fail --silent --show-error --connect-timeout 10 --max-time 30 --retry 30 --retry-all-errors --retry-delay 10 --retry-max-time 300 \
+              "https://pypi.org/pypi/annet/$version/json" -o "$RUNNER_TEMP/annet-release.json"
           fi
-          docker build --build-arg "ANNET_VERSION=$version" -t annet:test-${{ matrix.arch }} "$RUNNER_TEMP/context"
-          docker build -t annet-device:test docker/tests
+          echo "ANNET_TEST_VERSION=$version" >> "$GITHUB_ENV"
+          docker build --pull --build-arg "ANNET_VERSION=$version" -t annet:test-${{ matrix.arch }} "$RUNNER_TEMP/context"
+          docker build --pull -t annet-device:test docker/tests
       - name: Record installed versions
         env:
           ANNET_TEST_IMAGE: annet:test-${{ matrix.arch }}
         run: |
-          docker run --rm --entrypoint python "$ANNET_TEST_IMAGE" -c 'import json,importlib.metadata as m; from pathlib import Path; print(json.dumps({"sources":json.loads(Path("/usr/local/share/annet/versions.json").read_text()),"packages":{d.metadata["Name"]:d.version for d in m.distributions()}},indent=2))' > "$RUNNER_TEMP/versions.json"
+          docker run --rm --entrypoint cat "$ANNET_TEST_IMAGE" /usr/local/share/annet/versions.json > "$RUNNER_TEMP/versions.json"
       - name: Exercise quick start and container lifecycle
         env:
           ANNET_TEST_IMAGE: annet:test-${{ matrix.arch }}

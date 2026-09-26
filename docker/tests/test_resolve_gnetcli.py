@@ -41,11 +41,10 @@ def invoke(monkeypatch, tmp_path, release=None, revision="a" * 40, failure=False
     monkeypatch.setenv("GITHUB_TOKEN", "test-token")
     monkeypatch.setattr(urllib.request, "urlopen", urlopen)
     monkeypatch.setattr(sys, "argv", [str(SCRIPT), str(output)])
-    original = SCRIPT.with_name("sources.json").read_bytes()
     try:
         runpy.run_path(str(SCRIPT), run_name="__main__")
     finally:
-        assert SCRIPT.with_name("sources.json").read_bytes() == original
+        assert not SCRIPT.with_name("sources.json").exists()
     return json.loads(output.read_text()), calls
 
 
@@ -54,13 +53,10 @@ def test_latest_release_manifest(monkeypatch, tmp_path):
     source = selected["gnetcli"]
     assert source["revision"] == "a" * 40
     assert source["release"] == "v1.3.15"
-    assert source["version"] == "1.3.15+git.aaaaaaa"
     assert source["sha256"] == hashlib.sha256(b"source archive").hexdigest()
     assert len(calls) == 3
     assert calls[1].endswith("/commits/v1.3.15")  # Never resolve the moving target_commitish.
-    original = json.loads(SCRIPT.with_name("sources.json").read_text())
-    for name in original.keys() - {"gnetcli"}:
-        assert selected[name] == original[name]
+    assert set(selected) == {"gnetcli"}
 
 
 @pytest.mark.parametrize("field,value", [("draft", True), ("prerelease", True), ("tag_name", "invalid")])

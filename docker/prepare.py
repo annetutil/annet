@@ -1,43 +1,31 @@
 #!/usr/bin/env python3
-"""Create an allowlisted Docker context; never send the working tree to Docker."""
+"""Prepare a small build context without copying checkout sources or secrets."""
 
 import argparse
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("destination", type=Path)
-    parser.add_argument("--sources", type=Path, help="Per-build manifest (defaults to docker/sources.json)")
-    args = parser.parse_args()
-    root = Path(__file__).resolve().parents[1]
-    args.destination.mkdir(parents=True, exist_ok=False)
-    tracked = subprocess.check_output(["git", "ls-files", "-z"], cwd=root).decode().split("\0")
-    for name in tracked:
-        if not name or not (
-            name.startswith(("annet/", "annet_generators/"))
-            or name in {"setup.py", "pyproject.toml", "requirements.txt", "MANIFEST.in", "README.md", "LICENSE"}
-        ):
-            continue
-        src = root / name
-        if src.is_symlink():
-            raise ValueError(f"Refusing symlink: {name}")
-        dst = args.destination / "annet" / name
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(src, dst)
-    for name in ["Dockerfile", "fetch_sources.py", "requirements.lock", "build.lock"]:
-        shutil.copyfile(root / "docker" / name, args.destination / name)
-    versions = json.loads((args.sources or root / "docker/sources.json").read_text())
-    (args.destination / "sources.json").write_text(json.dumps(versions, indent=2) + "\n")
-    versions["annet_revision"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root).decode().strip()
-    versions["annet_worktree_changes"] = bool(
-        subprocess.check_output(
-            ["git", "diff", "HEAD", "--", "annet", "annet_generators", "setup.py", "requirements.txt"], cwd=root
-        )
+    parser.add_argument(
+        "--sources", type=Path, help="Reuse a generated Gnetcli manifest; otherwise resolve latest release"
     )
+    args = parser.parse_args()
+    root = Path(__file__).resolve().parent
+    args.destination.mkdir(parents=True, exist_ok=False)
+    for name in ["Dockerfile", "fetch_sources.py", "requirements.in"]:
+        shutil.copyfile(root / name, args.destination / name)
+    sources_path = args.destination / "sources.json"
+    if args.sources:
+        shutil.copyfile(args.sources, sources_path)
+    else:
+        subprocess.run([sys.executable, str(root / "resolve_gnetcli.py"), str(sources_path)], check=True)
+    versions = json.loads(sources_path.read_text())
     (args.destination / "versions.json").write_text(json.dumps(versions, indent=2) + "\n")
 
 

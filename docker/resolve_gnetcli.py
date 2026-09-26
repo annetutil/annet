@@ -40,12 +40,11 @@ def main():
     # Never send the API token to the archive endpoint.
     with urllib.request.urlopen(url, timeout=120) as response:
         digest = hashlib.sha256(response.read()).hexdigest()
-    sources = json.loads(Path(__file__).with_name("sources.json").read_text())
+    sources = {}
     sources["gnetcli"] = {
         "revision": revision,
         "url": url,
         "sha256": digest,
-        "version": version[1] + "+git." + revision[:7],
         "release": tag,
     }
     args.output.write_text(json.dumps(sources, indent=2) + "\n")

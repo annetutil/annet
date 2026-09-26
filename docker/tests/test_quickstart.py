@@ -161,6 +161,13 @@ def test_quickstart(lab):
     run("annet", "--help")
     run("gnetcli", "--help")
     run("python", "-m", "pip", "check")
+    if expected := os.environ.get("ANNET_TEST_VERSION"):
+        run(
+            "python",
+            "-c",
+            "import sys; from importlib.metadata import version; assert version('annet') == sys.argv[1]",
+            expected,
+        )
     generated = run("annet", "gen", host)
     assert "description Managed by Annet quick start" in generated.stdout
     assert "before" in run("annet", "show", "current", host).stdout
