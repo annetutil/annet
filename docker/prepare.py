@@ -11,6 +11,7 @@ from pathlib import Path
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("destination", type=Path)
+    parser.add_argument("--sources", type=Path, help="Per-build manifest (defaults to docker/sources.json)")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     args.destination.mkdir(parents=True, exist_ok=False)
@@ -27,9 +28,10 @@ def main():
         dst = args.destination / "annet" / name
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(src, dst)
-    for name in ["Dockerfile", "sources.json", "fetch_sources.py", "requirements.lock", "build.lock"]:
+    for name in ["Dockerfile", "fetch_sources.py", "requirements.lock", "build.lock"]:
         shutil.copyfile(root / "docker" / name, args.destination / name)
-    versions = json.loads((root / "docker/sources.json").read_text())
+    versions = json.loads((args.sources or root / "docker/sources.json").read_text())
+    (args.destination / "sources.json").write_text(json.dumps(versions, indent=2) + "\n")
     versions["annet_revision"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root).decode().strip()
     versions["annet_worktree_changes"] = bool(
         subprocess.check_output(

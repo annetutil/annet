@@ -37,3 +37,15 @@ def test_context_excludes_untracked_files(tmp_path):
     assert not metadata["annet_worktree_changes"]
     result = subprocess.run([sys.executable, str(repo / "docker/prepare.py"), str(target)], capture_output=True)
     assert result.returncode != 0  # Never overwrite an existing context.
+
+    selected = json.loads((HERE / "sources.json").read_text())
+    selected["gnetcli"]["revision"] = "a" * 40
+    override = tmp_path / "sources.json"
+    override.write_text(json.dumps(selected))
+    custom = tmp_path / "custom-context"
+    subprocess.run(
+        [sys.executable, str(repo / "docker/prepare.py"), str(custom), "--sources", str(override)], check=True
+    )
+    assert json.loads((custom / "sources.json").read_text()) == selected
+    assert json.loads((custom / "versions.json").read_text())["gnetcli"] == selected["gnetcli"]
+    assert json.loads((repo / "docker/sources.json").read_text())["gnetcli"]["revision"] != "a" * 40

@@ -10,7 +10,9 @@ Requires Docker and network access from the container to an Arista EOS device.
 The example only manages the description of Ethernet1; it does not replace the
 whole configuration. Use a lab device first.
 
-This directory provides a locally built image; registry publication is separate.
+For a local build using the checked-in dependency pins, follow the steps below.
+For automatically published images using the latest Gnetcli release, see
+[CI images](#ci-images).
 From the Annet checkout, build it once with Docker and Python 3 (used only to
 prepare the build context; no Python packages or Go installation are needed):
 
@@ -153,8 +155,7 @@ The image supports `linux/amd64` and `linux/arm64`. To check a particular
 architecture, add `--platform linux/amd64` or `--platform linux/arm64` to
 `docker build` and use a distinct image tag. Running a non-native image requires
 Docker emulation; native runners are preferable for release verification.
-Publishing images and the GitHub Actions release workflow are not part of this
-local-build setup.
+The CI workflow below performs the same build and smoke tests on native runners.
 
 `requirements.lock` and `build.lock` pin Python dependencies and hashes; base
 images have immutable digests. `sources.json` pins Go/SDK and adapter archives.
@@ -169,3 +170,51 @@ not resolved from floating branches during release. The installed provenance
 is available at `/usr/local/share/annet/versions.json`.
 Local builds use the explicitly recorded development package version.
 Set `--build-arg ANNET_VERSION=<version>` to override the Annet wheel version.
+
+
+## CI images
+
+The `Annet container` workflow builds on pull requests, pushes to Annet `main`,
+published stable Annet releases, and manual runs. It resolves GitHub's latest published
+stable **Gnetcli release**, not `main`, once per run. Both architectures use the
+same commit and archive checksum. The Go binaries and Python SDK come from that
+same revision. Adapter, NetBox and other dependency pins remain unchanged.
+
+After both architecture smoke suites pass, the tested images are published
+without rebuilding to `ghcr.io/annetutil/annet`:
+
+- `latest`: successful pushes to `main` and manual runs on `main`;
+- `vMAJOR.MINOR.PATCH`: a published stable Annet release;
+- `build-RUN_ID-ATTEMPT`: the exact successful CI run, including its Gnetcli revision.
+
+Pull requests and manual runs on other branches do not publish. Publication is
+restricted to the `annetutil/annet` repository. An organization maintainer must
+make the GHCR package public to allow unauthenticated pulls.
+
+```sh
+docker pull ghcr.io/annetutil/annet:latest
+docker run --rm ghcr.io/annetutil/annet:latest --help
+```
+
+These tags become available only after a successful workflow run. A failed API
+lookup, incompatible release, build failure or failed smoke test stops the run;
+there is no silent fallback to an older pin, `main`, or a source patch.
+
+A Gnetcli release alone does **not** trigger an Annet build. Start the Annet
+workflow manually to pick it up without changing Annet code. No scheduled jobs,
+cross-repository workflows or dependency-update PRs are created.
+
+Local builds still use `docker/sources.json` by default. To reproduce CI's
+selection locally, or reuse the `selected-sources` artifact from a specific run:
+
+```sh
+# Omit this step when using a downloaded selected-sources artifact.
+python3 docker/resolve_gnetcli.py /tmp/annet-sources.json
+context=$(mktemp -d)/context
+python3 docker/prepare.py "$context" --sources /tmp/annet-sources.json
+docker build -t annet:latest-gnetcli "$context"
+```
+
+`GITHUB_TOKEN` is optional for local API requests and helps avoid rate limits.
+The resolver never modifies checked-in pins. The selected manifest is stored as
+a CI artifact and embedded in `/usr/local/share/annet/versions.json`.
