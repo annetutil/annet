@@ -1,0 +1,19 @@
+{
+  "gnetcli": {
+    "revision": "76a26a7cc216655c1de8a55ead3f3da8bd38acf3",
+    "url": "https://codeload.github.com/annetutil/gnetcli/tar.gz/76a26a7cc216655c1de8a55ead3f3da8bd38acf3",
+    "sha256": "755a5549d19c609e03224610ff160bad0aca71e15d8106f8d35806bf680b2d6e",
+    "version": "1.3.14+git.76a26a7"
+  },
+  "gnetcli_adapter": {
+    "revision": "4e9b8b6672b95826835af9531546a750135c1e2a",
+    "url": "https://codeload.github.com/annetutil/gnetcli_adapter/tar.gz/4e9b8b6672b95826835af9531546a750135c1e2a",
+    "sha256": "9067f39a53377ceb6df0ce60a925a668af36622f8dca479baae68ccbfcab7609",
+    "version": "2.8.4+git.4e9b8b6"
+  },
+  "annetbox": {
+    "version": "1.1.2",
+    "source": "PyPI (locked with hashes in requirements.lock)"
+  },
+  "annet_dev_version": "4.6.1+local"
+}

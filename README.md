@@ -53,6 +53,12 @@ selected_context: default
 
 Environment variable `ANN_SELECTED_CONTEXT` can be used to override `selected_context` parameter.
 
+## Docker
+
+Build the [self-contained Annet image](docker/README.md) to run configuration
+preview/deployment or direct Gnetcli commands without installing Python/Go on
+the runtime host. The guide includes a file-inventory example and local smoke tests.
+
 ## Installation
 
 Install from PyPI:

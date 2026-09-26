@@ -1,0 +1,7 @@
+devices:
+  - fqdn: switch.example.test
+    vendor: arista
+    breed: eos4
+    interfaces:
+      - name: Ethernet1
+        description: Managed by Annet quick start
