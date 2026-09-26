@@ -40,6 +40,12 @@ def test_parse_compact_selector_without_spaces():
     assert parsed == EthernetSet(identity="ether1", attrs={"comment": "uplink [core] 1"})
 
 
+def test_parse_hash_as_data_instead_of_shlex_comment():
+    parsed = parse_set("set [find default-name=ether1] comment=wan#primary disabled=no")
+
+    assert parsed == EthernetSet(identity="ether1", attrs={"comment": "wan#primary", "disabled": "no"})
+
+
 @pytest.mark.parametrize(
     "row",
     [

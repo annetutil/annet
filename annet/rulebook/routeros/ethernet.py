@@ -46,6 +46,7 @@ def parse_set(row: str, *, allow_positional: bool = False) -> EthernetSet:
         # into separate tokens while leaving quoted values untouched.
         lexer = shlex.shlex(row, posix=True, punctuation_chars="[]")
         lexer.whitespace_split = True
+        lexer.commenters = ""
         tokens = list(lexer)
     except ValueError as exc:
         raise EthernetSetParseError(f"Invalid RouterOS Ethernet row: {row!r}") from exc
