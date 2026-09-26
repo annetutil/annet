@@ -24,6 +24,8 @@ file
     set * %logic=annet.rulebook.routeros.file.change
 
 interface
+    ethernet
+        set ... %logic=annet.rulebook.routeros.ethernet.change %diff_logic=annet.rulebook.routeros.ethernet.diff
     gre
         add ~ %logic=annet.rulebook.routeros.remove_by_key.change
     l2tp-client
