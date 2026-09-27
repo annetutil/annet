@@ -6,8 +6,8 @@ The adapter starts and stops its own local server; do not expose a gRPC port.
 
 ## Quick start: one device, no NetBox
 
-Requires Docker and network access from the container to an Arista EOS device.
-The example only manages the description of Ethernet1; it does not replace the
+Requires Docker and network access from the container to a Cisco IOS device.
+The example only manages the description of GigabitEthernet0/1; it does not replace the
 whole configuration. Use a lab device first.
 
 For a local build using the latest published packages, follow the steps below.
@@ -92,7 +92,7 @@ history. One final LF/CRLF is removed; other whitespace is preserved.
 docker run --rm --init --user "$(id -u):$(id -g)" --env HOME=/tmp \
   --mount "type=bind,src=$PWD/device-password,dst=/run/secrets/password,readonly" \
   --entrypoint gnetcli "$IMAGE" \
-  -hostname switch.example.test -devtype arista -login annet \
+  -hostname switch.example.test -devtype cisco -login annet \
   -password-file /run/secrets/password -command 'show clock' -json
 ```
 
@@ -131,11 +131,15 @@ generators. The file example does not need a NetBox server.
 
 ## Build and verification
 
-From the Annet repository:
+From the Annet repository (Docker, Python and OpenSSH `ssh-keygen` are required
+to run the tests):
 
 ```sh
 docker build --pull --no-cache -t annet:local docker
-docker build -t annet-device:test docker/tests
+GNETCLI_VERSION=$(docker run --rm --entrypoint python annet:local -c \
+  'import json; print(json.load(open("/usr/local/share/annet/versions.json"))["gnetcli"]["revision"])')
+docker build --target test-device --build-arg "GNETCLI_VERSION=$GNETCLI_VERSION" \
+  -t annet-device:test docker
 python3 -m venv /tmp/annet-smoke
 /tmp/annet-smoke/bin/pip install -r docker/tests/requirements.in
 ANNET_TEST_IMAGE=annet:local ANNET_TEST_DEVICE_IMAGE=annet-device:test \
@@ -144,8 +148,21 @@ ANNET_TEST_IMAGE=annet:local ANNET_TEST_DEVICE_IMAGE=annet-device:test \
 
 `docker/` is the build context. Its `.dockerignore` allows only the Dockerfile,
 requirements and source-download scripts; local configurations, examples and
-tests are not sent to the image build. Tests use generated credentials and a
-separate SSH fixture; no real device is required for the smoke suite.
+tests are not sent to the image build. The `test-device` target builds `gswitch`
+from the same Gnetcli revision as the runtime; no Python SSH emulator or
+`asyncssh` dependency is used. `gswitch` is not included in the runtime image.
+
+Tests create an isolated Docker network, generate disposable credentials with
+`ssh-keygen`, and start `gswitch` with `-config-file`, `-authorized-keys` and
+`-ready-file`. Its shared Cisco configuration survives reconnects, allowing
+`deploy` followed by an empty `diff`. The lifecycle test starts another instance
+with `-command-delay 30s` and stops Annet while a command is in flight. All test
+containers and networks are removed afterwards; no real device is contacted.
+Gnetcli v1.3.17 or newer is required for these fixture options.
+
+Without `ANNET_TEST_IMAGE`, the tests use local `annet`, `gnetcli` and `gswitch`
+binaries. `GSWITCH_BIN` can point to a locally built gswitch executable. Container
+lifecycle checks require Docker mode.
 
 The image supports `linux/amd64` and `linux/arm64`. Add the corresponding
 `--platform` flag to `docker build` to select an architecture. A non-native image

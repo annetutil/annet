@@ -1,7 +1,7 @@
 devices:
   - fqdn: switch.example.test
-    vendor: arista
-    breed: eos4
+    vendor: cisco
+    breed: ios12
     interfaces:
-      - name: Ethernet1
+      - name: GigabitEthernet0/1
         description: Managed by Annet quick start

@@ -58,7 +58,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install smoke-test dependencies
-        run: python -m pip install -r docker/tests/requirements.in
+        run: |
+          command -v ssh-keygen
+          python -m pip install -r docker/tests/requirements.in
       - name: Build runtime and test device
         env:
           GNETCLI_VERSION: ${{ needs.sources.outputs.revision }}
@@ -74,7 +76,7 @@ jobs:
           fi
           echo "ANNET_TEST_VERSION=$version" >> "$GITHUB_ENV"
           docker build --pull --build-arg "ANNET_VERSION=$version" --build-arg "GNETCLI_VERSION=$GNETCLI_VERSION" -t annet:test-${{ matrix.arch }} docker
-          docker build --pull -t annet-device:test docker/tests
+          docker build --pull --target test-device --build-arg "GNETCLI_VERSION=$GNETCLI_VERSION" -t annet-device:test docker
       - name: Record installed versions
         env:
           ANNET_TEST_IMAGE: annet:test-${{ matrix.arch }}

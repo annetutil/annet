@@ -12,7 +12,17 @@ WORKDIR /src
 RUN CGO_ENABLED=0 go build -trimpath -o /out/gnetcli ./cmd/cli \
     && CGO_ENABLED=0 go build -trimpath -o /out/gnetcli_server ./cmd/gnetcli_server
 
-FROM python:3.12-slim-bookworm
+FROM go-build AS gswitch-build
+RUN CGO_ENABLED=0 go build -trimpath -o /out/gswitch ./cmd/gswitch
+
+# Test-only target: not included in the runtime image below.
+FROM alpine:3.21 AS test-device
+COPY --from=gswitch-build /out/gswitch /usr/local/bin/gswitch
+COPY --from=sources /build/sources.json /usr/local/share/gswitch/versions.json
+ENTRYPOINT ["gswitch"]
+CMD ["--help"]
+
+FROM python:3.12-slim-bookworm AS runtime
 COPY requirements.in /tmp/requirements.in
 # Empty means latest from PyPI; release CI supplies its published version.
 ARG ANNET_VERSION
