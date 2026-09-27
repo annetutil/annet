@@ -16,7 +16,7 @@ SCRIPT = Path(__file__).resolve().parents[1] / "resolve_gnetcli.py"
 API = "https://api.github.com/repos/annetutil/gnetcli"
 
 
-def invoke(monkeypatch, tmp_path, release=None, revision="a" * 40, failure=False):
+def invoke(monkeypatch, tmp_path, release=None, revision="a" * 40, failure=False, version="latest"):
     output = tmp_path / "selected.json"
     calls = []
     if release is None:
@@ -31,7 +31,7 @@ def invoke(monkeypatch, tmp_path, release=None, revision="a" * 40, failure=False
             assert request.get_header("Authorization") == "Bearer test-token"
         else:
             assert isinstance(request, str)  # No authentication headers on codeload.
-        if url == API + "/releases/latest":
+        if url in (API + "/releases/latest", API + "/releases/tags/" + release["tag_name"]):
             return io.BytesIO(json.dumps(release).encode())
         if url == API + "/commits/" + release["tag_name"]:
             return io.BytesIO(json.dumps({"sha": revision}).encode())
@@ -40,7 +40,7 @@ def invoke(monkeypatch, tmp_path, release=None, revision="a" * 40, failure=False
 
     monkeypatch.setenv("GITHUB_TOKEN", "test-token")
     monkeypatch.setattr(urllib.request, "urlopen", urlopen)
-    monkeypatch.setattr(sys, "argv", [str(SCRIPT), str(output)])
+    monkeypatch.setattr(sys, "argv", [str(SCRIPT), str(output), "--version", version])
     try:
         runpy.run_path(str(SCRIPT), run_name="__main__")
     finally:
@@ -76,4 +76,25 @@ def test_reject_invalid_commit(monkeypatch, tmp_path):
 def test_api_failure_has_no_fallback(monkeypatch, tmp_path):
     with pytest.raises(urllib.error.HTTPError):
         invoke(monkeypatch, tmp_path, failure=True)
+    assert not (tmp_path / "selected.json").exists()
+
+
+def test_explicit_release(monkeypatch, tmp_path):
+    selected, calls = invoke(monkeypatch, tmp_path, version="v1.3.15")
+    assert selected["gnetcli"]["release"] == "v1.3.15"
+    assert calls[0] == API + "/releases/tags/v1.3.15"
+    assert API + "/releases/latest" not in calls
+
+
+def test_ci_commit_does_not_resolve_latest_again(monkeypatch, tmp_path):
+    selected, calls = invoke(monkeypatch, tmp_path, version="a" * 40)
+    assert selected["gnetcli"]["revision"] == "a" * 40
+    assert "release" not in selected["gnetcli"]
+    assert calls == ["https://codeload.github.com/annetutil/gnetcli/tar.gz/" + "a" * 40]
+
+
+@pytest.mark.parametrize("version", ["main", "", "v1.3.15-rc1", "../main"])
+def test_reject_moving_or_invalid_reference(monkeypatch, tmp_path, version):
+    with pytest.raises(ValueError, match="Expected latest"):
+        invoke(monkeypatch, tmp_path, version=version)
     assert not (tmp_path / "selected.json").exists()

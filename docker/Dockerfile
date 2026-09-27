@@ -1,8 +1,10 @@
-# Build the small context produced by docker/prepare.py.
+# Use docker/ as the build context.
 FROM python:3.12-slim-bookworm AS sources
 WORKDIR /build
-COPY sources.json fetch_sources.py ./
-RUN python fetch_sources.py
+ARG GNETCLI_VERSION=latest
+COPY resolve_gnetcli.py fetch_sources.py ./
+RUN python resolve_gnetcli.py sources.json --version "$GNETCLI_VERSION" \
+    && python fetch_sources.py
 
 FROM golang:1.25-bookworm AS go-build
 COPY --from=sources /sources/gnetcli /src
@@ -24,7 +26,7 @@ RUN if [ -n "$ANNET_VERSION" ]; then \
 RUN groupadd --gid 10001 annet && useradd --uid 10001 --gid 10001 --create-home annet \
     && mkdir -p /work && chown annet:annet /work
 COPY --from=go-build /out/ /usr/local/bin/
-COPY versions.json /usr/local/share/annet/versions.json
+COPY --from=sources /build/sources.json /usr/local/share/annet/versions.json
 RUN python -c 'import json, importlib.metadata as m; from pathlib import Path; p = Path("/usr/local/share/annet/versions.json"); data = json.loads(p.read_text()); data["packages"] = {d.metadata["Name"]: d.version for d in m.distributions()}; p.write_text(json.dumps(data, indent=2) + "\n")'
 ENV PYTHONUNBUFFERED=1 HOME=/home/annet ANN_CONTEXT_CONFIG_PATH=/work/context.yml
 WORKDIR /work

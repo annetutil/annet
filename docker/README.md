@@ -13,13 +13,11 @@ whole configuration. Use a lab device first.
 For a local build using the latest published packages, follow the steps below.
 For automatically published images using the latest Gnetcli release, see
 [CI images](#ci-images).
-From the Annet checkout, build it once with Docker and Python 3 (used only to
-prepare the build context; no Python packages or Go installation are needed):
+From the Annet checkout, build it with Docker only; no local Python or Go
+installation is needed:
 
 ```sh
-context=$(mktemp -d)/context
-python3 docker/prepare.py "$context"
-docker build --pull --no-cache -t annet:local "$context"
+docker build --pull --no-cache -t annet:local docker
 export IMAGE=annet:local
 ```
 
@@ -136,9 +134,7 @@ generators. The file example does not need a NetBox server.
 From the Annet repository:
 
 ```sh
-context=$(mktemp -d)/context
-python3 docker/prepare.py "$context"
-docker build --pull --no-cache -t annet:local "$context"
+docker build --pull --no-cache -t annet:local docker
 docker build -t annet-device:test docker/tests
 python3 -m venv /tmp/annet-smoke
 /tmp/annet-smoke/bin/pip install -r docker/tests/requirements.in
@@ -146,10 +142,10 @@ ANNET_TEST_IMAGE=annet:local ANNET_TEST_DEVICE_IMAGE=annet-device:test \
   /tmp/annet-smoke/bin/python -m pytest -o addopts='' docker/tests
 ```
 
-`prepare.py` creates a small context containing only the Docker build assets
-and a generated Gnetcli manifest. It never copies checkout Python sources,
-local configuration, keys, or virtualenvs. Tests use generated credentials and
-a separate SSH fixture; no real device is required for the smoke suite.
+`docker/` is the build context. Its `.dockerignore` allows only the Dockerfile,
+requirements and source-download scripts; local configurations, examples and
+tests are not sent to the image build. Tests use generated credentials and a
+separate SSH fixture; no real device is required for the smoke suite.
 
 The image supports `linux/amd64` and `linux/arm64`. Add the corresponding
 `--platform` flag to `docker build` to select an architecture. A non-native image
@@ -174,7 +170,7 @@ PyPI. To install a particular published version:
 
 ```sh
 ANNET_VERSION=4.6.1 docker build --pull --no-cache \
-  --build-arg ANNET_VERSION -t annet:4.6.1 "$context"
+  --build-arg ANNET_VERSION -t annet:4.6.1 docker
 ```
 
 An unknown or incompatible version fails the build; it never falls back to
@@ -183,9 +179,11 @@ image. Use `--no-cache` when rebuilding locally to refresh pip packages; Docker
 would otherwise reuse the installation layer. `--pull` refreshes the Python
 3.12 and Go 1.25 base images.
 
-Gnetcli binaries use the latest published stable GitHub release. Its commit and
-archive checksum are resolved once for a build and shared between architectures,
-not checked into Git. `--sources` can reuse a previously generated manifest.
+Gnetcli binaries default to the latest published stable GitHub release.
+`GNETCLI_VERSION` accepts `latest`, a published stable release tag, or a full
+commit SHA. CI selects the release once and passes its exact commit to both
+architecture builds. Source manifests are generated inside the build, not
+checked into Git.
 Installed Python versions and the Gnetcli revision are recorded in
 `/usr/local/share/annet/versions.json` for diagnostics.
 
@@ -195,7 +193,7 @@ Installed Python versions and the Gnetcli revision are recorded in
 The `Annet container` workflow builds on pull requests, pushes to Annet `main`,
 published stable Annet releases, and manual runs. It resolves GitHub's latest published
 stable **Gnetcli release**, not `main`, once per run. Both architectures use the
-same commit and archive checksum. The Go binaries come from that revision.
+same commit, passed as `GNETCLI_VERSION`. The Go binaries come from that revision.
 Python packages are installed from PyPI: Annet is latest by default, or the exact release version passed by CI
 through `ANNET_VERSION`. Pip selects the adapter, SDK, NetBox client and their
 dependencies.
@@ -224,22 +222,21 @@ A Gnetcli release alone does **not** trigger an Annet build. Start the Annet
 workflow manually to pick it up without changing Annet code. No scheduled jobs,
 cross-repository workflows or dependency-update PRs are created.
 
-Local builds also resolve the latest Gnetcli release by default. To reuse the
-Gnetcli selection from CI, download its `selected-sources` artifact and pass it
-to `prepare.py`:
+Local builds also resolve the latest Gnetcli release by default. To select
+specific versions explicitly:
 
 ```sh
-# Omit this step when using a downloaded selected-sources artifact.
-python3 docker/resolve_gnetcli.py /tmp/annet-sources.json
-context=$(mktemp -d)/context
-python3 docker/prepare.py "$context" --sources /tmp/annet-sources.json
-docker build --pull --no-cache -t annet:latest-gnetcli "$context"
+docker build --pull --no-cache \
+  --build-arg GNETCLI_VERSION=v1.3.15 \
+  --build-arg ANNET_VERSION=4.6.1 \
+  -t annet:selected docker
 ```
 
-`GITHUB_TOKEN` is optional for local API requests and helps avoid rate limits.
-The generated manifest is not written into the repository. CI stores it as an
-artifact and embeds it in `/usr/local/share/annet/versions.json`. It fixes the
-Gnetcli source for that run, not the Python dependency resolution.
+For a CI rebuild, use the full Gnetcli commit SHA from its `selected-sources`
+artifact as `GNETCLI_VERSION`. That fixes the Go source selection, not the
+Python dependency resolution. No generated files or preparation commands are
+needed on the build host. The image records its own source manifest and Python
+package versions in `/usr/local/share/annet/versions.json`.
 
 For an Annet release, CI passes the release tag without `v` as `ANNET_VERSION`
 and waits up to five minutes for that version to become available on PyPI. If

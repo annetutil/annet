@@ -20,15 +20,20 @@ jobs:
     if: github.event_name != 'release' || !github.event.release.prerelease
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    outputs:
+      revision: ${{ steps.gnetcli.outputs.revision }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Resolve latest published Gnetcli release once for both architectures
+        id: gnetcli
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python docker/resolve_gnetcli.py "$RUNNER_TEMP/sources.json"
+        run: |
+          python docker/resolve_gnetcli.py "$RUNNER_TEMP/sources.json"
+          python -c 'import json, sys; print("revision=" + json.load(open(sys.argv[1]))["gnetcli"]["revision"])' "$RUNNER_TEMP/sources.json" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
           name: selected-sources
@@ -52,16 +57,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - uses: actions/download-artifact@v4
-        with:
-          name: selected-sources
-          path: ${{ runner.temp }}/selected-sources
       - name: Install smoke-test dependencies
         run: python -m pip install -r docker/tests/requirements.in
-      - name: Prepare allowlisted context with the selected Gnetcli revision
-        run: python docker/prepare.py "$RUNNER_TEMP/context" --sources "$RUNNER_TEMP/selected-sources/sources.json"
       - name: Build runtime and test device
         env:
+          GNETCLI_VERSION: ${{ needs.sources.outputs.revision }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           version=""
@@ -73,7 +73,7 @@ jobs:
               "https://pypi.org/pypi/annet/$version/json" -o "$RUNNER_TEMP/annet-release.json"
           fi
           echo "ANNET_TEST_VERSION=$version" >> "$GITHUB_ENV"
-          docker build --pull --build-arg "ANNET_VERSION=$version" -t annet:test-${{ matrix.arch }} "$RUNNER_TEMP/context"
+          docker build --pull --build-arg "ANNET_VERSION=$version" --build-arg "GNETCLI_VERSION=$GNETCLI_VERSION" -t annet:test-${{ matrix.arch }} docker
           docker build --pull -t annet-device:test docker/tests
       - name: Record installed versions
         env:
