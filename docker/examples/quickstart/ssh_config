@@ -1,0 +1,4 @@
+Host switch.example.test
+    User annet
+    IdentityFile /run/secrets/device_key
+    IdentitiesOnly yes

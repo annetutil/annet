@@ -1,0 +1,148 @@
+name: Annet container
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sources:
+    if: github.event_name != 'release' || !github.event.release.prerelease
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      revision: ${{ steps.gnetcli.outputs.revision }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Resolve latest published Gnetcli release once for both architectures
+        id: gnetcli
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python docker/resolve_gnetcli.py "$RUNNER_TEMP/sources.json"
+          python -c 'import json, sys; print("revision=" + json.load(open(sys.argv[1]))["gnetcli"]["revision"])' "$RUNNER_TEMP/sources.json" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: selected-sources
+          path: ${{ runner.temp }}/sources.json
+          if-no-files-found: error
+
+  build:
+    needs: sources
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install smoke-test dependencies
+        run: |
+          command -v ssh-keygen
+          python -m pip install -r docker/tests/requirements.in
+      - name: Build runtime and test device
+        env:
+          GNETCLI_VERSION: ${{ needs.sources.outputs.revision }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version=""
+          if [ -n "$RELEASE_TAG" ]; then
+            [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+            version=${RELEASE_TAG#v}
+            # The PyPI publication workflow may still be finishing for this tag.
+            curl --fail --silent --show-error --connect-timeout 10 --max-time 30 --retry 30 --retry-all-errors --retry-delay 10 --retry-max-time 300 \
+              "https://pypi.org/pypi/annet/$version/json" -o "$RUNNER_TEMP/annet-release.json"
+          fi
+          echo "ANNET_TEST_VERSION=$version" >> "$GITHUB_ENV"
+          docker build --pull --build-arg "ANNET_VERSION=$version" --build-arg "GNETCLI_VERSION=$GNETCLI_VERSION" -t annet:test-${{ matrix.arch }} docker
+          docker build --pull --target test-device --build-arg "GNETCLI_VERSION=$GNETCLI_VERSION" -t annet-device:test docker
+      - name: Record installed versions
+        env:
+          ANNET_TEST_IMAGE: annet:test-${{ matrix.arch }}
+        run: |
+          docker run --rm --entrypoint cat "$ANNET_TEST_IMAGE" /usr/local/share/annet/versions.json > "$RUNNER_TEMP/versions.json"
+      - name: Exercise quick start and container lifecycle
+        env:
+          ANNET_TEST_IMAGE: annet:test-${{ matrix.arch }}
+          ANNET_TEST_DEVICE_IMAGE: annet-device:test
+        run: python -m pytest -o addopts='' docker/tests --junitxml="$RUNNER_TEMP/smoke.xml"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-${{ matrix.arch }}
+          path: |
+            ${{ runner.temp }}/smoke.xml
+            ${{ runner.temp }}/versions.json
+      - name: Save the tested image for publishing
+        if: github.event_name != 'pull_request'
+        run: docker save annet:test-${{ matrix.arch }} -o "$RUNNER_TEMP/image-${{ matrix.arch }}.tar"
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: image-${{ matrix.arch }}
+          path: ${{ runner.temp }}/image-${{ matrix.arch }}.tar
+          retention-days: 3
+          if-no-files-found: error
+
+  publish:
+    if: >-
+      github.repository == 'annetutil/annet' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+       (github.event_name == 'release' && !github.event.release.prerelease))
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: image-*
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish the tested images without rebuilding
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          image=ghcr.io/annetutil/annet
+          build="build-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          tag=latest
+          if [ -n "$RELEASE_TAG" ]; then
+            [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+            tag=$RELEASE_TAG
+          fi
+          for arch in amd64 arm64; do
+            docker load -i "image-$arch.tar"
+            docker tag "annet:test-$arch" "$image:$build-$arch"
+            docker push "$image:$build-$arch"
+          done
+          docker buildx imagetools create -t "$image:$build" -t "$image:$tag" "$image:$build-amd64" "$image:$build-arm64"
+          docker buildx imagetools inspect "$image:$build"

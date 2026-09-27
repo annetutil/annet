@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+
+# Use bridge (or another Docker network) to disable host networking.
+network=${ANNET_DOCKER_NETWORK:-host}
+image=${ANNET_IMAGE:-ghcr.io/annetutil/annet:latest}
+
+if [ "$#" -eq 0 ]; then
+    set -- --help
+fi
+
+# Keep stdin available for pipes, but allocate a TTY only for interactive use.
+if [ -t 0 ] && [ -t 1 ]; then
+    set -- -t "$image" "$@"
+else
+    set -- "$image" "$@"
+fi
+
+exec docker run --rm --init -i \
+    --network "$network" \
+    --user "$(id -u):$(id -g)" \
+    --env HOME=/tmp \
+    --mount "type=bind,src=$PWD,dst=/work" \
+    --workdir /work \
+    "$@"
