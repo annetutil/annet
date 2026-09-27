@@ -4,6 +4,57 @@ The runtime includes Annet, `annetbox[sync]`, `gnetcli_adapter`, `gnetclisdk`,
 `gnetcli_server`, and the `gnetcli` CLI. NetBox and network devices are external.
 The adapter starts and stops its own local server; do not expose a gRPC port.
 
+## Create a project with the image
+
+`init` is a Docker-only command; it does not require a new Annet package release.
+With the `annet-docker` wrapper installed (see below), start in an empty directory:
+
+```sh
+mkdir my-network
+cd my-network
+annet-docker init
+```
+
+It asks whether to use `file` or `netbox`. For NetBox, it also asks for the URL
+and a token (hidden input; leave empty to configure later). It creates:
+
+- `context.yml` with permissions `0600`;
+- `generators/__init__.py`, a minimal Cisco IOS interface-description generator;
+- `inventory.yml` with a sample device, only for file storage.
+
+Existing target files or a `generators` directory are never overwritten.
+Paths in the generated context are relative to the project working directory.
+Edit the example generator for your devices and replace credential placeholders
+before fetching or deploying. Initialization never connects to NetBox or devices.
+
+For non-interactive use:
+
+```sh
+annet-docker init --storage file
+# Or create a NetBox context; edit its token afterwards:
+annet-docker init --storage netbox --netbox-url https://netbox.example.org
+```
+
+Run these alternatives in separate empty directories. After file initialization,
+you can immediately try `annet-docker gen switch.example.test` without a device.
+For NetBox, configure a valid URL and token before running `gen DEVICE`.
+
+Without installing the wrapper, run the published image directly:
+
+```sh
+docker run --rm --init -it --network host \
+  --user "$(id -u):$(id -g)" --env HOME=/tmp \
+  --mount "type=bind,src=$PWD,dst=/work" \
+  ghcr.io/annetutil/annet:latest init
+```
+
+For automation omit `-it` and add `--storage file` or `--storage netbox` after
+`init`. Non-interactive NetBox initialization accepts `NETBOX_TOKEN` inside the
+container; pass it via Docker's `--env-file` if needed, not as a command argument.
+The wrapper does not forward that variable. The token is saved in `context.yml`;
+keep that file private and out of version control. All commands other than
+`init` are passed unchanged to Annet.
+
 ## Quick start: one device, no NetBox
 
 Requires Docker and network access from the container to a Cisco IOS device.
@@ -179,8 +230,9 @@ ANNET_TEST_IMAGE=annet:local ANNET_TEST_DEVICE_IMAGE=annet-device:test \
 ```
 
 `docker/` is the build context. Its `.dockerignore` allows only the Dockerfile,
-requirements and source-download scripts; local configurations, examples and
-tests are not sent to the image build. The `test-device` target builds `gswitch`
+requirements, source-download scripts, the Docker entrypoint and the three
+quick-start template files. Other local configurations, examples and tests are
+not sent to the image build. The `test-device` target builds `gswitch`
 from the same Gnetcli revision as the runtime; no Python SSH emulator or
 `asyncssh` dependency is used. `gswitch` is not included in the runtime image.
 

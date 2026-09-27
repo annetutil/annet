@@ -38,8 +38,10 @@ RUN groupadd --gid 10001 annet && useradd --uid 10001 --gid 10001 --create-home 
 COPY --from=go-build /out/ /usr/local/bin/
 COPY --from=sources /build/sources.json /usr/local/share/annet/versions.json
 RUN python -c 'import json, importlib.metadata as m; from pathlib import Path; p = Path("/usr/local/share/annet/versions.json"); data = json.loads(p.read_text()); data["packages"] = {d.metadata["Name"]: d.version for d in m.distributions()}; p.write_text(json.dumps(data, indent=2) + "\n")'
+COPY entrypoint.py /usr/local/share/annet/entrypoint.py
+COPY examples/quickstart/ /usr/local/share/annet/examples/quickstart/
 ENV PYTHONUNBUFFERED=1 HOME=/home/annet ANN_CONTEXT_CONFIG_PATH=/work/context.yml
 WORKDIR /work
 USER 10001:10001
-ENTRYPOINT ["annet"]
+ENTRYPOINT ["python", "/usr/local/share/annet/entrypoint.py"]
 CMD ["--help"]
