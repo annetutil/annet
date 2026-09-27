@@ -18,7 +18,10 @@ installation is needed:
 
 ```sh
 docker build --pull --no-cache -t annet:local docker
-export IMAGE=annet:local
+export ANNET_IMAGE=annet:local
+mkdir -p "$HOME/.local/bin"
+install -m 755 docker/annet-docker "$HOME/.local/bin/annet-docker"
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 Copy the example into a private working directory. Only Docker is required to
@@ -27,37 +30,61 @@ run the built image; device credentials and generators stay outside it.
 ```sh
 workdir=$(mktemp -d)
 cp -R docker/examples/quickstart "$workdir/quickstart"
-cd "$workdir"
+cd "$workdir/quickstart"
 # Edit inventory.yml: replace switch.example.test with the device's reachable
 # DNS name or IP. Set the actual interface name and desired description.
 # Edit context.yml: set dev_login and dev_password; optionally dev_port.
-chmod 600 quickstart/context.yml
-# Run as your UID/GID so the container can read your private config.
-# A temporary writable home is used for caches; /work stays read-only.
-docker run --rm --init --user "$(id -u):$(id -g)" --env HOME=/tmp \
-  --mount "type=bind,src=$PWD/quickstart,dst=/work,readonly" "$IMAGE" gen switch.example.test
+chmod 600 context.yml
+annet-docker gen switch.example.test
 ```
 
 Replace `switch.example.test` in every command with the inventory FQDN. Preview
 changes before deploying:
 
 ```sh
-docker run --rm --init --user "$(id -u):$(id -g)" --env HOME=/tmp \
-  --mount "type=bind,src=$PWD/quickstart,dst=/work,readonly" "$IMAGE" diff switch.example.test
-docker run --rm --init --user "$(id -u):$(id -g)" --env HOME=/tmp \
-  --mount "type=bind,src=$PWD/quickstart,dst=/work,readonly" "$IMAGE" patch switch.example.test
-docker run --rm --init -it --user "$(id -u):$(id -g)" --env HOME=/tmp \
-  --mount "type=bind,src=$PWD/quickstart,dst=/work,readonly" "$IMAGE" deploy switch.example.test
+annet-docker diff switch.example.test
+annet-docker patch switch.example.test
+annet-docker deploy switch.example.test
 ```
 
 Run `diff` again: no configuration changes should remain. `--no-ask-deploy`
 explicitly disables confirmation for automation; the default quick start does
-not use it. `docker run IMAGE --help` shows the available Annet commands.
+not use it. `annet-docker --help` shows the available Annet commands.
 
-These commands target a reachable DNS name/IP, not a Docker host's loopback.
-Inside a container `127.0.0.1` is the container itself. On Docker Desktop use
-`host.docker.internal` for host services; on Linux configure routing or an
-explicit host-gateway mapping. Do not assume `--network host` is portable.
+The wrapper mounts the current directory read-write at `/work`, so generators,
+configuration and output paths should live inside that directory. It runs as
+your UID/GID with a temporary home and removes the container after exit. It
+forwards arguments and exit status unchanged, and allocates a TTY only when
+both stdin and stdout are terminals, preserving interactive deploy confirmation.
+
+By default it uses `ghcr.io/annetutil/annet:latest`. Set `ANNET_IMAGE` to use a
+local image or a specific published tag. To update a cached image explicitly:
+
+```sh
+docker pull "${ANNET_IMAGE:-ghcr.io/annetutil/annet:latest}"
+```
+
+**Host networking is enabled by default.** To disable it, select the standard
+Docker bridge network (or supply the name of another existing Docker network):
+
+```sh
+ANNET_DOCKER_NETWORK=bridge annet-docker diff switch.example.test
+```
+
+Unset or empty `ANNET_DOCKER_NETWORK` means `host`. Host networking shares the
+Docker host's network namespace on Linux; Docker Desktop requires its host
+networking feature to be enabled. See [Docker's host networking documentation](https://docs.docker.com/engine/network/drivers/host/).
+With bridge networking, `127.0.0.1` is the container itself, not the host. Use a
+device address reachable from the selected network.
+
+The wrapper deliberately does not forward arbitrary host environment variables
+or mount SSH keys outside the current directory. For additional secret mounts
+or `--env-file`, use `docker run` directly as described below. Those examples
+use `IMAGE` to select the image:
+
+```sh
+export IMAGE="${ANNET_IMAGE:-ghcr.io/annetutil/annet:latest}"
+```
 
 ## SSH key instead of a password
 
@@ -72,10 +99,15 @@ dev_auth:
   use_agent: false
 ```
 
-Add a read-only mount to each command, still running with your UID/GID:
+Use `docker run` directly to mount the external key read-only, still running
+with your UID/GID. Replace `diff` with `gen`, `patch` or `deploy` as needed
+(add `-it` for interactive deploy confirmation):
 
 ```sh
---mount "type=bind,src=$HOME/.ssh/device_key,dst=/run/secrets/device_key,readonly"
+docker run --rm --init --network host --user "$(id -u):$(id -g)" --env HOME=/tmp \
+  --mount "type=bind,src=$PWD,dst=/work,readonly" \
+  --mount "type=bind,src=$HOME/.ssh/device_key,dst=/run/secrets/device_key,readonly" \
+  "$IMAGE" diff switch.example.test
 ```
 
 This basic example uses a dedicated unencrypted key with limited device access.
