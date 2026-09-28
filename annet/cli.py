@@ -19,7 +19,7 @@ from valkit.python import valid_logging_level
 import annet
 from annet import api, cli_args, filtering, generators
 from annet.api import Deployer, collapse_texts
-from annet.argparse import Arg, ArgParser, subcommand
+from annet.argparse import ArgParser, subcommand
 from annet.deploy import get_deployer
 from annet.diff import gen_sort_diff
 from annet.gen import CurrentState, Loader, get_current_state, old_raw
@@ -307,14 +307,11 @@ def file_patch(args: cli_args.FilePatchOptions) -> None:
     output_driver.write_output(args, out, len(out))
 
 
-@subcommand(
-    Arg("--storage", choices=("file", "netbox"), default=None, help="Device source; omit to choose interactively"),
-    Arg("--netbox-url", default=None, help="NetBox URL; otherwise prompts or writes a placeholder"),
-)
-def init(storage: str | None, netbox_url: str | None) -> int:
+@subcommand(cli_args.InitOptions)
+def init(args: cli_args.InitOptions) -> int:
     """Create a project in the current directory without overwriting existing files."""
     try:
-        return init_project(storage, netbox_url)
+        return init_project(args.storage, args.netbox_url)
     except (OSError, EOFError, ValueError) as error:
         raise annet.ExecError(f"init failed: {error}") from error
 
