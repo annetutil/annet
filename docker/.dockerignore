@@ -3,13 +3,3 @@
 !requirements.in
 !resolve_gnetcli.py
 !fetch_sources.py
-!entrypoint.py
-!examples/
-examples/*
-!examples/quickstart/
-examples/quickstart/*
-!examples/quickstart/context.yml
-!examples/quickstart/inventory.yml
-!examples/quickstart/generators/
-examples/quickstart/generators/*
-!examples/quickstart/generators/__init__.py

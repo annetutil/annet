@@ -1,0 +1,34 @@
+fetcher:
+  default:
+    adapter: gnetcli
+    params: &gnetcli
+      dev_login: annet
+      # Lab placeholder: replace before connecting to your own device.
+      dev_password: REPLACE_ME
+      server_conf:
+        logging:
+          level: info
+          json: true
+        port: '127.0.0.1:0'
+        dev_auth:
+          use_agent: false
+deployer:
+  default:
+    adapter: gnetcli
+    params:
+      <<: *gnetcli
+generators:
+  default:
+    - /work/generators/__init__.py
+storage:
+  default:
+    adapter: file
+    params:
+      path: /work/inventory.yml
+context:
+  default:
+    fetcher: default
+    deployer: default
+    generators: default
+    storage: default
+selected_context: default

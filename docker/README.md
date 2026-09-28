@@ -6,7 +6,9 @@ The adapter starts and stops its own local server; do not expose a gRPC port.
 
 ## Create a project with the image
 
-`init` is a Docker-only command; it does not require a new Annet package release.
+`init` is an Annet CLI command, also available through the container.
+The image must contain an Annet release that includes this command; rebuilding
+an image with an older PyPI release does not add it.
 With the `annet-docker` wrapper installed (see below), start in an empty directory:
 
 ```sh
@@ -52,8 +54,7 @@ For automation omit `-it` and add `--storage file` or `--storage netbox` after
 `init`. Non-interactive NetBox initialization accepts `NETBOX_TOKEN` inside the
 container; pass it via Docker's `--env-file` if needed, not as a command argument.
 The wrapper does not forward that variable. The token is saved in `context.yml`;
-keep that file private and out of version control. All commands other than
-`init` are passed unchanged to Annet.
+keep that file private and out of version control. The image runs Annet directly, including `init`.
 
 ## Quick start: one device, no NetBox
 
@@ -230,9 +231,9 @@ ANNET_TEST_IMAGE=annet:local ANNET_TEST_DEVICE_IMAGE=annet-device:test \
 ```
 
 `docker/` is the build context. Its `.dockerignore` allows only the Dockerfile,
-requirements, source-download scripts, the Docker entrypoint and the three
-quick-start template files. Other local configurations, examples and tests are
-not sent to the image build. The `test-device` target builds `gswitch`
+requirements and source-download scripts. Local configurations, examples and
+tests are not sent to the image build. Initialization templates are shipped
+inside the installed Annet package. The `test-device` target builds `gswitch`
 from the same Gnetcli revision as the runtime; no Python SSH emulator or
 `asyncssh` dependency is used. `gswitch` is not included in the runtime image.
 

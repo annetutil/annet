@@ -28,7 +28,7 @@ if __name__ == "__main__":
             ]
         ),
         package_data={
-            "annet": ["configs/*", "py.typed", "**/*.pyi"],
+            "annet": ["configs/*", "configs/project/*", "py.typed", "**/*.pyi"],
             "annet.rulebook": ["texts/*.rul", "texts/*.order", "texts/*.deploy"],
             "annet.annlib.netdev.devdb": ["data/*.json"],
         },

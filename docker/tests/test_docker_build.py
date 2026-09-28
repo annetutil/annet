@@ -15,7 +15,7 @@ HERE = Path(__file__).resolve().parents[1]
 def test_context_excludes_local_files(tmp_path):
     context = tmp_path / "context"
     context.mkdir()
-    for name in (".dockerignore", "requirements.in", "resolve_gnetcli.py", "fetch_sources.py", "entrypoint.py"):
+    for name in (".dockerignore", "requirements.in", "resolve_gnetcli.py", "fetch_sources.py"):
         shutil.copyfile(HERE / name, context / name)
     (context / "Dockerfile").write_text("FROM scratch\nCOPY . /context/\n")
     (context / "secret.txt").write_text("TEST_SECRET_NOT_FOR_IMAGE\n")
@@ -31,10 +31,6 @@ def test_context_excludes_local_files(tmp_path):
         "requirements.in",
         "resolve_gnetcli.py",
         "fetch_sources.py",
-        "entrypoint.py",
-        "examples/quickstart/context.yml",
-        "examples/quickstart/inventory.yml",
-        "examples/quickstart/generators/__init__.py",
     }
 
 
