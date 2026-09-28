@@ -299,6 +299,12 @@ opt_connect_timeout = Arg(
 
 opt_selected_context_name = Arg("context-name", type=str, help="Name of a context from the context file to use")
 
+opt_init_storage = Arg(
+    "--storage", choices=("file", "netbox"), default=None, help="Device source; omit to choose interactively"
+)
+
+opt_init_netbox_url = Arg("--netbox-url", default=None, help="NetBox URL; otherwise prompts or writes a placeholder")
+
 
 # ====
 class CacheOptions(ArgGroup):
@@ -467,3 +473,8 @@ class DeployOptions(ShowDiffOptions, PatchOptions, DeviceCliOptions):
 
 class SelectContext(ArgGroup):
     context_name = opt_selected_context_name
+
+
+class InitOptions(ArgGroup):
+    storage = opt_init_storage
+    netbox_url = opt_init_netbox_url

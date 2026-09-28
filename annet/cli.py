@@ -16,6 +16,7 @@ import yaml
 from contextlog import get_logger
 from valkit.python import valid_logging_level
 
+import annet
 from annet import api, cli_args, filtering, generators
 from annet.api import Deployer, collapse_texts
 from annet.argparse import ArgParser, subcommand
@@ -25,6 +26,7 @@ from annet.gen import CurrentState, Loader, get_current_state, old_raw
 from annet.generators.base import BaseGenerator
 from annet.lib import do_async, get_context_path, repair_context_file
 from annet.output import OutputDriver, output_driver_connector
+from annet.project import init_project
 from annet.storage import Device, Storage, get_storage
 from annet.types import ExitCode
 
@@ -303,6 +305,15 @@ def file_patch(args: cli_args.FilePatchOptions) -> None:
         out.extend(item for items in success.values() for item in items)
     out.extend(output_driver.format_fails(fail))
     output_driver.write_output(args, out, len(out))
+
+
+@subcommand(cli_args.InitOptions)
+def init(args: cli_args.InitOptions) -> int:
+    """Create a project in the current directory without overwriting existing files."""
+    try:
+        return init_project(args.storage, args.netbox_url)
+    except (OSError, EOFError, ValueError) as error:
+        raise annet.ExecError(f"init failed: {error}") from error
 
 
 @subcommand(is_group=True)

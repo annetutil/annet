@@ -1,6 +1,53 @@
 Configuration
 ==========================
 
+Create a project
+----------------
+
+Start in a new directory and run the initialization wizard:
+
+.. code-block:: shell
+
+    mkdir my-network
+    cd my-network
+    annet init
+
+Choose ``file`` or ``netbox``. For NetBox, the wizard asks for its URL and
+prompts for a token without echoing it. Initialization creates ``context.yml``
+with permissions ``0600`` and ``generators/__init__.py``; file storage also
+gets an example ``inventory.yml``. Existing target files or a ``generators``
+directory are never overwritten. No network connection is made during initialization.
+
+For non-interactive initialization, select the storage explicitly:
+
+.. code-block:: shell
+
+    annet init --storage file
+    # Alternative, in another directory:
+    annet init --storage netbox --netbox-url https://netbox.example.org
+
+Non-interactive NetBox initialization reads ``NETBOX_TOKEN`` from the environment
+or writes a placeholder. Keep the generated context private and out of version control.
+Replace credential placeholders and adapt the example Cisco IOS generator to your devices.
+NetBox access requires the ``annet[netbox]`` extra.
+
+Select the new context explicitly; initialization does not change your global
+configuration or the context lookup order:
+
+.. code-block:: shell
+
+    export ANN_CONTEXT_CONFIG_PATH="$PWD/context.yml"
+    annet gen switch.example.test
+
+The example device is available only with file storage; for NetBox supply a real
+device query after configuring the URL and token. Run commands from the project
+directory because its generator and inventory paths are relative.
+``annet-docker init`` runs the same command and writes into the directory mounted
+at ``/work``; the image already selects ``/work/context.yml``.
+
+Context selection
+-----------------
+
 The path to the configuration file is searched in following order:
 
 * ``ANN_CONTEXT_CONFIG_PATH`` env.
