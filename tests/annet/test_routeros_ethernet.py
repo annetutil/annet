@@ -3,6 +3,7 @@ from collections import OrderedDict as odict
 import pytest
 
 from annet.rulebook.routeros.ethernet import EthernetSet, EthernetSetParseError, _quote, diff, parse_set
+from annet.types import Op
 
 
 def _pre(*rows: str) -> odict:
@@ -87,6 +88,25 @@ def test_quote_escapes_control_and_stray_bytes():
     # RouterOS \f is byte 0xFF, which is not valid UTF-8 and is kept as a hex escape
     assert parse_set(r'set [ find default-name=ether1 ] comment="\f"').attrs["comment"] == "\udcff"
     assert _quote("\udcff") == r'"\FF"'
+
+
+def test_diff_converges_when_cleared_attribute_is_absent():
+    # RouterOS omits a cleared property from the export, so comment="" is already applied
+    old_row = "set [ find default-name=ether1 ] disable-running-check=no"
+    new_row = 'set [ find default-name=ether1 ] comment=""'
+
+    items = diff(odict({old_row: odict()}), odict({new_row: odict()}), _pre(old_row, new_row))
+
+    assert [(item.op, item.row) for item in items] == [(Op.AFFECTED, old_row)]
+
+
+def test_diff_clears_attribute_that_is_still_set():
+    old_row = 'set [ find default-name=ether1 ] comment="stale"'
+    new_row = 'set [ find default-name=ether1 ] comment=""'
+
+    items = diff(odict({old_row: odict()}), odict({new_row: odict()}), _pre(old_row, new_row))
+
+    assert [(item.op, item.row) for item in items] == [(Op.MOVED, new_row)]
 
 
 @pytest.mark.parametrize(

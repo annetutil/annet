@@ -72,6 +72,45 @@
     set [ find default-name=ether1 ] comment="one;two[three]$four" disabled=no
   patch: ""
 
+- name: clearing a comment emits one set and then converges
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="stale" disabled=no
+  after: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="" disabled=no
+  patch: |
+    /interface ethernet set [ find default-name=ether1 ] comment="" disabled=no
+
+- name: cleared comment is absent from export and stays converged
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set [ find default-name=ether1 ] disabled=no
+  after: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="" disabled=no
+  patch: ""
+
+- name: real CHR export with wrapped rows and cleared comments
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set [ find default-name=ether1 ] disable-running-check=no
+    set [ find default-name=ether2 ] disable-running-check=no
+    set [ find default-name=ether4 ] comment="keep me" disable-running-check=no \
+        disabled=yes mtu=1400
+    set [ find default-name=ether6 ] comment="to be cleared" \
+        disable-running-check=no
+  after: |
+    /interface ethernet
+    set [ find default-name=ether2 ] comment=""
+    set [ find default-name=ether4 ] comment="keep me" disabled=yes mtu=1400
+    set [ find default-name=ether6 ] comment=""
+  patch: |
+    /interface ethernet set [ find default-name=ether6 ] comment=""
+
 - name: non-ascii comment converges after RouterOS export
   vendor: routeros
   before: |
