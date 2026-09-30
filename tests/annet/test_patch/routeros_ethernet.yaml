@@ -62,6 +62,16 @@
   patch: |
     /interface ethernet set [ find default-name=ether1 ] comment="one;two[three]\$four" disabled=no
 
+- name: escaped metacharacters converge after RouterOS export
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="one;two[three]\$four" disabled=no
+  after: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="one;two[three]$four" disabled=no
+  patch: ""
+
 - name: new desired identity
   vendor: routeros
   before: |

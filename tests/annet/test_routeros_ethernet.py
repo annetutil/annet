@@ -2,7 +2,7 @@ from collections import OrderedDict as odict
 
 import pytest
 
-from annet.rulebook.routeros.ethernet import EthernetSet, EthernetSetParseError, diff, parse_set
+from annet.rulebook.routeros.ethernet import EthernetSet, EthernetSetParseError, _quote, diff, parse_set
 
 
 def _pre(*rows: str) -> odict:
@@ -46,6 +46,24 @@ def test_parse_hash_as_data_instead_of_shlex_comment():
     assert parsed == EthernetSet(identity="ether1", attrs={"comment": "wan#primary", "disabled": "no"})
 
 
+def test_parse_routeros_escape_sequences():
+    parsed = parse_set(
+        r'set [ find default-name=ether1 ] comment="one\ntwo\rthree\tfour\_five" '
+        r'controls="\a\b\f\v" symbols="\"\\\$" hex="\48\45\4C\4C\4F"'
+    )
+
+    assert parsed == EthernetSet(
+        identity="ether1",
+        attrs={
+            "comment": "one\ntwo\rthree\tfour five",
+            "controls": "\a\b\xff\v",
+            "symbols": '"\\$',
+            "hex": "HELLO",
+        },
+    )
+    assert _quote("\xff") == r'"\f"'
+
+
 @pytest.mark.parametrize(
     "row",
     [
@@ -57,6 +75,9 @@ def test_parse_hash_as_data_instead_of_shlex_comment():
         "set [ find default-name=ether1 ] comment=first comment=second",
         "set [ find default-name=ether1 ] !comment",
         "set [ find default-name=ether1 ] invalid-token",
+        r'set [ find default-name=ether1 ] comment="unknown\xescape"',
+        r'set [ find default-name=ether1 ] comment="lowercase\4ahex"',
+        "set [ find default-name=ether1 ] comment=trailing\\",
     ],
 )
 def test_parse_rejects_missing_ambiguous_or_malformed_identity(row):

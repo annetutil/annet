@@ -1,6 +1,5 @@
 """Identity-aware diff and patch logic for built-in RouterOS Ethernet interfaces."""
 
-import shlex
 from collections import OrderedDict as odict
 from dataclasses import dataclass
 from typing import Any
@@ -17,6 +16,67 @@ class EthernetSet:
 
 class EthernetSetParseError(ValueError):
     """Raised when an Ethernet set command cannot be matched safely."""
+
+
+_ESCAPES = {
+    '"': '"',
+    "\\": "\\",
+    "n": "\n",
+    "r": "\r",
+    "t": "\t",
+    "$": "$",
+    "_": " ",
+    "a": "\a",
+    "b": "\b",
+    "f": "\xff",
+    "v": "\v",
+}
+_ENCODE_ESCAPES = {value: f"\\{key}" for key, value in _ESCAPES.items() if key != "_"}
+
+
+def _tokenize(row: str) -> list[str]:
+    """Split a RouterOS row while decoding quoted escape sequences."""
+    tokens: list[str] = []
+    token: list[str] = []
+    quoted = False
+    position = 0
+
+    while position < len(row):
+        character = row[position]
+        if character == '"':
+            quoted = not quoted
+        elif quoted and character == "\\":
+            position += 1
+            if position == len(row):
+                raise EthernetSetParseError(f"Invalid RouterOS Ethernet row: {row!r}")
+            escaped = row[position]
+            if escaped in _ESCAPES:
+                token.append(_ESCAPES[escaped])
+            elif position + 1 < len(row) and all(char in "0123456789ABCDEF" for char in row[position : position + 2]):
+                token.append(chr(int(row[position : position + 2], 16)))
+                position += 1
+            else:
+                raise EthernetSetParseError(f"Invalid escape sequence in RouterOS Ethernet row: {row!r}")
+        elif not quoted and character == "\\":
+            raise EthernetSetParseError(f"Unexpected escape outside quotes in RouterOS Ethernet row: {row!r}")
+        elif not quoted and character in "[]":
+            if token:
+                tokens.append("".join(token))
+                token.clear()
+            tokens.append(character)
+        elif not quoted and character.isspace():
+            if token:
+                tokens.append("".join(token))
+                token.clear()
+        else:
+            token.append(character)
+        position += 1
+
+    if quoted:
+        raise EthernetSetParseError(f"Invalid RouterOS Ethernet row: {row!r}")
+    if token:
+        tokens.append("".join(token))
+    return tokens
 
 
 def _parse_attrs(tokens: list[str], row: str) -> dict[str, str]:
@@ -41,15 +101,7 @@ def parse_set(row: str, *, allow_positional: bool = False) -> EthernetSet:
     positional form ``set ether1``; callers may allow that form only while
     parsing running configuration.
     """
-    try:
-        # "[]" as punctuation splits glued selectors ("[find" / "ether1]")
-        # into separate tokens while leaving quoted values untouched.
-        lexer = shlex.shlex(row, posix=True, punctuation_chars="[]")
-        lexer.whitespace_split = True
-        lexer.commenters = ""
-        tokens = list(lexer)
-    except ValueError as exc:
-        raise EthernetSetParseError(f"Invalid RouterOS Ethernet row: {row!r}") from exc
+    tokens = _tokenize(row)
 
     if len(tokens) < 2 or tokens[0] != "set":
         raise EthernetSetParseError(f"Expected a RouterOS Ethernet set row, got: {row!r}")
@@ -148,9 +200,9 @@ def diff(
 
 
 def _quote(value: str) -> str:
-    if value and all(character not in value for character in ' \t\r\n"\\;[]$'):
+    if value and all("!" <= character <= "~" and character not in '"\\;[]$' for character in value):
         return value
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$")
+    escaped = "".join(_ENCODE_ESCAPES.get(character, character) for character in value)
     return '"' + escaped + '"'
 
 
