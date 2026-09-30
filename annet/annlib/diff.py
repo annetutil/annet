@@ -83,8 +83,11 @@ def diff_sort_key(diff_line: DiffItem) -> tuple[int, int]:
 
 def resort_diff(diff: Diff) -> Diff:
     res = []
-    df = sorted(diff, key=diff_sort_key)
-    for line in df:
+    # MOVED signals that the config block is ordered
+    # so we do not reshuffle it to reflect intended order
+    if not any(Op.MOVED in x for x in diff):
+        diff = sorted(diff, key=diff_sort_key)
+    for line in diff:
         ln = line
         if len(line[2]) > 0:
             ln = (line[0], line[1], resort_diff(line[2]), line[3])
