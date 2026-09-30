@@ -49,19 +49,44 @@ def test_parse_hash_as_data_instead_of_shlex_comment():
 def test_parse_routeros_escape_sequences():
     parsed = parse_set(
         r'set [ find default-name=ether1 ] comment="one\ntwo\rthree\tfour\_five" '
-        r'controls="\a\b\f\v" symbols="\"\\\$" hex="\48\45\4C\4C\4F"'
+        r'controls="\a\b\v" symbols="\"\\\$\?" hex="\48\45\4C\4C\4F"'
     )
 
     assert parsed == EthernetSet(
         identity="ether1",
         attrs={
             "comment": "one\ntwo\rthree\tfour five",
-            "controls": "\a\b\xff\v",
-            "symbols": '"\\$',
+            "controls": "\a\b\v",
+            "symbols": '"\\$?',
             "hex": "HELLO",
         },
     )
-    assert _quote("\xff") == r'"\f"'
+
+
+def test_parse_decodes_utf8_hex_escapes():
+    # RouterOS exports non-ASCII values as a sequence of UTF-8 bytes
+    parsed = parse_set(r'set [ find default-name=ether1 ] comment="\D0\BF\D1\80\D0\B8"')
+
+    assert parsed == EthernetSet(identity="ether1", attrs={"comment": "при"})
+    assert _quote("при") == r'"\D0\BF\D1\80\D0\B8"'
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["при", "\a\b\v", "\x1b", "\x0c", "\x7f", "\udcff", "one;two[three]$four?five", '"quoted\\"'],
+)
+def test_quote_round_trips_through_parser(value):
+    row = f"set [ find default-name=ether1 ] comment={_quote(value)}"
+
+    assert parse_set(row).attrs["comment"] == value
+
+
+def test_quote_escapes_control_and_stray_bytes():
+    # a raw control byte must never reach the device command line
+    assert _quote("\x1b") == r'"\1B"'
+    # RouterOS \f is byte 0xFF, which is not valid UTF-8 and is kept as a hex escape
+    assert parse_set(r'set [ find default-name=ether1 ] comment="\f"').attrs["comment"] == "\udcff"
+    assert _quote("\udcff") == r'"\FF"'
 
 
 @pytest.mark.parametrize(

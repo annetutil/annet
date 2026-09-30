@@ -72,6 +72,16 @@
     set [ find default-name=ether1 ] comment="one;two[three]$four" disabled=no
   patch: ""
 
+- name: non-ascii comment converges after RouterOS export
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="\D0\BF\D1\80\D0\B8" disabled=no
+  after: |
+    /interface ethernet
+    set [ find default-name=ether1 ] comment="при" disabled=no
+  patch: ""
+
 - name: new desired identity
   vendor: routeros
   before: |

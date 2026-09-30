@@ -18,26 +18,41 @@ class EthernetSetParseError(ValueError):
     """Raised when an Ethernet set command cannot be matched safely."""
 
 
+# RouterOS escape sequences produce raw bytes: ``\f`` is 0xFF rather than a form feed,
+# and non-ASCII text is exported as a sequence of ``\XX`` UTF-8 bytes.
 _ESCAPES = {
-    '"': '"',
-    "\\": "\\",
-    "n": "\n",
-    "r": "\r",
-    "t": "\t",
-    "$": "$",
-    "_": " ",
-    "a": "\a",
-    "b": "\b",
-    "f": "\xff",
-    "v": "\v",
+    '"': b'"',
+    "\\": b"\\",
+    "n": b"\n",
+    "r": b"\r",
+    "t": b"\t",
+    "$": b"$",
+    "?": b"?",
+    "_": b" ",
+    "a": b"\a",
+    "b": b"\b",
+    "f": b"\xff",
+    "v": b"\v",
 }
-_ENCODE_ESCAPES = {value: f"\\{key}" for key, value in _ESCAPES.items() if key != "_"}
+# ``_`` and ``?`` are decode-only: a space or a question mark inside quotes needs no escape.
+_ENCODE_ESCAPES = {value: f"\\{key}" for key, value in _ESCAPES.items() if key not in {"_", "?", "f"}}
+# Values that must never be emitted bare, because RouterOS would read them as syntax.
+_UNSAFE_BARE = '"\\;[]$?'
+_HEX_DIGITS = "0123456789ABCDEF"
+
+
+def _decode(token: bytearray, row: str) -> str:
+    """Decode collected RouterOS bytes as UTF-8, keeping stray bytes round-trippable."""
+    try:
+        return token.decode("utf-8", "surrogateescape")
+    except UnicodeDecodeError as exc:  # pragma: no cover - surrogateescape never raises
+        raise EthernetSetParseError(f"Undecodable value in RouterOS Ethernet row: {row!r}") from exc
 
 
 def _tokenize(row: str) -> list[str]:
     """Split a RouterOS row while decoding quoted escape sequences."""
     tokens: list[str] = []
-    token: list[str] = []
+    token = bytearray()
     quoted = False
     position = 0
 
@@ -51,9 +66,9 @@ def _tokenize(row: str) -> list[str]:
                 raise EthernetSetParseError(f"Invalid RouterOS Ethernet row: {row!r}")
             escaped = row[position]
             if escaped in _ESCAPES:
-                token.append(_ESCAPES[escaped])
-            elif position + 1 < len(row) and all(char in "0123456789ABCDEF" for char in row[position : position + 2]):
-                token.append(chr(int(row[position : position + 2], 16)))
+                token += _ESCAPES[escaped]
+            elif position + 1 < len(row) and all(char in _HEX_DIGITS for char in row[position : position + 2]):
+                token.append(int(row[position : position + 2], 16))
                 position += 1
             else:
                 raise EthernetSetParseError(f"Invalid escape sequence in RouterOS Ethernet row: {row!r}")
@@ -61,21 +76,21 @@ def _tokenize(row: str) -> list[str]:
             raise EthernetSetParseError(f"Unexpected escape outside quotes in RouterOS Ethernet row: {row!r}")
         elif not quoted and character in "[]":
             if token:
-                tokens.append("".join(token))
+                tokens.append(_decode(token, row))
                 token.clear()
             tokens.append(character)
         elif not quoted and character.isspace():
             if token:
-                tokens.append("".join(token))
+                tokens.append(_decode(token, row))
                 token.clear()
         else:
-            token.append(character)
+            token += character.encode("utf-8", "surrogateescape")
         position += 1
 
     if quoted:
         raise EthernetSetParseError(f"Invalid RouterOS Ethernet row: {row!r}")
     if token:
-        tokens.append("".join(token))
+        tokens.append(_decode(token, row))
     return tokens
 
 
@@ -200,10 +215,19 @@ def diff(
 
 
 def _quote(value: str) -> str:
-    if value and all("!" <= character <= "~" and character not in '"\\;[]$' for character in value):
+    if value and all("!" <= character <= "~" and character not in _UNSAFE_BARE for character in value):
         return value
-    escaped = "".join(_ENCODE_ESCAPES.get(character, character) for character in value)
-    return '"' + escaped + '"'
+    escaped = []
+    for byte in value.encode("utf-8", "surrogateescape"):
+        single = bytes((byte,))
+        if single in _ENCODE_ESCAPES:
+            escaped.append(_ENCODE_ESCAPES[single])
+        elif 0x20 <= byte <= 0x7E:
+            escaped.append(chr(byte))
+        else:
+            # Control bytes and non-ASCII text are emitted the way RouterOS exports them.
+            escaped.append(f"\\{byte:02X}")
+    return '"' + "".join(escaped) + '"'
 
 
 def _render(row: str) -> str:
