@@ -1,8 +1,4 @@
-"""Run the documented flows against a stateful SSH device, locally or in Docker.
-
-ANNET_TEST_IMAGE selects Docker mode. Otherwise installed annet/gnetcli/gswitch binaries
-are used, which validates behavior but does not validate the container image.
-"""
+"""Exercise an installed Docker image against a stateful gswitch device."""
 
 import json
 import os
@@ -10,13 +6,12 @@ import secrets
 import shutil
 import subprocess
 import time
-from pathlib import Path
 
 import pytest
 import yaml
 
 
-HERE = Path(__file__).resolve().parent
+pytestmark = pytest.mark.skipif(not os.environ.get("ANNET_TEST_IMAGE"), reason="requires the Docker image")
 
 
 @pytest.fixture(scope="module")
@@ -25,7 +20,32 @@ def lab(tmp_path_factory):
     # Docker's non-root user must traverse the test paths.
     root.chmod(0o755)
     work = root / "work"
-    shutil.copytree(HERE.parent / "examples/quickstart", work)
+    work.mkdir()
+    image = os.environ["ANNET_TEST_IMAGE"]
+    user = f"{os.getuid()}:{os.getgid()}"
+    initialized = subprocess.run(
+        [
+            "docker",
+            "run",
+            "--rm",
+            "--user",
+            user,
+            "--env",
+            "HOME=/tmp",
+            "--mount",
+            f"type=bind,src={work},dst=/work",
+            image,
+            "init",
+            "--storage",
+            "file",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert initialized.returncode == 0, initialized.stderr
+    assert (work / "context.yml").stat().st_mode & 0o777 == 0o600
+    assert (work / "context.yml").stat().st_uid == os.getuid()
     secret_dir = root / "secrets"
     secret_dir.mkdir()
     password = secrets.token_hex(20)
@@ -41,34 +61,9 @@ def lab(tmp_path_factory):
     initial_config = root / "initial.cfg"
     interface_name = inventory["devices"][0]["interfaces"][0]["name"]
     initial_config.write_text(f"interface {interface_name}\n description before\n!\n")
-    image = os.environ.get("ANNET_TEST_IMAGE")
     name = "annet-test-" + secrets.token_hex(5)
-    process = None
-    process_log = None
     devices = set()
     network = name
-
-    def device_args(host, port, config, ready, keys, delay="0"):
-        # These are fresh test-only credentials, not credentials for real equipment.
-        return [
-            "-host",
-            host,
-            "-port",
-            str(port),
-            "-username",
-            "annet",
-            "-password",
-            password,
-            "-authorized-keys",
-            keys,
-            "-config-file",
-            config,
-            "-ready-file",
-            ready,
-            "-command-delay",
-            delay,
-            "-debug",
-        ]
 
     def start_device(container_name, alias, delay="0"):
         subprocess.run(
@@ -88,7 +83,23 @@ def lab(tmp_path_factory):
                 "--mount",
                 f"type=bind,src={initial_config},dst=/initial.cfg,readonly",
                 os.environ["ANNET_TEST_DEVICE_IMAGE"],
-                *device_args("0.0.0.0", 2222, "/initial.cfg", "/tmp/ready.json", "/secrets/key.pub", delay),
+                "-host",
+                "0.0.0.0",
+                "-port",
+                "2222",
+                "-username",
+                "annet",
+                "-password",
+                password,
+                "-authorized-keys",
+                "/secrets/key.pub",
+                "-config-file",
+                "/initial.cfg",
+                "-ready-file",
+                "/tmp/ready.json",
+                "-command-delay",
+                delay,
+                "-debug",
             ],
             check=True,
             capture_output=True,
@@ -106,84 +117,51 @@ def lab(tmp_path_factory):
         pytest.fail("gswitch did not start: " + (logs.stdout + logs.stderr).replace(password, "[REDACTED]"))
 
     try:
-        if image:
 
-            def revision(image_name, path):
-                data = subprocess.check_output(["docker", "run", "--rm", "--entrypoint", "cat", image_name, path])
-                return json.loads(data)["gnetcli"]["revision"]
+        def revision(image_name, path):
+            data = subprocess.check_output(["docker", "run", "--rm", "--entrypoint", "cat", image_name, path])
+            return json.loads(data)["gnetcli"]["revision"]
 
-            assert revision(image, "/usr/local/share/annet/versions.json") == revision(
-                os.environ["ANNET_TEST_DEVICE_IMAGE"], "/usr/local/share/gswitch/versions.json"
-            ), "Runtime and gswitch fixture must use the same Gnetcli revision"
-            subprocess.run(["docker", "network", "create", network], check=True, capture_output=True)
-            start_device(name, "switch.example.test")
-            host, port = "switch.example.test", 2222
-            config_work, config_secrets = "/work", "/run/secrets"
-        else:
-            ready = root / "ready.json"
-            process_log = (root / "gswitch.log").open("w")
-            process = subprocess.Popen(
-                [
-                    os.environ.get("GSWITCH_BIN", "gswitch"),
-                    *device_args("127.0.0.1", 0, str(initial_config), str(ready), str(secret_dir / "key.pub")),
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=process_log,
-            )
-            for _ in range(100):
-                if ready.exists():
-                    break
-                if process.poll() is not None:
-                    pytest.fail("gswitch exited before becoming ready; see " + str(root / "gswitch.log"))
-                time.sleep(0.1)
-            else:
-                pytest.fail("gswitch did not start")
-            host, port = "127.0.0.1", int(json.loads(ready.read_text())["ssh"].rsplit(":", 1)[1])
-            config_work, config_secrets = str(work), str(secret_dir)
+        assert revision(image, "/usr/local/share/annet/versions.json") == revision(
+            os.environ["ANNET_TEST_DEVICE_IMAGE"], "/usr/local/share/gswitch/versions.json"
+        ), "Runtime and gswitch fixture must use the same Gnetcli revision"
+        subprocess.run(["docker", "network", "create", network], check=True, capture_output=True)
+        start_device(name, "switch.example.test")
+        host, port = "switch.example.test", 2222
+        config_secrets = "/run/secrets"
         context = yaml.safe_load((work / "context.yml").read_text())
         params = context["fetcher"]["default"]["params"]
         params.update(dev_password=password, dev_port=port)
         context["deployer"]["default"]["params"] = params.copy()
-        context["generators"]["default"] = [config_work + "/generators/__init__.py"]
-        context["storage"]["default"]["params"]["path"] = config_work + "/inventory.yml"
         (work / "context.yml").write_text(yaml.safe_dump(context))
-        inventory = yaml.safe_load((work / "inventory.yml").read_text())
-        inventory["devices"][0]["fqdn"] = host
-        (work / "inventory.yml").write_text(yaml.safe_dump(inventory))
         ssh = root / "ssh"
         ssh.mkdir()
         (ssh / "config").write_text(f"Host *\n    User annet\n    IdentityFile {config_secrets}/key\n")
-        home = root / "home"
-        home.mkdir()
-        shutil.copytree(ssh, home / ".ssh")
 
         def run(binary, *args, expect=0):
-            env = os.environ.copy()
-            # Docker locates its active context under the host HOME.
-            # Only local Annet processes should receive the isolated test HOME.
-            if image:
-                command = [
-                    "docker",
-                    "run",
-                    "--rm",
-                    "--init",
-                    "--network",
-                    network,
-                    "--mount",
-                    f"type=bind,src={work},dst=/work,readonly",
-                    "--mount",
-                    f"type=bind,src={secret_dir},dst=/run/secrets,readonly",
-                    "--mount",
-                    f"type=bind,src={ssh / 'config'},dst=/etc/ssh/ssh_config,readonly",
-                    "--entrypoint",
-                    binary,
-                    image,
-                    *args,
-                ]
-            else:
-                env.update(HOME=str(home), ANN_CONTEXT_CONFIG_PATH=str(work / "context.yml"), SSH_AUTH_SOCK="")
-                command = [binary, *args]
-            result = subprocess.run(command, env=env, cwd=work, capture_output=True, text=True, timeout=90)
+            command = [
+                "docker",
+                "run",
+                "--rm",
+                "--init",
+                "--user",
+                user,
+                "--env",
+                "HOME=/tmp",
+                "--network",
+                network,
+                "--mount",
+                f"type=bind,src={work},dst=/work,readonly",
+                "--mount",
+                f"type=bind,src={secret_dir},dst=/run/secrets,readonly",
+                "--mount",
+                f"type=bind,src={ssh / 'config'},dst=/etc/ssh/ssh_config,readonly",
+                "--entrypoint",
+                binary,
+                image,
+                *args,
+            ]
+            result = subprocess.run(command, capture_output=True, text=True, timeout=90)
             assert password not in result.stdout + result.stderr
             if expect is not None:
                 assert result.returncode == expect, result.stdout + result.stderr
@@ -191,15 +169,9 @@ def lab(tmp_path_factory):
 
         yield run, work, context, host, str(port), config_secrets, image, network, start_device
     finally:
-        if process:
-            process.terminate()
-            process.wait(timeout=10)
-        if process_log:
-            process_log.close()
-        if image:
-            for container_name in devices:
-                subprocess.run(["docker", "rm", "-f", container_name], capture_output=True)
-            subprocess.run(["docker", "network", "rm", network], capture_output=True)
+        for container_name in devices:
+            subprocess.run(["docker", "rm", "-f", container_name], capture_output=True)
+        subprocess.run(["docker", "network", "rm", network], capture_output=True)
 
 
 def test_quickstart(lab):
@@ -207,13 +179,19 @@ def test_quickstart(lab):
     run("annet", "--help")
     run("gnetcli", "--help")
     run("python", "-m", "pip", "check")
-    if expected := os.environ.get("ANNET_TEST_VERSION"):
+    version, manifest = json.loads(
         run(
             "python",
             "-c",
-            "import sys; from importlib.metadata import version; assert version('annet') == sys.argv[1]",
-            expected,
-        )
+            "import json, importlib.metadata as m; from pathlib import Path; "
+            "print(json.dumps([m.version('annet'), json.loads(Path('/usr/local/share/annet/versions.json').read_text())]))",
+        ).stdout
+    )
+    assert manifest["packages"]["annet"] == version
+    if expected := os.environ.get("ANNET_TEST_VERSION"):
+        assert version == expected
+    if revision := os.environ.get("ANNET_TEST_REVISION"):
+        assert manifest["annet_checkout"] == revision
     generated = run("annet", "gen", host)
     assert "description Managed by Annet quick start" in generated.stdout
     assert "before" in run("annet", "show", "current", host).stdout
@@ -227,10 +205,7 @@ def test_quickstart(lab):
     assert "12:00:00" in run("gnetcli", *base, *password, "-command", "show clock").stdout
     results = json.loads(run("gnetcli", *base, *password, "-command", "invalid\nshow clock", expect=0).stdout)
     assert [r["status"] for r in results] == [1, 0]
-    # The CLI's ssh_config library uses the OS user's home, not HOME, on macOS.
-    # Test its system-config mount in Docker without modifying the host's SSH config.
-    if image:
-        assert "12:00:00" in run("gnetcli", *base, "-use-ssh-config", "-command", "show clock").stdout
+    assert "12:00:00" in run("gnetcli", *base, "-use-ssh-config", "-command", "show clock").stdout
     assert run("gnetcli", *base, "-password", "incorrect", "-command", "show clock", expect=None).returncode != 0
     assert run("gnetcli", *base, "-password-file", "/nonexistent/password", "-command", "show clock", expect=2)
     # Key-only Annet path, not only direct CLI.
@@ -241,21 +216,13 @@ def test_quickstart(lab):
         params["server_conf"]["dev_auth"].update(private_key=secret_dir + "/key", login="annet")
     (work / "context.yml").write_text(yaml.safe_dump(context))
     assert "Managed by Annet" in run("annet", "show", "current", host).stdout
-    if image:
-        run("python", "-c", "import os, shutil; assert os.getuid() != 0; assert shutil.which('gswitch') is None")
-        history = subprocess.check_output(["docker", "history", "--no-trunc", image], text=True)
-        assert (work.parent / "secrets/password").read_text().strip() not in history
-        run(
-            "python",
-            "-c",
-            "import json; from pathlib import Path; assert json.loads(Path('/usr/local/share/annet/versions.json').read_text())['gnetcli']['revision']",
-        )
+    run("python", "-c", "import os, shutil; assert os.getuid() != 0; assert shutil.which('gswitch') is None")
+    history = subprocess.check_output(["docker", "history", "--no-trunc", image], text=True)
+    assert (work.parent / "secrets/password").read_text().strip() not in history
 
 
 def test_container_lifecycle(lab):
     run, work, _, _, _, _, image, network, start_device = lab
-    if not image:
-        pytest.skip("Container signal/child-process checks require Docker")
     run(
         "python",
         "-c",
@@ -297,6 +264,10 @@ asyncio.run(check())
                 "--init",
                 "--name",
                 name,
+                "--user",
+                f"{os.getuid()}:{os.getgid()}",
+                "--env",
+                "HOME=/tmp",
                 "--network",
                 network,
                 "--mount",

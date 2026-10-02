@@ -238,6 +238,9 @@ inside the installed Annet package. The `test-device` target builds `gswitch`
 from the same Gnetcli revision as the runtime; no Python SSH emulator or
 `asyncssh` dependency is used. `gswitch` is not included in the runtime image.
 
+The Docker smoke scenario starts with `init --storage file`, then uses the
+generated project for `gen`, `diff`, `patch`, `deploy` and an empty final `diff`.
+Other initialization variants are covered by the regular Annet CLI tests.
 Tests create an isolated Docker network, generate disposable credentials with
 `ssh-keygen`, and start `gswitch` with `-config-file`, `-authorized-keys` and
 `-ready-file`. Its shared Cisco configuration survives reconnects, allowing
@@ -246,9 +249,9 @@ with `-command-delay 30s` and stops Annet while a command is in flight. All test
 containers and networks are removed afterwards; no real device is contacted.
 Gnetcli v1.3.17 or newer is required for these fixture options.
 
-Without `ANNET_TEST_IMAGE`, the tests use local `annet`, `gnetcli` and `gswitch`
-binaries. `GSWITCH_BIN` can point to a locally built gswitch executable. Container
-lifecycle checks require Docker mode.
+Without `ANNET_TEST_IMAGE`, Docker integration tests are skipped; resolver and
+wrapper unit tests still run. There is no local-binary smoke mode. CI validates
+the workflow with actionlint rather than tests inspecting YAML or shell text.
 
 The image supports `linux/amd64` and `linux/arm64`. Add the corresponding
 `--platform` flag to `docker build` to select an architecture. A non-native image
