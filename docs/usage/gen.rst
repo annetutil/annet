@@ -32,6 +32,9 @@ Entire
 For file-based generator. Useful for Linux-based configuration. Must inherit from Entire.
 **path** returns the path to the file, if the return value is an empty string, then the generator is not applicable for the device.
 **reload** returns a command to reload the configuration. It is not applied if nothing has been changed.
+**required_packages(device)** returns a ``frozenset`` of packages required for the device.
+By default it returns ``REQUIRED_PACKAGES``; override the method for device-specific dependencies.
+These dependencies are checked when ``--required-packages-check`` is enabled.
 
 .. code-block:: python
 

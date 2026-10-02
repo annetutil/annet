@@ -279,11 +279,14 @@ def _run_partial_generator(gen: "PartialGenerator", run_args: GeneratorPartialRu
 
 
 @tracing.function
-def check_entire_generators_required_packages(gens: Iterable[Entire], device_packages: FrozenSet[str]) -> List[str]:
+def check_entire_generators_required_packages(
+    gens: Iterable[Entire], device_packages: FrozenSet[str], device: Device
+) -> List[str]:
     errors: List[str] = []
     for gen in gens:
-        if not gen.REQUIRED_PACKAGES.issubset(device_packages):
-            missing = gen.REQUIRED_PACKAGES - device_packages
+        required_packages = gen.required_packages(device)
+        if not required_packages.issubset(device_packages):
+            missing = required_packages - device_packages
             missing_str = ", ".join("`{}'".format(pkg) for pkg in sorted(missing))
             if len(missing) == 1:
                 errors.append("missing package {} required for {}".format(missing_str, gen))
