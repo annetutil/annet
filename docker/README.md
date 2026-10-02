@@ -7,8 +7,9 @@ The adapter starts and stops its own local server; do not expose a gRPC port.
 ## Create a project with the image
 
 `init` is an Annet CLI command, also available through the container.
-The image must contain an Annet release that includes this command; rebuilding
-an image with an older PyPI release does not add it.
+Published images must contain an Annet release that includes this command;
+rebuilding with an older PyPI release does not add it. PR CI separately installs
+a wheel from the checkout to test unreleased changes.
 With the `annet-docker` wrapper installed (see below), start in an empty directory:
 
 ```sh
@@ -276,8 +277,8 @@ ANNET_VERSION=4.6.1 docker build --pull --no-cache \
 ```
 
 An unknown or incompatible version fails the build; it never falls back to
-latest. Unreleased changes in the current checkout are not installed in the
-image. Use `--no-cache` when rebuilding locally to refresh pip packages; Docker
+latest. Unreleased changes in the current checkout are not installed by the normal
+image build. PR CI uses a separate test-only wheel overlay (see below). Use `--no-cache` when rebuilding locally to refresh pip packages; Docker
 would otherwise reuse the installation layer. `--pull` refreshes the Python
 3.12 and Go 1.25 base images.
 
@@ -299,6 +300,15 @@ same commit, passed as `GNETCLI_VERSION`. The Go binaries come from that revisio
 Python packages are installed from PyPI: Annet is latest by default, or the exact release version passed by CI
 through `ANNET_VERSION`. Pip selects the adapter, SDK, NetBox client and their
 dependencies.
+
+For pull requests only, CI builds an Annet wheel from the checked-out revision
+and installs it into the test image using `docker/Dockerfile.pr`. The wheel uses
+the base image's Annet version with a `+pr.COMMIT` local suffix, preserving adapter
+version constraints. Its dependencies and NetBox extra are resolved, `pip check`
+is run, and the image's version manifest is refreshed with the checkout revision.
+The complete smoke suite, including `init`, runs against that image. PR images
+are never published. Push, release and manual builds continue to use PyPI only.
+Until a feature is released, those PyPI builds cannot pass tests requiring it.
 
 After both architecture smoke suites pass, the tested images are published
 without rebuilding to `ghcr.io/annetutil/annet`:

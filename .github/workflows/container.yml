@@ -77,6 +77,21 @@ jobs:
           echo "ANNET_TEST_VERSION=$version" >> "$GITHUB_ENV"
           docker build --pull --build-arg "ANNET_VERSION=$version" --build-arg "GNETCLI_VERSION=$GNETCLI_VERSION" -t annet:test-${{ matrix.arch }} docker
           docker build --pull --target test-device --build-arg "GNETCLI_VERSION=$GNETCLI_VERSION" -t annet-device:test docker
+      - name: Install checkout wheel in the PR test image
+        if: github.event_name == 'pull_request'
+        env:
+          ANNET_TEST_IMAGE: annet:test-${{ matrix.arch }}
+        run: |
+          # Keep the published base version to satisfy adapter version constraints.
+          base_version=$(docker run --rm --entrypoint python "$ANNET_TEST_IMAGE" -c 'import importlib.metadata as m; print(m.version("annet").split("+")[0])')
+          revision=$(git rev-parse HEAD)
+          version="$base_version+pr.$revision"
+          VERSION="$version" python -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/pr-wheel" .
+          docker build -f docker/Dockerfile.pr \
+            --build-arg "BASE_IMAGE=$ANNET_TEST_IMAGE" --build-arg "ANNET_REVISION=$revision" \
+            -t "$ANNET_TEST_IMAGE" "$RUNNER_TEMP/pr-wheel"
+          echo "ANNET_TEST_VERSION=$version" >> "$GITHUB_ENV"
+          echo "ANNET_TEST_REVISION=$revision" >> "$GITHUB_ENV"
       - name: Record installed versions
         env:
           ANNET_TEST_IMAGE: annet:test-${{ matrix.arch }}
