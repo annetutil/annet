@@ -258,7 +258,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
         if device in ctx.fetched_packages:
             if ctx.args.required_packages_check:
                 errors = generators.check_entire_generators_required_packages(
-                    ctx.gens.entire[device.fqdn], ctx.fetched_packages[device]
+                    ctx.gens.entire[device], ctx.fetched_packages[device], device
                 )
                 if errors:
                     error_msg = "; ".join(errors)

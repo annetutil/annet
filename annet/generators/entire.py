@@ -27,6 +27,10 @@ class Entire(BaseGenerator):
     def supports_device(self, device: Device) -> bool:
         return bool(self.path(device))
 
+    def required_packages(self, device: Device) -> FrozenSet[str]:
+        """Override to select required packages for a device."""
+        return self.REQUIRED_PACKAGES
+
     def run(self, device: Device) -> Union[None, str, Iterable[Union[str, tuple[Any, ...]]]]:
         raise NotImplementedError
 
