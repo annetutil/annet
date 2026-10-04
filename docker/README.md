@@ -305,7 +305,9 @@ through `ANNET_VERSION`. Pip selects the adapter, SDK, NetBox client and their
 dependencies.
 
 For pull requests only, CI builds an Annet wheel from the checked-out revision
-and installs it into the test image using `docker/Dockerfile.pr`. The wheel uses
+and installs it using the `pr-test` target of `docker/Dockerfile`, passing the
+wheel directory as the separate `pr-wheel` build context. The default `runtime`
+target uses only published packages and does not require that context. The wheel uses
 the base image's Annet version with a `+pr.COMMIT` local suffix, preserving adapter
 version constraints. Its dependencies and NetBox extra are resolved, `pip check`
 is run, and the image's version manifest is refreshed with the checkout revision.
