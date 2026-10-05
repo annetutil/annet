@@ -456,6 +456,11 @@ class FileDiffOptions(FileInputOptions, FileOutOptions, ParallelOptions):
 class FilePatchOptions(FileInputOptions, FileOutOptions, ParallelOptions):
     indent = opt_indent
     add_comments = opt_add_comments
+    hw_map = Arg(
+        "--hw-map",
+        default=None,
+        help="JSON map from config filenames to hw_model and optional sw_version; missing entries use autodetection",
+    )
 
 
 class ShowGeneratorsOptions(QueryOptionsOptional, GenSelectOptions):

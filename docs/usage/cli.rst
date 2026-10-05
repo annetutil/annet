@@ -274,3 +274,42 @@ For legacy devices that only support telnet:
 
 .. warning::
    Telnet transmits credentials and configuration data in clear text. Use SSH whenever possible for security.
+
+
+annet file-patch
+****************
+
+Calculate a patch between two saved configurations without querying inventory:
+
+.. code-block:: bash
+
+    annet file-patch old-configs/ new-configs/ --hw-map hardware.json
+
+The optional hardware map is a JSON object keyed by configuration filename,
+including its extension. For a single pair of files, the key is the basename
+of the new file. For example:
+
+.. code-block:: json
+
+    {
+        "router1.cfg": {
+            "hw_model": "Huawei NE8000-X4",
+            "sw_version": "VRP V800R022C10SPC500"
+        },
+        "router2.cfg": {
+            "hw_model": "Juniper PTX10002-60C",
+            "sw_version": "JUNOS 22.4R3-S2.11"
+        }
+    }
+
+``hw_model`` is required. ``sw_version`` may be omitted or null, in which case
+it is passed to the configured hardware provider as an empty string. Other
+metadata fields are ignored. The map is read once before workers start.
+Keep this file outside the input directories so it is not treated as a config.
+
+For a mapped file, both configurations are parsed with the supplied hardware;
+``guess_hw`` is skipped. Files absent from the map still use autodetection.
+The entire map is validated before any files are processed: a malformed entry
+or hardware that no registered vendor recognizes aborts the invocation, even if
+that entry is unused.
+``--hw-map`` and ``--hw`` cannot be combined. PC configuration directories keep their existing behavior.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import json
 import os
 import re
 import sys
@@ -130,15 +131,20 @@ def _read_old_new_configs(old_path: str, new_path: str, empty_missing: bool = Fa
 
 
 def _read_old_new_hw(
-    old_path: str, old_config: str, new_path: str, new_config: str, args: cli_args.FileInputOptions
+    old_path: str,
+    old_config: str,
+    new_path: str,
+    new_config: str,
+    args: cli_args.FileInputOptions,
+    hw: HardwareView | None = None,
 ) -> tuple[Any, Any, HardwareView]:
     _logger = get_logger()
 
-    hw: HardwareView
-    if isinstance(args.hw, str):
-        hw = HardwareView(args.hw, "")
-    else:
-        hw = args.hw
+    if hw is None:
+        if isinstance(args.hw, str):
+            hw = HardwareView(args.hw, "")
+        else:
+            hw = args.hw
 
     try:
         old, old_hw, old_score = _parse_device_config(old_config, hw)
@@ -899,16 +905,46 @@ def file_diff_worker(
             yield os.path.basename(new_path), "".join(diff_lines), False
 
 
+def _load_hw_map(path: str) -> dict[str, HardwareView]:
+    with open(path) as stream:
+        data = json.load(stream)
+    if not isinstance(data, dict):
+        raise ValueError("Hardware map must be a JSON object keyed by config filename")
+
+    provider = hardware_connector.get()
+    registry = registry_connector.get()
+    result = {}
+    for filename, metadata in data.items():
+        if not isinstance(metadata, dict):
+            raise ValueError(f"Invalid hardware metadata for {filename!r}")
+        model = metadata.get("hw_model")
+        software = metadata.get("sw_version")
+        if not isinstance(model, str) or not model.strip():
+            raise ValueError(f"Invalid hw_model for {filename!r}")
+        if software is not None and not isinstance(software, str):
+            raise ValueError(f"Invalid sw_version for {filename!r}")
+        hw = provider.make_hw(model, software or "")
+        if registry.match(hw, None) is None:
+            raise ValueError(f"Unknown hardware for {filename!r}")
+        result[filename] = hw
+    return result
+
+
 @tracing.function
 def file_patch(args: cli_args.FilePatchOptions) -> tuple[Mapping[Any, Any], Mapping[Any, BaseException]]:
     """Build a patch between files or directories"""
+    if args.hw_map and args.hw:
+        raise ValueError("--hw and --hw-map cannot be used together")
+    hw_map: dict[str, HardwareView] = _load_hw_map(args.hw_map) if args.hw_map else {}
     old_new = list(_read_old_new_cfgdumps(args))
-    pool = Parallel(file_patch_worker, args).tune_args(args)
+    pool = Parallel(file_patch_worker, args, hw_map).tune_args(args)
     return pool.run(old_new, tolerate_fails=True)
 
 
 def file_patch_worker(
-    old_new: Tuple[str, str], args: cli_args.FilePatchOptions
+    old_new: Tuple[str, str],
+    args: cli_args.FilePatchOptions,
+    hw_map: Mapping[str, HardwareView] | None = None,
 ) -> Generator[Tuple[str, str, bool], None, None]:
     old_path, new_path = old_new
     if os.path.isdir(old_path) and os.path.isdir(new_path):
@@ -920,7 +956,8 @@ def file_patch_worker(
         if old_config == new_config:
             return
 
-        old, new, hw = _read_old_new_hw(old_path, old_config, new_path, new_config, args)
+        hw = hw_map.get(os.path.basename(new_path)) if hw_map else None
+        old, new, hw = _read_old_new_hw(old_path, old_config, new_path, new_config, args, hw)
         _, __, ___, patch_tree = _read_old_new_diff_patch(old, new, hw, args.add_comments)
         patch_text = _format_patch_blocks(patch_tree, hw, args.indent)
         if patch_text:
