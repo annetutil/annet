@@ -22,7 +22,7 @@ COPY --from=sources /build/sources.json /usr/local/share/gswitch/versions.json
 ENTRYPOINT ["gswitch"]
 CMD ["--help"]
 
-FROM python:3.12-slim-bookworm AS runtime
+FROM python:3.12-slim-bookworm AS runtime-base
 COPY requirements.in /tmp/requirements.in
 # Empty means latest from PyPI; release CI supplies its published version.
 ARG ANNET_VERSION
@@ -43,3 +43,18 @@ WORKDIR /work
 USER 10001:10001
 ENTRYPOINT ["annet"]
 CMD ["--help"]
+
+# PR-only target. The wheel is supplied as a separate build context.
+FROM runtime-base AS pr-test
+USER root
+ARG ANNET_REVISION
+COPY --from=pr-wheel /*.whl /tmp/annet-wheel/
+RUN set -- /tmp/annet-wheel/*.whl; test "$#" -eq 1 \
+    && pip install --no-cache-dir --upgrade "$1[netbox]" \
+    && pip check \
+    && rm -r /tmp/annet-wheel
+RUN python -c 'import json, os, importlib.metadata as m; from pathlib import Path; p = Path("/usr/local/share/annet/versions.json"); data = json.loads(p.read_text()); data["packages"] = {d.metadata["Name"]: d.version for d in m.distributions()}; data["annet_checkout"] = os.environ["ANNET_REVISION"]; p.write_text(json.dumps(data, indent=2) + "\n")'
+USER 10001:10001
+
+# Default target: published packages only, no checkout wheel.
+FROM runtime-base AS runtime

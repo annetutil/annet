@@ -27,6 +27,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Validate workflow
+        run: docker run --rm --mount "type=bind,src=$PWD/.github/workflows/container.yml,dst=/workflow.yml,readonly" rhysd/actionlint:1.7.7 /workflow.yml
       - name: Resolve latest published Gnetcli release once for both architectures
         id: gnetcli
         env:
@@ -77,6 +79,24 @@ jobs:
           echo "ANNET_TEST_VERSION=$version" >> "$GITHUB_ENV"
           docker build --pull --build-arg "ANNET_VERSION=$version" --build-arg "GNETCLI_VERSION=$GNETCLI_VERSION" -t annet:test-${{ matrix.arch }} docker
           docker build --pull --target test-device --build-arg "GNETCLI_VERSION=$GNETCLI_VERSION" -t annet-device:test docker
+      - name: Install checkout wheel in the PR test image
+        if: github.event_name == 'pull_request'
+        env:
+          ANNET_TEST_IMAGE: annet:test-${{ matrix.arch }}
+          GNETCLI_VERSION: ${{ needs.sources.outputs.revision }}
+        run: |
+          # Keep the published base version to satisfy adapter version constraints.
+          base_version=$(docker run --rm --entrypoint python "$ANNET_TEST_IMAGE" -c 'import importlib.metadata as m; print(m.version("annet").split("+")[0])')
+          revision=$(git rev-parse HEAD)
+          version="$base_version+pr.$revision"
+          VERSION="$version" python -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/pr-wheel" .
+          docker buildx build --load --target pr-test \
+            --build-context "pr-wheel=$RUNNER_TEMP/pr-wheel" \
+            --build-arg "GNETCLI_VERSION=$GNETCLI_VERSION" \
+            --build-arg "ANNET_REVISION=$revision" \
+            -t "$ANNET_TEST_IMAGE" docker
+          echo "ANNET_TEST_VERSION=$version" >> "$GITHUB_ENV"
+          echo "ANNET_TEST_REVISION=$revision" >> "$GITHUB_ENV"
       - name: Record installed versions
         env:
           ANNET_TEST_IMAGE: annet:test-${{ matrix.arch }}

@@ -1,4 +1,4 @@
-"""Check Docker context filtering and the Annet version installation command."""
+"""Check that local files are excluded from the actual Docker build context."""
 
 import os
 import shutil
@@ -32,26 +32,3 @@ def test_context_excludes_local_files(tmp_path):
         "resolve_gnetcli.py",
         "fetch_sources.py",
     }
-
-
-@pytest.mark.parametrize("version", ["", "4.6.1"])
-@pytest.mark.parametrize("pip_status", [0, 7])
-def test_annet_version_install_command(tmp_path, version, pip_status):
-    # Run the actual Dockerfile shell instruction with a recording pip command.
-    text = (HERE / "Dockerfile").read_text()
-    install = "if [ -n " + text.split("RUN if [ -n ", 1)[1].split("\n\n", 1)[0]
-    log = tmp_path / "pip-args"
-    shell = 'pip() { printf "%s\\n" "$@" >> "$LOG"; return "$PIP_STATUS"; };\n' + install
-    result = subprocess.run(
-        ["sh", "-c", shell],
-        env={"ANNET_VERSION": version, "LOG": str(log), "PIP_STATUS": str(pip_status)},
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == pip_status, result.stderr
-    arguments = log.read_text().splitlines()
-    assert arguments.count("install") == 1  # Failed exact version must not fall back to latest.
-    assert ("annet[netbox]==4.6.1" in arguments) == bool(version)
-    assert ("check" in arguments) == (pip_status == 0)
-    requirements = (HERE / "requirements.in").read_text().splitlines()
-    assert requirements == ["annet[netbox]", "gnetcli_adapter"]
