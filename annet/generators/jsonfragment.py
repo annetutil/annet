@@ -21,6 +21,10 @@ class JSONFragment(TreeGenerator):
     # redis. Turn it off for a file whose consumer replaces it wholesale.
     DELETE_WITH_NULL = True
 
+    # Raise GeneratorError when the fragment has content that no acl() pointer
+    # covers, as PartialGenerator does, instead of letting the ACL drop it silently.
+    FATAL_ACL = False
+
     def __init__(self, storage: Storage):
         super().__init__()
         self.storage = storage

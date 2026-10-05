@@ -1,12 +1,15 @@
+from collections.abc import Iterator
 from typing import Any
+from unittest.mock import Mock
 
 import pytest
 
 import annet.diff
-from annet.annlib.jsontools import JsonFragmentAcl, apply_json_fragment
+from annet.annlib.jsontools import JsonFragmentAcl, apply_json_fragment, paths_outside_acl
 from annet.annlib.netdev.views.hardware import HardwareView
-from annet.generators import _normalize_json_fragment_acl
+from annet.generators import GeneratorError, JSONFragment, _normalize_json_fragment_acl, run_file_generators
 from annet.generators.result import RunGeneratorResult
+from annet.storage import Device, Storage
 from annet.types import GeneratorJSONFragmentResult, GeneratorPerf
 
 
@@ -835,3 +838,117 @@ def test_apply_json_fragment_cant_delete_main_user_scenario():
     # B then A: B leaves Vlans with vlanid; A then erases /VLAN entirely.
     after_b_then_a = apply_json_fragment(after_b, {}, acl=acl_a)
     assert after_b_then_a == {}
+
+
+def test_paths_outside_acl_allows_content_under_owned_pointer():
+    fragment = {"a": {"x": {"b": {"deep": {"c": 1}}}, "y": {"b": [1, 2]}}}
+    assert paths_outside_acl(fragment, [JsonFragmentAcl("/a/*/b")]) == []
+
+
+def test_paths_outside_acl_allows_empty_fragment():
+    assert paths_outside_acl({}, [JsonFragmentAcl("/set/interface/swp*/ipv6/address")]) == []
+
+
+def test_paths_outside_acl_reports_highest_unreachable_node():
+    """bond10 is not swp* or lo, so the whole interface is reported once, not per leaf."""
+    acl = _normalize_json_fragment_acl(
+        [
+            "/set/interface/swp*/ipv6/address %cant_delete=/set,/set/interface",
+            "/set/interface/lo/ipv6/address",
+        ]
+    )
+    fragment = {
+        "set": {
+            "interface": {
+                "swp1": {"ipv6": {"address": {"2001:db8::1/64": {}}}},
+                "bond10": {"ipv6": {"address": {"2001:db8::2/64": {}}}},
+            }
+        }
+    }
+    assert paths_outside_acl(fragment, acl) == ["/set/interface/bond10"]
+
+
+def test_paths_outside_acl_reports_leaf_beside_owned_pointer():
+    acl = [JsonFragmentAcl("/set/interface/swp*/ipv6/address")]
+    fragment = {"set": {"interface": {"swp1": {"ipv6": {"address": {"2001:db8::1/64": {}}, "forward": "on"}}}}}
+    assert paths_outside_acl(fragment, acl) == ["/set/interface/swp1/ipv6/forward"]
+
+
+def test_paths_outside_acl_reports_uncovered_empty_dict():
+    acl = [JsonFragmentAcl("/set/interface/swp*/ipv6/address")]
+    assert paths_outside_acl({"set": {"interface": {"swp1": {}}}}, acl) == ["/set/interface/swp1"]
+
+
+def test_paths_outside_acl_descends_into_list_an_acl_goes_through():
+    fragment = {"servers": [{"host": "10.0.0.1", "port": 49}]}
+    assert paths_outside_acl(fragment, [JsonFragmentAcl("/servers/*/host")]) == ["/servers/0/port"]
+
+
+def test_paths_outside_acl_reports_unowned_list_once():
+    acl = [JsonFragmentAcl("/set/system/aaa/authentication/class")]
+    fragment = {"set": {"system": {"aaa": {"authentication": {"order": ["tacacs", "local"]}}}}}
+    assert paths_outside_acl(fragment, acl) == ["/set/system/aaa/authentication/order"]
+
+
+def test_paths_outside_acl_reports_top_level_list_items():
+    """Two fragments collided at the root, so no ACL pointer matches the indices."""
+    fragment = [{"set": {"a": 1}}, {"set": {"b": 2}}]
+    assert paths_outside_acl(fragment, [JsonFragmentAcl("/set/*")]) == ["/0", "/1"]
+
+
+class _Ipv6Address(JSONFragment):
+    def __init__(self, storage: Storage, interfaces: list[str]):
+        super().__init__(storage)
+        self.interfaces = interfaces
+
+    def path(self, device: Device) -> str:
+        return "/etc/nvue.d/startup.yaml"
+
+    def acl(self, device: Device) -> list[str]:
+        return ["/set/interface/swp*/ipv6/address %cant_delete=/set,/set/interface"]
+
+    def acl_safe(self, device: Device) -> list[str]:
+        return []
+
+    def reload(self, device: Device) -> None:
+        return None
+
+    def run(self, device: Device) -> Iterator[Any]:
+        for name in self.interfaces:
+            with self.block("set"), self.block("interface"), self.block(name), self.block("ipv6"):
+                yield {"address": {"2001:db8::1/64": {}}}
+
+
+class _FatalIpv6Address(_Ipv6Address):
+    FATAL_ACL = True
+
+
+def test_json_fragment_acl_filters_silently_by_default():
+    gen = _Ipv6Address(Mock(spec=Storage), ["swp1", "bond10"])
+    result = run_file_generators([gen], Mock(spec=Device))
+    files = result.new_json_fragment_files({"/etc/nvue.d/startup.yaml": {}})
+    assert files["/etc/nvue.d/startup.yaml"][0] == {
+        "set": {"interface": {"swp1": {"ipv6": {"address": {"2001:db8::1/64": {}}}}}}
+    }
+
+
+def test_json_fragment_fatal_acl_raises_on_content_outside_acl():
+    gen = _FatalIpv6Address(Mock(spec=Storage), ["swp1", "bond10"])
+    with pytest.raises(GeneratorError, match="JSON fragment outside ACL: /set/interface/bond10$"):
+        run_file_generators([gen], Mock(spec=Device))
+
+
+def test_json_fragment_fatal_acl_passes_covered_fragment():
+    gen = _FatalIpv6Address(Mock(spec=Storage), ["swp1", "swp2"])
+    result = run_file_generators([gen], Mock(spec=Device))
+    assert list(result.json_fragment_results) == ["_FatalIpv6Address"]
+
+
+def test_json_fragment_fatal_acl_skipped_without_acl():
+    """--no-acl applies the whole fragment, so there is nothing to refuse, as with PartialGenerator."""
+    gen = _FatalIpv6Address(Mock(spec=Storage), ["bond10"])
+    result = run_file_generators([gen], Mock(spec=Device), use_acl=False)
+    files = result.new_json_fragment_files({"/etc/nvue.d/startup.yaml": {}}, use_acl=False)
+    assert files["/etc/nvue.d/startup.yaml"][0] == {
+        "set": {"interface": {"bond10": {"ipv6": {"address": {"2001:db8::1/64": {}}}}}}
+    }

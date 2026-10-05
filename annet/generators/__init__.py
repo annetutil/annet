@@ -15,7 +15,7 @@ from contextlog import get_logger
 from valkit.common import valid_string_list
 
 from annet import patching, tracing
-from annet.annlib.jsontools import JsonFragmentAcl
+from annet.annlib.jsontools import JsonFragmentAcl, paths_outside_acl
 from annet.annlib.rbparser.acl import compile_acl_text as compile_acl_text
 from annet.annlib.rbparser.syntax import parse_raw_rule
 from annet.cli_args import GenSelectOptions, ShowGeneratorsOptions
@@ -299,6 +299,7 @@ def check_entire_generators_required_packages(
 def run_file_generators(
     gens: Iterable[Union["JSONFragment", "Entire"]],
     device: "Device",
+    use_acl: bool = True,
 ) -> RunGeneratorResult:
     """Run generators that generate files or file parts."""
     ret = RunGeneratorResult()
@@ -311,7 +312,7 @@ def run_file_generators(
                 if entire_result:
                     ret.add_entire(entire_result)
             elif isinstance(gen, JSONFragment):
-                json_fragment_result = _run_json_fragment_generator(gen, device)
+                json_fragment_result = _run_json_fragment_generator(gen, device, use_acl)
                 if json_fragment_result:
                     ret.add_json_fragment(json_fragment_result)
             else:
@@ -387,6 +388,7 @@ def _normalize_json_fragment_acl(acl: str | list[str]) -> list[JsonFragmentAcl]:
 def _run_json_fragment_generator(
     gen: "JSONFragment",
     device: "Device",
+    use_acl: bool = True,
 ) -> GeneratorJSONFragmentResult | None:
     logger = get_logger(generator=_make_generator_ctx(gen))
 
@@ -411,6 +413,11 @@ def _run_json_fragment_generator(
         # JSONFragment.__call__ may return a top-level list on fragment collision,
         # but the result model only stores the dict-shaped config.
         config = cast("dict[str, Any]", gen(device))
+        if use_acl and gen.FATAL_ACL:
+            outside = ", ".join(paths_outside_acl(config, acl))
+            if outside:
+                logger.error("ACL error: generator is not allowed to yield: %s", outside)
+                raise GeneratorError(f"JSON fragment outside ACL: {outside}")
         reload_cmds = gen.get_reload_cmds(device)
 
     assert pm.last_result is not None  # set when the GeneratorPerfMesurer context exits
