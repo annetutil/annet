@@ -351,3 +351,45 @@ def _apply_filters_to_json_pointers(
             else:
                 ret.add(pointer)
     return ret
+
+
+def paths_outside_acl(fragment: Any, acl: Sequence[JsonFragmentAcl]) -> list[str]:
+    """
+    JSON pointers of the fragment content that no ACL pointer covers,
+    i.e. what `apply_json_fragment` would silently drop.
+
+    A node is reported once, at the highest level where no ACL pointer can reach it:
+    the walk descends into a dict or a list only while some pointer goes through it,
+    the same way `resolve_json_pointers` matches dict keys and list indices.
+    Containers on the way to an owned pointer (`/set`, `/set/interface`) are not reported themselves.
+
+    For example, given ACL ["/set/interface/swp*/ipv6/address"] and the fragment:
+
+    {"set": {"interface": {"swp1": {"ipv6": {"address": {...}, "forward": "on"}}, "bond10": {...}}}}
+
+    The result is:
+
+    ["/set/interface/swp1/ipv6/forward", "/set/interface/bond10"]
+    """
+    patterns = [jsonpointer.JsonPointer(item.pointer).parts for item in acl]
+    outside: list[str] = []
+
+    def walk(node: Any, parts: list[str]) -> None:
+        matching = [pattern for pattern in patterns if all(starmap(fnmatch.fnmatchcase, zip(parts, pattern)))]
+        if any(len(parts) >= len(pattern) for pattern in matching):
+            return  # an owned pointer copies everything under it
+        if isinstance(node, dict):
+            children = [(str(key), value) for key, value in node.items()]
+        elif isinstance(node, list):
+            children = [(str(i), value) for i, value in enumerate(node)]
+        else:
+            children = []
+        if matching and children:
+            for key, value in children:
+                walk(value, [*parts, key])
+        else:
+            outside.append(jsonpointer.JsonPointer.from_parts(parts).path)
+
+    if fragment not in ({}, []):
+        walk(fragment, [])
+    return outside
