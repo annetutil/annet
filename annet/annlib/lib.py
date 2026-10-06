@@ -24,6 +24,10 @@ import contextlog
 import mako.template
 
 
+if typing.TYPE_CHECKING:
+    from annet import storage
+
+
 _logger = contextlog.get_logger()
 
 _T = TypeVar("_T")
@@ -181,6 +185,32 @@ def huawei_iface_ranges(iface_names: Iterable[str]) -> list[str | tuple[str, str
 def juniper_port_split(iface_name: str) -> dict[str, str]:
     ret = dict(zip(["speed", "fpc", "pic", "port"], re.split(r"-+|/+|:", iface_name)))
     return ret
+
+
+def format_mac(device: storage.Device, mac: str) -> str:
+    """Format a MAC address for Huawei, Cisco or Juniper configuration.
+
+    Accept a 48-bit hexadecimal address with colons, hyphens, dots or no
+    separators. Return lowercase hexadecimal groups separated by hyphens
+    for Huawei, dots for Cisco and colons for Juniper.
+
+    Raises:
+        ValueError: If the address is invalid or the device is unsupported.
+    """
+    normalized = mac.replace(":", "").replace("-", "").replace(".", "").lower()
+    if re.fullmatch(r"[0-9a-f]{12}", normalized) is None:
+        raise ValueError(f"Invalid MAC address: {mac!r}")
+
+    if device.hw.Huawei:
+        separator, group_size = "-", 4
+    elif device.hw.Cisco:
+        separator, group_size = ".", 4
+    elif device.hw.Juniper:
+        separator, group_size = ":", 2
+    else:
+        raise ValueError(f"Unsupported device for MAC formatting: {device.hw}")
+
+    return separator.join(normalized[offset : offset + group_size] for offset in range(0, len(normalized), group_size))
 
 
 def make_ip4_mask(prefix_len: int, inverse: bool = False) -> str:
