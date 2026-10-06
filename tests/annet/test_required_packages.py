@@ -1,5 +1,5 @@
-from typing import FrozenSet
-from unittest.mock import Mock
+from typing import FrozenSet, Optional
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -9,6 +9,9 @@ from annet.storage import Device, Storage
 
 class StaticPackages(Entire):
     REQUIRED_PACKAGES = frozenset({"telegraf", "linux-commit-api"})
+
+    def path(self, device: Device) -> Optional[str]:
+        return "/etc/telegraf.conf"
 
 
 class DevicePackages(StaticPackages):
@@ -61,5 +64,24 @@ def test_device_required_packages(software: str, installed: FrozenSet[str], miss
 
 
 def test_no_required_packages() -> None:
-    generator = Entire(Mock(spec=Storage))
+    generator = StaticPackages(Mock(spec=Storage))
+    generator.REQUIRED_PACKAGES = frozenset()
     assert check_entire_generators_required_packages([generator], frozenset(), Mock(spec=Device)) == []
+
+
+@pytest.mark.parametrize("path", [None, ""])
+def test_unsupported_generator_packages(path: Optional[str]) -> None:
+    device = Mock(spec=Device)
+    generator = DevicePackages(Mock(spec=Storage))
+    with patch.object(generator, "path", return_value=path), patch.object(generator, "required_packages") as required:
+        assert check_entire_generators_required_packages([generator], frozenset(), device) == []
+    required.assert_not_called()
+
+
+def test_mixed_supported_and_unsupported_generators() -> None:
+    device = Mock(spec=Device)
+    supported = StaticPackages(Mock(spec=Storage))
+    unsupported = DevicePackages(Mock(spec=Storage))
+    with patch.object(unsupported, "path", return_value=None):
+        errors = check_entire_generators_required_packages([unsupported, supported], frozenset({"telegraf"}), device)
+    assert errors == [f"missing package `linux-commit-api' required for {supported}"]

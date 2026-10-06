@@ -284,6 +284,8 @@ def check_entire_generators_required_packages(
 ) -> List[str]:
     errors: List[str] = []
     for gen in gens:
+        if not gen.supports_device(device):
+            continue
         required_packages = gen.required_packages(device)
         if not required_packages.issubset(device_packages):
             missing = required_packages - device_packages
