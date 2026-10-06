@@ -47,6 +47,9 @@ from annet.annlib.lib import (
     flatten as flatten,
 )
 from annet.annlib.lib import (
+    format_mac as format_mac,
+)
+from annet.annlib.lib import (
     huawei_collapse_vlandb as huawei_collapse_vlandb,
 )
 from annet.annlib.lib import (
