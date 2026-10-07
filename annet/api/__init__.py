@@ -135,16 +135,9 @@ def _read_old_new_hw(
     old_config: str,
     new_path: str,
     new_config: str,
-    args: cli_args.FileInputOptions,
-    hw: HardwareView | None = None,
+    hw: HardwareView | None,
 ) -> tuple[Any, Any, HardwareView]:
     _logger = get_logger()
-
-    if hw is None:
-        if isinstance(args.hw, str):
-            hw = HardwareView(args.hw, "")
-        else:
-            hw = args.hw
 
     try:
         old, old_hw, old_score = _parse_device_config(old_config, hw)
@@ -197,7 +190,7 @@ def _read_old_new_cfgdumps(args: cli_args.FileInputOptions) -> Iterator[tuple[st
         yield (old_path_name, new_path_name)
 
 
-def _parse_device_config(text: str, hw: HardwareView) -> tuple[Any, HardwareView, float]:
+def _parse_device_config(text: str, hw: HardwareView | None) -> tuple[Any, HardwareView, float]:
     score: float = 1
     vendor_registry = registry_connector.get()
 
@@ -898,7 +891,7 @@ def file_diff_worker(
         if old_config == new_config:
             return
 
-        old, new, hw = _read_old_new_hw(old_path, old_config, new_path, new_config, args)
+        old, new, hw = _read_old_new_hw(old_path, old_config, new_path, new_config, hw)
         _, __, pre, ___ = _read_old_new_diff_patch(old, new, hw, add_comments=False)
 
         if diff_lines := ann_diff.gen_pre_as_diff(pre, args.show_rules, args.indent, args.no_color):
@@ -957,7 +950,12 @@ def file_patch_worker(
             return
 
         hw = hw_map.get(os.path.basename(new_path)) if hw_map else None
-        old, new, hw = _read_old_new_hw(old_path, old_config, new_path, new_config, args, hw)
+        if hw is None:
+            if isinstance(args.hw, str):
+                hw = HardwareView(args.hw, "")
+            else:
+                hw = args.hw
+        old, new, hw = _read_old_new_hw(old_path, old_config, new_path, new_config, hw)
         _, __, ___, patch_tree = _read_old_new_diff_patch(old, new, hw, args.add_comments)
         patch_text = _format_patch_blocks(patch_tree, hw, args.indent)
         if patch_text:
