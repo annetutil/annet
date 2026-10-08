@@ -60,7 +60,6 @@ class AskConfirm:
         self.pad: curses.window | None = None
         self.screen: curses.window | None = None
         self.found_pos: dict[int, list[TextArgs]] = {}
-        self.curses_lines: int | None = None
         self.debug_prompt = TextArgs("")
         self.page_position = TextArgs("")
         s_force = "/f" if allow_force_yes else ""
@@ -80,7 +79,7 @@ class AskConfirm:
             txt_split.append(self.CUT_WARN_MSG)
             txt = "\n".join(txt_split)
         self.rows = len(txt_split)
-        self.cols = max(len(line) for line in txt_split)
+        self.cols = max(1, max((len(line) for line in txt_split), default=0))
         res = text_term_format.curses_format(txt, self.text[1])
         self.lines = res
 
@@ -100,7 +99,7 @@ class AskConfirm:
                 self.found_pos[line_no].append(TextArgs(match.group(0), "highlight", match.start()))
 
     def _init_colors(self) -> None:
-        self.color_to_curses = init_colors()
+        self.color_to_curses = init_colors(default_background=True)
 
     def _init_pad(self) -> None:
         import curses
@@ -134,30 +133,45 @@ class AskConfirm:
 
     def _add_prompt(self) -> None:
         assert self.screen is not None
-        assert self.curses_lines is not None
+        height, width = self.screen.getmaxyx()
         for prompt_part in self.prompt:
             if not prompt_part:
                 continue
-            if prompt_part.offset is None:
-                offset = 0
-            else:
-                offset = prompt_part.offset
-            self.screen.addstr(self.curses_lines - 1, offset, prompt_part.text, self.color_to_curses[prompt_part.color])
+            offset = max(0, prompt_part.offset or 0)
+            # Leave the lower-right cell unused: writing it can raise curses.error.
+            available = width - offset - 1
+            if available > 0:
+                self.screen.addnstr(
+                    height - 1, offset, prompt_part.text, available, self.color_to_curses[prompt_part.color]
+                )
 
     def _clear_prompt(self) -> None:
         assert self.screen is not None
-        assert self.curses_lines is not None
+        height, _ = self.screen.getmaxyx()
         with self._store_xy():
-            self.screen.move(self.curses_lines - 1, 0)
+            self.screen.move(height - 1, 0)
             self.screen.clrtoeol()
 
     def show(self) -> None:
         assert self.screen is not None
         assert self.pad is not None
+        height, width = self.screen.getmaxyx()
+        pad_height, pad_width = self.pad.getmaxyx()
+        content_height = max(1, height - 1)
+        self.top = max(0, min(self.top, self.rows - content_height))
+        self.left = max(0, min(self.left, pad_width - width))
+        self.screen.erase()
         self._add_prompt()
         self.screen.refresh()
-        size = self.screen.getmaxyx()
-        self.pad.refresh(self.top, self.left, 0, 0, size[0] - 2, size[1] - 2)
+        if height > 1:
+            self.pad.refresh(
+                self.top,
+                self.left,
+                0,
+                0,
+                min(height - 2, pad_height - self.top - 1),
+                min(width - 1, pad_width - self.left - 1),
+            )
 
     @contextmanager
     def _store_xy(self) -> Iterator[tuple[int, int] | None]:
@@ -233,14 +247,13 @@ class AskConfirm:
         assert self.screen is not None
         assert self.cols is not None
         while True:
-            self._clear_prompt()
             try:
-                ch = self.pad.getch()
+                ch = self.screen.getch()
             except KeyboardInterrupt:
                 return "n"
             max_y, max_x = self.screen.getmaxyx()
             _, pad_max_x = self.pad.getmaxyx()
-            max_y -= 2  # prompt
+            max_y = max(1, max_y - 1)  # prompt
             y_offset = 0
             x_offset = 0
             margin = 0
@@ -248,6 +261,9 @@ class AskConfirm:
             x_delta = 0
 
             y, x = self.pad.getyx()
+            if ch == curses.KEY_RESIZE:
+                self.show()
+                continue
             if ch == ord("q"):
                 return "exit"
             elif ch in [ord("y"), ord("Y")]:
@@ -267,29 +283,44 @@ class AskConfirm:
                     self.debug_prompt.text = ""
             elif ch == ord("n"):
                 y_offset, x_offset = self.search_next()
-                margin = 10
+                margin = min(10, max_y - 1)
             elif ch == ord("N"):
                 y_offset, x_offset = self.search_next(prev=True)
-                margin = 10
+                margin = min(10, max_y - 1)
             elif ch == ord("/"):
                 y_offset, x_offset = self._search_prompt()
-                margin = 10
+                margin = min(10, max_y - 1)
             elif ch == curses.KEY_UP:
-                y_offset = -1
+                self.top -= 1
             elif ch == curses.KEY_PPAGE:
-                y_offset = -10
+                self.top -= max_y
             elif ch == curses.KEY_HOME:
-                y_offset = -len(self.lines)
+                self.top = 0
             elif ch == curses.KEY_DOWN:
-                y_offset = 1
+                self.top += 1
             elif ch == curses.KEY_NPAGE:
-                y_offset = 10
+                self.top += max_y
             elif ch == curses.KEY_END:
-                y_offset = len(self.lines)
+                self.top = self.rows
             elif ch == curses.KEY_LEFT:
-                x_offset = -1
+                self.left -= 1
             elif ch == curses.KEY_RIGHT:
-                x_offset = 1
+                self.left += 1
+
+            if ch in (
+                curses.KEY_UP,
+                curses.KEY_DOWN,
+                curses.KEY_PPAGE,
+                curses.KEY_NPAGE,
+                curses.KEY_HOME,
+                curses.KEY_END,
+                curses.KEY_LEFT,
+                curses.KEY_RIGHT,
+            ):
+                self.top = max(0, min(self.top, self.rows - max_y))
+                self.left = max(0, min(self.left, pad_max_x - max_x))
+                y, x = self.top, self.left
+                self.pad.move(y, x)
 
             if y_offset or x_offset:
                 y = max(0, y + y_offset)
@@ -297,15 +328,15 @@ class AskConfirm:
                 x = max(0, x + x_offset)
                 x = min(self.cols, x)
 
-                y_delta = y - (self.top + max_y - margin)
+                y_delta = y - (self.top + max_y - 1 - margin)
                 if y_delta > 0:
                     self.top += y_delta
                 elif (y - margin) < self.top:
                     self.top = y
 
-                self.top = min(self.top, len(self.lines) - max_y)
+                self.top = max(0, min(self.top, self.rows - max_y))
 
-                x_delta = x - (self.left + max_x)
+                x_delta = x - (self.left + max_x - 1)
                 if x_delta > 0:
                     self.left += x_delta
                 elif x < self.left:
@@ -344,12 +375,12 @@ class AskConfirm:
         try:
             self.screen = curses.initscr()
             self.screen.leaveok(True)
-            self.curses_lines = curses.LINES  # pylint: disable=maybe-no-member
+            self.screen.keypad(True)
             curses.start_color()
             curses.noecho()  # no echo key input
             curses.cbreak()  # input with no-enter keyed
             try:
-                old_cursor = curses.curs_set(2)
+                old_cursor = curses.curs_set(0)
             except Exception:
                 pass
             self._init_colors()
@@ -370,18 +401,24 @@ class AskConfirm:
         return res
 
 
-def init_colors() -> dict[str | None, int]:
+def init_colors(default_background: bool = False) -> dict[str | None, int]:
     import curses
 
-    curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
-    curses.init_pair(2, curses.COLOR_CYAN, curses.COLOR_BLACK)
-    curses.init_pair(3, curses.COLOR_RED, curses.COLOR_BLACK)
-    curses.init_pair(4, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
-    curses.init_pair(5, curses.COLOR_YELLOW, curses.COLOR_BLACK)
-    curses.init_pair(6, curses.COLOR_BLUE, curses.COLOR_WHITE)
-    curses.init_pair(7, curses.COLOR_RED, curses.COLOR_WHITE)
-    curses.init_pair(8, curses.COLOR_BLACK, curses.COLOR_WHITE)
-    curses.init_pair(9, curses.COLOR_CYAN, curses.COLOR_BLUE)
+    if default_background:
+        curses.use_default_colors()
+    black = -1 if default_background else curses.COLOR_BLACK
+    white = -1 if default_background else curses.COLOR_WHITE
+    blue = -1 if default_background else curses.COLOR_BLUE
+    foreground = -1 if default_background else curses.COLOR_BLACK
+    curses.init_pair(1, curses.COLOR_GREEN, black)
+    curses.init_pair(2, curses.COLOR_CYAN, black)
+    curses.init_pair(3, curses.COLOR_RED, black)
+    curses.init_pair(4, curses.COLOR_MAGENTA, black)
+    curses.init_pair(5, curses.COLOR_YELLOW, black)
+    curses.init_pair(6, curses.COLOR_BLUE, white)
+    curses.init_pair(7, curses.COLOR_RED, white)
+    curses.init_pair(8, foreground, white)
+    curses.init_pair(9, curses.COLOR_CYAN, blue)
     return {
         "green": curses.color_pair(1),
         "green_bold": curses.color_pair(1) | curses.A_BOLD,
@@ -390,7 +427,7 @@ def init_colors() -> dict[str | None, int]:
         "magenta": curses.color_pair(4),
         "yellow": curses.color_pair(5),
         "blue": curses.color_pair(6),
-        "highlight": curses.color_pair(7),
+        "highlight": curses.color_pair(7) | (curses.A_REVERSE if default_background else 0),
         None: curses.color_pair(8),
         "cyan_blue": curses.color_pair(9),
     }
