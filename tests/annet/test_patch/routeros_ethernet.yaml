@@ -111,6 +111,34 @@
   patch: |
     /interface ethernet set [ find default-name=ether6 ] comment=""
 
+- name: default disabled is omitted from real CHR export
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set [ find default-name=ether2 ] comment="\D0\BF\D1\80\D0\B8 #wan \$x what\?" \
+        disable-running-check=no
+    set [ find default-name=ether3 ] comment="lab port" disable-running-check=no \
+        disabled=yes
+  after: |
+    /interface ethernet
+    set [ find default-name=ether2 ] comment="при #wan $x what?" disabled=no
+    set [ find default-name=ether3 ] comment="lab port" disabled=yes
+  patch: ""
+
+- name: reset values omitted from real CHR export
+  vendor: routeros
+  before: |
+    /interface ethernet
+    set [ find default-name=ether2 ] disable-running-check=no
+    set [ find default-name=ether3 ] comment="lab port" disable-running-check=no
+    set [ find default-name=ether4 ] disable-running-check=no
+  after: |
+    /interface ethernet
+    set [ find default-name=ether2 ] comment=""
+    set [ find default-name=ether3 ] comment="lab port" disabled=no
+    set [ find default-name=ether4 ] mtu=1500
+  patch: ""
+
 - name: non-ascii comment converges after RouterOS export
   vendor: routeros
   before: |
