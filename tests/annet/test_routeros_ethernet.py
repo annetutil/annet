@@ -57,6 +57,24 @@ def test_diff_converges_when_cleared_attribute_is_absent():
     assert [(item.op, item.row) for item in items] == [(Op.AFFECTED, old_row)]
 
 
+def test_diff_converges_when_default_disabled_is_absent():
+    old_row = 'set [ find default-name=ether2 ] comment="uplink" disable-running-check=no'
+    new_row = 'set [ find default-name=ether2 ] comment="uplink" disabled=no'
+
+    items = diff(odict({old_row: odict()}), odict({new_row: odict()}), _pre(old_row, new_row))
+
+    assert [(item.op, item.row) for item in items] == [(Op.AFFECTED, old_row)]
+
+
+def test_diff_does_not_assume_other_missing_values_are_defaults():
+    old_row = "set [ find default-name=ether2 ] disable-running-check=no"
+    new_row = "set [ find default-name=ether2 ] arp=enabled"
+
+    items = diff(odict({old_row: odict()}), odict({new_row: odict()}), _pre(old_row, new_row))
+
+    assert [(item.op, item.row) for item in items] == [(Op.MOVED, new_row)]
+
+
 def test_diff_clears_attribute_that_is_still_set():
     old_row = 'set [ find default-name=ether1 ] comment="stale"'
     new_row = 'set [ find default-name=ether1 ] comment=""'

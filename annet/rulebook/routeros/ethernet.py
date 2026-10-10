@@ -15,6 +15,10 @@ class EthernetSet:
     attrs: dict[str, str]
 
 
+# Values RouterOS drops from a compact export; an empty comment is how a comment is cleared.
+_EXPORT_DEFAULTS = {"comment": "", "disabled": "no", "mtu": "1500"}
+
+
 class EthernetSetParseError(ValueError):
     """Raised when an Ethernet set command cannot be matched safely."""
 
@@ -82,12 +86,12 @@ def _index(rows: odict[str, Any], side: str, *, allow_positional: bool) -> dict[
 def _matches_desired(running: EthernetSet, desired: EthernetSet) -> bool:
     """Compare the attributes explicitly owned by the desired row.
 
-    An empty desired value asks RouterOS to clear the property, which is the only
-    reset syntax the ``set`` grammar accepts. A cleared property is then omitted
-    from the export altogether, so an absent running attribute is already at the
-    requested state and must not be reported as drift.
+    A compact RouterOS export omits attributes left at their default value.
+    Only platform-independent defaults are assumed for absent attributes; other
+    defaults differ between platforms (``disable-running-check`` on CHR, for
+    example), so an absent attribute without a known default still counts as drift.
     """
-    return all(running.attrs.get(key, "") == value for key, value in desired.attrs.items())
+    return all(running.attrs.get(key, _EXPORT_DEFAULTS.get(key)) == value for key, value in desired.attrs.items())
 
 
 def diff(
