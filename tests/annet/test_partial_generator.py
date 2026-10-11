@@ -29,6 +29,9 @@ def _run(gen_cls: type[PartialGenerator]) -> None:
     [(ReturnsNone, InvalidValueFromGenerator), (FailsBeforeYield, ValueError)],
 )
 def test_error_before_generation_starts_is_wrapped(gen_cls, cause):
+    # When run() fails before returning a generator, there is no running line to
+    # report; the error handler must still raise GeneratorError chained to the
+    # original exception rather than fail itself.
     with pytest.raises(GeneratorError) as exc_info:
         _run(gen_cls)
     assert isinstance(exc_info.value.__cause__, cause)
