@@ -18,7 +18,7 @@ class AbstractAnnotateFormatter(abc.ABC):
     def make_annotation(self, running_gen: GeneratorType[str | tuple[Any, ...], None, None]) -> str:
         raise NotImplementedError
 
-    def get_running_line(self, running_gen: GeneratorType[str | tuple[Any, ...], None, None]) -> tuple[str, int]:
+    def get_running_line(self, running_gen: GeneratorType[str | tuple[Any, ...], None, None] | None) -> tuple[str, int]:
         if not running_gen or not running_gen.gi_frame:
             return repr(running_gen), -1
         return self._annotation_module, running_gen.gi_frame.f_lineno
