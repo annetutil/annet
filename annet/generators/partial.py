@@ -93,7 +93,7 @@ class PartialGenerator(TreeGenerator):
         self._append_text_cb(text, row_cb=annotation_cb)
 
     def get_running_line(self) -> tuple[str, int]:
-        assert self._running_gen is not None
+        # None when run() failed before returning a generator; the formatter handles it.
         return self._annotate.get_running_line(self._running_gen)
 
     @classmethod
