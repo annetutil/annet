@@ -267,6 +267,7 @@ def _old_new_per_device(ctx: OldNewDeviceContext, device: Device, filterer: Filt
         res = generators.run_file_generators(
             ctx.gens.file_gens(device),
             device,
+            use_acl=not ctx.args.no_acl,
         )
 
         entire_results = res.entire_results

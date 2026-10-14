@@ -90,3 +90,13 @@ and the nulls would just be noise::
 
     class Dns(JSONFragment):
         DELETE_WITH_NULL = False
+
+Content that no ``acl()`` pointer covers raises ``GeneratorError``, as
+``PartialGenerator`` does for a command outside its ACL. The error names the
+JSON pointers of the uncovered content. Like the ``PartialGenerator`` check, it
+is skipped with ``--no-acl``, which applies the whole fragment. Set
+``FATAL_ACL = False`` to let the ACL silently leave that content out of the
+file instead::
+
+    class Dns(JSONFragment):
+        FATAL_ACL = False
