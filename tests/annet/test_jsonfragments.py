@@ -919,12 +919,12 @@ class _Ipv6Address(JSONFragment):
                 yield {"address": {"2001:db8::1/64": {}}}
 
 
-class _FatalIpv6Address(_Ipv6Address):
-    FATAL_ACL = True
+class _LenientIpv6Address(_Ipv6Address):
+    FATAL_ACL = False
 
 
-def test_json_fragment_acl_filters_silently_by_default():
-    gen = _Ipv6Address(Mock(spec=Storage), ["swp1", "bond10"])
+def test_json_fragment_acl_filters_silently_without_fatal_acl():
+    gen = _LenientIpv6Address(Mock(spec=Storage), ["swp1", "bond10"])
     result = run_file_generators([gen], Mock(spec=Device))
     files = result.new_json_fragment_files({"/etc/nvue.d/startup.yaml": {}})
     assert files["/etc/nvue.d/startup.yaml"][0] == {
@@ -933,20 +933,20 @@ def test_json_fragment_acl_filters_silently_by_default():
 
 
 def test_json_fragment_fatal_acl_raises_on_content_outside_acl():
-    gen = _FatalIpv6Address(Mock(spec=Storage), ["swp1", "bond10"])
+    gen = _Ipv6Address(Mock(spec=Storage), ["swp1", "bond10"])
     with pytest.raises(GeneratorError, match="JSON fragment outside ACL: /set/interface/bond10$"):
         run_file_generators([gen], Mock(spec=Device))
 
 
 def test_json_fragment_fatal_acl_passes_covered_fragment():
-    gen = _FatalIpv6Address(Mock(spec=Storage), ["swp1", "swp2"])
+    gen = _Ipv6Address(Mock(spec=Storage), ["swp1", "swp2"])
     result = run_file_generators([gen], Mock(spec=Device))
-    assert list(result.json_fragment_results) == ["_FatalIpv6Address"]
+    assert list(result.json_fragment_results) == ["_Ipv6Address"]
 
 
 def test_json_fragment_fatal_acl_skipped_without_acl():
     """--no-acl applies the whole fragment, so there is nothing to refuse, as with PartialGenerator."""
-    gen = _FatalIpv6Address(Mock(spec=Storage), ["bond10"])
+    gen = _Ipv6Address(Mock(spec=Storage), ["bond10"])
     result = run_file_generators([gen], Mock(spec=Device), use_acl=False)
     files = result.new_json_fragment_files({"/etc/nvue.d/startup.yaml": {}}, use_acl=False)
     assert files["/etc/nvue.d/startup.yaml"][0] == {
