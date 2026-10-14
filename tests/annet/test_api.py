@@ -1,8 +1,37 @@
+import asyncio
 from textwrap import dedent
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from annet import api
+
+
+@pytest.mark.parametrize("config", ["empty", "running", "config.cfg", "configs/", "-"])
+def test_deploy_fetches_only_running_config(config: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    device = Mock()
+    loader = Mock(devices=[device])
+    loader.resolve_gens.return_value.file_gens.return_value = []
+    args = Mock(config=config, parallel=1, max_slots=0, no_check_diff=True, rollback=False)
+    deployer = Mock(deploy_cmds={}, failed_configs={})
+    deploy_driver = Mock()
+    fetcher = Mock(fetch=AsyncMock(return_value=({device: "hostname example"}, {})))
+    get_fetcher = Mock(return_value=fetcher)
+    old_new = Mock(return_value=[])
+    monkeypatch.setattr(api.ann_gen, "get_fetcher", get_fetcher)
+    monkeypatch.setattr(api.ann_gen, "old_new", old_new)
+
+    assert asyncio.run(api.adeploy(args, loader, deployer, Mock(), deploy_driver)) == 0
+
+    current_state = old_new.call_args.kwargs["current_state"]
+    assert old_new.call_args.kwargs["config"] == config
+    if config == "running":
+        fetcher.fetch.assert_awaited_once_with([device], processes=1, max_slots=0)
+        assert current_state.running == {device: "hostname example"}
+    else:
+        get_fetcher.assert_not_called()
+        fetcher.fetch.assert_not_awaited()
+        assert current_state == api.ann_gen.CurrentState()
 
 
 @pytest.mark.parametrize(

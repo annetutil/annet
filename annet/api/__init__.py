@@ -777,7 +777,7 @@ async def adeploy(
     """Generate the config for the devices and deploy it"""
     ret: ExitCode = 0
     current_state = await ann_gen.get_current_state(
-        "running",
+        args.config,
         loader.devices,
         loader.resolve_gens(loader.devices),
         do_files_download=True,
