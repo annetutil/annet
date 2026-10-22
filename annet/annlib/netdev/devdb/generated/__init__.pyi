@@ -53,6 +53,8 @@ hw.B4com.CS4100
 hw.B4com.CS4132U
 hw.B4com.CS4148Q
 hw.B4com.CS4164U
+hw.B4com.CS6100
+hw.B4com.CS6132F
 hw.Cisco
 hw.Cisco.AIR
 hw.Cisco.AIR.WLC
@@ -394,6 +396,8 @@ class B4com(HardwareLeaf):
     CS4132U: B4com_CS4132U
     CS4148Q: B4com_CS4148Q
     CS4164U: B4com_CS4164U
+    CS6100: B4com_CS6100
+    CS6132F: B4com_CS6132F
 
 class B4com_CS2148P(HardwareLeaf):
     ...
@@ -408,6 +412,12 @@ class B4com_CS4148Q(HardwareLeaf):
     ...
 
 class B4com_CS4164U(HardwareLeaf):
+    ...
+
+class B4com_CS6100(HardwareLeaf):
+    ...
+
+class B4com_CS6132F(HardwareLeaf):
     ...
 
 class Cisco(HardwareLeaf):
