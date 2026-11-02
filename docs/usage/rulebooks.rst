@@ -531,23 +531,6 @@ Example putting several of these together:
     no snmp-server sysobjectid type stack-oid %suppress_errors
     port mode 200GE interface * %timeout=40 %suppress_errors
 
-When using the Python API, pass the same ``default_timeout`` (in seconds, at least ``1``)
-to both compilation and matching:
-
-.. code-block:: python
-
-    from annet.rulebook.deploying import compile_deploying_text, match_deploy_rule
-
-    rules = compile_deploying_text(text, "cisco", default_timeout=120)
-    rule = match_deploy_rule(rules, ("configure terminal",), {}, default_timeout=120)
-
-Compilation uses this value for rules without ``%timeout``. Matching uses it only
-when no rule matches, including an empty rulebook or command path. Explicit
-``%timeout`` values take precedence. Both functions default to ``30`` seconds;
-compilation caches separate results for different ``default_timeout`` values.
-Merging and dumping preserve explicit timeouts, including ``%timeout=30``, so they
-still take precedence when the resulting text is compiled with a different default.
-
 An ``%apply_logic`` function returns two command lists — commands to run *before* and *after* the
 patch:
 
