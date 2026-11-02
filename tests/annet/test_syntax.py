@@ -88,12 +88,15 @@ def test_parse_text(raw_rule, expected) -> None:
 def test_get_row_with_params_preserves_selected_defaults(
     params: dict[str, str], preserve_defaults: tuple[str, ...], expected: str
 ) -> None:
-    assert get_row_with_params(
-        "row",
-        params,
-        {"a": {"validator": str, "default": "A"}, "b": {"validator": str, "default": "B"}},
-        preserve_defaults=preserve_defaults,
-    ) == expected
+    assert (
+        get_row_with_params(
+            "row",
+            params,
+            {"a": {"validator": str, "default": "A"}, "b": {"validator": str, "default": "B"}},
+            preserve_defaults=preserve_defaults,
+        )
+        == expected
+    )
 
 
 @pytest.mark.parametrize(
