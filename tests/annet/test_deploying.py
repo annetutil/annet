@@ -2,8 +2,11 @@ import re
 from collections import OrderedDict
 from unittest import mock
 
+import pytest
+from valkit import ValidatorError
+
 from annet.annlib.rbparser.deploying import Answer, MakeMessageMatcher
-from annet.rulebook.deploying import compile_deploying_text
+from annet.rulebook.deploying import compile_deploying_text, match_deploy_rule
 
 
 def test_compile_deploying_text_cisco_2_dialogs(ann_connectors):
@@ -47,10 +50,58 @@ def test_compile_deploying_text_cisco_2_dialogs(ann_connectors):
     assert res == expected
 
 
+def test_compile_deploying_text_default_timeout(ann_connectors: None) -> None:
+    text = """interface *
+    description *
+commit %timeout=180
+save %timeout=30
+"""
+    for default_timeout in (120, 45.5):
+        rules = compile_deploying_text(text, "cisco", default_timeout=default_timeout)
+        assert rules["interface *"]["attrs"]["timeout"] == default_timeout
+        assert rules["interface *"]["children"]["description *"]["attrs"]["timeout"] == default_timeout
+        assert rules["commit %timeout=180"]["attrs"]["timeout"] == 180
+        assert rules["save %timeout=30"]["attrs"]["timeout"] == 30
+
+    rules = compile_deploying_text(text, "cisco")
+    assert rules["interface *"]["attrs"]["timeout"] == 30
+    assert rules["interface *"]["children"]["description *"]["attrs"]["timeout"] == 30
+
+
+@pytest.mark.parametrize(
+    ("text", "cmd_path"),
+    [
+        ("", ("configure",)),
+        ("", ()),
+        ("commit %timeout=180", ()),
+        ("commit %timeout=180", ("configure",)),
+        ("commit %ifcontext=mode:save", ("commit",)),
+    ],
+)
+def test_match_deploy_rule_default_timeout(ann_connectors: None, text: str, cmd_path: tuple[str, ...]) -> None:
+    rules = compile_deploying_text(text, "cisco")
+    assert match_deploy_rule(rules, cmd_path, {}, default_timeout=120)["attrs"]["timeout"] == 120
+    assert match_deploy_rule(rules, cmd_path, {})["attrs"]["timeout"] == 30
+
+
+def test_match_deploy_rule_preserves_matched_timeout(ann_connectors: None) -> None:
+    rules = compile_deploying_text("configure\ncommit %timeout=180\nsave %timeout=30", "cisco", default_timeout=120)
+    assert match_deploy_rule(rules, ("configure",), {}, default_timeout=60)["attrs"]["timeout"] == 120
+    assert match_deploy_rule(rules, ("commit",), {}, default_timeout=60)["attrs"]["timeout"] == 180
+    assert match_deploy_rule(rules, ("save",), {}, default_timeout=60)["attrs"]["timeout"] == 30
+
+
+@pytest.mark.parametrize("default_timeout", [0, -1, 0.5])
+def test_default_timeout_invalid(ann_connectors: None, default_timeout: float) -> None:
+    with pytest.raises(ValidatorError):
+        compile_deploying_text("", "cisco", default_timeout=default_timeout)
+    with pytest.raises(ValidatorError):
+        match_deploy_rule(OrderedDict(), ("configure",), {}, default_timeout=default_timeout)
+
+
 def test_delay_after_command(ann_connectors):
     from annet.annlib.netdev.views.hardware import HardwareView
     from annet.deploy import apply_deploy_rulebook
-    from annet.rulebook.deploying import match_deploy_rule
 
     rules = compile_deploying_text("undo peer *$ %delay_after=0.25", "sitonica")
     path = ("bgp 123", "undo peer 2001:db8::1")
@@ -65,8 +116,5 @@ def test_delay_after_command(ann_connectors):
 
 
 def test_delay_after_negative_rejected(ann_connectors):
-    import pytest
-    from valkit import ValidatorError
-
     with pytest.raises(ValidatorError):
         compile_deploying_text("undo peer *$ %delay_after=-1", "sitonica")

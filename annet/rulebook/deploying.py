@@ -34,12 +34,12 @@ DEFAULT_SEND_NL = True
 DEFAULT_APPLY_LOGIC = "annet.rulebook.common.apply"
 
 
-def get_params_scheme() -> ParamsScheme:
+def get_params_scheme(default_timeout: float = DEFAULT_TIMEOUT) -> ParamsScheme:
     """Returning the params scheme"""
     return {
         "timeout": {
             "validator": lambda arg: valid_number(arg, min=1, type=float),
-            "default": DEFAULT_TIMEOUT,
+            "default": valid_number(default_timeout, min=1, type=float),
         },
         "delay_after": {
             "validator": lambda arg: valid_number(arg, min=0, type=float),
@@ -75,11 +75,14 @@ def get_dialog_params_scheme() -> ParamsScheme:
 
 
 @functools.lru_cache()
-def compile_deploying_text(text: DeployingText, vendor: str) -> DeployRulebook:
+def compile_deploying_text(
+    text: DeployingText, vendor: str, default_timeout: float = DEFAULT_TIMEOUT
+) -> DeployRulebook:
+    """Compile deploy rules, using default_timeout where %timeout is omitted."""
     return _compile_deploying(
         tree=syntax.parse_text(
             text,
-            params_scheme=get_params_scheme(),
+            params_scheme=get_params_scheme(default_timeout),
         ),
         reverse_prefix=registry_connector.get()[vendor].reverse,
     )
@@ -107,8 +110,13 @@ def _compile_deploying(tree: dict[str, Any], reverse_prefix: str) -> DeployRuleb
     return deploying
 
 
-def match_deploy_rule(rules: DeployRulebook, cmd_path: tuple[str], context: dict[str, str]) -> DeployRule:
-    """Matches cmd_path against rules from the deploy rulebook"""
+def match_deploy_rule(
+    rules: DeployRulebook,
+    cmd_path: tuple[str],
+    context: dict[str, str],
+    default_timeout: float = DEFAULT_TIMEOUT,
+) -> DeployRule:
+    """Match a deploy rule, using default_timeout only when no rule matches."""
 
     def _match_deploy_rule(
         rules: DeployRulebook, depth: int, cmd_path: tuple[str], context: dict[str, str]
@@ -136,7 +144,7 @@ def match_deploy_rule(rules: DeployRulebook, cmd_path: tuple[str], context: dict
     default_match: DeployRule = {
         "attrs": {
             "regexp": syntax.compile_row_regexp("~"),
-            "timeout": DEFAULT_TIMEOUT,
+            "timeout": valid_number(default_timeout, min=1, type=float),
             "delay_after": 0.0,
             "apply_logic": import_rulebook_function(DEFAULT_APPLY_LOGIC),
             "apply_logic_name": DEFAULT_APPLY_LOGIC,
