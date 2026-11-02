@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 import pytest
 
-from annet.annlib.rbparser.syntax import compile_row_regexp, parse_text
+from annet.annlib.rbparser.syntax import compile_row_regexp, get_row_with_params, parse_text
 
 
 @pytest.mark.parametrize(
@@ -73,6 +73,27 @@ def test_parse_text(raw_rule, expected) -> None:
         )
         == expected
     )
+
+
+@pytest.mark.parametrize(
+    ("params", "preserve_defaults", "expected"),
+    [
+        ({"a": "A", "b": "B"}, (), "row"),
+        ({"a": "A", "b": "B"}, ("a",), "row %a=A"),
+        ({"a": "X", "b": "B"}, ("a",), "row %a=X"),
+        ({"b": "B"}, ("a",), "row"),
+        ({"a": "A", "unknown": "X"}, ("a", "unknown"), "row %a=A"),
+    ],
+)
+def test_get_row_with_params_preserves_selected_defaults(
+    params: dict[str, str], preserve_defaults: tuple[str, ...], expected: str
+) -> None:
+    assert get_row_with_params(
+        "row",
+        params,
+        {"a": {"validator": str, "default": "A"}, "b": {"validator": str, "default": "B"}},
+        preserve_defaults=preserve_defaults,
+    ) == expected
 
 
 @pytest.mark.parametrize(
