@@ -34,12 +34,12 @@ DEFAULT_SEND_NL = True
 DEFAULT_APPLY_LOGIC = "annet.rulebook.common.apply"
 
 
-def get_params_scheme() -> ParamsScheme:
+def get_params_scheme(default_timeout: float = DEFAULT_TIMEOUT) -> ParamsScheme:
     """Returning the params scheme"""
     return {
         "timeout": {
             "validator": lambda arg: valid_number(arg, min=1, type=float),
-            "default": DEFAULT_TIMEOUT,
+            "default": valid_number(default_timeout, min=1, type=float),
         },
         "delay_after": {
             "validator": lambda arg: valid_number(arg, min=0, type=float),
@@ -75,11 +75,14 @@ def get_dialog_params_scheme() -> ParamsScheme:
 
 
 @functools.lru_cache()
-def compile_deploying_text(text: DeployingText, vendor: str) -> DeployRulebook:
+def compile_deploying_text(
+    text: DeployingText, vendor: str, default_timeout: float = DEFAULT_TIMEOUT
+) -> DeployRulebook:
+    """Compile deploy rules, using default_timeout where %timeout is omitted."""
     return _compile_deploying(
         tree=syntax.parse_text(
             text,
-            params_scheme=get_params_scheme(),
+            params_scheme=get_params_scheme(default_timeout),
         ),
         reverse_prefix=registry_connector.get()[vendor].reverse,
     )
@@ -107,8 +110,13 @@ def _compile_deploying(tree: dict[str, Any], reverse_prefix: str) -> DeployRuleb
     return deploying
 
 
-def match_deploy_rule(rules: DeployRulebook, cmd_path: tuple[str], context: dict[str, str]) -> DeployRule:
-    """Matches cmd_path against rules from the deploy rulebook"""
+def match_deploy_rule(
+    rules: DeployRulebook,
+    cmd_path: tuple[str],
+    context: dict[str, str],
+    default_timeout: float = DEFAULT_TIMEOUT,
+) -> DeployRule:
+    """Match a deploy rule, using default_timeout only when no rule matches."""
 
     def _match_deploy_rule(
         rules: DeployRulebook, depth: int, cmd_path: tuple[str], context: dict[str, str]
@@ -136,7 +144,7 @@ def match_deploy_rule(rules: DeployRulebook, cmd_path: tuple[str], context: dict
     default_match: DeployRule = {
         "attrs": {
             "regexp": syntax.compile_row_regexp("~"),
-            "timeout": DEFAULT_TIMEOUT,
+            "timeout": valid_number(default_timeout, min=1, type=float),
             "delay_after": 0.0,
             "apply_logic": import_rulebook_function(DEFAULT_APPLY_LOGIC),
             "apply_logic_name": DEFAULT_APPLY_LOGIC,
@@ -218,11 +226,18 @@ def dump_dialogs(dialogs: Dialogs, level: int) -> str:
     return "\n".join(lines)
 
 
+def _get_row_with_params(row: Row, params: RawParams) -> RawRow:
+    params_scheme = get_params_scheme()
+    # Explicit timeouts must survive recompilation with a different default.
+    params_scheme["timeout"]["default"] = None
+    return syntax.get_row_with_params(row, params, params_scheme)
+
+
 def get_merged_row(row: Row, parent_params: RawParams, child_params: RawParams) -> RawRow:
     """Concatenates the rule string with the merged raw params"""
     merged_params = parent_params.copy()
     merged_params.update(child_params)
-    merged_row = syntax.get_row_with_params(row, merged_params, get_params_scheme())
+    merged_row = _get_row_with_params(row, merged_params)
     return merged_row
 
 
@@ -335,7 +350,7 @@ def add_parent_to_merge_rulebook(
     merged_rulebook: DeployRulebook, parent_data: DeployPreMergeData, row: Row, parent_ifcontext: list[str]
 ) -> None:
     """Add parent rule to merged_rulebook"""
-    raw_row = syntax.get_row_with_params(row, parent_data["params"], get_params_scheme())
+    raw_row = _get_row_with_params(row, parent_data["params"])
     check_rulebook_ifcontext_compatibility(odict({raw_row: parent_data["rules"]}), parent_ifcontext)
     merged_rulebook[raw_row] = parent_data["rules"]
 
@@ -356,7 +371,7 @@ def add_child_to_merge_rulebook(
     if dialogs:
         child_data["rules"]["attrs"]["dialogs"] = _apply_not_inherit_to_dialogs(dialogs)
 
-    row_with_params = syntax.get_row_with_params(row, child_data["params"], get_params_scheme())
+    row_with_params = _get_row_with_params(row, child_data["params"])
     check_rulebook_ifcontext_compatibility(odict({row_with_params: child_data["rules"]}), parent_ifcontext)
     merged_rulebook[row_with_params] = child_data["rules"]
 
@@ -373,7 +388,7 @@ def _apply_not_inherit_to_child_rules(rulebook: DeployRulebook) -> DeployRuleboo
             rules["children"] = _apply_not_inherit_to_child_rules(rules["children"])
         if rules["attrs"]["dialogs"]:
             rules["attrs"]["dialogs"] = _apply_not_inherit_to_dialogs(rules["attrs"]["dialogs"])
-        raw_row = syntax.get_row_with_params(row, raw_params, get_params_scheme())
+        raw_row = _get_row_with_params(row, raw_params)
 
         applied_rulebook[raw_row] = rules
 
