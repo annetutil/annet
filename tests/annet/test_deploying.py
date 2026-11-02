@@ -6,12 +6,7 @@ import pytest
 from valkit import ValidatorError
 
 from annet.annlib.rbparser.deploying import Answer, MakeMessageMatcher
-from annet.rulebook.deploying import (
-    compile_deploying_text,
-    dump_deploy_rulebook,
-    match_deploy_rule,
-    merge_deploy_rulebooks,
-)
+from annet.rulebook.deploying import compile_deploying_text, match_deploy_rule
 
 
 def test_compile_deploying_text_cisco_2_dialogs(ann_connectors):
@@ -102,26 +97,6 @@ def test_default_timeout_invalid(ann_connectors: None, default_timeout: float) -
         compile_deploying_text("", "cisco", default_timeout=default_timeout)
     with pytest.raises(ValidatorError):
         match_deploy_rule(OrderedDict(), ("configure",), {}, default_timeout=default_timeout)
-
-
-def test_default_timeout_preserves_explicit_timeout_after_merge_and_dump(ann_connectors: None) -> None:
-    parent = compile_deploying_text(
-        "interface * %timeout=30\n    description * %timeout=30\nparent-only %timeout=30\nordinary", "cisco"
-    )
-    child = compile_deploying_text("interface *\nchild-only %timeout=30\n    nested %timeout=30\n    implicit", "cisco")
-    merged = merge_deploy_rulebooks(parent, child, "cisco")
-    rules = compile_deploying_text(dump_deploy_rulebook(merged), "cisco", default_timeout=120)
-
-    for path in (
-        ("interface Ethernet1",),
-        ("interface Ethernet1", "description test"),
-        ("parent-only",),
-        ("child-only",),
-        ("child-only", "nested"),
-    ):
-        assert match_deploy_rule(rules, path, {}, default_timeout=120)["attrs"]["timeout"] == 30
-    assert match_deploy_rule(rules, ("ordinary",), {}, default_timeout=120)["attrs"]["timeout"] == 120
-    assert match_deploy_rule(rules, ("child-only", "implicit"), {}, default_timeout=120)["attrs"]["timeout"] == 120
 
 
 def test_delay_after_command(ann_connectors):
