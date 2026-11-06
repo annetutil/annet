@@ -38,6 +38,7 @@ HUAWEI_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.metric: "cost {option_value}",
     MatchField.protocol: "protocol {option_value}",
     MatchField.interface: "interface {option_value}",
+    MatchField.tag: "tag {option_value}",
 }
 
 HUAWEI_THEN_COMMAND_MAP: dict[str, str] = {
@@ -56,6 +57,7 @@ ARISTA_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.metric: "metric {option_value}",
     MatchField.as_path_filter: "as-path {option_value}",
     MatchField.protocol: "source-protocol {option_value}",
+    MatchField.tag: "tag {option_value}",
     # unsupported: rd
 }
 ARISTA_THEN_COMMAND_MAP: dict[str, str] = {
@@ -70,6 +72,7 @@ ARISTA_THEN_COMMAND_MAP: dict[str, str] = {
 IOSXR_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.as_path_filter: "as-path in {option_value}",
     MatchField.protocol: "protocol is {option_value}",
+    MatchField.tag: "tag is {option_value}",
     # unsupported: interface
     # unsupported: metric
     # unsupported: large-community
@@ -90,6 +93,7 @@ JUNIPER_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.metric: "metric {option_value}",
     MatchField.as_path_filter: "as-path {option_value}",
     MatchField.local_pref: "local-preference {option_value}",
+    MatchField.tag: "tag {option_value}",
     # unsupported: rd
     # unsupported: interface
     # unsupported: net_len
@@ -1001,6 +1005,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         elif condition.field == MatchField.as_path_length:
             yield from self._iosxr_match_as_path_length(condition)
             return
+        elif condition.field == MatchField.tag and condition.operator is ConditionOperator.HAS_ANY:
+            yield "tag in", "(" + ", ".join(str(v) for v in condition.value) + ")"
+            return
         elif condition.field == MatchField.rd:
             yield from self._iosxr_match_rd(condition, rd_filters)
             return
@@ -1352,6 +1359,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             yield from self._juniper_match_rd_filter(section, rd_filter_conditions)
 
         for condition in simple_conditions:
+            if condition.field == MatchField.tag and condition.operator is ConditionOperator.HAS_ANY:
+                yield section, "tag " + self._juniper_list_bracket([str(v) for v in condition.value])
+                continue
             if condition.operator is not ConditionOperator.EQ:
                 raise NotImplementedError(
                     f"`{condition.field}` with operator {condition.operator} in {policy.name} "
