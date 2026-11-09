@@ -17,6 +17,7 @@ class MatchField(str, Enum):
     local_pref = "local_pref"
     metric = "metric"
     family = "family"
+    tag = "tag"
 
     as_path_length = "as_path_length"
     as_path_filter = "as_path_filter"
@@ -74,6 +75,19 @@ class PrefixMatchValue:
     or_longer: OrLonger = (None, None)
 
 
+class TagConditionFactory(ConditionFactory[int]):
+    def __init__(self) -> None:
+        super().__init__(MatchField.tag, ["=="])
+
+    def has_any(self, *values: int) -> SingleCondition[Any]:
+        """Match a route tag against any of the values. A single value is the same as `==`."""
+        if not values:
+            raise ValueError("tag.has_any() requires at least one value")
+        if len(values) == 1:
+            return SingleCondition(self.field, ConditionOperator.EQ, values[0])
+        return SingleCondition(self.field, ConditionOperator.HAS_ANY, tuple(values))
+
+
 class Checkable:
     def __init__(self) -> None:
         self.community = SetConditionFactory[str](MatchField.community)
@@ -87,6 +101,7 @@ class Checkable:
         self.local_pref = ConditionFactory[int](MatchField.local_pref, ["<", "==", ">=", "<=", "BETWEEN_INCLUDED"])
         self.metric = ConditionFactory[int](MatchField.metric, ["=="])
         self.family = ConditionFactory[int](MatchField.family, ["=="])
+        self.tag = TagConditionFactory()
         self.as_path_length = ConditionFactory[int](MatchField.as_path_length, ["==", ">=", "<=", "BETWEEN_INCLUDED"])
 
     def as_path_filter(self, name: str) -> SingleCondition[str]:

@@ -42,6 +42,7 @@ FRR_MATCH_COMMAND_MAP: dict[str, str] = {
     MatchField.metric: "metric {option_value}",
     MatchField.protocol: "source-protocol {option_value}",
     MatchField.interface: "interface {option_value}",
+    MatchField.tag: "tag {option_value}",
     # unsupported: as_path_length
     # unsupported: rd
 }
