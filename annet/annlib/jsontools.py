@@ -221,7 +221,7 @@ def make_patch(old: Dict[str, Any], new: Dict[str, Any]) -> List[Dict[str, Any]]
     #  ```
     #  which relies on proper ordering to be correctly applied.
     #  See https://github.com/annetutil/annet/pull/452 for details.
-    return cast(List[Dict[str, Any]], jsonpatch.make_patch(old, new).patch)
+    return jsonpatch.make_patch(old, new).patch
 
 
 def apply_patch(content: Optional[bytes], patch_bytes: bytes) -> bytes:
