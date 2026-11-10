@@ -16,7 +16,12 @@ from annet.rpl import (
     SingleCondition,
     ThenField,
 )
-from annet.rpl.statement_builder import AsPathActionValue, CommunityActionValue, NextHopActionValue
+from annet.rpl.statement_builder import (
+    AsPathActionValue,
+    CommunityActionValue,
+    NextHopActionValue,
+    vendor_knob_command,
+)
 
 from .aspath import get_used_as_path_filters
 from .community import get_used_united_community_lists
@@ -404,6 +409,9 @@ class CumulusPolicyGenerator(ABC):
         device: Any,
         action: SingleAction[Any],
     ) -> Iterator[Sequence[str]]:
+        if action.field == ThenField.vendor_knob:
+            yield "set", vendor_knob_command(action, "cumulus")
+            return
         if action.field == ThenField.community:
             yield from self._cumulus_then_community(
                 communities,

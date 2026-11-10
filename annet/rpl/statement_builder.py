@@ -25,6 +25,7 @@ class ThenField(str, Enum):
     metric_type = "metric_type"
     origin = "origin"
     tag = "tag"
+    vendor_knob = "vendor_knob"
 
     next_hop = "next_hop"
 
@@ -323,5 +324,44 @@ class StatementBuilder:
     def add_as_path(self, *as_path: int) -> None:
         self._added_as_path.extend(as_path)
 
+    def set_vendor_knob(
+        self,
+        *,
+        arista: Optional[str] = None,
+        huawei: Optional[str] = None,
+        iosxr: Optional[str] = None,
+        juniper: Optional[str] = None,
+        cumulus: Optional[str] = None,
+    ) -> None:
+        """Add a vendor specific action. The command is given without a leading verb (set/apply/then)."""
+        commands = {
+            vendor: command
+            for vendor, command in (
+                ("arista", arista),
+                ("huawei", huawei),
+                ("iosxr", iosxr),
+                ("juniper", juniper),
+                ("cumulus", cumulus),
+            )
+            if command is not None
+        }
+        if not commands:
+            raise TypeError("set_vendor_knob() requires at least one vendor")
+        self._statement.then.append(
+            SingleAction(
+                field=ThenField.vendor_knob,
+                type=ActionType.CUSTOM,
+                value=commands,
+            )
+        )
+
     def custom_action(self, action: SingleAction[Any]) -> None:
         self._statement.then.append(action)
+
+
+def vendor_knob_command(action: SingleAction[dict[str, str]], vendor: str) -> str:
+    try:
+        return action.value[vendor]
+    except KeyError:
+        defined = ", ".join(sorted(action.value))
+        raise NotImplementedError(f"Vendor knob is not defined for {vendor} (defined for: {defined})") from None

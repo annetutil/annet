@@ -17,7 +17,7 @@ from annet.rpl import (
     SingleAction,
     SingleCondition,
 )
-from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, ThenField
+from annet.rpl.statement_builder import AsPathActionValue, NextHopActionValue, ThenField, vendor_knob_command
 from annet.rpl_generators.entities import (
     CommunityList,
     CommunityLogic,
@@ -371,6 +371,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         device: Any,
         action: SingleAction[Any],
     ) -> Iterator[Sequence[str]]:
+        if action.field == ThenField.vendor_knob:
+            yield "apply", vendor_knob_command(action, "huawei")
+            return
         if action.field == ThenField.community:
             yield from self._huawei_then_community(
                 communities, device, cast(SingleAction[CommunityActionValue], action)
@@ -762,6 +765,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         device: Any,
         action: SingleAction[Any],
     ) -> Iterator[Sequence[str]]:
+        if action.field == ThenField.vendor_knob:
+            yield "set", vendor_knob_command(action, "arista")
+            return
         if action.field == ThenField.community:
             yield from self._arista_then_community(
                 communities,
@@ -1128,6 +1134,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
         device: Any,
         action: SingleAction[Any],
     ) -> Iterator[Sequence[str]]:
+        if action.field == ThenField.vendor_knob:
+            yield "set", vendor_knob_command(action, "iosxr")
+            return
         if action.field == ThenField.community:
             yield from self._iosxr_then_community(communities, device, action)
             return
@@ -1497,6 +1506,9 @@ class RoutingPolicyGenerator(PartialGenerator, ABC):
             yield from self._juniper_then_as_path(section, as_path_actions)
 
         for action in simple_actions:
+            if action.field == ThenField.vendor_knob:
+                yield section, vendor_knob_command(action, "juniper")
+                continue
             if action.type not in {ActionType.SET}:
                 raise NotImplementedError(
                     f"Action type {action.type} for `{action.field}` in {policy.name} is not supported for Juniper"
