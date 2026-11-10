@@ -137,7 +137,7 @@ Here are some examples:
 
 Actions that exist only on some vendors can be added with ``set_vendor_knob``.
 Pass the command (without the leading ``set``/``apply``/``then``) for every vendor it is meant for
-(``arista``, ``huawei``, ``iosxr``, ``juniper``, ``pc``).
+(``arista``, ``huawei``, ``iosxr``, ``juniper``, ``cumulus``).
 Generating the policy for a vendor that is not listed raises ``NotImplementedError``:
 
 .. code-block:: python
@@ -145,7 +145,7 @@ Generating the policy for a vendor that is not listed raises ``NotImplementedErr
     @routemap
     def rule_example(device: NetboxDevice, route: Route):
         with route(CONDITION, number=4, name="n4") as rule:
-            rule.set_vendor_knob(iosxr="locator-prefix")
+            rule.set_vendor_knob(iosxr="fallback-vrf-lookup")
 
 Additionally, you can add custom actions, but you will need to customize generator to support them:
 
