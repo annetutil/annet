@@ -347,7 +347,7 @@ bgp ~
     balance */eibgp|ebgp|ibgp|ingress-lsp/
     balance
 
-    */address-family ipv[46]/ ~
+    address-family */ipv[46]/ ~
         group *
         additional-paths
         pic
@@ -369,6 +369,49 @@ bgp ~
         import-route direct
         import-route static
 
+    # Apply BGP peer rules inside a VPN instance as well.
+    ip vpn-instance *
+        router-id
+
+        # these commands can be either at the top level or inside family
+        # copy-paste is needed here, since %global does not work for some reason
+        group *
+
+        # Peer options
+        peer * description
+        peer * tcp-mss
+        peer * bfd enable
+        peer * bfd %logic=annet.rulebook.h3c.bgp.bfd
+        # The 'peer *' rule must be at the very bottom
+        # so that it does not match the peer options
+        # This does not affect the order of the commands in the patch
+        # only the logic. The order is defined in h3c.order
+        peer *  %logic=annet.rulebook.h3c.bgp.peer
+
+        balance */eibgp|ebgp|ibgp|ingress-lsp/
+        balance
+
+        address-family */ipv[46]/ ~
+            group *
+            additional-paths
+            pic
+            # Peer options
+            peer * description
+            peer * tcp-mss
+            peer * bfd enable
+            peer * route-limit
+            peer * advertise add-path
+            peer * bfd %logic=annet.rulebook.h3c.bgp.bfd
+            # The 'peer *' rule must be at the very bottom
+            # so that it does not match the peer options
+            # This does not affect the order of the commands in the patch
+            # only the logic. The order is defined in h3c.order
+            peer *  %logic=annet.rulebook.h3c.bgp.peer
+
+            balance */eibgp|ebgp|ibgp|ingress-lsp|transit-lsp/
+            balance
+            import-route direct
+            import-route static
 
 ip community-filter ~
 ospf *

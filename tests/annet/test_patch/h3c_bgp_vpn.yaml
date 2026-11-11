@@ -1,0 +1,222 @@
+- vendor: h3c
+  name: replace 192.0.2.3 description in VPN
+  before: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer 192.0.2.3 as-number 64497
+        peer 192.0.2.3 description OLD
+  after: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer 192.0.2.3 as-number 64497
+        peer 192.0.2.3 description NEW
+  patch: |
+    system-view
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer 192.0.2.3 description NEW
+        quit
+      quit
+    save force
+- vendor: h3c
+  name: remove 192.0.2.3 description in VPN
+  before: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer 192.0.2.3 as-number 64497
+        peer 192.0.2.3 description OLD
+  after: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer 192.0.2.3 as-number 64497
+  patch: |
+    system-view
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        undo peer 192.0.2.3 description
+        quit
+      quit
+    save force
+- vendor: h3c
+  name: replace 192.0.2.3 description in ipv4
+  before: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        address-family ipv4 unicast
+          peer 192.0.2.3 enable
+          peer 192.0.2.3 description OLD
+  after: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        address-family ipv4 unicast
+          peer 192.0.2.3 enable
+          peer 192.0.2.3 description NEW
+  patch: |
+    system-view
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        address-family ipv4 unicast
+          peer 192.0.2.3 description NEW
+          quit
+        quit
+      quit
+    save force
+- vendor: h3c
+  name: remove 192.0.2.3 description in ipv4
+  before: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        address-family ipv4 unicast
+          peer 192.0.2.3 enable
+          peer 192.0.2.3 description OLD
+  after: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        address-family ipv4 unicast
+          peer 192.0.2.3 enable
+  patch: |
+    system-view
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        address-family ipv4 unicast
+          undo peer 192.0.2.3 description
+          quit
+        quit
+      quit
+    save force
+- vendor: h3c
+  name: replace FD00:1:1:600::2 description in VPN
+  before: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer FD00:1:1:600::2 as-number 64497
+        peer FD00:1:1:600::2 description OLD
+  after: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer FD00:1:1:600::2 as-number 64497
+        peer FD00:1:1:600::2 description NEW
+  patch: |
+    system-view
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer FD00:1:1:600::2 description NEW
+        quit
+      quit
+    save force
+- vendor: h3c
+  name: remove FD00:1:1:600::2 description in VPN
+  before: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer FD00:1:1:600::2 as-number 64497
+        peer FD00:1:1:600::2 description OLD
+  after: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer FD00:1:1:600::2 as-number 64497
+  patch: |
+    system-view
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        undo peer FD00:1:1:600::2 description
+        quit
+      quit
+    save force
+- vendor: h3c
+  name: replace FD00:1:1:600::2 description in ipv6
+  before: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        address-family ipv6 unicast
+          peer FD00:1:1:600::2 enable
+          peer FD00:1:1:600::2 description OLD
+  after: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        address-family ipv6 unicast
+          peer FD00:1:1:600::2 enable
+          peer FD00:1:1:600::2 description NEW
+  patch: |
+    system-view
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        address-family ipv6 unicast
+          peer FD00:1:1:600::2 description NEW
+          quit
+        quit
+      quit
+    save force
+- vendor: h3c
+  name: remove FD00:1:1:600::2 description in ipv6
+  before: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        address-family ipv6 unicast
+          peer FD00:1:1:600::2 enable
+          peer FD00:1:1:600::2 description OLD
+  after: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        address-family ipv6 unicast
+          peer FD00:1:1:600::2 enable
+  patch: |
+    system-view
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        address-family ipv6 unicast
+          undo peer FD00:1:1:600::2 description
+          quit
+        quit
+      quit
+    save force
+- vendor: h3c
+  name: replace descriptions independently in two BGP instances with the same ASN and peer
+  before: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer FD00:1:1:600::2 description OLD_WAN
+    bgp 4201110006 instance other
+      ip vpn-instance other
+        peer FD00:1:1:600::2 description OLD_OTHER
+  after: |
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer FD00:1:1:600::2 description NEW_WAN
+    bgp 4201110006 instance other
+      ip vpn-instance other
+        peer FD00:1:1:600::2 description NEW_OTHER
+  patch: |
+    system-view
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer FD00:1:1:600::2 description NEW_WAN
+        quit
+      quit
+    bgp 4201110006 instance other
+      ip vpn-instance other
+        peer FD00:1:1:600::2 description NEW_OTHER
+        quit
+      quit
+    save force
+- vendor: h3c
+  name: replace global peer ASN while preserving the same peer in a VPN
+  before: |
+    bgp 64496 instance wan
+      peer 192.0.2.3 as-number 64497
+      ip vpn-instance wan
+        peer 192.0.2.3 as-number 64510
+        peer 192.0.2.3 description VPN
+  after: |
+    bgp 64496 instance wan
+      peer 192.0.2.3 as-number 64498
+      ip vpn-instance wan
+        peer 192.0.2.3 as-number 64510
+        peer 192.0.2.3 description VPN
+  patch: |
+    system-view
+    bgp 64496 instance wan
+      undo peer 192.0.2.3
+      peer 192.0.2.3 as-number 64498
+      quit
+    save force
