@@ -273,6 +273,42 @@ bgp
     undo group * %order_reverse
     peer * ~
 
+    # Apply BGP peer rules inside a VPN instance as well.
+    ip vpn-instance *
+        router-id
+        graceful-restart
+        timer keepalive
+        # [NOCDEV-1182] load-balancing has several mutually exclusive flavours
+        undo undo maximum load-balancing %order_reverse
+        maximum load-balancing
+        # [NOCDEV-2043] Only the peers and the groups are declared here
+        # since they are referenced from the family blocks
+        group
+        # When the ASN changes, the old value is removed first and then the peer is created again.
+        undo peer * as-number
+        undo peer *
+        peer * as-number *
+        peer * local-as *
+        peer * group *
+        peer * connect-interface *
+        address-family l2vpn evpn
+            peer * enable
+            peer * ~
+        address-family ipv[46]
+            balance
+            pic
+            additional-paths
+            import-route
+            group
+            peer * as-number *
+            peer * enable
+            peer * ~
+        # [NOCDEV-2043] Everything else in the global block is done here
+        undo peer * description %order_reverse
+        undo peer * * * %order_reverse
+        undo peer * * %order_reverse
+        undo group * %order_reverse
+        peer * ~
 
 # bfd is torn down after bgp, but before vpn
 undo bfd * %order_reverse

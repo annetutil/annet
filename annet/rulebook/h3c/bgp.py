@@ -107,6 +107,8 @@ def _prepare_ip_peer_reset(pre: dict[str, Any], peer: str, *, restore_unchanged:
         for item_diff in rule_pre["items"].values():
             if restore_unchanged:
                 for action in list(item_diff[Op.UNCHANGED]):
+                    if _is_vpn_instance_row(action["row"]):
+                        continue
                     children = action["children"]
                     if children:
                         _prepare_ip_peer_reset(children, peer, restore_unchanged=True)
@@ -120,6 +122,8 @@ def _prepare_ip_peer_reset(pre: dict[str, Any], peer: str, *, restore_unchanged:
                     item_diff[Op.REMOVED].remove(action)
 
             for action in list(item_diff[Op.AFFECTED]):
+                if _is_vpn_instance_row(action["row"]):
+                    continue
                 children = action["children"]
                 if children:
                     _prepare_ip_peer_reset(children, peer, restore_unchanged=restore_unchanged)
@@ -132,6 +136,8 @@ def _restore_unchanged_ip_peer_settings(pre: dict[str, Any], peer: str) -> None:
     for rule_pre in pre.values():
         for item_diff in rule_pre["items"].values():
             for action in list(item_diff[Op.UNCHANGED]):
+                if _is_vpn_instance_row(action["row"]):
+                    continue
                 children = action["children"]
                 if children:
                     _restore_unchanged_ip_peer_settings(children, peer)
@@ -141,8 +147,15 @@ def _restore_unchanged_ip_peer_settings(pre: dict[str, Any], peer: str) -> None:
                     _move_action(item_diff, Op.UNCHANGED, Op.ADDED, action)
 
             for action in item_diff[Op.AFFECTED]:
+                if _is_vpn_instance_row(action["row"]):
+                    continue
                 if action["children"]:
                     _restore_unchanged_ip_peer_settings(action["children"], peer)
+
+
+def _is_vpn_instance_row(row: str) -> bool:
+    """A nested VPN owns independent peers, even when their addresses match."""
+    return row.split()[:2] == ["ip", "vpn-instance"]
 
 
 def _has_patch_operations(pre: dict[str, Any]) -> bool:
