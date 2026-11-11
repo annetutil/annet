@@ -325,7 +325,8 @@ xpl ~
 bgp path-attribute attr-set *
 bgp path-attribute * 
 
-bgp 
+# Include the ASN and optional instance name in the BGP process key.
+bgp ~
     router-id
 
     # these commands can be either at the top level or inside family

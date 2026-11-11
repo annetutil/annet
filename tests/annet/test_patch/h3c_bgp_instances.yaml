@@ -1,0 +1,171 @@
+- vendor: h3c
+  name: change global BGP and named instance with different ASNs
+  before: |
+    bgp 4201111006
+      router-id 10.255.0.106
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer 10.252.0.38 as-number 4201120001
+  after: |
+    bgp 4201111006
+      router-id 10.255.0.107
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer 10.252.0.38 as-number 4201120001
+        peer 10.252.0.38 bfd
+  patch: |
+    system-view
+    bgp 4201111006
+      router-id 10.255.0.107
+      quit
+    bgp 4201110006 instance wan
+      ip vpn-instance wan
+        peer 10.252.0.38 bfd
+        quit
+      quit
+    save force
+
+- vendor: h3c
+  name: change global BGP and named instance with the same ASN
+  before: |
+    bgp 64496
+      router-id 192.0.2.1
+    bgp 64496 instance wan
+      router-id 192.0.2.2
+  after: |
+    bgp 64496
+      router-id 192.0.2.3
+    bgp 64496 instance wan
+      router-id 192.0.2.4
+  patch: |
+    system-view
+    bgp 64496
+      router-id 192.0.2.3
+      quit
+    bgp 64496 instance wan
+      router-id 192.0.2.4
+      quit
+    save force
+
+- vendor: h3c
+  name: change two named instances with the same ASN
+  before: |
+    bgp 64496 instance wan
+      router-id 192.0.2.1
+    bgp 64496 instance internet
+      router-id 192.0.2.2
+  after: |
+    bgp 64496 instance wan
+      router-id 192.0.2.3
+    bgp 64496 instance internet
+      router-id 192.0.2.4
+  patch: |
+    system-view
+    bgp 64496 instance wan
+      router-id 192.0.2.3
+      quit
+    bgp 64496 instance internet
+      router-id 192.0.2.4
+      quit
+    save force
+
+- vendor: h3c
+  name: add two BGP processes in one patch
+  before: ""
+  after: |
+    bgp 64496
+      router-id 192.0.2.1
+    bgp 64496 instance wan
+      router-id 192.0.2.2
+  patch: |
+    system-view
+    bgp 64496
+      router-id 192.0.2.1
+      quit
+    bgp 64496 instance wan
+      router-id 192.0.2.2
+      quit
+    save force
+
+- vendor: h3c
+  name: remove a named instance while updating global BGP
+  before: |
+    bgp 64496
+      router-id 192.0.2.1
+    bgp 64496 instance wan
+      router-id 192.0.2.2
+  after: |
+    bgp 64496
+      router-id 192.0.2.3
+  patch: |
+    system-view
+    undo bgp 64496 instance wan
+    bgp 64496
+      router-id 192.0.2.3
+      quit
+    save force
+
+- vendor: h3c
+  name: remove global BGP while preserving a named instance
+  before: |
+    bgp 64496
+      router-id 192.0.2.1
+    bgp 64496 instance wan
+      router-id 192.0.2.2
+  after: |
+    bgp 64496 instance wan
+      router-id 192.0.2.2
+  patch: |
+    system-view
+    undo bgp 64496
+    save force
+
+- vendor: h3c
+  name: remove two BGP processes in one patch
+  before: |
+    bgp 64496
+      router-id 192.0.2.1
+    bgp 64496 instance wan
+      router-id 192.0.2.2
+  after: ""
+  patch: |
+    system-view
+    undo bgp 64496
+    undo bgp 64496 instance wan
+    save force
+
+- vendor: h3c
+  name: replacing a peer ASN preserves the same peer in another BGP process
+  before: |
+    bgp 64496
+      peer 192.0.2.3 as-number 64497
+      peer 192.0.2.3 description GLOBAL
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+    bgp 64496 instance wan
+      peer 192.0.2.3 as-number 64499
+      peer 192.0.2.3 description WAN
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+  after: |
+    bgp 64496
+      peer 192.0.2.3 as-number 64498
+      peer 192.0.2.3 description GLOBAL
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+    bgp 64496 instance wan
+      peer 192.0.2.3 as-number 64499
+      peer 192.0.2.3 description WAN
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+  patch: |
+    system-view
+    bgp 64496
+      undo peer 192.0.2.3
+      peer 192.0.2.3 as-number 64498
+      address-family ipv4 unicast
+        peer 192.0.2.3 enable
+        quit
+      peer 192.0.2.3 description GLOBAL
+      quit
+    save force
