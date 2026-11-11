@@ -13,7 +13,7 @@ def test_iosxr_vendor_knob():
     @routemaps
     def p(device: Mock, route: Route):
         with route(R.tag == 100) as rule:
-            rule.set_vendor_knob(iosxr="fallback-vrf-lookup")
+            rule.add_vendor_knob(iosxr="fallback-vrf-lookup")
             rule.allow()
 
     result = generate(routemaps=routemaps, dev=iosxr())
@@ -32,7 +32,7 @@ def test_juniper_vendor_knob():
     @routemaps
     def p(device: Mock, route: Route):
         with route(R.tag == 100) as rule:
-            rule.set_vendor_knob(juniper="analyze")
+            rule.add_vendor_knob(juniper="analyze")
             rule.allow()
 
     result = generate(routemaps=routemaps, dev=juniper())
@@ -58,7 +58,7 @@ def test_huawei_vendor_knob():
     @routemaps
     def p(device: Mock, route: Route):
         with route(number=10) as rule:
-            rule.set_vendor_knob(huawei="some-knob 1")
+            rule.add_vendor_knob(huawei="some-knob 1")
             rule.allow()
 
     result = generate(routemaps=routemaps, dev=huawei())
@@ -75,7 +75,7 @@ def test_arista_vendor_knob():
     @routemaps
     def p(device: Mock, route: Route):
         with route(number=10) as rule:
-            rule.set_vendor_knob(arista="some-knob 1")
+            rule.add_vendor_knob(arista="some-knob 1")
             rule.allow()
 
     result = generate(routemaps=routemaps, dev=arista())
@@ -92,7 +92,7 @@ def test_cumulus_vendor_knob():
     @routemaps
     def p(device: Mock, route: Route):
         with route(number=10) as rule:
-            rule.set_vendor_knob(cumulus="some-knob 1")
+            rule.add_vendor_knob(cumulus="some-knob 1")
             rule.allow()
 
     result = generate(routemaps=routemaps, dev=cumulus())
@@ -112,7 +112,7 @@ def test_vendor_knob_for_other_vendor(device):
     @routemaps
     def p(device: Mock, route: Route):
         with route(number=10) as rule:
-            rule.set_vendor_knob(juniper="analyze")
+            rule.add_vendor_knob(juniper="analyze")
             rule.allow()
 
     with pytest.raises(NotImplementedError):

@@ -175,7 +175,7 @@ def test_next_hop_action():
 
 def test_vendor_knob():
     with StatementBuilder(stmt := new_statement()) as b:
-        b.set_vendor_knob(iosxr="some-xr-knob", juniper="some-jun-knob")
+        b.add_vendor_knob(iosxr="some-xr-knob", juniper="some-jun-knob")
     assert single_action(stmt) == SingleAction(
         field="vendor_knob",
         type=ActionType.CUSTOM,
@@ -185,16 +185,16 @@ def test_vendor_knob():
 
 def test_vendor_knob_several_calls():
     with StatementBuilder(stmt := new_statement()) as b:
-        b.set_vendor_knob(iosxr="first")
-        b.set_vendor_knob(iosxr="second")
+        b.add_vendor_knob(iosxr="first")
+        b.add_vendor_knob(iosxr="second")
     assert [a.value for a in stmt.then] == [{"iosxr": "first"}, {"iosxr": "second"}]
 
 
 def test_vendor_knob_requires_vendor():
     with pytest.raises(TypeError):
-        StatementBuilder(new_statement()).set_vendor_knob()
+        StatementBuilder(new_statement()).add_vendor_knob()
 
 
 def test_vendor_knob_unknown_vendor():
     with pytest.raises(TypeError):
-        StatementBuilder(new_statement()).set_vendor_knob(ios_xr="some-knob")
+        StatementBuilder(new_statement()).add_vendor_knob(ios_xr="some-knob")

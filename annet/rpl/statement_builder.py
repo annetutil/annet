@@ -324,7 +324,7 @@ class StatementBuilder:
     def add_as_path(self, *as_path: int) -> None:
         self._added_as_path.extend(as_path)
 
-    def set_vendor_knob(
+    def add_vendor_knob(
         self,
         *,
         arista: Optional[str] = None,
@@ -346,7 +346,7 @@ class StatementBuilder:
             if command is not None
         }
         if not commands:
-            raise TypeError("set_vendor_knob() requires at least one vendor")
+            raise TypeError("add_vendor_knob() requires at least one vendor")
         self._statement.then.append(
             SingleAction(
                 field=ThenField.vendor_knob,
