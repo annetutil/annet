@@ -305,3 +305,42 @@ def test_diff_keeps_block_order_when_rows_match_different_rules() -> None:
     # each kind of acl entry is matched by its own rule, yet the acl is printed
     # in the order it was generated in
     assert printed == ["  " + block] + ["+   " + row for row in rows]
+
+
+def test_resort_diff_keeps_order_of_ordered_block() -> None:
+    # cisco.rul: policy-map type qos * / class * %ordered
+    # classes are matched top-down, so the order of the diff is the order of the config.
+    # a sort would give: -BB-CS3, +FB-CS2, >FB_default
+    diff = [
+        (
+            diff_ops[" "],
+            "policy-map type qos MARK-INBOUND",
+            [
+                (diff_ops["+"], "class FB-CS2", [], {}),
+                (diff_ops[">"], "class FB_default", [], {}),
+                (diff_ops["-"], "class BB-CS3", [], {}),
+            ],
+            {},
+        ),
+    ]
+
+    assert resort_diff(diff) == diff
+
+
+def test_resort_diff_sorts_unordered_block() -> None:
+    # no MOVED, so the block is unordered and removals come before additions
+    diff = [
+        (
+            diff_ops[" "],
+            "interface Ethernet1",
+            [
+                (diff_ops["+"], "description new", [], {}),
+                (diff_ops["-"], "description old", [], {}),
+            ],
+            {},
+        ),
+    ]
+
+    result = resort_diff(diff)
+
+    assert [row for _, row, _, _ in result[0][2]] == ["description old", "description new"]
