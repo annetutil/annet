@@ -201,7 +201,7 @@ def print_as_json(data: Any, sort_keys: bool = True, fh: IO[str] = sys.stdout, h
             outfile=fh,
         )
     else:
-        json.dump(dump_data, fh, **dump_kwargs)
+        fh.write(json.dumps(dump_data, **dump_kwargs))
         fh.write("\n")
 
 
