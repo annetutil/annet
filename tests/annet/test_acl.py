@@ -1,10 +1,12 @@
 import re
 import textwrap
 from collections import OrderedDict
+from copy import deepcopy
 
 import pytest
 
 from annet import patching
+from annet.annlib.patching import _find_acl_matches, match_row_to_acl
 from annet.annlib.rbparser.acl import compile_acl_text
 from annet.vendors import registry_connector, tabparser
 
@@ -576,3 +578,22 @@ def test_acl(ann_connectors, name, sample):
     result_text = fmtr.join(tree)
     result_text, output_text = result_text.strip(), output_text.strip()
     assert result_text == output_text
+
+
+def test_acl_normalization_is_specific_to_each_rules_vendor():
+    rules = deepcopy(compile_acl_text("target\n~ %global\n", "juniper"))
+    global_rule = rules["global"]["~"]
+    global_rule["attrs"]["vendor"] = "huawei"
+    global_rule["attrs"]["direct_regexp"] = re.compile(r"^(?P<text>.*)$")
+    matches = _find_acl_matches("inactive: delete target", rules)
+    assert len(matches) == 2
+    assert global_rule["attrs"]["match"] == {"text": "inactive: delete target"}
+    assert rules["local"]["target"]["attrs"]["match"] == {}
+
+
+def test_acl_direct_and_reverse_ties_keep_direct_children_and_cant_delete():
+    rules = compile_acl_text("undo shutdown %cant_delete\n    child\nshutdown\n", "huawei")
+    match, children = match_row_to_acl("undo shutdown", rules)
+    assert match["is_reverse"] is False
+    assert match["attrs"]["cant_delete"] == [True]
+    assert list(children["local"]) == ["child"]
