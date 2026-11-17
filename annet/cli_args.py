@@ -418,6 +418,11 @@ class FileInputOptions(ArgGroup):
     old = opt_old
     new = opt_new
     hw = opt_hw
+    hw_map = Arg(
+        "--hw-map",
+        default=None,
+        help="JSON map from config filenames to hw_model and optional sw_version; missing entries use autodetection",
+    )
     fails_only = opt_fails_only
     include_missing = opt_include_missing
 
@@ -456,11 +461,6 @@ class FileDiffOptions(FileInputOptions, FileOutOptions, ParallelOptions):
 class FilePatchOptions(FileInputOptions, FileOutOptions, ParallelOptions):
     indent = opt_indent
     add_comments = opt_add_comments
-    hw_map = Arg(
-        "--hw-map",
-        default=None,
-        help="JSON map from config filenames to hw_model and optional sw_version; missing entries use autodetection",
-    )
 
 
 class ShowGeneratorsOptions(QueryOptionsOptional, GenSelectOptions):

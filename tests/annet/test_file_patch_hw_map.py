@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from annet import api, cli_args
+from annet.diff import UnifiedFileDiffer, file_differ_connector
 from annet.hardware import AnnetHardwareProvider, hardware_connector
 
 
@@ -48,6 +49,9 @@ def test_mixed_vendor_map_skips_guessing(tmp_path, monkeypatch, parallel):
     success, fail = api.file_patch(args)
     assert not fail, fail
     assert len(success) == 2
+    diffs, fail = api.file_diff(cli_args.FileDiffOptions(args, no_color=True))
+    assert not fail, fail
+    assert diffs.keys() == success.keys()
     for pair, patch in success.items():
         name = pair[1].rsplit("/", 1)[-1]
         hw = hardware_connector.get().make_hw(**metadata[name])
@@ -58,6 +62,8 @@ def test_mixed_vendor_map_skips_guessing(tmp_path, monkeypatch, parallel):
             "juniper.cfg": "delete system host-name before\nset system host-name after",
         }
         assert patch == [(name, expected[name], False)]
+        explicit_diff = cli_args.FileDiffOptions(hw=hw, indent="  ", no_color=True)
+        assert diffs[pair] == list(api.file_diff_worker(pair, explicit_diff))
 
 
 @pytest.mark.parametrize("partial_map", [False, True])
@@ -81,6 +87,15 @@ def test_missing_entry_falls_back_to_guessing(tmp_path, monkeypatch, partial_map
     assert len(success) == (2 if partial_map else 1)
     assert success[(str(Path(args.old) / "router.cfg"), str(Path(args.new) / "router.cfg"))] == [
         ("router.cfg", "sysname after", False),
+    ]
+    assert guessed == ["sysname before\n", "sysname after\n"]
+
+    guessed.clear()
+    diffs, fail = api.file_diff(cli_args.FileDiffOptions(args, hw="", no_color=True))
+    assert not fail, fail
+    assert diffs.keys() == success.keys()
+    assert diffs[(str(Path(args.old) / "router.cfg"), str(Path(args.new) / "router.cfg"))] == [
+        ("router.cfg", "- sysname before\n+ sysname after\n", False)
     ]
     assert guessed == ["sysname before\n", "sysname after\n"]
 
@@ -117,6 +132,8 @@ def test_explicit_vendor_conflicts_with_map(tmp_path):
     args.hw = "Huawei"
     with pytest.raises(ValueError, match="--hw"):
         api.file_patch(args)
+    with pytest.raises(ValueError, match="--hw"):
+        api.file_diff(cli_args.FileDiffOptions(args))
 
 
 @pytest.mark.parametrize("sw_version", [None, "", "VRP V800R022C10SPC500"])
@@ -144,6 +161,9 @@ def test_single_file_uses_its_filename(tmp_path, monkeypatch, sw_version):
     assert not fail, fail
     assert success[(args.old, args.new)] == [("router.cfg", "sysname after", False)]
     assert provider_inputs == [("Huawei NE8000-X4", sw_version or "")]
+    diffs, fail = api.file_diff(cli_args.FileDiffOptions(args, no_color=True))
+    assert not fail, fail
+    assert diffs[(args.old, args.new)] == [("router.cfg", "- sysname before\n+ sysname after\n", False)]
 
 
 def test_pc_directory_does_not_need_hardware(tmp_path, monkeypatch):
@@ -158,6 +178,14 @@ def test_pc_directory_does_not_need_hardware(tmp_path, monkeypatch):
     assert not fail, fail
     assert success[(str(old), str(new))] == [("pc.cfg/config.txt", "new contents", False)]
 
+    (old / "config.txt").write_text("old contents")
+    monkeypatch.setattr(file_differ_connector, "get", UnifiedFileDiffer)
+    diffs, fail = api.file_diff(cli_args.FileDiffOptions(args, no_color=True))
+    assert not fail, fail
+    assert diffs[(str(old), str(new))] == [
+        ("pc.cfg/config.txt", "--- \n+++ \n@@ -1 +1 @@\n-old contents\n+new contents", False)
+    ]
+
 
 def test_equal_files_do_not_need_autodetection(tmp_path, monkeypatch):
     args = write_inputs(tmp_path, {"router.cfg": ("sysname unchanged\n", "sysname unchanged\n")}, {})
@@ -165,3 +193,19 @@ def test_equal_files_do_not_need_autodetection(tmp_path, monkeypatch):
     success, fail = api.file_patch(args)
     assert not fail, fail
     assert list(success.values()) == [[]]
+
+
+@pytest.mark.parametrize("missing_side, expected", [("old", "+ sysname after\n"), ("new", "- sysname before\n")])
+@pytest.mark.parametrize("filename", ["router.cfg", "router.cfg.patch"])
+def test_missing_file_uses_exact_filename(tmp_path, monkeypatch, missing_side, expected, filename):
+    args = write_inputs(
+        tmp_path,
+        {filename: ("sysname before\n", "sysname after\n")},
+        {filename: {"hw_model": "Huawei NE8000-X4"}},
+    )
+    Path(getattr(args, missing_side), filename).unlink()
+    args = cli_args.FileDiffOptions(args, include_missing=True, no_color=True)
+    monkeypatch.setattr(api, "guess_hw", lambda *_: pytest.fail("Hardware is already known"))
+    success, fail = api.file_diff(args)
+    assert not fail, fail
+    assert list(success.values()) == [[(filename, expected, False)]]

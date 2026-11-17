@@ -851,13 +851,14 @@ async def adeploy(
 
 def file_diff(args: cli_args.FileDiffOptions) -> tuple[Mapping[Any, Any], Mapping[Any, BaseException]]:
     """Build a diff between files or directories using the rulebook"""
+    hw_map = _load_hw_map(args)
     old_new = list(_read_old_new_cfgdumps(args))
-    pool = Parallel(file_diff_worker, args).tune_args(args)
+    pool = Parallel(file_diff_worker, args, hw_map).tune_args(args)
     return pool.run(old_new, tolerate_fails=True)
 
 
 def file_diff_worker(
-    old_new: Tuple[str, str], args: cli_args.FileDiffOptions
+    old_new: Tuple[str, str], args: cli_args.FileDiffOptions, hw_map: Mapping[str, HardwareView] | None = None
 ) -> Generator[Tuple[str, str, bool], None, None]:
     old_path, new_path = old_new
     hw: HardwareView
@@ -891,15 +892,22 @@ def file_diff_worker(
         if old_config == new_config:
             return
 
-        old, new, hw = _read_old_new_hw(old_path, old_config, new_path, new_config, hw)
+        file_hw = hw_map.get(os.path.basename(new_path)) if hw_map else None
+        if file_hw is None and args.hw:
+            file_hw = hw
+        old, new, hw = _read_old_new_hw(old_path, old_config, new_path, new_config, file_hw)
         _, __, pre, ___ = _read_old_new_diff_patch(old, new, hw, add_comments=False)
 
         if diff_lines := ann_diff.gen_pre_as_diff(pre, args.show_rules, args.indent, args.no_color):
             yield os.path.basename(new_path), "".join(diff_lines), False
 
 
-def _load_hw_map(path: str) -> dict[str, HardwareView]:
-    with open(path) as stream:
+def _load_hw_map(args: cli_args.FileInputOptions) -> dict[str, HardwareView]:
+    if not args.hw_map:
+        return {}
+    if args.hw:
+        raise ValueError("--hw and --hw-map cannot be used together")
+    with open(args.hw_map) as stream:
         data = json.load(stream)
     if not isinstance(data, dict):
         raise ValueError("Hardware map must be a JSON object keyed by config filename")
@@ -926,9 +934,7 @@ def _load_hw_map(path: str) -> dict[str, HardwareView]:
 @tracing.function
 def file_patch(args: cli_args.FilePatchOptions) -> tuple[Mapping[Any, Any], Mapping[Any, BaseException]]:
     """Build a patch between files or directories"""
-    if args.hw_map and args.hw:
-        raise ValueError("--hw and --hw-map cannot be used together")
-    hw_map: dict[str, HardwareView] = _load_hw_map(args.hw_map) if args.hw_map else {}
+    hw_map = _load_hw_map(args)
     old_new = list(_read_old_new_cfgdumps(args))
     pool = Parallel(file_patch_worker, args, hw_map).tune_args(args)
     return pool.run(old_new, tolerate_fails=True)
