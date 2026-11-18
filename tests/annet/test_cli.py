@@ -1,10 +1,27 @@
+import json
+import re
 from argparse import ArgumentError
 from importlib.metadata import EntryPoint
 from unittest.mock import Mock
 
 import pytest
 
+from annet.annlib.output import JsonEncoder, print_as_json
 from annet.argparse import Arg, ArgParser, _get_meta, subcommand
+
+
+def test_compact_json_writes_fields_separately():
+    value = "я" * 4096
+    fields = {"all": (value, value), "details": {'key"': value, "other": value}, "extra": {42: re.compile("x")}}
+    data = {"success": {"host": fields}, "empty": {}}
+    output = Mock()
+    output.isatty.return_value = False
+
+    print_as_json(data, sort_keys=False, fh=output)
+
+    chunks = [call.args[0] for call in output.write.call_args_list]
+    assert "".join(chunks) == json.dumps(data, cls=JsonEncoder, ensure_ascii=False) + "\n"
+    assert max(map(len, chunks)) < 2 * len(value)
 
 
 @subcommand(Arg("--name", default="world"))
