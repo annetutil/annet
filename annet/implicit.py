@@ -264,6 +264,10 @@ def _implicit_tree(device: Device) -> odict[Any, Any]:
             !arm
                 no 80mhz-support
                 no 160mhz-support
+            !rf dot11-6ghz-radio-profile
+                disable-arm-wids-functions off %regexp=disable-arm-wids-functions .*
+                min-tx-power 12 %regexp=min-tx-power .*
+                max-tx-power 18 %regexp=max-tx-power .*
         """
 
     return parse_text(text)
