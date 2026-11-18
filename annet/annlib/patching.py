@@ -1029,10 +1029,14 @@ def _match_row_to_rules(row: str, rules: Rules) -> tuple[_AclMatch | None, Rules
 
 def _find_acl_matches(row: str, rules: Rules) -> list[tuple[_AclMetric, _AclMatchItem]]:
     res: list[tuple[_AclMetric, _AclMatchItem]] = []
-    juniper_row = jun_activate(row)
+    juniper_row = None
     for regexp_key in ["direct_regexp", "reverse_regexp"]:
         for (_, rule), is_global in _rules_local_global(rules):
-            row_to_match = juniper_row if rule["attrs"]["vendor"] == "juniper" else row
+            row_to_match = row
+            if rule["attrs"]["vendor"] == "juniper":
+                if juniper_row is None:
+                    juniper_row = jun_activate(row)
+                row_to_match = juniper_row
             match = rule["attrs"][regexp_key].match(row_to_match)
             if match:
                 rule["attrs"]["match"] = match.groupdict()
