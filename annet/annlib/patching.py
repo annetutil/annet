@@ -295,6 +295,11 @@ class Orderer:
         while queue:
             weights_prefix, vector_prefix, row_suffix, keys_suffix, children = queue.pop()
 
+            # Every child would yield the same sort key for a complete command.
+            if not row_suffix:
+                vectors.append((weights_prefix, (vector_prefix, cmd_direct)))
+                continue
+
             # shared instance that will be stored in the queue several times and mutated simultaneously,
             # this is done this way to avoid walking over children twice: we do only one pass both collecting children
             # and filling the queue
@@ -309,30 +314,18 @@ class Orderer:
                 else:
                     key = keys_suffix[0]
 
-                # we reached the end of our command,
-                # submit the results - they will be considered at the end
-                if not row_suffix:
-                    vectors.append(
-                        (
-                            weights_prefix,
-                            (vector_prefix, cmd_direct),
-                        )
-                    )
-                    continue
-
                 if (rule_scope := rb_attrs["scope"]) is not None and scope not in rule_scope:
                     continue
 
                 row_item = row_suffix[0]
                 direct_matched = bool(rb_attrs["direct_regexp"].match(row_item))
-                reverse_matched = bool(rb_attrs["reverse_regexp"].match(row_item))
                 order_reverse = rb_attrs["order_reverse"]
 
                 # global rules
                 if rule["attrs"]["global"]:
                     sub_children.append((raw_rule, rule))
 
-                if not order_reverse and (direct_matched or reverse_matched):
+                if not order_reverse and (direct_matched or rb_attrs["reverse_regexp"].match(row_item)):
                     if direct_matched:
                         weight = string_similarity(row_item, rb_attrs["direct_regexp"].pattern)
                     else:
@@ -1036,9 +1029,14 @@ def _match_row_to_rules(row: str, rules: Rules) -> tuple[_AclMatch | None, Rules
 
 def _find_acl_matches(row: str, rules: Rules) -> list[tuple[_AclMetric, _AclMatchItem]]:
     res: list[tuple[_AclMetric, _AclMatchItem]] = []
+    juniper_row = None
     for regexp_key in ["direct_regexp", "reverse_regexp"]:
         for (_, rule), is_global in _rules_local_global(rules):
-            row_to_match = _normalize_row_for_acl(row, rule)
+            row_to_match = row
+            if rule["attrs"]["vendor"] == "juniper":
+                if juniper_row is None:
+                    juniper_row = jun_activate(row)
+                row_to_match = juniper_row
             match = rule["attrs"][regexp_key].match(row_to_match)
             if match:
                 rule["attrs"]["match"] = match.groupdict()
@@ -1121,10 +1119,3 @@ def _rules_local_global(rules: Rules) -> Iterator[tuple[tuple[str, _AclRule], bo
         yield ((raw_rule, rule), False)
     for raw_rule, rule in rules["global"].items():
         yield ((raw_rule, rule), True)
-
-
-def _normalize_row_for_acl(row: str, rule: _AclRule) -> str:
-    # NOCDEV-5940 Junipers have a special "inactive:" marker
-    if rule["attrs"]["vendor"] == "juniper":
-        row = jun_activate(row)
-    return row

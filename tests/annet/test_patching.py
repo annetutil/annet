@@ -5,7 +5,8 @@ from textwrap import dedent
 import pytest
 
 from annet.annlib.rbparser import syntax
-from annet.patching import PatchTree, make_diff, make_patch, make_pre
+from annet.annlib.rbparser.ordering import compile_ordering_text
+from annet.patching import Orderer, PatchTree, make_diff, make_patch, make_pre
 from annet.rulebook.common import default, default_diff, ordered_diff
 from annet.rulebook.patching import _make_reverse, compile_patching_text
 from annet.types import Op
@@ -240,3 +241,42 @@ def test_make_reverse(row, expected):
     # the number of {} must match the number of capturing groups produced for the
     # row, since reverse.format(*match.groups()) relies on that invariant
     assert reverse.count("{}") == syntax.compile_row_regexp(row).groups
+
+
+@pytest.mark.parametrize(
+    "rule, command, direct, expected",
+    [
+        ("root", "root", True, ((1, ()),)),
+        ("root", "undo root", False, ((-1, ()),)),
+        ("undo root %order_reverse", "undo root", False, ((1, ()),)),
+        ("undo root %order_reverse", "undo root", True, ()),
+    ],
+)
+def test_orderer_direction(rule, command, direct, expected):
+    rules = compile_ordering_text(f"other\n{rule}\n    child\n", "huawei")
+    assert Orderer(rules, "huawei").get_order((command,), direct) == (expected, direct)
+
+
+def test_direct_match_wins_over_reverse_match():
+    rules = compile_ordering_text("add\nremove\n", "routeros")
+    assert Orderer(rules, "routeros").get_order(("remove add",), False) == (((-1, ()),), False)
+
+
+@pytest.mark.parametrize("scope, expected", [(None, ((1, ()),)), ("patch", ((1, ()), (2, ())))])
+def test_nested_rules_keep_global_split_scope_and_exit_order(scope, expected):
+    rules = compile_ordering_text(
+        dedent("""\
+        global-command %global
+        root %split
+            first
+            second
+        root
+            last %scope=patch
+        """),
+        "huawei",
+    )
+    orderer = Orderer(rules, "huawei")
+    assert orderer.get_order(("root", "global-command"), True, scope=scope) == (((1, ()),), True)
+    assert orderer.get_order(("root", "second"), True, scope=scope) == (((1, ()), (1, ())), True)
+    assert orderer.get_order(("root", "quit"), True, scope=scope) == (((1, ()), (float("inf"), ())), True)
+    assert orderer.get_order(("root", "last"), True, scope=scope) == (expected, True)

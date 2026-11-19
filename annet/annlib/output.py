@@ -143,6 +143,28 @@ class JsonEncoder(json.JSONEncoder):
             raise TypeError("can't serialize %r to json" % o)
 
 
+def _write_json_fields(data: Any, fh: IO[str], encoder: JsonEncoder, levels: int = 4) -> None:
+    """Split the outer four container levels and encode each remaining value in one pass."""
+    if levels and type(data) in (dict, odict) and all(isinstance(key, str) for key in data):
+        fh.write("{")
+        for index, (key, value) in enumerate(data.items()):
+            if index:
+                fh.write(encoder.item_separator)
+            fh.write(encoder.encode(key))
+            fh.write(encoder.key_separator)
+            _write_json_fields(value, fh, encoder, levels - 1)
+        fh.write("}")
+    elif levels and type(data) in (list, tuple):
+        fh.write("[")
+        for index, value in enumerate(data):
+            if index:
+                fh.write(encoder.item_separator)
+            _write_json_fields(value, fh, encoder, levels - 1)
+        fh.write("]")
+    else:
+        fh.write(encoder.encode(data))
+
+
 def print_as_json(data: Any, sort_keys: bool = True, fh: IO[str] = sys.stdout, highlight: bool = True) -> None:
     """
     In the output, dict keys are sorted by name, except for the keys of an OrderedDict,
@@ -200,9 +222,13 @@ def print_as_json(data: Any, sort_keys: bool = True, fh: IO[str] = sys.stdout, h
             formatter=pygments.formatters.TerminalFormatter(bg="dark"),
             outfile=fh,
         )
+        return
+
+    if not sort_keys:
+        _write_json_fields(dump_data, fh, JsonEncoder(ensure_ascii=False))
     else:
         json.dump(dump_data, fh, **dump_kwargs)
-        fh.write("\n")
+    fh.write("\n")
 
 
 class TextArgs:
