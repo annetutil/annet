@@ -1,4 +1,3 @@
-import shlex
 from collections import OrderedDict
 from typing import Any
 
@@ -6,6 +5,7 @@ from contextlog import get_logger
 
 from annet.annlib.rulebook.common import DiffItem, default_diff
 from annet.annlib.types import Op
+from annet.vendors.library.routeros import parse_attrs, quote, tokenize
 
 
 def _normalize_command(
@@ -34,15 +34,25 @@ def _normalize_command(
 
     result_command = "add"
     try:
-        parts = shlex.split(command_line)
+        parts = tokenize(command_line)
 
-        for part in parts[1:]:  # Skip the 'add' part
+        start = 1
+        if parts and parts[0] == "set" and len(parts) > 1:
+            if parts[1] == "[":
+                start = parts.index("]", 2) + 1
+            elif "=" not in parts[1]:
+                start = 2
+        selector = parts[1:start]
+        if selector:
+            result_command += " " + " ".join(selector)
+        for part in parts[start:]:
             if "=" in part:
-                key_part = part.split("=", 1)[0]
-                # Skip if key is in ignore_keys
+                key_part, value = next(iter(parse_attrs([part], command_line).items()))
                 if key_part in ignore_keys:
                     continue
-            result_command += f" {part}"
+                result_command += f" {key_part}={quote(value)}"
+            else:
+                result_command += f" {quote(part)}"
 
         return result_command.strip()
 
