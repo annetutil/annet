@@ -46,6 +46,7 @@ def test_adapter_get_site_passthrough(adapter_cls, api_mod):
 
     adapter.netbox.dcim_site.assert_called_once_with(1)
     assert site.id == 1
+    assert site.slug == "site-a"
     assert site.custom_fields == {"tacacs_state": "on"}
 
 

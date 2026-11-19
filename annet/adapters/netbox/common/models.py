@@ -252,7 +252,7 @@ class NetboxDevice(Entity, Generic[_InterfaceT, _DeviceIPT]):
     platform: Optional[EntityWithSlug]
     serial: str
     asset_tag: Optional[str]
-    site: Entity
+    site: EntityWithSlug
     rack: Optional[Entity]
     position: Optional[float]
     face: Optional[Label]
