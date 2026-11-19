@@ -1,0 +1,166 @@
+from collections import OrderedDict as odict
+
+import pytest
+
+from annet.rulebook.routeros.ethernet import EthernetSet, EthernetSetParseError, _quote, diff, parse_set
+from annet.types import Op
+
+
+def _pre(*rows: str) -> odict:
+    return odict(
+        (
+            row,
+            {
+                "match": {"attrs": {"diff_logic": diff}},
+                "subtree": odict(),
+            },
+        )
+        for row in rows
+    )
+
+
+def test_parse_default_name_selector_and_attributes():
+    parsed = parse_set('set [ find default-name="ether 1" ] name=uplink comment="WAN uplink" disabled=no l2mtu=1598')
+
+    assert parsed == EthernetSet(
+        identity="ether 1",
+        attrs={"name": "uplink", "comment": "WAN uplink", "disabled": "no", "l2mtu": "1598"},
+    )
+
+
+def test_parse_running_positional_selector():
+    parsed = parse_set('set ether1 comment="WAN uplink" disabled=no', allow_positional=True)
+
+    assert parsed == EthernetSet(identity="ether1", attrs={"comment": "WAN uplink", "disabled": "no"})
+
+
+def test_parse_compact_selector_without_spaces():
+    # generators commonly emit the selector without inner spaces
+    parsed = parse_set('set [find default-name=ether1] comment="uplink [core] 1"')
+
+    assert parsed == EthernetSet(identity="ether1", attrs={"comment": "uplink [core] 1"})
+
+
+def test_parse_hash_as_data_instead_of_shlex_comment():
+    parsed = parse_set("set [find default-name=ether1] comment=wan#primary disabled=no")
+
+    assert parsed == EthernetSet(identity="ether1", attrs={"comment": "wan#primary", "disabled": "no"})
+
+
+def test_parse_routeros_escape_sequences():
+    parsed = parse_set(
+        r'set [ find default-name=ether1 ] comment="one\ntwo\rthree\tfour\_five" '
+        r'controls="\a\b\v" symbols="\"\\\$\?" hex="\48\45\4C\4C\4F"'
+    )
+
+    assert parsed == EthernetSet(
+        identity="ether1",
+        attrs={
+            "comment": "one\ntwo\rthree\tfour five",
+            "controls": "\a\b\v",
+            "symbols": '"\\$?',
+            "hex": "HELLO",
+        },
+    )
+
+
+def test_parse_decodes_utf8_hex_escapes():
+    # RouterOS exports non-ASCII values as a sequence of UTF-8 bytes
+    parsed = parse_set(r'set [ find default-name=ether1 ] comment="\D0\BF\D1\80\D0\B8"')
+
+    assert parsed == EthernetSet(identity="ether1", attrs={"comment": "при"})
+    assert _quote("при") == r'"\D0\BF\D1\80\D0\B8"'
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["при", "\a\b\v", "\x1b", "\x0c", "\x7f", "\udcff", "one;two[three]$four?five", '"quoted\\"'],
+)
+def test_quote_round_trips_through_parser(value):
+    row = f"set [ find default-name=ether1 ] comment={_quote(value)}"
+
+    assert parse_set(row).attrs["comment"] == value
+
+
+def test_quote_escapes_control_and_stray_bytes():
+    # a raw control byte must never reach the device command line
+    assert _quote("\x1b") == r'"\1B"'
+    # RouterOS \f is byte 0xFF, which is not valid UTF-8 and is kept as a hex escape
+    assert parse_set(r'set [ find default-name=ether1 ] comment="\f"').attrs["comment"] == "\udcff"
+    assert _quote("\udcff") == r'"\FF"'
+
+
+def test_diff_converges_when_cleared_attribute_is_absent():
+    # RouterOS omits a cleared property from the export, so comment="" is already applied
+    old_row = "set [ find default-name=ether1 ] disable-running-check=no"
+    new_row = 'set [ find default-name=ether1 ] comment=""'
+
+    items = diff(odict({old_row: odict()}), odict({new_row: odict()}), _pre(old_row, new_row))
+
+    assert [(item.op, item.row) for item in items] == [(Op.AFFECTED, old_row)]
+
+
+def test_diff_clears_attribute_that_is_still_set():
+    old_row = 'set [ find default-name=ether1 ] comment="stale"'
+    new_row = 'set [ find default-name=ether1 ] comment=""'
+
+    items = diff(odict({old_row: odict()}), odict({new_row: odict()}), _pre(old_row, new_row))
+
+    assert [(item.op, item.row) for item in items] == [(Op.MOVED, new_row)]
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        "set",
+        "set ether1 comment=uplink",
+        "set [ find name=ether1 ] comment=uplink",
+        "set [ find default-name=ether1 comment=uplink",
+        "set [ find default-name=ether1 ] default-name=ether2",
+        "set [ find default-name=ether1 ] comment=first comment=second",
+        "set [ find default-name=ether1 ] !comment",
+        "set [ find default-name=ether1 ] invalid-token",
+        r'set [ find default-name=ether1 ] comment="unknown\xescape"',
+        r'set [ find default-name=ether1 ] comment="lowercase\4ahex"',
+        "set [ find default-name=ether1 ] comment=trailing\\",
+    ],
+)
+def test_parse_rejects_missing_ambiguous_or_malformed_identity(row):
+    with pytest.raises(EthernetSetParseError):
+        parse_set(row)
+
+
+def test_diff_rejects_numeric_running_selector():
+    old_row = "set 0 comment=first"
+    desired_row = "set [ find default-name=ether1 ] comment=first"
+
+    with pytest.raises(EthernetSetParseError, match="Expected a 'find default-name=...' selector"):
+        diff(odict({old_row: odict()}), odict({desired_row: odict()}), _pre(old_row, desired_row))
+
+
+def test_diff_rejects_duplicate_running_identity():
+    old_rows = odict(
+        {
+            "set ether1 comment=first": odict(),
+            "set [ find default-name=ether1 ] comment=second": odict(),
+        }
+    )
+    desired_row = "set [ find default-name=ether1 ] comment=first"
+    new_rows = odict({desired_row: odict()})
+
+    with pytest.raises(EthernetSetParseError, match="Duplicate default-name 'ether1' in running"):
+        diff(old_rows, new_rows, _pre(*old_rows, desired_row))
+
+
+def test_diff_rejects_duplicate_desired_identity():
+    old_row = "set [ find default-name=ether1 ] comment=first"
+    old_rows = odict({old_row: odict()})
+    new_rows = odict(
+        {
+            "set [ find default-name=ether1 ] comment=first": odict(),
+            "set [ find default-name=ether1 ] comment=second": odict(),
+        }
+    )
+
+    with pytest.raises(EthernetSetParseError, match="Duplicate default-name 'ether1' in desired"):
+        diff(old_rows, new_rows, _pre(old_row, *new_rows))
