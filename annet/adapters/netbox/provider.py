@@ -30,6 +30,7 @@ def storage_factory(opts: NetboxStorageOpts) -> Storage:
         "4.4": NetboxStorageV42,
         "4.5": NetboxStorageV42,
         "4.6": NetboxStorageV42,
+        "4.7": NetboxStorageV42,
     }
 
     status = None
