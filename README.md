@@ -75,7 +75,10 @@ pip install -e .
 
 Run without installation with Nix:
 ```shell
-nix run github:annetutil/annet/main#annet -- --help
+# latest:
+nix run github:annetutil/annet/main -- --help
+# specific version:
+nix run github:annetutil/annet/v4.9.2 -- --help
 ```
 
 Install using Nix flakes:
