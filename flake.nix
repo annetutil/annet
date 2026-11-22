@@ -77,19 +77,18 @@
           build-system = [python.setuptools];
           env."VERSION" = version;
 
-          dependencies = (with python; [
-            colorama
-            jsonpatch
-            jsonpointer
-            mako
-            ordered-set
-            packaging
-            pygments
-            pyyaml
-            ruamel-yaml
-            tabulate
-            yarl
-          ]) ++ [
+          dependencies = [
+            python.colorama
+            python.jsonpatch
+            python.jsonpointer
+            python.mako
+            python.ordered-set
+            python.packaging
+            python.pygments
+            python.pyyaml
+            python.ruamel-yaml
+            python.tabulate
+            python.yarl
             adaptix
             contextlog
             dataclass-rest
