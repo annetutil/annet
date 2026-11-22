@@ -78,13 +78,6 @@ Run without installation with Nix:
 nix run github:annetutil/annet/main#annet -- --help
 ```
 
-Run from source with Nix:
-```shell
-git clone https://github.com/annetutil/annet
-cd annet
-nix run .#annet -- --help
-```
-
 Install using Nix flakes:
 ```nix
 # add an input to your flake:
