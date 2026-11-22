@@ -1,0 +1,28 @@
+name: Nix
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Nix build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@7bb0495a1086c46893eee56f32fd192dfe4a15bb9 # v32.0.0
+        with:
+          github_access_token: ${{ github.token }}
+      - name: Evaluate the flake on all supported systems
+        run: nix flake check --all-systems --no-build --no-update-lock-file
+      - name: Build Annet
+        run: nix build --no-link --print-build-logs --no-update-lock-file .#annet
+      - name: Run the packaged CLI
+        run: nix run --no-update-lock-file .#annet -- --help
