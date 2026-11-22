@@ -53,7 +53,9 @@
           hash = "sha256-J9xsVXBRoLMzc0x9iQbzlrbdbGmQPqqmk+Sag7+6l2U=";
           wheel = true;
           dependencies = [adaptix dataclass-rest python.python-dateutil];
-          optional-dependencies.sync = [python.requests];
+          optional-dependencies = {
+            "sync" = [python.requests];
+          };
         };
         contextlog = buildPypi {
           pname = "contextlog";
@@ -73,7 +75,7 @@
           src = self;
           pyproject = true;
           build-system = [python.setuptools];
-          env.VERSION = version;
+          env."VERSION" = version;
 
           dependencies = (with python; [
             colorama
@@ -94,8 +96,9 @@
             valkit
           ];
 
-          optional-dependencies.netbox =
-            [annetbox python.requests-cache] ++ annetbox.optional-dependencies.sync;
+          optional-dependencies = {
+            "netbox" = [annetbox python.requests-cache] ++ annetbox.optional-dependencies.sync;
+          };
 
           pythonImportsCheck = [
             "annet.annet"
