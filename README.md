@@ -73,6 +73,45 @@ cd annet
 pip install -e .
 ```
 
+Run without installation with Nix:
+```shell
+nix run github:annetutil/annet/main#annet -- --help
+```
+
+Run from source with Nix:
+```shell
+git clone https://github.com/annetutil/annet
+cd annet
+nix run .#annet -- --help
+```
+
+Install using Nix flakes:
+```nix
+# add an input to your flake:
+inputs."annet".url = "github:annetutil/annet/main";
+
+# then add annet to the list of your packages:
+environment.systemPackages = [
+  inputs."annet".packages.${pkgs.stdenv.hostPlatform.system}.annet
+];
+```
+
+Use as python library in larger Nix project:
+```nix
+let
+  # apply the overlay:
+  pkgs = import inputs.nixpkgs {
+    system = system;
+    overlays = [ inputs."annet".overlays.default ];
+  };
+in
+pkgs.python3.withPackages (ps:
+  [ ps.annet ]
+  # install extras if needed:
+  ++ ps.annet.optional-dependencies.netbox
+)
+```
+
 ## Building doc
 1. Install dependencies:
 ```shell

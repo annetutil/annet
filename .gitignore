@@ -11,3 +11,7 @@ __pycache__
 venv
 .venv
 .DS_Store
+
+# nix-related stuff
+/result
+/result-*
