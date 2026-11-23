@@ -5,7 +5,12 @@ from typing import Any
 from contextlog import get_logger
 
 from annet.annlib.types import Op
-from annet.vendors.library.routeros import RouterOSParseError, parse_attrs, quote, tokenize
+from annet.vendors.library.routeros import (
+    RouterOSParseError,
+    parse_attrs,
+    quote_literal,
+    tokenize,
+)
 
 
 def _attrs(row: str) -> dict[str, str]:
@@ -55,24 +60,27 @@ def change(
             continue
 
         # Create remove command using match-case for cleaner logic
+        # Selector values are always quoted: find compares value types without
+        # conversion, so a bare 192.0.2.1/24 (ip-prefix) or (1+2) (expression)
+        # would never match a string property.
         match params:
             case {"name": name}:
-                yield True, f"remove name={quote(name)}", None
+                yield True, f"remove name={quote_literal(name)}", None
 
             case {"peer": peer}:
                 if peer.startswith("*"):
                     yield True, "remove about", None
                 else:
-                    yield True, f"remove peer={quote(peer)}", None
+                    yield True, f"remove peer={quote_literal(peer)}", None
 
             case {"host": host}:
-                yield False, f"remove host={quote(host)}", None
+                yield False, f"remove host={quote_literal(host)}", None
 
             case {"action": action, "topics": topics}:
                 if action.startswith("*"):
                     yield True, "remove invalid", None
                 else:
-                    yield True, f"remove action={quote(action)} topics={quote(topics)}", None
+                    yield True, f"remove action={quote_literal(action)} topics={quote_literal(topics)}", None
 
             case {"address": address, "interface": interface}:
                 addr, sep, mask = address.partition("/")
@@ -81,28 +89,29 @@ def change(
                     mask = str(ip.max_prefixlen)
                     address = f"{addr}/{mask}"
                 if interface.startswith("*"):
-                    yield True, f"remove address={quote(address)}", None
+                    yield True, f"remove address={quote_literal(address)}", None
                 else:
-                    yield True, f"remove address={quote(address)} interface={quote(interface)}", None
+                    yield True, f"remove address={quote_literal(address)} interface={quote_literal(interface)}", None
 
             case {"address": address}:
-                yield True, f"remove address={quote(address)}", None
+                yield True, f"remove address={quote_literal(address)}", None
 
             case {"interface": interface, "list": list}:
                 if interface.startswith("*"):
-                    yield True, f"remove list={quote(list)}", None
+                    yield True, f"remove list={quote_literal(list)}", None
                 else:
-                    yield True, f"remove interface={quote(interface)}", None
+                    yield True, f"remove interface={quote_literal(interface)}", None
 
             case {"comment": comment, "dst-address": dst_address, "gateway": gateway}:
                 yield (
                     True,
-                    f"remove comment={quote(comment)} dst-address={quote(dst_address)} gateway={quote(gateway)}",
+                    f"remove comment={quote_literal(comment)} dst-address={quote_literal(dst_address)}"
+                    f" gateway={quote_literal(gateway)}",
                     None,
                 )
 
             case {"comment": comment, "dst-address": dst_address}:
-                yield True, f"remove comment={quote(comment)} dst-address={quote(dst_address)}", None
+                yield True, f"remove comment={quote_literal(comment)} dst-address={quote_literal(dst_address)}", None
 
             case {"disabled": disabled, "topics": topics}:
                 # remove all disabled topics
@@ -111,7 +120,7 @@ def change(
 
             case {"topics": topics}:
                 topics = topics.replace(",", ".")
-                yield True, f"remove topics~{quote(topics)}", None
+                yield True, f"remove topics~{quote_literal(topics)}", None
 
             case {"disabled": _}:
                 # Always turn off www-ssl

@@ -27,7 +27,7 @@ _ESCAPES = {
     "v": b"\v",
 }
 _ENCODE_ESCAPES = {value: f"\\{key}" for key, value in _ESCAPES.items() if key not in {"_", "?", "f"}}
-_UNSAFE_BARE = '"\\;[]$?'
+_UNSAFE_BARE = '"\\;[]$?(){}='
 _HEX_DIGITS = "0123456789ABCDEF"
 
 
@@ -94,10 +94,7 @@ def parse_attrs(tokens: list[str], row: str, *, strict: bool = True) -> dict[str
     return attrs
 
 
-def quote(value: str) -> str:
-    """Render one value without exposing RouterOS command metacharacters."""
-    if value and all("!" <= character <= "~" and character not in _UNSAFE_BARE for character in value):
-        return value
+def _escaped(value: str) -> str:
     escaped = []
     for byte in value.encode("utf-8", "surrogateescape"):
         single = bytes((byte,))
@@ -107,7 +104,25 @@ def quote(value: str) -> str:
             escaped.append(chr(byte))
         else:
             escaped.append(f"\\{byte:02X}")
-    return '"' + "".join(escaped) + '"'
+    return "".join(escaped)
+
+
+def quote(value: str) -> str:
+    """Render one value without exposing RouterOS command metacharacters."""
+    if value and all("!" <= character <= "~" and character not in _UNSAFE_BARE for character in value):
+        return value
+    return '"' + _escaped(value) + '"'
+
+
+def quote_literal(value: str) -> str:
+    """Render a value as a double-quoted literal for find-expression comparisons.
+
+    RouterOS compares find values without type conversion, so a bare literal such
+    as ``192.0.2.1/24`` is parsed as an ip-prefix and never matches a string
+    property, and ``name=(1+2)`` is parsed as an expression. Quoting keeps every
+    comparison string-to-string.
+    """
+    return '"' + _escaped(value) + '"'
 
 
 @registry.register

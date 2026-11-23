@@ -27,7 +27,18 @@ def test_parse_decodes_utf8_hex_escapes():
 
 @pytest.mark.parametrize(
     "value",
-    ["при", "\a\b\v", "\x1b", "\x0c", "\x7f", "\udcff", "one;two[three]$four?five", '"quoted\\"'],
+    [
+        "при",
+        "\a\b\v",
+        "\x1b",
+        "\x0c",
+        "\x7f",
+        "\udcff",
+        "one;two[three]$four?five",
+        '"quoted\\"',
+        "(1+2)",
+        "a=b",
+    ],
 )
 def test_quote_round_trips_through_parser(value):
     row = f"add comment={quote(value)}"
@@ -66,13 +77,32 @@ def test_parse_attrs_rejects_invalid_attributes(tokens):
         ('add name="two words"', 'remove name="two words"'),
         (r'add name="one\$two\?three"', r'remove name="one\$two?three"'),
         (r'add name="\D0\BF\D1\80\D0\B8"', r'remove name="\D0\BF\D1\80\D0\B8"'),
-        ("add name=wan#primary", "remove name=wan#primary"),
+        ("add name=wan#primary", 'remove name="wan#primary"'),
         ('set ether1 name="two words"', 'remove name="two words"'),
         ('set [ find default-name=ether1 ] name="two words"', 'remove name="two words"'),
-        ("set [ find name=legacy ] disabled=yes", "remove name=legacy"),
+        ("set [ find name=legacy ] disabled=yes", 'remove name="legacy"'),
     ],
 )
 def test_remove_by_key_uses_routeros_values(row, expected):
+    diff = {Op.ADDED: [], Op.REMOVED: [{"row": row}]}
+    assert list(change((), diff)) == [(True, expected, None)]
+
+
+@pytest.mark.parametrize(
+    "row, expected",
+    [
+        # find compares value types without conversion: a bare 192.0.2.1/24 is an
+        # ip-prefix and never matches the string address property
+        ("add address=192.0.2.1/24 interface=ether1", 'remove address="192.0.2.1/24" interface="ether1"'),
+        ("add address=192.0.2.1 interface=ether1", 'remove address="192.0.2.1/32" interface="ether1"'),
+        # bare numeric or parenthesized names parse as a number or an expression
+        ("add name=5", 'remove name="5"'),
+        ("add name=(1+2)", 'remove name="(1+2)"'),
+        # embedded quotes are escaped instead of breaking the literal
+        ('add name="say \\"hi\\""', 'remove name="say \\"hi\\""'),
+    ],
+)
+def test_remove_by_key_quotes_find_selector_values(row, expected):
     diff = {Op.ADDED: [], Op.REMOVED: [{"row": row}]}
     assert list(change((), diff)) == [(True, expected, None)]
 
