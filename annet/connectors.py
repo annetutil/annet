@@ -3,7 +3,9 @@ from __future__ import annotations
 import sys
 import warnings
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from functools import cached_property
+from importlib import import_module
 from importlib.metadata import EntryPoint, entry_points
 from typing import Any, Generic, TypeVar, cast
 
@@ -118,33 +120,47 @@ class AdapterWithName(ABC):
         pass
 
 
-def get_connector_from_config(config_key: str, connectors: list[type[T]]) -> tuple[T, dict[str, Any]]:
+def _select_connector(config_key: str, adapter_name: str | None, connectors: list[type[T]]) -> type[T]:
     if not connectors:
         raise Exception("empty connectors")
 
-    # handle configuration
-    connector_params: dict[str, Any] = {}  # default
-    if context_storage := get_context().get(config_key):
-        connector_params = context_storage.get("params", {})
-        if adapter_name := context_storage.get("adapter", None):
-            seen = list[str]()
-            for con in connectors:
-                if issubclass(con, AdapterWithName):
-                    con_name = con.name()
-                else:
-                    con_name = con.__name__
-                seen.append(con_name)
-                if adapter_name == con_name:
-                    connectors = [con]
-                    break
-            else:
-                raise Exception("unknown %s %s: seen %s" % (config_key, adapter_name, seen))
+    if adapter_name:
+        seen = list[str]()
+        for connector in connectors:
+            name = connector.name() if issubclass(connector, AdapterWithName) else connector.__name__
+            if adapter_name == name:
+                return connector
+            seen.append(name)
+        raise Exception("unknown %s %s: seen %s" % (config_key, adapter_name, seen))
 
     if len(connectors) > 1:
         warnings.warn(
             f"Please specify adapter for '{config_key}'. Found more than one classes {connectors}", UserWarning
         )
-    connector = connectors[0]
+    return connectors[0]
+
+
+def get_connector_from_config(
+    config_key: str,
+    connectors: list[type[T]] | Callable[[], list[type[T]]],
+    *,
+    expected_type: type = object,
+) -> tuple[T, dict[str, Any]]:
+    options = get_context().get(config_key) or {}
+    adapter_name = options.get("adapter")
+    connector_params = options.get("params", {})
+
+    if isinstance(adapter_name, str) and ":" in adapter_name:
+        module_name, class_name = adapter_name.split(":", 1)
+        if not module_name or not class_name:
+            raise ValueError(f"Invalid {config_key} adapter {adapter_name!r}. Expected module:Class.")
+        connector = getattr(import_module(module_name), class_name)
+        if not isinstance(connector, type) or not issubclass(connector, expected_type):
+            raise TypeError(f"{config_key} adapter {adapter_name!r} must be a subclass of {expected_type.__name__}")
+    else:
+        candidates = connectors() if callable(connectors) else connectors
+        connector = _select_connector(config_key, adapter_name, candidates)
+
     if issubclass(connector, AdapterWithConfig):
         connector_ins = cast(T, connector.with_config(**connector_params))
     else:

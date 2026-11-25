@@ -80,6 +80,26 @@ Config example:
 
 Environment variable ``ANN_SELECTED_CONTEXT`` can be used to override ``selected_context`` parameter.
 
+Custom adapters
+---------------
+
+For storage, fetchers, and deployers, ``adapter`` can reference a class using
+``module:Class``. The module must be importable by Python, for example through
+``PYTHONPATH``. The class must implement the corresponding Annet adapter
+interface.
+
+.. code-block:: yaml
+
+    fetcher:
+      default:
+        adapter: "my_adapters:SshFetcher"
+        params:
+          user: automation
+
+Annet passes ``params`` to the class's ``with_config()`` method if the class
+implements ``AdapterWithConfig``. Plain adapter names such as ``file`` and
+``netbox`` are resolved through Python entry points.
+
 generators
 ************************
 
