@@ -110,6 +110,7 @@ hw.FSCOM.N9600_64OD
 hw.H3C
 hw.H3C.S12500
 hw.H3C.S12500R
+hw.H3C.S9855
 hw.Huawei
 hw.Huawei.CE
 hw.Huawei.CE.XH9000
@@ -610,11 +611,15 @@ class Cisco_XRV(HardwareLeaf):
 class H3C(HardwareLeaf):
     S12500: H3C_S12500
     S12500R: H3C_S12500_S12500R
+    S9855: H3C_S9855
 
 class H3C_S12500(HardwareLeaf):
     S12500R: H3C_S12500_S12500R
 
 class H3C_S12500_S12500R(HardwareLeaf):
+    ...
+
+class H3C_S9855(HardwareLeaf):
     ...
 
 class Huawei(HardwareLeaf):
