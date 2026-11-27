@@ -91,11 +91,16 @@ class DeviceGenerators:
         return result
 
     def file_gens(self, device: Any) -> Iterator[Union[Entire, JSONFragment]]:
-        """Iterate over generators that generate files or file parts."""
-        yield from itertools.chain(
+        """Iterate over generators that generate files or file parts and support the device."""
+        for gen in itertools.chain[Union[Entire, JSONFragment]](
             self.entire.get(device, []),
             self.json_fragment.get(device, []),
-        )
+        ):
+            try:
+                if gen.supports_device(device):
+                    yield gen
+            except NotSupportedDevice:
+                continue
 
     def update(self, other: "DeviceGenerators") -> None:
         self.partial.update(other.partial)
