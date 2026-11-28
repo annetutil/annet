@@ -80,6 +80,35 @@ Config example:
 
 Environment variable ``ANN_SELECTED_CONTEXT`` can be used to override ``selected_context`` parameter.
 
+Selecting an adapter
+--------------------
+
+Use ``adapter`` to select the implementation for a ``storage``, ``fetcher``,
+or ``deployer`` profile.
+
+1. **Registered adapter name**
+
+   .. code-block:: yaml
+
+       storage:
+         default:
+           adapter: netbox
+
+   The specified name must match an adapter registered through a Python entry
+   point for that component.
+
+2. **Module and class**
+
+   .. code-block:: yaml
+
+       storage:
+         default:
+           adapter: my_module:MyClass
+
+   The module must be importable by Python. For example, you can add its
+   directory to ``PYTHONPATH``. The class must subclass the adapter base class
+   for that component.
+
 generators
 ************************
 

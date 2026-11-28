@@ -201,5 +201,4 @@ class MeshDevice(Device, Protocol):
 
 
 def get_storage() -> tuple[StorageProvider, dict[str, Any]]:
-    connectors = storage_connector.get_all()
-    return get_connector_from_config("storage", connectors)
+    return get_connector_from_config("storage", storage_connector.get_all, expected_type=StorageProvider)

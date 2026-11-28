@@ -115,8 +115,7 @@ class Fetcher(abc.ABC):
 
 
 def get_fetcher() -> Fetcher:
-    connectors = fetcher_connector.get_all()
-    fetcher, _ = get_connector_from_config("fetcher", connectors)
+    fetcher, _ = get_connector_from_config("fetcher", fetcher_connector.get_all, expected_type=Fetcher)
     return fetcher
 
 
@@ -145,8 +144,7 @@ class DeployDriver(abc.ABC):
 
 
 def get_deployer() -> DeployDriver:
-    connectors = driver_connector.get_all()
-    deployer, _ = get_connector_from_config("deployer", connectors)
+    deployer, _ = get_connector_from_config("deployer", driver_connector.get_all, expected_type=DeployDriver)
     return deployer
 
 
