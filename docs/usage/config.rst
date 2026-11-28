@@ -86,15 +86,28 @@ Selecting an adapter
 Use ``adapter`` to select the implementation for a ``storage``, ``fetcher``,
 or ``deployer`` profile.
 
-* **Registered entry point.** Use the adapter's name, for example
-  ``adapter: file``, ``adapter: netbox``, or ``adapter: gnetcli``. Annet loads
-  the entry points for that adapter type and matches the value against the
-  class's ``name()`` method if it implements ``AdapterWithName``, or the class
-  name otherwise.
-* **Module and class.** Use ``module:Class``, for example
-  ``adapter: "my_adapters:SshFetcher"``. Annet imports the class directly.
-  The module must be on Python's import path, and the class must implement
-  the interface for that adapter type.
+1. **Registered adapter name**
+
+   .. code-block:: yaml
+
+       storage:
+         default:
+           adapter: netbox
+
+   The specified name must match an adapter registered through a Python entry
+   point for that component.
+
+2. **Module and class**
+
+   .. code-block:: yaml
+
+       storage:
+         default:
+           adapter: my_module:MyClass
+
+   The module must be importable by Python. For example, you can add its
+   directory to ``PYTHONPATH``. The class must subclass the adapter base class
+   for that component.
 
 generators
 ************************
