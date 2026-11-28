@@ -147,10 +147,10 @@ def get_connector_from_config(
     expected_type: type = object,
 ) -> tuple[T, dict[str, Any]]:
     options = get_context().get(config_key) or {}
-    adapter_name = options.get("adapter")
+    adapter_name = options.get("adapter", None)
     connector_params = options.get("params", {})
 
-    if isinstance(adapter_name, str) and ":" in adapter_name:
+    if adapter_name is not None and ":" in adapter_name:
         module_name, class_name = adapter_name.split(":", 1)
         if not module_name or not class_name:
             raise ValueError(f"Invalid {config_key} adapter {adapter_name!r}. Expected module:Class.")
